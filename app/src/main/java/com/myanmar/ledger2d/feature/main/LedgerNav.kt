@@ -18,6 +18,7 @@ import com.myanmar.ledger2d.AppContainer
     composable("customer/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CustomerDetailScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){nav.navigate(it)}}
     composable("analysis/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AnalysisScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
     composable("bet/{agentId}/{customerId}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("customerId"){type=NavType.LongType})){e->BettingScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getLong("customerId")){nav.popBackStack()}}
+    composable("betHistory/{customerId}",listOf(navArgument("customerId"){type=NavType.LongType})){e->BetHistoryScreen(vm,e.arguments!!.getLong("customerId")){nav.popBackStack()}}
     composable("digitList/{agentId}/{customerId}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("customerId"){type=NavType.LongType})){e->DigitListScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getLong("customerId")){nav.popBackStack()}}
     composable("total/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->TotalListScreen(vm,e.arguments!!.getLong("agentId")){nav.popBackStack()}}
     composable("closed/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->ClosedNumberScreen(vm,e.arguments!!.getLong("agentId")){nav.popBackStack()}}

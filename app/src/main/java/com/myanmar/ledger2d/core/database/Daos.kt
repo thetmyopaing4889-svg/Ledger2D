@@ -24,12 +24,14 @@ import java.time.LocalDate
     @Update suspend fun updateEntry(value: BetEntryEntity)
     @Query("DELETE FROM bet_lines WHERE betEntryId=:entryId") suspend fun deleteLines(entryId: Long)
     @Transaction @Query("SELECT * FROM bet_entries WHERE id=:id") fun observeEntry(id: Long): Flow<BetEntryWithLines?>
+    @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId ORDER BY drawDate DESC, drawSession DESC, id DESC") fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit ORDER BY bl.digit") fun observeCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.agentId=:agentId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit ORDER BY bl.digit") fun observeAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit") suspend fun getCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): List<DigitTotalRow>
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.agentId=:agentId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit") suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): List<DigitTotalRow>
     @Query("SELECT COALESCE(SUM(bl.amount),0) FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session") suspend fun getTotalBet(customerId: Long, date: LocalDate, session: DrawSession): Long
     @Query("SELECT COALESCE(SUM(bl.amount),0) FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session AND bl.digit=:digit") suspend fun getWinningStake(customerId: Long, date: LocalDate, session: DrawSession, digit: String): Long
+    @Delete suspend fun deleteEntry(value: BetEntryEntity)
 }
 @Dao interface WinningNumberDao {
     @Query("SELECT * FROM winning_numbers ORDER BY date DESC, session") fun observeAll(): Flow<List<WinningNumberEntity>>

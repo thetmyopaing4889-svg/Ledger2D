@@ -37,7 +37,7 @@ private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this
 @Composable private fun FormActions(cancel:()->Unit,save:()->Unit,enabled:Boolean){Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){OutlinedButton(cancel,Modifier.weight(1f)){Text("Cancel")};Button(save,Modifier.weight(1f),enabled=enabled){Text("Save")}}}
 @Composable fun AgentDetailScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit,onRoute:(String)->Unit){val agent by vm.agent(id).collectAsState(initial=null);AppScaffold(agent?.name?:"Agent",onBack,action={TextButton(onClick={onRoute("agentForm/$id")}){Text("Edit")}}){p->LazyVerticalGrid(columns=GridCells.Adaptive(150.dp),modifier=Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){val items=listOf("Customer" to "customers/$id","Total List" to "total/$id","Closed Number" to "closed/$id","Format" to "format","Report" to "report/agent/$id","ထီပေါက်စဉ်" to "winning/agent/$id");items(items){(label,route)->ElevatedCard(onClick={onRoute(route)},modifier=Modifier.height(126.dp)){Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.SpaceBetween){Text(label,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text("Open  →",color=MaterialTheme.colorScheme.primary)}}}}}}
 @Composable fun CustomerListScreen(vm:LedgerViewModel,agentId:Long,onBack:()->Unit,onCustomer:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit){val list by vm.customers(agentId).collectAsState(initial=emptyList());AppScaffold("Customer",onBack,fab={ExtendedFloatingActionButton(onClick=onAdd){Text("+ Add Customer")}}){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){if(list.isEmpty())item{EmptyState("No Customers Yet","Add a Customer under this Agent.")}else items(list,key={it.id}){c->ElevatedCard(onClick={onCustomer(c.id)}){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(c.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);if(c.phone.isNotBlank())Text(c.phone,color=MaterialTheme.colorScheme.onSurfaceVariant)};TextButton({onEdit(c.id)}){Text("Edit")}}}}}}}
-@Composable fun CustomerDetailScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit,onRoute:(String)->Unit){val c by vm.customer(id).collectAsState(initial=null);AppScaffold(c?.name?:"Customer",onBack,action={c?.let{TextButton({onRoute("customerForm/${it.agentId}/$id")}){Text("Edit")}}}){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){val a=c?.agentId?:0;items(listOf("ထီပေါက်စဉ်" to "winning/customer/$id","စာရင်းသွင်းရန်" to "bet/$a/$id","List" to "digitList/$a/$id","သုံးသပ်ချက်" to "analysis/$id","Commission Rate" to "commission/$id","Report" to "report/customer/$id","Limit" to "limit/$id")){(label,route)->ElevatedCard(onClick={onRoute(route)}){Row(Modifier.fillMaxWidth().padding(18.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(label,style=MaterialTheme.typography.titleLarge);Text("→",color=MaterialTheme.colorScheme.primary)}}}}}}
+@Composable fun CustomerDetailScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit,onRoute:(String)->Unit){val c by vm.customer(id).collectAsState(initial=null);AppScaffold(c?.name?:"Customer",onBack,action={c?.let{TextButton({onRoute("customerForm/${it.agentId}/$id")}){Text("Edit")}}}){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){val a=c?.agentId?:0;items(listOf("ထီပေါက်စဉ်" to "winning/customer/$id","စာရင်းသွင်းရန်" to "bet/$a/$id","စာရင်းမှတ်တမ်း" to "betHistory/$id","List" to "digitList/$a/$id","သုံးသပ်ချက်" to "analysis/$id","Commission Rate" to "commission/$id","Report" to "report/customer/$id","Limit" to "limit/$id")){(label,route)->ElevatedCard(onClick={onRoute(route)}){Row(Modifier.fillMaxWidth().padding(18.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(label,style=MaterialTheme.typography.titleLarge);Text("→",color=MaterialTheme.colorScheme.primary)}}}}}}
 @Composable fun BettingScreen(vm:LedgerViewModel,agentId:Long,customerId:Long,onBack:()->Unit){var dateText by rememberSaveable{mutableStateOf(LocalDate.now().toString())};var session by rememberSaveable{mutableStateOf(DrawSession.MORNING)};var raw by rememberSaveable{mutableStateOf("")};var format by rememberSaveable{mutableStateOf(QuickFormat.MANUAL)};val preview by vm.preview.collectAsStateWithLifecycle();val submit by vm.submit.collectAsStateWithLifecycle();val date=runCatching{LocalDate.parse(dateText)}.getOrNull();LaunchedEffect(raw,format,date,session){date?.let{vm.refreshPreview(customerId,agentId,it,session,raw,format)}};LaunchedEffect(submit){if(submit is SubmitState.Success)onBack()};AppScaffold("စာရင်းသွင်းရန်",onBack){p->Column(Modifier.fillMaxSize().padding(p)){LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(start=AppDimens.screen,top=AppDimens.screen,end=AppDimens.screen,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Input(dateText,{dateText=it},"Date (YYYY-MM-DD)",true)};item{Text("Draw",style=MaterialTheme.typography.titleLarge);SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()){DrawSession.entries.forEachIndexed{i,s->SegmentedButton(selected=session==s,onClick={session=s},shape=SegmentedButtonDefaults.itemShape(i,2)){Text(s.label)}}}};item{OutlinedTextField(raw,{raw=it},Modifier.fillMaxWidth().heightIn(min=130.dp),label={Text("Input Box")},placeholder={Text(if(format==QuickFormat.MANUAL)"10.13.14 100" else "Enter format input")},shape=MaterialTheme.shapes.medium)};item{Text("Quick Format Buttons",style=MaterialTheme.typography.titleMedium);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){QuickFormat.entries.forEach{f->FilterChip(selected=format==f,onClick={format=f},label={Text(f.label)})}}};item{PreviewCard(preview)}};Surface(shadowElevation=10.dp){Button(onClick={date?.let{vm.confirm(customerId,agentId,it,session,raw)}},modifier=Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp),enabled=preview.canConfirm&&submit !is SubmitState.Working){Text(if(submit is SubmitState.Working)"အတည်ပြုနေသည်…" else "Confirm")}}}}}
 @Composable private fun PreviewCard(preview:BetPreview){
     ElevatedCard{
@@ -148,8 +148,8 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
             } else if (winners.isEmpty()) {
                 item { EmptyState("No winning results", "Use ပေါက်ဂဏန်းထည့်ရန် to add one.") }
             } else {
-                items(winners, key = { it.id }) { winner ->
-                        ElevatedCard {
+                    items(winners, key = { it.id }) { winner ->
+                        ElevatedCard(onClick={date=winner.date.toString();session=winner.session;digit=winner.digit;showForm=true}) {
                             Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                                 Column {
                                 Text(winner.date.toString(), style = MaterialTheme.typography.titleLarge)
@@ -315,6 +315,26 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             Input(dateText, { dateText = it }, "Date", true)
             Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let(vm::addClosedDay) }) { Text("Save") }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ListItem(headlineContent = { Text(day.date.toString()) }, trailingContent = { TextButton(onClick = { vm.removeClosedDay(day) }) { Text("Remove") } }) } }
+        }
+    }
+}
+@Composable fun BetHistoryScreen(vm: LedgerViewModel, customerId: Long, onBack: () -> Unit) {
+    val entries by vm.customerEntries(customerId).collectAsState(initial = emptyList())
+    AppScaffold("စာရင်းမှတ်တမ်း", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (entries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "Confirm လုပ်ထားသော betting record မရှိသေးပါ") }
+            items(entries, key = { it.entry.id }) { record ->
+                ElevatedCard {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${record.entry.drawDate} • ${record.entry.drawSession.label}", fontWeight = FontWeight.Bold)
+                            Text(record.entry.sourceText, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်")
+                        }
+                        TextButton(onClick = { vm.deleteBet(record.entry) }) { Text("Remove") }
+                    }
+                }
+            }
         }
     }
 }
