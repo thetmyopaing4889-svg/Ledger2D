@@ -12,6 +12,7 @@ import java.time.LocalDate
 
 sealed interface SubmitState { data object Idle:SubmitState; data object Working:SubmitState; data class Success(val id:Long):SubmitState; data class Error(val message:String):SubmitState }
 data class BetPreview(val parse:ParseResult=ParseResult.Error("Enter bets to see a live preview"),val validation:ValidationResult?=null,val loading:Boolean=false){ val canConfirm get()=parse is ParseResult.Success&&validation?.canConfirm==true&&!loading }
+data class DrawReport(val calculation:DrawCalculation, val winningDigit:String?, val winnerAvailable:Boolean)
 class LedgerViewModel(private val container: AppContainer):ViewModel(){
     val agents=container.agents.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val winners=container.winners.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
@@ -38,4 +39,6 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String){ val state=_preview.value; val parsed=state.parse as? ParseResult.Success?:return; if(!state.canConfirm)return; _submit.value=SubmitState.Working; viewModelScope.launch { runCatching { container.bets.confirm(customerId,agentId,date,session,source,parsed.bets) }.onSuccess { _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("Unable to confirm this entry") } } }
     fun resetSubmit(){_submit.value=SubmitState.Idle}
     fun saveWinner(date:LocalDate,session:DrawSession,digit:String,onDone:()->Unit){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { container.winners.save(date,session,digit); onDone() } }
+    suspend fun customerReport(customerId:Long,date:LocalDate,session:DrawSession):DrawReport { val customer=container.customers.get(customerId) ?: return DrawReport(DrawCalculation(0,0,0,0,0,0),null,false); val agent=container.agents.get(customer.agentId); val winner=container.winners.get(date,session); val totals=container.bets.getCustomerTotals(customerId,date,session); val calc=ReportCalculator().calculate(totals,winner?.digit,agent?.rate?:0,customer.commissionRateBasisPoints); return DrawReport(calc,winner?.digit,winner!=null) }
+    suspend fun agentReport(agentId:Long,date:LocalDate,session:DrawSession):DrawReport { val winner=container.winners.get(date,session); val totals=container.bets.getAgentTotals(agentId,date,session); val agent=container.agents.get(agentId); val calc=ReportCalculator().calculate(totals,winner?.digit,agent?.rate?:0,0); return DrawReport(calc,winner?.digit,winner!=null) }
 }

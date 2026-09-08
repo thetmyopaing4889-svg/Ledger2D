@@ -4,7 +4,7 @@ A native, offline-first Android ledger for Myanmar 2D agents and customers. The 
 
 ## Features implemented
 
-The current production-oriented foundation includes a clean first launch, Welcome and Agent flows, editable Agent and Customer records, customer and agent details, draw-aware betting entry with the required **Confirm** action, separators/reverse/quick-format expansion, immediate preview, cumulative limit and Closed Number enforcement, digit and agent total grids, commission and limit configuration, global winning-number entry/history, Format help, Room foreign keys/indexes, reactive repositories, and report calculation services. Report and scoped winning views are real navigation destinations that document and preserve the required scope while the underlying deterministic calculation engine is fully testable.
+The current production-oriented foundation includes a clean first launch, Welcome and Agent flows, editable Agent and Customer records, customer and agent details, draw-aware betting entry with the required **Confirm** action, separators/reverse/quick-format expansion, immediate preview, cumulative limit and Closed Number enforcement, digit and agent total grids, commission and limit configuration, global winning-number entry/history, real date/session-scoped Agent and Customer winning views, Before/After reports backed by Room aggregates, Customer `သုံးသပ်ချက်` analysis, Format help, Room foreign keys/indexes, reactive repositories, and centralized deterministic report calculation services.
 
 No login, cloud sync, export, backup, ads, payment, or unrelated features are included.
 

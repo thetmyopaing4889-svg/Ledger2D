@@ -26,12 +26,14 @@ import java.time.LocalDate
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit ORDER BY bl.digit") fun observeCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.agentId=:agentId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit ORDER BY bl.digit") fun observeAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit") suspend fun getCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): List<DigitTotalRow>
+    @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.agentId=:agentId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit") suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): List<DigitTotalRow>
     @Query("SELECT COALESCE(SUM(bl.amount),0) FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session") suspend fun getTotalBet(customerId: Long, date: LocalDate, session: DrawSession): Long
     @Query("SELECT COALESCE(SUM(bl.amount),0) FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session AND bl.digit=:digit") suspend fun getWinningStake(customerId: Long, date: LocalDate, session: DrawSession, digit: String): Long
 }
 @Dao interface WinningNumberDao {
     @Query("SELECT * FROM winning_numbers ORDER BY date DESC, session") fun observeAll(): Flow<List<WinningNumberEntity>>
     @Query("SELECT * FROM winning_numbers WHERE date=:date AND session=:session") fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>
+    @Query("SELECT * FROM winning_numbers WHERE date=:date AND session=:session") suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?
     @Upsert suspend fun upsert(value: WinningNumberEntity): Long
 }
 @Dao interface ClosedDayDao {
