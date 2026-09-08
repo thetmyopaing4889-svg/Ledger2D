@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,7 +31,7 @@ import java.time.ZoneId
 import java.util.Locale
 
 private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
-@Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){ Scaffold(topBar={TopAppBar(title={Text(title,fontWeight=FontWeight.SemiBold)},navigationIcon={if(onBack!=null)TextButton(onClick=onBack){Text("‹ Back")}},actions={action?.invoke(this)})},floatingActionButton={fab?.invoke()},content=content) }
+@Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){ Scaffold(containerColor=MaterialTheme.colorScheme.background,topBar={TopAppBar(colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background),title={Text(title,fontWeight=FontWeight.Bold)},navigationIcon={if(onBack!=null)TextButton(onClick=onBack){Text("‹",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)}},actions={action?.invoke(this)})},floatingActionButton={fab?.invoke()},content=content) }
 @Composable fun WelcomeScreen(onContinue:()->Unit){ Surface(Modifier.fillMaxSize()){Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.SpaceBetween){Column(Modifier.padding(top=80.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.large){Text("2D",Modifier.padding(horizontal=22.dp,vertical=16.dp),color=MaterialTheme.colorScheme.onPrimary,style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Black)};Spacer(Modifier.height(28.dp));Text("Myanmar 2D\nAgent Ledger",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.height(14.dp));Text("Accurate offline records for agents, customers, limits and draw results.",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)};Button(onClick=onContinue,modifier=Modifier.fillMaxWidth().height(56.dp)){Text("Get Started")}}} }
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onBackup:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle()
@@ -56,17 +57,17 @@ private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this
     AppScaffold(profile.name, onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding=PaddingValues(AppDimens.screen), verticalArrangement=Arrangement.spacedBy(18.dp)) {
             item {
-                ElevatedCard(colors=CardDefaults.elevatedCardColors(containerColor=MaterialTheme.colorScheme.primaryContainer), shape=MaterialTheme.shapes.large) {
-                    Column(Modifier.padding(22.dp), verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                ElevatedCard(colors=CardDefaults.elevatedCardColors(containerColor=Color.Transparent), shape=MaterialTheme.shapes.large, elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)) {
+                    Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(AppColors.PrimaryDeep,AppColors.Primary)),MaterialTheme.shapes.large).padding(22.dp), verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.Top) {
-                            Column(Modifier.weight(1f)) { Text(profile.name, style=MaterialTheme.typography.headlineSmall, fontWeight=FontWeight.Bold); Text("Agent profile", style=MaterialTheme.typography.labelMedium, color=MaterialTheme.colorScheme.onSurfaceVariant) }
-                            TextButton(onClick={onRoute("agentForm/$id")}) { Text("Edit") }
+                            Column(Modifier.weight(1f)) { Text(profile.name, style=MaterialTheme.typography.headlineSmall, fontWeight=FontWeight.Bold, color=Color.White); Text("Agent profile", style=MaterialTheme.typography.labelMedium, color=Color.White.copy(alpha=.82f)) }
+                            TextButton(onClick={onRoute("agentForm/$id")}) { Text("Edit", color=Color.White) }
                         }
                         HorizontalDivider(color=MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=.18f))
-                        Text("Rate ${profile.rate}", style=MaterialTheme.typography.titleMedium, color=MaterialTheme.colorScheme.primary)
-                        if(profile.phone.isNotBlank()) Text(profile.phone, style=MaterialTheme.typography.bodyMedium)
-                        if(profile.address.isNotBlank()) Text(profile.address, style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
-                        if(profile.remark.isNotBlank()) Text(profile.remark, style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Rate ${profile.rate}", style=MaterialTheme.typography.titleMedium, color=Color.White)
+                        if(profile.phone.isNotBlank()) Text(profile.phone, style=MaterialTheme.typography.bodyMedium, color=Color.White)
+                        if(profile.address.isNotBlank()) Text(profile.address, style=MaterialTheme.typography.bodyMedium, color=Color.White.copy(alpha=.86f))
+                        if(profile.remark.isNotBlank()) Text(profile.remark, style=MaterialTheme.typography.bodySmall, color=Color.White.copy(alpha=.82f))
                     }
                 }
             }
