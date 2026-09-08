@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -15,7 +16,7 @@ object AppColors {
     val MoneyPositive = Color(0xFF18794E); val MoneyNegative = Color(0xFFB3261E)
 }
 object AppDimens { val screen = 16.dp; val section = 20.dp; val card = 14.dp; val compact = 6.dp; val buttonHeight = 52.dp; val row = 68.dp }
-object AppShapes { val shapes = Shapes(extraSmall=8.dp, small=12.dp, medium=16.dp, large=22.dp) }
+object AppShapes { val shapes = Shapes(extraSmall=RoundedCornerShape(8.dp), small=RoundedCornerShape(12.dp), medium=RoundedCornerShape(16.dp), large=RoundedCornerShape(22.dp)) }
 object AppMotion { const val Short = 180; const val Medium = 320 }
 private val Light = lightColorScheme(primary=AppColors.Primary,onPrimary=Color.White,primaryContainer=Color(0xFFFFDCE5),onPrimaryContainer=Color(0xFF5E0922),secondary=AppColors.Secondary,onSecondary=Color.White,secondaryContainer=Color(0xFFFFE1EA),background=Color(0xFFFFF8FA),surface=Color.White,surfaceVariant=Color(0xFFF7ECEF),onSurfaceVariant=Color(0xFF6D5B61),error=AppColors.MoneyNegative)
 private val Dark = darkColorScheme(primary=Color(0xFFFF9CB3),onPrimary=Color(0xFF650022),primaryContainer=Color(0xFF7F1640),onPrimaryContainer=Color(0xFFFFD9E2),secondary=Color(0xFFFFB0C6),background=Color(0xFF1C1115),surface=Color(0xFF24191E),surfaceVariant=Color(0xFF34242A),onSurfaceVariant=Color(0xFFD1BFC5),error=Color(0xFFFFB4AB))
