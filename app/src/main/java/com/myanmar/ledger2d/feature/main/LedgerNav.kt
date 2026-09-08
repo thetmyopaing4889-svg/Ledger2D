@@ -12,7 +12,7 @@ import com.myanmar.ledger2d.AppContainer
 
 @Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier){val nav=rememberNavController();val vm:LedgerViewModel=viewModel { LedgerViewModel(container) };NavHost(nav,"welcome",modifier){
     composable("welcome"){WelcomeScreen{nav.navigate("agents"){popUpTo("welcome"){inclusive=true}}}}
-    composable("agents"){AgentListScreen(vm,{nav.navigate("agent/$it")},{nav.navigate("agentForm/0")},{nav.navigate("agentForm/$it")},{nav.navigate("winning")},{nav.navigate("closedDays")},{nav.navigate("backup")})}
+    composable("agents"){AgentListScreen(vm,{nav.navigate("agent/$it")},{nav.navigate("agentForm/0")},{nav.navigate("agentForm/$it")},{nav.navigate("winning")},{nav.navigate("closedDays")})}
     composable("agent/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentDetailScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){nav.navigate(it)}}
     composable("agentForm/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentFormScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
     composable("customers/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->val a=e.arguments!!.getLong("agentId");CustomerListScreen(vm,a,{nav.popBackStack()},{nav.navigate("customer/$it")},{nav.navigate("customerForm/$a/0")},{nav.navigate("customerForm/$a/$it")})}
@@ -30,7 +30,6 @@ import com.myanmar.ledger2d.AppContainer
     composable("limit/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->LimitScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
     composable("winning"){WinningNumberScreen(vm){nav.popBackStack()}}
     composable("closedDays"){ClosedDayScreen(vm){nav.popBackStack()}}
-    composable("backup"){BackupScreen{nav.popBackStack()}}
-    composable("winning/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ScopedWinningScreen(vm,scope,id){nav.popBackStack()}}
+        composable("winning/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ScopedWinningScreen(vm,scope,id){nav.popBackStack()}}
     composable("report/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ReportScreen(vm,scope,id){nav.popBackStack()}}
 }}

@@ -33,9 +33,9 @@ import java.util.Locale
 private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
 @Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){ Scaffold(containerColor=MaterialTheme.colorScheme.background,topBar={TopAppBar(colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background),title={Text(title,fontWeight=FontWeight.Bold)},navigationIcon={if(onBack!=null)TextButton(onClick=onBack){Text("‹",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)}},actions={action?.invoke(this)})},floatingActionButton={fab?.invoke()},content=content) }
 @Composable fun WelcomeScreen(onContinue:()->Unit){ Surface(Modifier.fillMaxSize()){Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.SpaceBetween){Column(Modifier.padding(top=80.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.large){Text("2D",Modifier.padding(horizontal=22.dp,vertical=16.dp),color=MaterialTheme.colorScheme.onPrimary,style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Black)};Spacer(Modifier.height(28.dp));Text("Myanmar 2D\nAgent Ledger",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.height(14.dp));Text("Accurate offline records for agents, customers, limits and draw results.",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)};Button(onClick=onContinue,modifier=Modifier.fillMaxWidth().height(56.dp)){Text("Get Started")}}} }
-@Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onBackup:()->Unit){
+@Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle()
-    AppScaffold("Agents",action={TextButton(onClick=onWinning){Text("ထီပေါက်စဉ်")};TextButton(onClick=onClosedDays){Text("ပိတ်ရက်")};TextButton(onClick=onBackup){Text("Backup")}},fab={ExtendedFloatingActionButton(onClick=onAdd){Text("+ Agent")}}){padding->
+    AppScaffold("Agents",action={TextButton(onClick=onWinning){Text("ထီပေါက်စဉ်")};TextButton(onClick=onClosedDays){Text("ပိတ်ရက်")};},fab={ExtendedFloatingActionButton(onClick=onAdd){Text("+ Agent")}}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
             item{Text("အေးဂျင့်များ",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("စာရင်းနှင့် ဖောက်သည်များကို စီမံပါ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
             item{OutlinedCard(onClick=onClosedDays,modifier=Modifier.fillMaxWidth()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("GLOBAL • ပိတ်ရက်",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text(if(days.isEmpty())"ပိတ်ရက် မသတ်မှတ်ရသေးပါ" else "${days.size} ရက် ပိတ်ထားသည်",style=MaterialTheme.typography.titleMedium);if(days.isNotEmpty())Text(days.take(2).joinToString(" • "){it.date.toString()},style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};Text("ကြည့်ရန်",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)}}}
@@ -100,6 +100,7 @@ private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this
             item{Text("လုပ်ငန်းဆောင်တာများ",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}
             item{ElevatedCard(onClick={onRoute("bet/${profile.agentId}/$id")},modifier=Modifier.fillMaxWidth(),colors=CardDefaults.elevatedCardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),elevation=CardDefaults.elevatedCardElevation(defaultElevation=6.dp)){Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)){Text("စာရင်းသွင်းရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer);Text("မနက်/ညနေ ထိုးကြေးစာရင်းထည့်ရန်",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=.82f))};Text("→",style=MaterialTheme.typography.headlineMedium,color=MaterialTheme.colorScheme.primary)}}}
             item{DetailActionCard("စာရင်းမှတ်တမ်း","ထည့်ထားသောစာရင်းများကို ကြည့်ရန်","betHistory/$id",onRoute)}
+            item{DetailActionCard("ထီပေါက်စဉ်","ဒီဖောက်သည်၏ ရလဒ်နှင့် လျော်ကြေး","winning/customer/$id",onRoute)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){Column(Modifier.weight(1f)){DetailActionCard("Digit list","ဂဏန်းအလိုက်စာရင်း","digitList/${profile.agentId}/$id",onRoute)};Column(Modifier.weight(1f)){DetailActionCard("Analysis","အကွက်အခြေအနေသုံးသပ်ချက်","analysis/$id",onRoute)}}}
             item{Text("Report နှင့် setting",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){Column(Modifier.weight(1f)){DetailActionCard("Report","နေ့စဉ်/အပတ်စဉ် report","report/customer/$id",onRoute)};Column(Modifier.weight(1f)){DetailActionCard("Limit","ကန့်သတ်ချက်များ","limit/$id",onRoute)}}}
@@ -192,8 +193,8 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
             }
             item {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(showForm, { showForm = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("အသစ်ထည့်ရန်") }
-                    SegmentedButton(!showForm, { showForm = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text("မှတ်တမ်းကြည့်ရန်") }
+                    SegmentedButton(showForm, { showForm = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("ပေါက်ဂဏန်းထည့်ရန်") }
+                    SegmentedButton(!showForm, { showForm = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text("ထီပေါက်စဉ်ကြည့်ရန်") }
                 }
             }
             if (showForm) {
@@ -317,7 +318,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                     }
                 }
                 if (customerRows.isNotEmpty()) item {
-                    val total = customerRows.map { it.calculation }.reduce { a, b -> DrawCalculation(a.totalBet + b.totalBet, a.distinctSlots + b.distinctSlots, a.winningStake + b.winningStake, a.payout + b.payout, a.commission + b.commission, a.profitLoss + b.profitLoss) }
+                    val total = customerRows.map { it.calculation }.reduce { a, b -> DrawCalculation(Math.addExact(a.totalBet,b.totalBet), 0, Math.addExact(a.winningStake,b.winningStake), Math.addExact(a.payout,b.payout), Math.addExact(a.commission,b.commission), Math.addExact(a.profitLoss,b.profitLoss)) }
                     ReportCard(total, null)
                 }
             } else {
