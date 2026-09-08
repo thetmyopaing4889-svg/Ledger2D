@@ -254,7 +254,6 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                         }
                     }
                 }
-                }
             }
         }
     }
