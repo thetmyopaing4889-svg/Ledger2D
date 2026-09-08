@@ -28,7 +28,7 @@ import java.util.Locale
 private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
 @Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){ Scaffold(topBar={TopAppBar(title={Text(title,fontWeight=FontWeight.SemiBold)},navigationIcon={if(onBack!=null)TextButton(onClick=onBack){Text("‹ Back")}},actions={action?.invoke(this)})},floatingActionButton={fab?.invoke()},content=content) }
 @Composable fun WelcomeScreen(onContinue:()->Unit){ Surface(Modifier.fillMaxSize()){Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.SpaceBetween){Column(Modifier.padding(top=80.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.large){Text("2D",Modifier.padding(horizontal=22.dp,vertical=16.dp),color=MaterialTheme.colorScheme.onPrimary,style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Black)};Spacer(Modifier.height(28.dp));Text("Myanmar 2D\nAgent Ledger",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.height(14.dp));Text("Accurate offline records for agents, customers, limits and draw results.",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)};Button(onClick=onContinue,modifier=Modifier.fillMaxWidth().height(56.dp)){Text("Get Started")}}} }
-@Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit){val agents by vm.agents.collectAsStateWithLifecycle();val days by vm.closedDays.collectAsStateWithLifecycle();AppScaffold("Agents",action={TextButton(onClick=onWinning){Text("ထီပေါက်စဉ်")}},fab={ExtendedFloatingActionButton(onClick=onAdd){Text("+ Add Agent")}}){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{ElevatedCard(colors=CardDefaults.elevatedCardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){Column(Modifier.padding(18.dp)){Text("GLOBAL",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text("Closed Day",style=MaterialTheme.typography.titleLarge);Text(if(days.isEmpty())"No closed dates configured" else "${days.size} closed date(s)",color=MaterialTheme.colorScheme.onSurfaceVariant)}}};if(agents.isEmpty())item{EmptyState("No Agents Yet","Add your first Agent to get started.")}else items(agents,key={it.id}){a->ElevatedCard(onClick={onAgent(a.id)}){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(a.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text("Rate ${a.rate}",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);if(a.phone.isNotBlank())Text(a.phone,color=MaterialTheme.colorScheme.onSurfaceVariant)};TextButton(onClick={onEdit(a.id)}){Text("Edit")}}}};item{Spacer(Modifier.height(72.dp))}}}}
+@Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit){val agents by vm.agents.collectAsStateWithLifecycle();val days by vm.closedDays.collectAsStateWithLifecycle();AppScaffold("Agents",action={TextButton(onClick=onWinning){Text("ထီပေါက်စဉ်")};TextButton(onClick=onClosedDays){Text("ပိတ်ရက်")}},fab={ExtendedFloatingActionButton(onClick=onAdd){Text("+ Add Agent")}}){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{ElevatedCard(colors=CardDefaults.elevatedCardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){Column(Modifier.padding(18.dp)){Text("GLOBAL",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text("Closed Day",style=MaterialTheme.typography.titleLarge);Text(if(days.isEmpty())"No closed dates configured" else "${days.size} closed date(s)",color=MaterialTheme.colorScheme.onSurfaceVariant)}}};if(agents.isEmpty())item{EmptyState("No Agents Yet","Add your first Agent to get started.")}else items(agents,key={it.id}){a->ElevatedCard(onClick={onAgent(a.id)}){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(a.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text("Rate ${a.rate}",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);if(a.phone.isNotBlank())Text(a.phone,color=MaterialTheme.colorScheme.onSurfaceVariant)};TextButton(onClick={onEdit(a.id)}){Text("Edit")}}}};item{Spacer(Modifier.height(72.dp))}}}}
 @Composable fun EmptyState(title:String,subtitle:String){Column(Modifier.fillMaxWidth().padding(vertical=52.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(title,style=MaterialTheme.typography.headlineSmall,textAlign=TextAlign.Center);Spacer(Modifier.height(8.dp));Text(subtitle,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)}}
 @Composable fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val existing by vm.agent(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var rate by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}};AppScaffold(if(id==0L)"Add Agent" else "Edit Agent",onBack){p->FormColumn(p){Input(name,{name=it},"Name",true);Input(address,{address=it},"Address");Input(phone,{phone=it},"Phone",keyboard=KeyboardType.Phone);Input(rate,{rate=it},"Rate",true,KeyboardType.Number);Input(remark,{remark=it},"Remark");FormActions(onBack,{vm.saveAgent(id,name,address,phone,rate,remark,onBack)},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true)}}}
 @Composable fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){val existing by vm.customer(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;remark=it.remark}};AppScaffold(if(id==0L)"Add Customer" else "Edit Customer",onBack){p->FormColumn(p){Input(name,{name=it},"အမည်",true);Input(address,{address=it},"လိပ်စာ");Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone);Input(remark,{remark=it},"မှတ်ချက်");FormActions(onBack,{vm.saveCustomer(id,agentId,name,address,phone,remark,onBack)},name.isNotBlank())}}}
@@ -91,7 +91,7 @@ private fun previewError(message:String):String = when{
 @Composable fun ClosedNumberScreen(vm:LedgerViewModel,agentId:Long,onBack:()->Unit){val numbers by vm.closedNumbers(agentId).collectAsState(initial=emptyList());var digit by rememberSaveable{mutableStateOf("")};AppScaffold("Closed Number",onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen)){Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(digit,{digit=it.take(2)},Modifier.weight(1f),label={Text("Digit 00–99")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number));Button({vm.addClosedNumber(agentId,digit);digit=""},enabled=BetParser.validDigit(digit)){Text("Save")}};Spacer(Modifier.height(20.dp));LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){if(numbers.isEmpty())item{Text("No Closed Number configured.")}else items(numbers,key={it.id}){n->ListItem(headlineContent={Text(n.digit,fontWeight=FontWeight.Black)},supportingContent={Text("All customers under this Agent are blocked")},trailingContent={TextButton({vm.removeClosedNumber(n)}){Text("Remove")}},colors=ListItemDefaults.colors(containerColor=MaterialTheme.colorScheme.errorContainer))}}}}}
 @Composable fun FormatScreen(onBack:()->Unit){val rows=listOf("ပါဝါ" to "05 50 16 61 27 72 38 83 49 94","နက္ခတ်" to "07 70 18 81 24 42 35 53 69 96","အပူး" to "00 11 22 33 44 55 66 77 88 99","ညီအကို" to "20 sibling numbers","အခွေ" to "345.100 → 34 43 45 54 35 53","အခွေပူး" to "အခွေ plus doubles","ပတ်သီး" to "9.100 → 19 unique numbers","ထိပ်စည်း" to "9.100 → 90…99","နောက်ပိတ်" to "9.100 → 09…99","R / reverse" to "10.20R100 → both directions");AppScaffold("Format",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text("Input format reference",style=MaterialTheme.typography.headlineSmall)};items(rows){(title,body)->OutlinedCard{Column(Modifier.padding(16.dp)){Text(title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(body,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}}}
 @Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold("Commission Rate",onBack){p->FormColumn(p){Input(value,{value=it},"Percentage",true,KeyboardType.Decimal);Text("15 means 15%. Commission uses deterministic basis-point arithmetic.",color=MaterialTheme.colorScheme.onSurfaceVariant);FormActions(onBack,{vm.updateCommission(id,value,onBack)},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
-@Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val all by vm.allLimit(id).collectAsState(initial=null);val specials by vm.specialLimits(id).collectAsState(initial=emptyList());var allText by rememberSaveable{mutableStateOf("")};var digit by rememberSaveable{mutableStateOf("")};var amount by rememberSaveable{mutableStateOf("")};LaunchedEffect(all){allText=all?.amount?.toString()?:""};AppScaffold("Limit",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Text("All Limit",style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"Blank means no All Limit",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,allText){}}){Text("Save")}};item{HorizontalDivider();Text("Special Limit",style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"Digit",keyboard=KeyboardType.Number);Input(amount,{amount=it},"Amount",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text("Save")}};items(specials){Text("${it.digit}  →  ${it.amount.mmk()}",Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp))}}}}
+@Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val all by vm.allLimit(id).collectAsState(initial=null);val specials by vm.specialLimits(id).collectAsState(initial=emptyList());var allText by rememberSaveable{mutableStateOf("")};var digit by rememberSaveable{mutableStateOf("")};var amount by rememberSaveable{mutableStateOf("")};LaunchedEffect(all){allText=all?.amount?.toString()?:""};AppScaffold("Limit",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Text("All Limit",style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"Blank means no All Limit",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,allText){}}){Text("Save")}};item{HorizontalDivider();Text("Special Limit",style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"Digit",keyboard=KeyboardType.Number);Input(amount,{amount=it},"Amount",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text("Save")}};items(specials){limit->Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween){Text("${limit.digit}  →  ${limit.amount.mmk()}");TextButton({vm.removeSpecialLimit(limit)}){Text("Remove")}}}}}}
 @Composable
 fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     val winners by vm.winners.collectAsStateWithLifecycle()
@@ -149,25 +149,173 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                 item { EmptyState("No winning results", "Use ပေါက်ဂဏန်းထည့်ရန် to add one.") }
             } else {
                 items(winners, key = { it.id }) { winner ->
-                    ElevatedCard {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(winner.date.toString(), style = MaterialTheme.typography.titleLarge)
-                            Text(
+                        ElevatedCard {
+                            Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
+                                Column {
+                                Text(winner.date.toString(), style = MaterialTheme.typography.titleLarge)
+                                Text(
                                 "${winner.session.label}   ${winner.digit}",
                                 style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                            )
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                }
+                                TextButton(onClick={vm.deleteWinner(winner)}){Text("Remove")}
+                            }
                         }
-                    }
                 }
             }
         }
     }
 }
-@Composable fun ScopedWinningScreen(vm:LedgerViewModel,scope:String,id:Long,onBack:()->Unit){var dateText by rememberSaveable{mutableStateOf(LocalDate.now().toString())};var session by rememberSaveable{mutableStateOf(DrawSession.MORNING)};val date=runCatching{LocalDate.parse(dateText)}.getOrNull();val report by produceState<DrawReport?>(null,date,session,id,scope){value=date?.let{if(scope=="agent")vm.agentReport(id,it,session) else vm.customerReport(id,it,session)}};AppScaffold("ထီပေါက်စဉ်",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Input(dateText,{dateText=it},"Date",true);Row{DrawSession.entries.forEach{d->FilterChip(session==d,{session=d},label={Text(d.label)},modifier=Modifier.padding(end=8.dp))}}};item{if(report==null)Text("ရက်စွဲကို စစ်ဆေးပါ") else if(!report!!.winnerAvailable)UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation,report!!.winningDigit)}}}}
-@Composable fun ReportScreen(vm:LedgerViewModel,scope:String,id:Long,onBack:()->Unit){var dateText by rememberSaveable{mutableStateOf(LocalDate.now().toString())};var session by rememberSaveable{mutableStateOf(DrawSession.MORNING)};var after by rememberSaveable{mutableStateOf(false)};val date=runCatching{LocalDate.parse(dateText)}.getOrNull();val report by produceState<DrawReport?>(null,date,session,id,scope){value=date?.let{if(scope=="agent")vm.agentReport(id,it,session) else vm.customerReport(id,it,session)}};AppScaffold("Report",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Text(if(scope=="customer")"ရက်အလိုက်" else "Customer-by-customer",style=MaterialTheme.typography.headlineSmall);Input(dateText,{dateText=it},"Date",true);Row{DrawSession.entries.forEach{d->FilterChip(session==d,{session=d},label={Text(d.label)},modifier=Modifier.padding(end=8.dp))}};SingleChoiceSegmentedButtonRow{SegmentedButton(!after,{after=false},SegmentedButtonDefaults.itemShape(0,2)){Text("Before")};SegmentedButton(after,{after=true},SegmentedButtonDefaults.itemShape(1,2)){Text("After")}}};item{if(report==null)Text("ရက်စွဲကို စစ်ဆေးပါ") else if(after&&!report!!.winnerAvailable)UnavailableState("After အတွက် ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation,report!!.winningDigit)}}}}
-@Composable private fun ReportCard(c:DrawCalculation,winner:String?){ElevatedCard{Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(if(winner==null)"Before" else "ပေါက်ဂဏန်း $winner",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("ထိုးကြေးစုစုပေါင်း  ${c.totalBet.mmk()}");Text("ပေါက်ကြေး  ${c.winningStake.mmk()}");Text("လျော်ပေးငွေ  ${c.payout.mmk()}");Text("ကော်မရှင်  ${c.commission.mmk()}");Text("ရှုံး/မြတ်  ${c.profitLoss.mmk()}",fontWeight=FontWeight.Bold)}}}
-@Composable private fun UnavailableState(text:String){Text(text,Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer,MaterialTheme.shapes.medium).padding(16.dp),color=MaterialTheme.colorScheme.onErrorContainer)}
-@Composable fun AnalysisScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){var dateText by rememberSaveable{mutableStateOf(LocalDate.now().toString())};var session by rememberSaveable{mutableStateOf(DrawSession.MORNING)};val date=runCatching{LocalDate.parse(dateText)}.getOrNull();val totals by vm.customerTotals(id,date?:LocalDate.now(),session).collectAsState(initial=emptyList());val all by vm.allLimit(id).collectAsState(initial=null);val limited=totals.count{all?.amount!=null};val near=totals.count{limit->all?.amount?.let{limit.amount>=it*80/100}==true};AppScaffold("သုံးသပ်ချက်",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Input(dateText,{dateText=it},"Date",true);Row{DrawSession.entries.forEach{d->FilterChip(session==d,{session=d},label={Text(d.label)},modifier=Modifier.padding(end=8.dp))}}};item{AnalysisMetric("လက်ရှိအကွက်အရေအတွက်",totals.size.toString());AnalysisMetric("ထိုးကြေးစုစုပေါင်း",totals.sumOf{it.amount}.mmk());AnalysisMetric("Limit သတ်မှတ်ထားသောအကွက်",limited.toString());AnalysisMetric("Limit နီးနေသောအကွက် (80%+)",near.toString())};item{Text("ထိုးကြေးအများဆုံးအကွက်များ",style=MaterialTheme.typography.titleLarge);totals.sortedByDescending{it.amount}.take(5).forEach{Text("${it.digit}  ${it.amount.mmk()}")}}}}}
-@Composable private fun AnalysisMetric(label:String,value:String){ElevatedCard{Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(label);Text(value,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)}}}
+@Composable
+fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Unit) {
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
+    val report by produceState<DrawReport?>(null, date, session, id, scope) {
+        value = date?.let { if (scope == "agent") vm.agentReport(id, it, session, true) else vm.customerReport(id, it, session, true) }
+    }
+    AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Input(dateText, { dateText = it }, "Date", true)
+                Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
+            }
+            item { if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (!report!!.winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, report!!.winningDigit) }
+        }
+    }
+}
+
+@Composable
+fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Unit) {
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    var after by rememberSaveable { mutableStateOf(false) }
+    var weekly by rememberSaveable { mutableStateOf(false) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
+    val report by produceState<DrawReport?>(null, date, session, id, scope, after) {
+        value = date?.let { if (scope == "agent") vm.agentReport(id, it, session, after) else vm.customerReport(id, it, session, after) }
+    }
+    val customerRows by produceState<List<AgentCustomerReportRow>>(emptyList(), date, session, id, scope, after) {
+        value = if (scope == "agent" && date != null) vm.agentCustomerReport(id, date, session, after) else emptyList()
+    }
+    val weeklyReport by produceState<WeeklyReport?>(null, date, id, after, weekly) {
+        value = if (scope == "customer" && weekly && date != null) vm.weeklyCustomerReport(id, date, after) else null
+    }
+    AppScaffold("Report", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Text(if (scope == "customer") "ရက်အလိုက်" else "Customer-by-customer", style = MaterialTheme.typography.headlineSmall)
+                Input(dateText, { dateText = it }, "Date", true)
+                Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
+                SingleChoiceSegmentedButtonRow {
+                    SegmentedButton(!after, { after = false }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("Before") }
+                    SegmentedButton(after, { after = true }, SegmentedButtonDefaults.itemShape(1, 2)) { Text("After") }
+                }
+                if (scope == "customer") {
+                    Row { FilterChip(!weekly, { weekly = false }, label = { Text("ရက်အလိုက်") }, modifier = Modifier.padding(end = 8.dp)); FilterChip(weekly, { weekly = true }, label = { Text("Weekly အလိုက်") }) }
+                }
+            }
+            if (scope == "customer" && weekly) {
+                weeklyReport?.let { report ->
+                    items(report.rows) { row ->
+                        OutlinedCard { Column(Modifier.padding(12.dp)) { Text("${row.date} • ${row.session.label}"); if (row.calculation == null) Text("အချက်အလက် မရှိသေးပါ") else Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • လျော် ${row.calculation.payout.mmk()} • P/L ${row.calculation.profitLoss.mmk()}") } }
+                    }
+                    item { AnalysisMetric("Weekly ထိုးကြေးစုစုပေါင်း", report.totalBet.mmk()); AnalysisMetric("Weekly လျော်ပေးငွေ", report.payout.mmk()); AnalysisMetric("Weekly ရှုံး/မြတ်", report.profitLoss.mmk()) }
+                }
+            } else if (scope == "agent") {
+                items(customerRows) { row ->
+                    OutlinedCard {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(row.customer.name, fontWeight = FontWeight.Bold)
+                            Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ပေါက်ကြေး ${row.calculation.winningStake.mmk()}")
+                            Text("လျော် ${row.calculation.payout.mmk()} • ရှုံး/မြတ် ${row.calculation.profitLoss.mmk()}")
+                        }
+                    }
+                }
+                if (customerRows.isNotEmpty()) item {
+                    val total = customerRows.map { it.calculation }.reduce { a, b -> DrawCalculation(a.totalBet + b.totalBet, a.distinctSlots + b.distinctSlots, a.winningStake + b.winningStake, a.payout + b.payout, a.commission + b.commission, a.profitLoss + b.profitLoss) }
+                    ReportCard(total, null)
+                }
+            } else {
+                item { if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (after && !report!!.winnerAvailable) UnavailableState("After အတွက် ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, report!!.winningDigit) }
+            }
+        }
+    }
+}
+
+@Composable private fun ReportCard(c: DrawCalculation, winner: String?) {
+    ElevatedCard {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(if (winner == null) "Before" else "ပေါက်ဂဏန်း $winner", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("ထိုးကြေးစုစုပေါင်း  ${c.totalBet.mmk()}")
+            Text("ပေါက်ကြေး  ${c.winningStake.mmk()}")
+            Text("လျော်ပေးငွေ  ${c.payout.mmk()}")
+            Text("ကော်မရှင်  ${c.commission.mmk()}")
+            Text("ရှုံး/မြတ်  ${c.profitLoss.mmk()}", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable private fun UnavailableState(text: String) {
+    Text(text, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium).padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
+}
+
+@Composable
+fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
+    val result by produceState<AnalysisResult?>(null, date, session, id) { value = date?.let { vm.analysis(id, it, session) } }
+    AppScaffold("သုံးသပ်ချက်", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item {
+                Text("လက်ရှိအကွက်အခြေအနေ သုံးသပ်ချက်", style = MaterialTheme.typography.titleMedium)
+                Input(dateText, { dateText = it }, "Date", true)
+                Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
+            }
+            result?.let { analysis ->
+                item {
+                    AnalysisMetric("လက်ရှိအကွက်အရေအတွက်", analysis.distinctDigits.toString())
+                    AnalysisMetric("ထိုးကြေးစုစုပေါင်း", analysis.totalBet.mmk())
+                    AnalysisMetric("Limit သတ်မှတ်ထားသောအကွက်", analysis.limitedDigits.toString())
+                    AnalysisMetric("80%+ သတိပေး", analysis.warningDigits.toString())
+                    AnalysisMetric("90%+ အလွန်နီး", analysis.nearDigits.toString())
+                    AnalysisMetric("100% ပြည့်ပြီး / ထပ်မလက်ခံ", analysis.fullDigits.toString())
+                    AnalysisMetric("Worst-case payout", analysis.worstCasePayout.mmk())
+                    AnalysisMetric("Worst-case P/L", analysis.worstCaseProfitLoss.mmk())
+                }
+                item {
+                    Text("ထိုးကြေးအများဆုံးအကွက်များ", style = MaterialTheme.typography.titleLarge)
+                    analysis.highest.forEach { Text("${it.first}  ${it.second.mmk()}") }
+                    Text("ပိတ်ထားသောအကွက်များ: ${analysis.closedDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}")
+                    Text("ထပ်မလက်ခံသင့်သောအကွက်များ: ${analysis.rejectDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}")
+                }
+                item {
+                    Text("အကွက်တစ်ခုချင်းစီအနိုင်ရပါက လက်ရှိ bet scenario", style = MaterialTheme.typography.titleLarge)
+                    analysis.scenarios.filter { it.stake > 0 }.forEach { scenario -> Text("${scenario.digit}: stake ${scenario.stake.mmk()} • payout ${scenario.payout.mmk()} • P/L ${scenario.profitLoss.mmk()}") }
+                }
+            }
+        }
+    }
+}
+@Composable private fun AnalysisMetric(label: String, value: String) {
+    ElevatedCard {
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label)
+            Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+@Composable fun ClosedDayScreen(vm: LedgerViewModel, onBack: () -> Unit) {
+    val days by vm.closedDays.collectAsStateWithLifecycle()
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    AppScaffold("ပိတ်ရက်", onBack) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Input(dateText, { dateText = it }, "Date", true)
+            Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let(vm::addClosedDay) }) { Text("Save") }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ListItem(headlineContent = { Text(day.date.toString()) }, trailingContent = { TextButton(onClick = { vm.removeClosedDay(day) }) { Text("Remove") } }) } }
+        }
+    }
+}
 @Composable fun SimpleListScreen(title:String,onBack:()->Unit,subtitle:String,rows:List<String>){AppScaffold(title,onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text(subtitle,style=MaterialTheme.typography.headlineSmall)};items(rows){OutlinedCard{Text(it,Modifier.fillMaxWidth().padding(16.dp),style=MaterialTheme.typography.bodyLarge)}}}}}

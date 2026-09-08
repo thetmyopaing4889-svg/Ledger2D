@@ -15,6 +15,7 @@ import java.time.LocalDate
     @Query("SELECT * FROM customers WHERE agentId=:agentId ORDER BY name COLLATE NOCASE") fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>
     @Query("SELECT * FROM customers WHERE id=:id") fun observe(id: Long): Flow<CustomerEntity?>
     @Query("SELECT * FROM customers WHERE id=:id") suspend fun get(id: Long): CustomerEntity?
+    @Query("SELECT * FROM customers WHERE agentId=:agentId ORDER BY name COLLATE NOCASE") suspend fun getForAgent(agentId: Long): List<CustomerEntity>
     @Upsert suspend fun upsert(value: CustomerEntity): Long
 }
 @Dao interface BetDao {
@@ -35,6 +36,7 @@ import java.time.LocalDate
     @Query("SELECT * FROM winning_numbers WHERE date=:date AND session=:session") fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>
     @Query("SELECT * FROM winning_numbers WHERE date=:date AND session=:session") suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?
     @Upsert suspend fun upsert(value: WinningNumberEntity): Long
+    @Delete suspend fun delete(value: WinningNumberEntity)
 }
 @Dao interface ClosedDayDao {
     @Query("SELECT * FROM closed_days ORDER BY date") fun observeAll(): Flow<List<ClosedDayEntity>>
