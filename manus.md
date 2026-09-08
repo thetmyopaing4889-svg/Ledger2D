@@ -1,0 +1,319 @@
+# Ledger2D — AI Handoff and Completion Plan
+
+## 1. Mission
+
+This repository is the Myanmar 2D Agent Ledger Android application. The authoritative product specification is `/home/ubuntu/upload/architecture.md` from the user. A future AI coding agent must read that file completely before changing code. Do not silently simplify business rules, rename required Burmese/English terminology, or add unrequested online/account features.
+
+The requested final result is a polished, production-oriented, offline-first Android application for one user. It must build from a clean checkout and produce a downloadable debug APK through GitHub Actions.
+
+## 2. Repository and delivery state
+
+- Repository: `thetmyopaing4889-svg/Ledger2D`
+- Branch: `main`
+- Last known-good commit: `d2e1985` (`Improve Burmese betting preview layout`)
+- GitHub Actions workflow: `.github/workflows/android.yml`
+- Last known-good Actions run before the current refinement attempt: `34188755121`
+- Local project path: `/home/ubuntu/Ledger2D`
+- The repository was initially empty; the Android project was created from scratch.
+- Never place GitHub tokens, passwords, or other credentials in source files, commits, logs, or this document.
+
+## 3. Technology and architecture already established
+
+The project uses:
+
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Gradle Kotlin DSL and Gradle version catalog
+- Gradle wrapper
+- Room local relational database
+- KSP/Room code generation
+- ViewModel and Kotlin Flow for reactive state
+- Navigation Compose
+- Java `LocalDate` and `DrawSession` (`MORNING` / `EVENING`)
+- Integer MMK arithmetic for money
+- Basis points for commission rates
+- Feature-oriented package layout under `app/src/main/java/com/myanmar/ledger2d/`
+
+Main packages:
+
+```text
+core/database       Room database, entities, DAOs
+core/design         Material theme and design tokens
+core/domain         Parser, expansion, validation, calculations, weekly logic
+core/model          Domain models and draw identity
+core/repository     Repository interfaces/implementations
+feature/main        Navigation, ViewModel, Compose screens
+```
+
+Important source files:
+
+```text
+app/src/main/java/com/myanmar/ledger2d/core/database/Daos.kt
+app/src/main/java/com/myanmar/ledger2d/core/database/Entities.kt
+app/src/main/java/com/myanmar/ledger2d/core/database/LedgerDatabase.kt
+app/src/main/java/com/myanmar/ledger2d/core/domain/BetEngine.kt
+app/src/main/java/com/myanmar/ledger2d/core/domain/Calculators.kt
+app/src/main/java/com/myanmar/ledger2d/core/domain/WeeklyReport.kt
+app/src/main/java/com/myanmar/ledger2d/core/model/Models.kt
+app/src/main/java/com/myanmar/ledger2d/core/repository/Repositories.kt
+app/src/main/java/com/myanmar/ledger2d/feature/main/LedgerNav.kt
+app/src/main/java/com/myanmar/ledger2d/feature/main/LedgerViewModel.kt
+app/src/main/java/com/myanmar/ledger2d/feature/main/Screens.kt
+```
+
+## 4. Completed functionality that must be preserved
+
+The last verified build contains:
+
+- Welcome → Agent List navigation
+- Agent create/edit
+- Customer create/edit under an Agent
+- Room entities and foreign-key relationships for Agent, Customer, BetEntry, BetLine, WinningNumber, ClosedDay, ClosedNumber, AllLimit, SpecialLimit
+- Offline database as the authoritative source
+- Betting Entry with Date, Draw, Input Box, quick formats, live validation, and final `Confirm` button
+- Parser support for separators `.`, `-`, space, `/`
+- Reverse `R` / `r`
+- Quick formats: ပါဝါ, နက္ခတ်, အပူး, ညီအကို, အခွေ, အခွေပူး, ပတ်သီး, ထိပ်စည်း, နောက်ပိတ်
+- Duplicate digit aggregation
+- Cumulative All Limit and Special Limit precedence
+- Closed Number validation after expansion
+- Deterministic commission, payout, and profit/loss calculators
+- 100-digit customer List and Agent Total List
+- Global Winning Number entry/history skeleton
+- Agent and Customer winning/report route skeletons
+- Burmese compact betting preview redesign from commit `d2e1985`
+- Unit tests for parser, formats, limits, closed numbers, calculations, aggregation, and weekly-row rules
+- GitHub Actions test + debug APK artifact workflow
+
+## 5. Last verified commands
+
+Run from the repository root:
+
+```bash
+./gradlew clean testDebugUnitTest assembleDebug --no-daemon
+```
+
+Expected result at commit `d2e1985`:
+
+```text
+BUILD SUCCESSFUL
+```
+
+APK output:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+GitHub Actions workflow must continue to run:
+
+```yaml
+./gradlew --no-daemon testDebugUnitTest assembleDebug
+```
+
+and upload:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+## 6. Critical product rules
+
+All rules below come from `architecture.md` and are non-negotiable:
+
+1. Android native Kotlin + Compose.
+2. Room database is the single source of truth.
+3. Offline-first; no login, cloud sync, ads, subscription, online server, export, notification, or app-lock feature unless separately requested.
+4. UI must never execute SQL directly.
+5. Business formulas belong in domain services/use cases, not Composables.
+6. Money is exact integer MMK; never use floating point for money.
+7. Percentages use deterministic basis points.
+8. Date + draw session identifies a draw; use proper ISO/local date internally.
+9. Customer belongs to exactly one Agent.
+10. Winning Number is global, not owned by Agent or Customer.
+11. Closed Day is global and belongs on Agent List.
+12. Closed Number is Agent-specific and applies after every parser/format expansion.
+13. Special Limit takes precedence over All Limit for the same digit.
+14. Betting submission button is exactly `Confirm`, never `Save`.
+15. Winning-number input form uses `Save` and `Cancel`.
+16. User-created/configurable data must support Edit, including winning numbers, limits, closed numbers, closed days, customers, agents, and betting records.
+17. Do not invent an evening clock time.
+18. Weekly report always has 5 operating weekdays × 2 draws = 10 rows, including future blank rows.
+19. First production launch is empty: `No Agents`; do not seed fake business data.
+
+## 7. Work that is still missing or incorrect
+
+The current last-known-good commit is safe and buildable, but the following must be implemented before claiming final completion.
+
+### A. Global Winning Number
+
+The top-level `Agent List → ထီပေါက်စဉ်` screen must show exactly two choices:
+
+```text
+ပေါက်ဂဏန်းထည့်ရန်
+ထီပေါက်စဉ်ကြည့်ရန်
+```
+
+The entry form must support Date (today default), မနက်/ညနေ, Digit 00–99, Save, Cancel. It must create or update one global result per date/session, prevent duplicate date/session records, and provide Edit/remove.
+
+The history must use day-based cards, with morning and evening results displayed separately. It must not mix global winning history with customer betting data.
+
+### B. Agent-level Winning Number
+
+`Agent → ထီပေါက်စဉ်` must use the global winner and aggregate all customers under that Agent for each date/session. It must show real stored data:
+
+- ထိုးကြေး
+- ပေါက်ကြေး (stake on the global winning digit)
+- လျော်ပေးငွေ = ပေါက်ကြေး × Agent Rate
+- ရှုံး/မြတ် = ထိုးကြေး − လျော်ပေးငွေ
+
+Use day cards and keep morning/evening separate.
+
+### C. Customer-level Winning Number
+
+`Customer → ထီပေါက်စဉ်` must show only that customer’s data in day cards. For each date and each session, show the global winning digit if available, total stake, winning stake, payout, and P/L. Past dates remain viewable. If no winning result exists, show an unavailable state instead of asking the user to enter a winner.
+
+### D. Real reports, not explanatory placeholders
+
+`Agent → Report` must be customer-by-customer with the required columns and total row. `Customer → Report` must have exactly:
+
+```text
+ရက်အလိုက်
+Weekly အလိုက်
+```
+
+Daily must select date and မနက်/ညနေ, then Before/After. Before does not require a winning number. After must show unavailable until the relevant global winner exists. Weekly must always show Monday–Friday × morning/evening = 10 rows, including future blank rows, and both Before and After need totals.
+
+All formulas must be centralized in domain services and tested:
+
+```text
+ကော်မရှင် = Total Bet × Customer Commission Rate
+ပေါက်ကြေး = amount bet on winning digit
+လျော်ပေးငွေ = ပေါက်ကြေး × Agent Rate
+ရှုံး/မြတ် = Total Bet − လျော်ပေးငွေ
+```
+
+### E. Customer Analysis / သုံးသပ်ချက်
+
+Add a Customer detail route named `Analysis` or `သုံးသပ်ချက်` (prefer user-facing `သုံးသပ်ချက်`). It must use selected date + session and real Room totals. Show:
+
+- လက်ရှိအကွက်အရေအတွက် (distinct digits)
+- ထိုးကြေးစုစုပေါင်း
+- Limit သတ်မှတ်ထားသောအကွက်အရေအတွက်
+- Limit နီးနေသောအကွက်အရေအတွက်
+- ထိုးကြေးအများဆုံးအကွက်များ
+- ပိတ်ထားသောအကွက်များ
+- ထပ်မလက်ခံသင့်တော့သောအကွက်များ
+- Scenario if each digit wins: winning stake, payout, P/L
+- Worst-case payout and worst-case P/L
+
+Default limit thresholds:
+
+```text
+80%+  သတိပေး
+90%+  အလွန်နီး
+100%  ပြည့်ပြီး / ထပ်မလက်ခံ
+```
+
+Do not claim statistical probability. Label the result as current-bet scenario analysis. A limit-less digit should not be described as limit-near, but high concentration may still be warned.
+
+### F. UX and Burmese localization
+
+The current betting preview has already been made Burmese and compact. Continue the same quality throughout the app:
+
+- Replace remaining unnecessary English user-facing explanatory text with clear Burmese while preserving required labels such as `Save`, `Cancel`, `Confirm`, `Before`, `After`, `Analysis`, `Report`, and `List` where the specification requires them.
+- Use localized, readable date presentation; keep ISO date internally.
+- Format money with comma grouping and `MMK`.
+- Use compact summary cards rather than long repetitive cards.
+- Add clear date/session context to List and Total List.
+- Keep Confirm visible and never let it cover the final preview row.
+- Use intentional loading, empty, error, and unavailable states.
+- Use accessible text/icons, not color alone.
+- Add safe edit/delete confirmations and update dependent data reactively.
+- Prefer date pickers over free-form date fields where stable and feasible.
+
+### G. Offline backup/restore
+
+Because the user is offline and single-user, security/login is intentionally not needed. Data loss prevention is important. Implement a safe local backup/restore feature if possible in the current scope:
+
+- Versioned JSON backup of all Room entities and schema version.
+- User selects a local file destination/source through Android file picker.
+- Validate schema, dates, digits, foreign keys, and duplicate winner identity before restore.
+- Restore transactionally; do not partially overwrite data.
+- Explicit warning before restore.
+- Never sync to cloud automatically.
+
+Do not add a fake backup button. If a complete file-picker implementation cannot be safely completed in this pass, leave it out rather than shipping a non-functional control, but document it as the only remaining item.
+
+## 8. Data and implementation guidance
+
+Before editing, inspect current `Entities.kt`, `Daos.kt`, `Repositories.kt`, `LedgerViewModel.kt`, and `Screens.kt`. Prefer adding projection queries to DAOs for aggregate data rather than loading the whole database into UI memory. Use Flow for reactive screens and suspend queries for domain calculations.
+
+Recommended domain services:
+
+```text
+BetParser
+BetExpansionEngine
+LimitValidator
+ClosedNumberValidator
+BetAggregator
+CommissionCalculator
+PayoutCalculator
+ProfitLossCalculator
+WinningNumberResolver
+AnalysisCalculator
+ReportCalculator
+BackupService
+```
+
+Never duplicate formulas in separate screens. Add tests before or alongside every domain change.
+
+## 9. Required tests before delivery
+
+At minimum, all existing tests must remain green, plus tests for:
+
+- One winner per date/session and duplicate prevention
+- Global winner resolution by date/session
+- Agent aggregate across multiple customers
+- Customer scope excluding other customers
+- Winning stake and payout
+- Missing winner → After unavailable
+- Daily Before and After formulas
+- Weekly 10 rows with future blanks and total row
+- Analysis distinct count, total stake, threshold warnings, highest-stake ranking, closed slots, and scenario P/L
+- Editing a source bet changes totals/reports
+- Backup validation and transactional restore, if implemented
+
+## 10. One-pass execution checklist
+
+The next AI should do the entire remaining implementation in one uninterrupted pass, not stop after analysis:
+
+1. Read `architecture.md` and this `manus.md` completely.
+2. Inspect current code and preserve the last known-good behavior.
+3. Implement data/domain/services first.
+4. Implement real winning screens, analysis, and reports.
+5. Implement Burmese UI polish and safe edit/delete.
+6. Implement backup/restore only if fully functional.
+7. Run formatting/compile/tests.
+8. Fix every compiler and test failure.
+9. Run:
+
+```bash
+./gradlew clean testDebugUnitTest assembleDebug --no-daemon
+```
+
+10. Verify APK exists at `app/build/outputs/apk/debug/app-debug.apk`.
+11. Update README with exact build and feature notes.
+12. `git add . && git commit -m "Complete Ledger2D analysis winning reports and UX"`.
+13. Push `main` to origin.
+14. Confirm GitHub Actions succeeds and uploads `ledger2d-debug-apk`.
+15. Report exact commit, Actions run URL, APK artifact URL/path, test result, and any genuinely remaining item. Do not claim complete if a critical screen is still a placeholder.
+
+## 11. Safety rule for interrupted work
+
+If a broad rewrite causes compilation errors, do not leave broken code in `main`. Save the attempted diff separately, restore the last known-good commit, and retry in a smaller coherent rewrite. A buildable app is more important than an unverified large patch.
+
+## 12. Definition of done
+
+The app is complete only when the architecture definition of done is satisfied: every requirement is implemented; Room is authoritative; formulas and parser are deterministic and tested; limits and closed numbers work through all expansion paths; date/session is attached to every bet; Confirm is used for betting; global winners drive scoped reports; editing updates dependent data; weekly future rows remain visible; UI is professional, responsive, accessible, and Burmese-clear; no unrequested features are added; and clean checkout build plus GitHub Actions APK build both succeed.
