@@ -30,15 +30,19 @@ import java.util.Locale
 
 private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
 private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${year.toString().takeLast(2)}"
-@Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){ Scaffold(containerColor=MaterialTheme.colorScheme.background,topBar={TopAppBar(colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background),title={Text(title,fontWeight=FontWeight.Bold)},navigationIcon={if(onBack!=null)TextButton(onClick=onBack){Text("‹",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)}},actions={action?.invoke(this)})},floatingActionButton={fab?.invoke()},content=content) }
+@Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
+    val parts=text.split("\n", limit=2)
+    Column(modifier, verticalArrangement=Arrangement.spacedBy(1.dp)){ Text(parts.first(), style=primaryStyle, color=color); if(parts.size>1) Text(parts[1], style=secondaryStyle, color=color.copy(alpha=.58f)) }
+}
+@Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){ Scaffold(containerColor=MaterialTheme.colorScheme.background,topBar={TopAppBar(colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background),title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, secondaryStyle=MaterialTheme.typography.labelMedium, color=MaterialTheme.colorScheme.onSurface)},navigationIcon={if(onBack!=null)TextButton(onClick=onBack){Text("‹",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)}},actions={action?.invoke(this)})},floatingActionButton={fab?.invoke()},content=content) }
 @Composable fun WelcomeScreen(onContinue:()->Unit){ Surface(Modifier.fillMaxSize()){Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.SpaceBetween){Column(Modifier.padding(top=80.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.large){Text("2D",Modifier.padding(horizontal=22.dp,vertical=16.dp),color=MaterialTheme.colorScheme.onPrimary,style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Black)};Spacer(Modifier.height(28.dp));Text("Myanmar 2D\nAgent Ledger",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.height(14.dp));Text("အေးဂျင့်၊ ဖောက်သည်၊ ထိုးကြေးနှင့် ထီပေါက်စဉ်များကို တိကျစွာ စီမံပါ",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)};Button(onClick=onContinue,modifier=Modifier.fillMaxWidth().height(56.dp)){Text("စတင်အသုံးပြုမည်")}}} }
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle()
-    AppScaffold("ဒိုင်များ\nAgents",action={TextButton(onClick=onWinning){Text("ထီပေါက်စဉ်")};TextButton(onClick=onClosedDays){Text("ပိတ်ရက်")};},fab={ExtendedFloatingActionButton(onClick=onAdd){Text("ဒိုင်အသစ်ထည့်ရန်\nAdd Agent") }}){padding->
+    AppScaffold("ဒိုင်များ\nAgents",action={TextButton(onClick=onWinning){Text("ထီပေါက်စဉ်")};TextButton(onClick=onClosedDays){Text("ပိတ်ရက်")};},fab={ExtendedFloatingActionButton(onClick=onAdd, modifier=Modifier.padding(bottom=8.dp)){BilingualText("ဒိုင်အသစ်ထည့်ရန်\nAdd Agent", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium, color=MaterialTheme.colorScheme.onPrimary)}}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            item{Text("ဒိုင်များ\nAgents",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("စာရင်းနှင့် ဖောက်သည်များကို စီမံပါ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-            item{OutlinedCard(onClick=onClosedDays,modifier=Modifier.fillMaxWidth()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("အားလုံးဆိုင်ရာ • ပိတ်ရက်\nGLOBAL • Closed Days",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text(if(days.isEmpty())"ပိတ်ရက် မသတ်မှတ်ရသေးပါ" else "${days.size} ရက် ပိတ်ထားသည်",style=MaterialTheme.typography.titleMedium);if(days.isNotEmpty())Text(days.take(2).joinToString(" • "){it.date.displayDate()},style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};Text("ကြည့်ရန်",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)}}}
-            if(agents.isEmpty()) item{EmptyState("အေးဂျင့်မရှိသေးပါ","ဒိုင်အသစ်ထည့်ရန်\nAdd Agent ကိုနှိပ်ပါ")} else items(agents,key={it.id}){agent->ElevatedCard(onClick={onAgent(agent.id)},modifier=Modifier.fillMaxWidth()){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("နှုန်းထား ${agent.rate}",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.primary);if(agent.phone.isNotBlank())Text(agent.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};TextButton({onEdit(agent.id)}){Text("ပြင်မည်")}}}}
+            item{BilingualText("ဒိုင်များ\nAgents", primaryStyle=MaterialTheme.typography.headlineSmall);Text("စာရင်းနှင့် ဖောက်သည်များကို စီမံပါ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+            item{OutlinedCard(onClick=onClosedDays,modifier=Modifier.fillMaxWidth()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){BilingualText("အားလုံးဆိုင်ရာ • ပိတ်ရက်\nGLOBAL • Closed Days", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium, color=MaterialTheme.colorScheme.primary);Text(if(days.isEmpty())"ပိတ်ရက် မသတ်မှတ်ရသေးပါ" else "${days.size} ရက် ပိတ်ထားသည်",style=MaterialTheme.typography.titleMedium);if(days.isNotEmpty())Text(days.take(2).joinToString(" • "){it.date.displayDate()},style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};Text("ကြည့်ရန်",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)}}}
+            if(agents.isEmpty()) item{EmptyState("အေးဂျင့်မရှိသေးပါ","ဒိုင်အသစ်ထည့်ရန်\nAdd Agent ကိုနှိပ်ပါ")} else items(agents,key={it.id}){agent->ElevatedCard(onClick={onAgent(agent.id)},modifier=Modifier.fillMaxWidth()){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("လျော်ကြေးနှုန်းထား ${agent.rate}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary);if(agent.phone.isNotBlank())Text(agent.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};TextButton({onEdit(agent.id)}){Text("ပြင်မည်")}}}}
             item{Spacer(Modifier.height(72.dp))}
         }
     }
@@ -81,12 +85,12 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     }
 }
 @Composable private fun DetailActionCard(title:String, subtitle:String, route:String, onRoute:(String)->Unit) {
-    OutlinedCard(onClick={onRoute(route)}, modifier=Modifier.fillMaxWidth()) { Column(Modifier.padding(18.dp), verticalArrangement=Arrangement.spacedBy(5.dp)) { Text(title, style=MaterialTheme.typography.titleMedium, fontWeight=FontWeight.SemiBold); Text(subtitle, style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant) } }
+    OutlinedCard(onClick={onRoute(route)}, modifier=Modifier.fillMaxWidth()) { Column(Modifier.padding(18.dp), verticalArrangement=Arrangement.spacedBy(5.dp)) { BilingualText(title, primaryStyle=MaterialTheme.typography.titleMedium, secondaryStyle=MaterialTheme.typography.labelMedium); Text(subtitle, style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant) } }
 }
 @Composable fun CustomerListScreen(vm:LedgerViewModel,agentId:Long,onBack:()->Unit,onCustomer:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit){
     val list by vm.customers(agentId).collectAsState(initial=emptyList())
     AppScaffold("ထိုးသားများ\nCustomers",onBack,fab={ExtendedFloatingActionButton(onClick=onAdd){Text("ထိုးသားအသစ်ထည့်ရန်\nAdd Customer")}}){padding->LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        item{Text("ဖောက်သည်များ",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("ဒီအေးဂျင့်အောက်ရှိ ဖောက်သည်များ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+        item{Text("ထိုးသားများ",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("ဒီအေးဂျင့်အောက်ရှိ ဖောက်သည်များ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         if(list.isEmpty())item{EmptyState("ဖောက်သည်မရှိသေးပါ","+ Customer ကိုနှိပ်၍ စတင်ပါ")} else items(list,key={it.id}){customer->OutlinedCard(onClick={onCustomer(customer.id)},modifier=Modifier.fillMaxWidth()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(customer.name,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold);if(customer.phone.isNotBlank())Text(customer.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};TextButton({onEdit(customer.id)}){Text("ပြင်မည်")}}}}
     }}
 }
@@ -346,12 +350,12 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
     AppScaffold("အစီရင်ခံစာ\nReport", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text(if (scope == "customer") "ရက်အလိုက်" else "ထိုးသားအလိုက်\nCustomer-by-customer", style = MaterialTheme.typography.headlineSmall)
+                BilingualText(if (scope == "customer") "ရက်အလိုက်" else "ထိုးသားအလိုက်\nCustomer-by-customer", primaryStyle=MaterialTheme.typography.headlineSmall)
                 DateInput(dateText, { dateText = it }, "ရက်စွဲ")
                 Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(!after, { after = false }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("ဂဏန်းမထွက်ခင်\nBefore") }
-                    SegmentedButton(after, { after = true }, SegmentedButtonDefaults.itemShape(1, 2)) { Text("ဂဏန်းထွက်ပြီးချိန်\nAfter") }
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected=!after, onClick={after=false}, label={BilingualText("ဂဏန်းမထွက်ခင်\nBefore", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
+                    FilterChip(selected=after, onClick={after=true}, label={BilingualText("ဂဏန်းထွက်ပြီးချိန်\nAfter", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
                 }
                 if (scope == "customer") {
                     Row { FilterChip(!weekly, { weekly = false }, label = { Text("ရက်အလိုက်") }, modifier = Modifier.padding(end = 8.dp)); FilterChip(weekly, { weekly = true }, label = { Text("Weekly အလိုက်") }) }
@@ -370,7 +374,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                         Text("ဖောက်သည်", Modifier.weight(1.2f), fontWeight = FontWeight.Bold)
                         Text("ထိုးကြေး", Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         Text("လျော်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Text("P/L", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text("ရှုံး/မြတ်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
                     }
                 }
                 items(customerRows) { row ->
@@ -397,7 +401,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
 @Composable private fun ReportCard(c: DrawCalculation, winner: String?) {
     ElevatedCard {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (winner == null) "ဂဏန်းမထွက်ခင်\nBefore" else "ပေါက်ဂဏန်း $winner", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            BilingualText(if (winner == null) "ဂဏန်းမထွက်ခင်\nBefore" else "ပေါက်ဂဏန်း $winner", primaryStyle=MaterialTheme.typography.titleLarge)
             Text("ထိုးကြေးစုစုပေါင်း  ${c.totalBet.mmk()}")
             Text("ပေါက်ကြေး  ${c.winningStake.mmk()}")
             Text("လျော်ပေးငွေ  ${c.payout.mmk()}")
