@@ -22,4 +22,9 @@ class AnalysisTest {
         assertEquals(0, result.fullDigits)
         assertEquals(100, result.limitedDigits)
     }
+
+    @Test fun percentage_calculation_does_not_overflow_for_large_amounts() {
+        val result = AnalysisCalculator().calculate(mapOf("00" to Long.MAX_VALUE / 2), EffectiveLimits(Long.MAX_VALUE, emptyMap()), emptySet(), 1)
+        assertTrue(result.scenarios.first { it.digit == "00" }.percentUsed!! > 0)
+    }
 }
