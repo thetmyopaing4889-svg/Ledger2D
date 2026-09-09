@@ -166,6 +166,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
             item{Text("လုပ်ငန်းဆောင်တာများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.ReceiptLong,"စာရင်းမှတ်တမ်း","betHistory/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Insights,"အမြန်သုံးသပ်ချက်","analysis/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.Assessment,"အစီရင်ခံစာ","report/customer/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Tune,"ကန့်သတ်ပမာဏ","limit/$id",onRoute)}}}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.GridView,"အကွက်စာရင်း","digitList/${profile.agentId}/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Percent,"ကော်မရှင်","commission/$id",onRoute)}}}
             item{ActionTile(Icons.Default.EmojiEvents,"ထီပေါက်စဉ်","winning/customer/$id",onRoute)}
             item{Spacer(Modifier.height(16.dp))}
         }
@@ -376,8 +377,9 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
 fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Unit) {
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val revision by vm.revision.collectAsStateWithLifecycle()
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
-    val report by produceState<DrawReport?>(null, date, session, id, scope) {
+    val report by produceState<DrawReport?>(null, date, session, id, scope, revision) {
         value = date?.let { if (scope == "agent") vm.agentReport(id, it, session, true) else vm.customerReport(id, it, session, true) }
     }
     AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
@@ -397,14 +399,15 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
     var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
     var after by rememberSaveable { mutableStateOf(false) }
     var weekly by rememberSaveable { mutableStateOf(false) }
+    val revision by vm.revision.collectAsStateWithLifecycle()
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
-    val report by produceState<DrawReport?>(null, date, session, id, scope, after) {
+    val report by produceState<DrawReport?>(null, date, session, id, scope, after, revision) {
         value = date?.let { if (scope == "agent") vm.agentReport(id, it, session, after) else vm.customerReport(id, it, session, after) }
     }
-    val customerRows by produceState<List<AgentCustomerReportRow>>(emptyList(), date, session, id, scope, after) {
+    val customerRows by produceState<List<AgentCustomerReportRow>>(emptyList(), date, session, id, scope, after, revision) {
         value = if (scope == "agent" && date != null) vm.agentCustomerReport(id, date, session, after) else emptyList()
     }
-    val weeklyReport by produceState<WeeklyReport?>(null, date, id, after, weekly) {
+    val weeklyReport by produceState<WeeklyReport?>(null, date, id, after, weekly, revision) {
         value = if (scope == "customer" && weekly && date != null) vm.weeklyCustomerReport(id, date, after) else null
     }
     AppScaffold("အစီရင်ခံစာ", onBack) { padding ->
@@ -479,8 +482,9 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
 fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val revision by vm.revision.collectAsStateWithLifecycle()
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
-    val result by produceState<AnalysisResult?>(null, date, session, id) { value = date?.let { vm.analysis(id, it, session) } }
+    val result by produceState<AnalysisResult?>(null, date, session, id, revision) { value = date?.let { vm.analysis(id, it, session) } }
     AppScaffold("သုံးသပ်ချက်", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
