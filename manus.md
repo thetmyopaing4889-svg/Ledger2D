@@ -321,17 +321,45 @@ The app is complete only when the architecture definition of done is satisfied: 
 
 ## 13. Current implementation status — 2026-09-09
 
-The repository is on `main` and the latest verified UI/workflow commit before this update is `03cba84`. GitHub Actions run `34313871670` completed successfully for that commit. The working tree was clean and `git diff --check` passed.
+The repository is on `main` at commit `fd02c95` (`Harden ledger data integrity and betting submission`). GitHub Actions run `34333508597` completed successfully for this commit, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
 
-This refinement pass added an app-level reactive `LanguageState` persisted in `SharedPreferences`, provided through `LocalLanguage` from `MainActivity`. Settings can switch between Burmese and English without requiring a process restart, and common navigation/form/workflow labels now have centralized translations. The primary agent and customer flows were tightened with compact list rows, icon actions, a prominent betting-entry action, reduced action-card repetition, compact report metrics, and clearer late-entry preview blocking.
+### Completed and verified in the current pass
 
-The preserved business behavior includes offline Room persistence, the date/session betting identity, next-draw defaults, explicit backdated-entry override, parser expansion, closed-number and limit validation, deterministic MMK calculations, scoped winners, daily/weekly reports, and analysis calculations. No online account, sync, ads, billing, or other unrequested service was added.
+- Premium UI foundation: typography hierarchy, color system, spacing, cards, top-bar navigation, Welcome, Agent, Customer, Betting, report, and analysis visual polish.
+- Offline Room persistence with Agent, Customer, Bet Entry/Line, global Winner, Closed Day, Closed Number, All Limit, and Special Limit entities.
+- Manual parser, reverse `R/r`, all named quick formats, duplicate aggregation, cumulative limits, special-limit precedence, and closed-number validation after expansion.
+- Integer-MMK commission, payout, profit/loss, weekly-row, and customer-analysis domain calculations with existing unit coverage.
+- Natural-key-safe updates for winner, all limit, special limit, closed day, and closed number by preserving the existing Room primary key instead of relying on a new-id `@Upsert`.
+- ASCII-only `00`–`99` validation at the shared digit validator and winner input boundary, with a regression test for Burmese/Arabic-Indic numerals.
+- Removal of the unsupported hard-coded evening `16:30` cutoff; the app no longer invents an evening result clock.
+- Betting confirm/edit now reparses the current source and format instead of trusting an older shared preview; repository boundaries reject empty/invalid/duplicate lines; app-level mutation serialization and submit-state reset were added.
+- Agent After reports now show an unavailable state when the global winner is absent.
+- GitHub Actions debug build is green; no online account, cloud sync, ads, billing, or other unrequested service was added.
 
-### Remaining verification and known limitations
+### Currently in progress / next implementation batch
 
-The repository must not be described as fully production-complete solely from CI success. GitHub Actions verifies compilation, unit tests, and the debug APK artifact; this sandbox currently has no discoverable Android SDK, so the mandated local command cannot be run here until `ANDROID_HOME` or `local.properties` is supplied. A real emulator/device visual pass is still required to validate Burmese font metrics, accessibility sizing, and the final compact layout at production screen sizes.
+The next batch is the correctness-and-release pass, not another cosmetic-only pass:
 
-The architecture checklist still identifies global winner CRUD/history, scoped winner presentation, complete report/analysis regression coverage, and safe backup/restore as product areas that require explicit feature-level verification. Backup/restore remains intentionally unshipped rather than exposing a fake control. Future agents must re-check those flows against `architecture.md` before claiming the final definition of done.
+1. Move authoritative betting admission checks into a coherent Room transaction and add concurrency/regression tests.
+2. Add safe money/rate/aggregate/payout bounds and visible overflow error handling.
+3. Add Room/repository/ViewModel tests for winner/limit CRUD, customer-versus-agent scope, missing-winner After behavior, source-bet edits, and reactive totals.
+4. Convert reports, scoped winning, and analysis to reliable database-reactive state while screens remain open.
+5. Expose the currently unreachable Customer Commission and 100-digit List routes.
+6. Complete agent/customer winner history cards, report columns, future weekly blank semantics, and safe delete confirmations.
+
+### Known remaining items before claiming final completion
+
+- Database-level atomic admission and proof against concurrent confirmation/winner races are not yet complete; the current `Mutex` is only an app-level safeguard.
+- Extreme money/rate/aggregate overflow protection and release-safe error boundaries are not yet complete.
+- Room integration, repository, ViewModel, concurrency, and Compose/instrumentation tests are still missing; current tests are primarily pure domain tests.
+- Some report/analysis/scoped-winning state is still one-shot rather than fully reactive to edits while the screen is open.
+- Customer Commission and Customer 100-digit List are implemented routes but not fully reachable from the normal Customer Detail action hierarchy.
+- Scoped winner history, report completeness/responsive layout, loading/not-found/error states, and safe configuration delete confirmations need completion.
+- Burmese/English localization still has remaining mixed copy and requires an emulator/device pass for Burmese font metrics, accessibility sizing, narrow screens, large font scale, IME behavior, and edge-to-edge layout.
+- Backup/restore is intentionally not shipped; the app has no tested local recovery path while Android system backup is disabled.
+- Signed/minified release build, lint, install checks on representative API levels, and production release artifact validation are not complete. CI currently verifies debug APK only.
+
+The repository must not be described as fully production-complete solely from the green debug CI run. The sandbox currently has no discoverable Android SDK, so the mandated local command cannot be run here until `ANDROID_HOME` or `local.properties` is supplied. A real emulator/device walkthrough remains required.
 
 For the next handoff, use:
 
