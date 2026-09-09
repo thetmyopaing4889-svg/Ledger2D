@@ -49,7 +49,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
             CenterAlignedTopAppBar(
                 colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=MaterialTheme.colorScheme.background),
                 title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
-                navigationIcon={onBack?.let { IconButton(onClick=it){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription="နောက်သို့") } } ?: {}},
+                navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription="နောက်သို့") } }},
                 actions={action?.invoke(this)}
             )
         },
