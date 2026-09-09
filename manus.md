@@ -321,7 +321,7 @@ The app is complete only when the architecture definition of done is satisfied: 
 
 ## 13. Current implementation status — 2026-09-09
 
-The repository is on `main` at commit `fd02c95` (`Harden ledger data integrity and betting submission`). GitHub Actions run `34333508597` completed successfully for this commit, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
+The repository is on `main` at commit `db3c341` (`Complete reachable ledger routes and reactive reports`). GitHub Actions run `34334584404` completed successfully for this commit, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
 
 ### Completed and verified in the current pass
 
@@ -353,7 +353,7 @@ The next batch is the correctness-and-release pass, not another cosmetic-only pa
 - Extreme money/rate/aggregate overflow protection and release-safe error boundaries are not yet complete.
 - Room integration, repository, ViewModel, concurrency, and Compose/instrumentation tests are still missing; current tests are primarily pure domain tests.
 - Some report/analysis/scoped-winning state is still one-shot rather than fully reactive to edits while the screen is open.
-- Customer Commission and Customer 100-digit List are implemented routes but not fully reachable from the normal Customer Detail action hierarchy.
+- Customer Commission and Customer 100-digit List are now reachable from the Customer Detail action hierarchy; their device-level usability and persistence-error states still require verification.
 - Scoped winner history, report completeness/responsive layout, loading/not-found/error states, and safe configuration delete confirmations need completion.
 - Burmese/English localization still has remaining mixed copy and requires an emulator/device pass for Burmese font metrics, accessibility sizing, narrow screens, large font scale, IME behavior, and edge-to-edge layout.
 - Backup/restore is intentionally not shipped; the app has no tested local recovery path while Android system backup is disabled.
