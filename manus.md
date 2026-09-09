@@ -321,7 +321,7 @@ The app is complete only when the architecture definition of done is satisfied: 
 
 ## 13. Current implementation status — 2026-09-09
 
-The repository is on `main` at commit `db3c341` (`Complete reachable ledger routes and reactive reports`). GitHub Actions run `34334584404` completed successfully for this commit, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
+The repository is on `main` at commit `a0ec455` (`Fix closed number loading state`). The preceding UI polish run `34336091760` completed successfully, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload; `a0ec455` contains only the follow-up compile fix. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
 
 ### Completed and verified in the current pass
 
@@ -334,6 +334,9 @@ The repository is on `main` at commit `db3c341` (`Complete reachable ledger rout
 - Removal of the unsupported hard-coded evening `16:30` cutoff; the app no longer invents an evening result clock.
 - Betting confirm/edit now reparses the current source and format instead of trusting an older shared preview; repository boundaries reject empty/invalid/duplicate lines; app-level mutation serialization and submit-state reset were added.
 - Agent After reports now show an unavailable state when the global winner is absent.
+- Report, scoped winning, and analysis screens now have a ViewModel revision refresh trigger after relevant mutations; weekly Before rows exclude future dates.
+- Customer Detail now exposes Commission and the 100-digit List routes.
+- Closed Number UI has a readable explanation, Burmese copy, empty state, and delete confirmation; Commission, List, History, and Settings copy/readability were polished.
 - GitHub Actions debug build is green; no online account, cloud sync, ads, billing, or other unrequested service was added.
 
 ### Currently in progress / next implementation batch
@@ -343,18 +346,19 @@ The next batch is the correctness-and-release pass, not another cosmetic-only pa
 1. Move authoritative betting admission checks into a coherent Room transaction and add concurrency/regression tests.
 2. Add safe money/rate/aggregate/payout bounds and visible overflow error handling.
 3. Add Room/repository/ViewModel tests for winner/limit CRUD, customer-versus-agent scope, missing-winner After behavior, source-bet edits, and reactive totals.
-4. Convert reports, scoped winning, and analysis to reliable database-reactive state while screens remain open.
-5. Expose the currently unreachable Customer Commission and 100-digit List routes.
-6. Complete agent/customer winner history cards, report columns, future weekly blank semantics, and safe delete confirmations.
+4. Add integration coverage proving the new revision refresh behavior and all report/winner scopes.
+5. Complete agent/customer winner history cards, report columns, and remaining safe delete confirmations.
+6. Add a tested local backup/restore flow or explicitly keep the app pre-release until recovery is available.
+7. Validate lint, minified/signed release output, install smoke tests, and real-device UI/accessibility behavior.
 
 ### Known remaining items before claiming final completion
 
 - Database-level atomic admission and proof against concurrent confirmation/winner races are not yet complete; the current `Mutex` is only an app-level safeguard.
 - Extreme money/rate/aggregate overflow protection and release-safe error boundaries are not yet complete.
 - Room integration, repository, ViewModel, concurrency, and Compose/instrumentation tests are still missing; current tests are primarily pure domain tests.
-- Some report/analysis/scoped-winning state is still one-shot rather than fully reactive to edits while the screen is open.
-- Customer Commission and Customer 100-digit List are now reachable from the Customer Detail action hierarchy; their device-level usability and persistence-error states still require verification.
-- Scoped winner history, report completeness/responsive layout, loading/not-found/error states, and safe configuration delete confirmations need completion.
+- Report, scoped winning, and analysis screens now refresh on ViewModel mutations, but Room-backed integration tests and failure-state coverage are still missing.
+- Customer Commission and Customer 100-digit List are reachable from Customer Detail; their device-level usability and persistence-error states still require verification.
+- Scoped winner history, report completeness/responsive layout, loading/not-found/error states, and safe delete confirmations for Closed Day, Special Limit, and remaining configuration actions need completion.
 - Burmese/English localization still has remaining mixed copy and requires an emulator/device pass for Burmese font metrics, accessibility sizing, narrow screens, large font scale, IME behavior, and edge-to-edge layout.
 - Backup/restore is intentionally not shipped; the app has no tested local recovery path while Android system backup is disabled.
 - Signed/minified release build, lint, install checks on representative API levels, and production release artifact validation are not complete. CI currently verifies debug APK only.
