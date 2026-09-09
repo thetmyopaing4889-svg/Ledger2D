@@ -15,20 +15,20 @@ class DrawScheduleTest {
         assertEquals(DrawSession.MORNING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(11, 59))).session)
     }
 
-    @Test fun after_morning_before_evening_defaults_to_same_day_evening() {
+    @Test fun after_morning_defaults_to_same_day_evening_without_invented_cutoff() {
         val draw = DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 29)))
         assertEquals(date, draw.date)
         assertEquals(DrawSession.EVENING, draw.session)
     }
 
-    @Test fun after_evening_defaults_to_next_day_morning() {
+    @Test fun late_evening_still_defaults_to_same_day_evening_until_result_exists() {
         val draw = DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(18, 0)))
-        assertEquals(date.plusDays(1), draw.date)
-        assertEquals(DrawSession.MORNING, draw.session)
+        assertEquals(date, draw.date)
+        assertEquals(DrawSession.EVENING, draw.session)
     }
 
-    @Test fun exact_result_times_are_already_past() {
+    @Test fun noon_selects_evening_without_an_evening_clock_assumption() {
         assertEquals(DrawSession.EVENING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.NOON)).session)
-        assertEquals(date.plusDays(1), DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 30))).date)
+        assertEquals(date, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 30))).date)
     }
 }

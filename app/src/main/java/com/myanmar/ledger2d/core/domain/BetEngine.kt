@@ -47,7 +47,7 @@ class BetParser {
         ParseResult.Success(bets, bets.fold(0L) { sum, bet -> Math.addExact(sum, bet.amount) })
     } catch (_: ArithmeticException) { ParseResult.Error("Amount is too large") }
     private fun positiveAmount(value: String) = value.toLongOrNull()?.takeIf { it > 0 }
-    companion object { fun validDigit(value: String) = value.length == 2 && value.all(Char::isDigit) }
+    companion object { fun validDigit(value: String) = value.length == 2 && value.all { it in '0'..'9' } }
 }
 
 class BetExpansionEngine(private val parser: BetParser = BetParser()) {

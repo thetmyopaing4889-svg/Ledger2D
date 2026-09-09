@@ -44,12 +44,14 @@ import java.time.LocalDate
 @Dao interface ClosedDayDao {
     @Query("SELECT * FROM closed_days ORDER BY date") fun observeAll(): Flow<List<ClosedDayEntity>>
     @Query("SELECT EXISTS(SELECT 1 FROM closed_days WHERE date=:date)") suspend fun isClosed(date: LocalDate): Boolean
+    @Query("SELECT * FROM closed_days WHERE date=:date") suspend fun get(date: LocalDate): ClosedDayEntity?
     @Upsert suspend fun upsert(value: ClosedDayEntity): Long
     @Delete suspend fun delete(value: ClosedDayEntity)
 }
 @Dao interface ClosedNumberDao {
     @Query("SELECT * FROM closed_numbers WHERE agentId=:agentId ORDER BY digit") fun observe(agentId: Long): Flow<List<ClosedNumberEntity>>
     @Query("SELECT digit FROM closed_numbers WHERE agentId=:agentId") suspend fun getDigits(agentId: Long): List<String>
+    @Query("SELECT * FROM closed_numbers WHERE agentId=:agentId AND digit=:digit") suspend fun get(agentId: Long, digit: String): ClosedNumberEntity?
     @Upsert suspend fun upsert(value: ClosedNumberEntity): Long
     @Delete suspend fun delete(value: ClosedNumberEntity)
 }
@@ -58,6 +60,7 @@ import java.time.LocalDate
     @Query("SELECT * FROM special_limits WHERE customerId=:customerId ORDER BY digit") fun observeSpecialLimits(customerId: Long): Flow<List<SpecialLimitEntity>>
     @Query("SELECT * FROM all_limits WHERE customerId=:customerId") suspend fun getAllLimit(customerId: Long): AllLimitEntity?
     @Query("SELECT * FROM special_limits WHERE customerId=:customerId") suspend fun getSpecialLimits(customerId: Long): List<SpecialLimitEntity>
+    @Query("SELECT * FROM special_limits WHERE customerId=:customerId AND digit=:digit") suspend fun getSpecial(customerId: Long, digit: String): SpecialLimitEntity?
     @Upsert suspend fun upsert(value: AllLimitEntity): Long
     @Upsert suspend fun upsert(value: SpecialLimitEntity): Long
     @Query("DELETE FROM all_limits WHERE customerId=:customerId") suspend fun clearAll(customerId: Long)

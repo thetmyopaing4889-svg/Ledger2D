@@ -18,6 +18,7 @@ class BetParserTest {
     @Test fun duplicate_reverse_is_aggregated(){val r=success("11R100");assertEquals(listOf("11"),r.bets.map{it.digit});assertEquals(200,r.total)}
     @Test fun multiple_lines_are_supported(){assertEquals(300,success("10.100\n11 200").total)}
     @Test fun rejects_invalid_digit(){assertTrue(parser.parse("1 100") is ParseResult.Error)}
+    @Test fun valid_digit_is_ascii_00_to_99(){assertTrue(BetParser.validDigit("00"));assertTrue(BetParser.validDigit("99"));assertFalse(BetParser.validDigit("၀၁"));assertFalse(BetParser.validDigit("١٢"))}
     @Test fun rejects_non_positive_amount(){assertTrue(parser.parse("10 0") is ParseResult.Error)}
     @Test fun rejects_decimal_money(){assertTrue(parser.parse("10 10.5") is ParseResult.Error)}
 }

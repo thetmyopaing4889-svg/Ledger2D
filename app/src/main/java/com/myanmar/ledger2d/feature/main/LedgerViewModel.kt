@@ -8,6 +8,8 @@ import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 
 sealed interface SubmitState { data object Idle:SubmitState; data object Working:SubmitState; data class Success(val id:Long):SubmitState; data class Error(val message:String):SubmitState }
@@ -18,7 +20,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     val agents=container.agents.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val winners=container.winners.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val closedDays=container.closedDays.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
-    private val engine=BetExpansionEngine(); private val validator=LimitValidator()
+    private val engine=BetExpansionEngine(); private val validator=LimitValidator(); private val mutationMutex=Mutex()
     private val _preview=MutableStateFlow(BetPreview()); val preview:StateFlow<BetPreview> = _preview
     private val _submit=MutableStateFlow<SubmitState>(SubmitState.Idle); val submit:StateFlow<SubmitState> = _submit
     fun agent(id:Long)=container.agents.observe(id)
@@ -50,9 +52,9 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         if(sameDraw) editing!!.lines.forEach { current[it.digit]=(current[it.digit]?:0L)-it.amount; if(current[it.digit]==0L) current.remove(it.digit) }
         return validator.validate(bets,current,container.limits.get(customerId),container.closedNumbers.getDigits(agentId)).canConfirm
     }
-    fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String){ val state=_preview.value; val parsed=state.parse as? ParseResult.Success?:return; if(!state.canConfirm)return; _submit.value=SubmitState.Working; viewModelScope.launch { runCatching { require(canSubmit(customerId,agentId,date,session,parsed.bets)); container.bets.confirm(customerId,agentId,date,session,source,parsed.bets) }.onSuccess { _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } }
+    fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL){ val parsed=engine.expand(source,format) as? ParseResult.Success?:return; _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { require(canSubmit(customerId,agentId,date,session,parsed.bets)); container.bets.confirm(customerId,agentId,date,session,source,parsed.bets) }.onSuccess { _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
     fun deleteBet(value:BetEntryEntity){ viewModelScope.launch { container.bets.delete(value) } }
-    fun editConfirm(entry:BetEntryWithLines,date:LocalDate,session:DrawSession,source:String){ val state=_preview.value; val parsed=state.parse as? ParseResult.Success?:return; if(!state.canConfirm)return; _submit.value=SubmitState.Working; viewModelScope.launch { runCatching { require(canSubmit(entry.entry.customerId,entry.entry.agentId,date,session,parsed.bets,entry)); container.bets.edit(entry.entry.copy(drawDate=date,drawSession=session,sourceText=source),parsed.bets) }.onSuccess { _submit.value=SubmitState.Success(entry.entry.id) }.onFailure { _submit.value=SubmitState.Error("စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } }
+    fun editConfirm(entry:BetEntryWithLines,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL){ val parsed=engine.expand(source,format) as? ParseResult.Success?:return; _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { require(canSubmit(entry.entry.customerId,entry.entry.agentId,date,session,parsed.bets,entry)); container.bets.edit(entry.entry.copy(drawDate=date,drawSession=session,sourceText=source),parsed.bets) }.onSuccess { _submit.value=SubmitState.Success(entry.entry.id) }.onFailure { _submit.value=SubmitState.Error("စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
     fun resetSubmit(){_submit.value=SubmitState.Idle}
     fun saveWinner(date:LocalDate,session:DrawSession,digit:String,onDone:()->Unit){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { if(container.winners.get(date,session)==null){container.winners.save(date,session,digit);onDone()} } }
     fun updateWinner(existing:WinningNumberEntity,digit:String,onDone:()->Unit){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { container.winners.save(existing.date,existing.session,digit);onDone() } }

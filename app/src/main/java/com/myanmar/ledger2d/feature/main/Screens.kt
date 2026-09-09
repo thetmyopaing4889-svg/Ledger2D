@@ -187,13 +187,12 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     val now = LocalDateTime.now()
     val pastDraw = date?.let {
         it.isBefore(now.toLocalDate()) ||
-            (it == now.toLocalDate() && session == DrawSession.MORNING && !now.toLocalTime().isBefore(DrawSchedule.morningResultTime)) ||
-            (it == now.toLocalDate() && session == DrawSession.EVENING && !now.toLocalTime().isBefore(DrawSchedule.eveningResultTime))
+            (it == now.toLocalDate() && session == DrawSession.MORNING && !now.toLocalTime().isBefore(DrawSchedule.morningResultTime))
     } ?: false
     val visiblePreview = if (pastDraw && !backdated) null else preview
     LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.entry.sourceText } }
     LaunchedEffect(raw, format, date, session, backdated) { date?.let { vm.refreshPreview(customerId, agentId, it, session, raw, format, entryId) } }
-    LaunchedEffect(submit) { if (submit is SubmitState.Success) onBack() }
+    LaunchedEffect(submit) { if (submit is SubmitState.Success) { vm.resetSubmit(); onBack() } }
     if (showLateError) AlertDialog(
         onDismissRequest = { showLateError = false },
         title = { Text("စာရင်းသွင်း၍ မရပါ") },
@@ -215,9 +214,10 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                 item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 10.13.14 100" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
                 item { Text("အမြန်ထည့်သွင်းပုံများ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
                 item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။") else PreviewCard(visiblePreview ?: BetPreview()) }
+                item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }
             }
             Surface(shadowElevation = 10.dp) {
-                Button(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw) else existing?.let { item -> vm.editConfirm(item, it, session, raw) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = (pastDraw && !backdated && raw.isNotBlank()) || (!pastDraw || backdated) && preview.canConfirm && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) "အတည်ပြုနေသည်…" else "အတည်ပြုမည်") }
+                Button(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format) else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = (pastDraw && !backdated && raw.isNotBlank()) || (!pastDraw || backdated) && preview.canConfirm && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) "အတည်ပြုနေသည်…" else "Confirm") }
             }
         }
     }
@@ -325,7 +325,7 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                                 Text("${existing.date} ${existing.session.label} • လက်ရှိ ${existing.digit}", color = MaterialTheme.colorScheme.primary)
                                 Text("Update လုပ်ရန် ပေါက်ဂဏန်းအသစ် ရိုက်ထည့်ပါ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Input(digit, { digit = it.filter(Char::isDigit).take(2) }, "ပေါက်ဂဏန်း 00–99", true, KeyboardType.Number)
+                            Input(digit, { digit = it.filter { ch -> ch in '0'..'9' }.take(2) }, "ပေါက်ဂဏန်း 00–99", true, KeyboardType.Number)
                             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.primary)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 OutlinedButton({ digit = "" }, Modifier.weight(1f)) { Text("ရှင်းမည်") }
@@ -428,6 +428,8 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                     }
                     item { AnalysisMetric("အပတ်စဉ် ထိုးကြေးစုစုပေါင်း", report.totalBet.mmk()); AnalysisMetric("အပတ်စဉ် လျော်ပေးငွေ", report.payout.mmk()); AnalysisMetric("အပတ်စဉ် ရှုံး/မြတ်", report.profitLoss.mmk()) }
                 }
+            } else if (scope == "agent" && after && report?.winnerAvailable != true) {
+                item { UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") }
             } else if (scope == "agent") {
                 item {
                     Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small).padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
