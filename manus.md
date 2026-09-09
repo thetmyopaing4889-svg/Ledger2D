@@ -317,3 +317,26 @@ If a broad rewrite causes compilation errors, do not leave broken code in `main`
 ## 12. Definition of done
 
 The app is complete only when the architecture definition of done is satisfied: every requirement is implemented; Room is authoritative; formulas and parser are deterministic and tested; limits and closed numbers work through all expansion paths; date/session is attached to every bet; Confirm is used for betting; global winners drive scoped reports; editing updates dependent data; weekly future rows remain visible; UI is professional, responsive, accessible, and Burmese-clear; no unrequested features are added; and clean checkout build plus GitHub Actions APK build both succeed.
+
+
+## 13. Current implementation status — 2026-09-09
+
+The repository is on `main` and the latest verified UI/workflow commit before this update is `03cba84`. GitHub Actions run `34313871670` completed successfully for that commit. The working tree was clean and `git diff --check` passed.
+
+This refinement pass added an app-level reactive `LanguageState` persisted in `SharedPreferences`, provided through `LocalLanguage` from `MainActivity`. Settings can switch between Burmese and English without requiring a process restart, and common navigation/form/workflow labels now have centralized translations. The primary agent and customer flows were tightened with compact list rows, icon actions, a prominent betting-entry action, reduced action-card repetition, compact report metrics, and clearer late-entry preview blocking.
+
+The preserved business behavior includes offline Room persistence, the date/session betting identity, next-draw defaults, explicit backdated-entry override, parser expansion, closed-number and limit validation, deterministic MMK calculations, scoped winners, daily/weekly reports, and analysis calculations. No online account, sync, ads, billing, or other unrequested service was added.
+
+### Remaining verification and known limitations
+
+The repository must not be described as fully production-complete solely from CI success. GitHub Actions verifies compilation, unit tests, and the debug APK artifact; this sandbox currently has no discoverable Android SDK, so the mandated local command cannot be run here until `ANDROID_HOME` or `local.properties` is supplied. A real emulator/device visual pass is still required to validate Burmese font metrics, accessibility sizing, and the final compact layout at production screen sizes.
+
+The architecture checklist still identifies global winner CRUD/history, scoped winner presentation, complete report/analysis regression coverage, and safe backup/restore as product areas that require explicit feature-level verification. Backup/restore remains intentionally unshipped rather than exposing a fake control. Future agents must re-check those flows against `architecture.md` before claiming the final definition of done.
+
+For the next handoff, use:
+
+```bash
+./gradlew clean testDebugUnitTest assembleDebug --no-daemon
+```
+
+and verify `app/build/outputs/apk/debug/app-debug.apk`, the GitHub Actions artifact `ledger2d-debug-apk`, and a real device/emulator walkthrough of Welcome → Agent → Customer → Betting → History → Reports → Analysis → Settings.
