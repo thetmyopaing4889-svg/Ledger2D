@@ -32,6 +32,8 @@ import java.time.LocalDate
     @Query("SELECT bl.digit AS digit, COALESCE(SUM(bl.amount),0) AS amount FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.agentId=:agentId AND be.drawDate=:date AND be.drawSession=:session GROUP BY bl.digit") suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): List<DigitTotalRow>
     @Query("SELECT COALESCE(SUM(bl.amount),0) FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session") suspend fun getTotalBet(customerId: Long, date: LocalDate, session: DrawSession): Long
     @Query("SELECT COALESCE(SUM(bl.amount),0) FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session AND bl.digit=:digit") suspend fun getWinningStake(customerId: Long, date: LocalDate, session: DrawSession, digit: String): Long
+    @Query("SELECT COALESCE(SUM(commissionAmount),0) FROM bet_entries WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session") suspend fun getCustomerCommission(customerId: Long, date: LocalDate, session: DrawSession): Long
+    @Query("SELECT COALESCE(SUM(commissionAmount),0) FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long
     @Query("SELECT COUNT(*) FROM bet_entries WHERE drawDate=:date AND drawSession=:session") suspend fun countEntries(date: LocalDate, session: DrawSession): Int
     @Delete suspend fun deleteEntry(value: BetEntryEntity)
 }

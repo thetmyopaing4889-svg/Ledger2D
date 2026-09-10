@@ -385,3 +385,42 @@ For the next handoff, use:
 ```
 
 and verify `app/build/outputs/apk/debug/app-debug.apk`, the GitHub Actions artifact `ledger2d-debug-apk`, and a real device/emulator walkthrough of Welcome → Agent → Customer → Betting → History → Reports → Analysis → Settings.
+
+
+## 14. Current implementation status — 2026-09-10 continuation
+
+This section supersedes older status notes above where they conflict. The repository is on `main` at commit `e3f5d76` (`Persist settlement confirmations and audit events`). The latest GitHub Actions run is `34480652153`, and it passed unit tests, lint, debug APK build, release APK verification, and both artifact uploads.
+
+### Work completed in this continuation
+
+- Added Agent-wide all-limit and special-digit limit entities, DAOs, repositories, UI, and validation across all customers under one Agent.
+- Added bet input-format persistence and Room migration `2 -> 3`.
+- Added weekday/session cutoff validation without inventing an unsupported evening clock rule.
+- Added result lock guards: bets cannot be edited or deleted after a winning result exists; an existing winning result cannot be changed or deleted while bets exist.
+- Added `netSettlement = profitLoss + commission` to the domain calculation and exposed it in reports and settlement UI.
+- Added Home-first operational navigation to Today Ledger and Settlement.
+- Added Today Ledger grouped by Agent/date/draw session.
+- Added Settlement workspace with Agent summaries, payout, commission, net settlement, and confirmation status.
+- Added persistent `SettlementEntity` and `AuditEventEntity`, DAOs, repositories, AppContainer wiring, and Room migration `3 -> 4`.
+- Added settlement confirmation persistence so the same Agent/date/session cannot be settled twice.
+- Added audit events for bet creation, winning-number creation, and settlement confirmation.
+- Added regression tests for Agent-wide limits, draw timing, settlement net calculation, and prior core domain behavior.
+- Fixed CI compile/test failures rather than leaving unverified code on `main`: shared formatter visibility, and an incorrect exact-limit boundary assertion.
+
+### Remaining implementation work before final claim
+
+The following items are still genuinely open and must not be described as complete until implemented and verified:
+
+1. Commission snapshot: store the Customer commission basis/rate and derived commission amount with the relevant immutable bet/settlement record so later rate edits cannot alter historical results.
+2. Full Burmese/English localization: route all remaining Agent, Customer, Limit, History, Winner, Report, Analysis, Settlement, Settings, dialog, error, empty, and unavailable copy through the language state while preserving required labels such as `Confirm`, `Save`, and `Cancel`.
+3. Final navigation polish: replace transitional Home action cards with the final operational navigation structure without breaking existing detail routes.
+4. Quick Entry final UX: post-confirm receipt/summary, fast reset for the next entry, and remaining one-hand/keyboard polish.
+5. Settlement history screen and read-only historical settlement view, including audit visibility where useful.
+6. Database-level atomic admission/settlement safeguards and tests for concurrent winner/bet races; the current ViewModel Mutex protects one process only.
+7. Full Room/repository/ViewModel integration tests, localization coverage, and error-state coverage.
+8. Local backup/restore is not shipped. It may only be added if a complete Android file-picker, schema-validation, and transactional restore implementation can be verified safely; otherwise it remains an explicit pre-release item.
+9. Real-device/emulator verification for Burmese text reflow, narrow screens, large font scale, IME behavior, touch targets, edge-to-edge insets, and APK install smoke tests.
+
+### One-pass continuation instruction
+
+Do not stop after analysis or after a partial feature. Implement all feasible items above in one coherent pass, run formatting/static checks, run the complete Gradle test/build workflow, fix every failure, push `main`, verify GitHub Actions, and update this section with the exact final commit, run ID, and any item that is still objectively outside the verified scope. Never claim complete merely because CI is green.
