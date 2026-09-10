@@ -6,12 +6,11 @@ import java.math.BigInteger
 
 object MoneyMath {
     const val MaxSafeAmount: Long = 9_000_000_000_000_000L
-    private fun safe(value: Long): Long { if (value > MaxSafeAmount) throw ArithmeticException("safe money bound exceeded"); return value }
     fun percentage(amount: Long, basisPoints: Int): Long {
         require(amount >= 0 && basisPoints in 0..10_000)
         return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)).longValueExact()
     }
-    fun multiply(amount: Long, multiplier: Long): Long { if (amount !in 0..MaxSafeAmount) throw ArithmeticException("safe money bound exceeded"); require(multiplier >= 0); return safe(Math.multiplyExact(amount, multiplier)) }
+    fun multiply(amount: Long, multiplier: Long): Long { require(amount >= 0 && multiplier >= 0); return Math.multiplyExact(amount, multiplier) }
 }
 class CommissionCalculator { fun calculate(totalBet: Long, rateBasisPoints: Int) = MoneyMath.percentage(totalBet, rateBasisPoints) }
 class PayoutCalculator { fun calculate(winningStake: Long, agentRate: Long) = MoneyMath.multiply(winningStake, agentRate) }
