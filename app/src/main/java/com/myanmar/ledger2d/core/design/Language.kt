@@ -16,9 +16,9 @@ class LanguageState(context: Context) {
     fun text(my: String, en: String): String = if (code == "en") en else my
     fun translate(value: String): String = if (code == "my") value else english[value] ?: value
     private val english = mapOf(
-        "ဒိုင်များ" to "Agents", "ဒိုင်အသစ်ထည့်ရန်" to "Add agent", "ထိုးသားများ" to "Customers", "ထိုးသားအသစ်ထည့်ရန်" to "Add customer",
-        "ဒိုင်အချက်အလက်ပြင်ရန်" to "Edit agent", "ထိုးသားအချက်အလက်ပြင်ရန်" to "Edit customer", "အမည်" to "Name", "လိပ်စာ" to "Address", "ဖုန်း" to "Phone", "မှတ်ချက်" to "Remark",
-        "လျော်ကြေးနှုန်းထား" to "Rate", "ဆက်တင်များ" to "Settings", "ဘာသာစကား" to "Language", "ပိတ်ရက်" to "Closed days", "ထီပေါက်စဉ်" to "2D results",
+        "ဒိုင်များ" to "Agents", "ဒိုင်အသစ်ထည့်ရန်" to "Add agent", "စာရင်း" to "Ledger", "မြန်မာ 2D" to "Myanmar 2D", "စာရင်း" to "Ledger", "မြန်မာ 2D" to "Myanmar 2D", "ထိုးသားများ" to "Customers", "ထိုးသားအသစ်ထည့်ရန်" to "Add customer",
+        "ဒိုင်အချက်အလက်ပြင်ရန်" to "Edit agent", "ထိုးသားအချက်အလက်ပြင်ရန်" to "Edit customer", "အမည်" to "Name", "လိပ်စာ" to "Address", "ဖုန်း" to "Phone", "မှတ်ချက်" to "Remark", "အကွက်စာရင်း" to "Digit list", "ကော်မရှင်နှုန်းထား" to "Commission", "နှုန်းထား" to "Rate", "အကွက်စာရင်း" to "Digit list", "ကော်မရှင်နှုန်းထား" to "Commission", "နှုန်းထား" to "Rate",
+         "ဆက်တင်များ" to "Settings", "ဘာသာစကား" to "Language", "ပိတ်ရက်" to "Closed days", "ထီပေါက်စဉ်" to "2D results",
         "အစီရင်ခံစာ" to "Report", "သုံးသပ်ချက်" to "Analysis", "စုစုပေါင်းစာရင်း" to "Total list", "ပိတ်ဂဏန်း" to "Closed numbers", "ကန့်သတ်ပမာဏ" to "Limits", "လမ်းညွှန်" to "Format",
         "စာရင်းသွင်းရန်" to "New entry", "စာရင်းမှတ်တမ်း" to "History", "အမြန်သုံးသပ်ချက်" to "Analysis", "အတည်ပြုမည်" to "Confirm", "သိမ်းမည်" to "Save", "မလုပ်တော့ပါ" to "Cancel", "ဖယ်ရှားမည်" to "Remove", "ပြင်မည်" to "Edit",
         "ရက်စွဲ" to "Date", "ထိုးမည့်အချိန်" to "Draw", "အမြန်ထည့်သွင်းပုံများ" to "Quick format", "အကြိုကြည့်ရှုရန်" to "Preview", "မနက်" to "Morning", "ညနေ" to "Evening",
