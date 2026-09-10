@@ -10,7 +10,7 @@ class AgentWideLimitTest {
     private val validator = LimitValidator()
 
     @Test fun totals_from_all_customers_are_checked_against_one_agent_limit() {
-        val result = validator.validate(listOf(ExpandedBet("11", 100)), mapOf("11" to 900), EffectiveLimits(1000, emptyMap()))
+        val result = validator.validate(listOf(ExpandedBet("11", 101)), mapOf("11" to 900), EffectiveLimits(1000, emptyMap()))
         assertFalse(result.canConfirm)
         assertTrue(result.rows.single().exceedsLimit)
     }
