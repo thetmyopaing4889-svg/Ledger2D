@@ -31,4 +31,15 @@ class DrawScheduleTest {
         assertEquals(DrawSession.EVENING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.NOON)).session)
         assertEquals(date, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 30))).date)
     }
+
+    @Test fun weekend_is_not_a_business_day() {
+        assertEquals(false, DrawSchedule.isWeekday(LocalDate.of(2026, 9, 12)))
+    }
+
+    @Test fun session_cutoffs_are_strict() {
+        assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(date, LocalTime.of(11, 59))))
+        assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(date, LocalTime.NOON)))
+        assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.EVENING, LocalDateTime.of(date, LocalTime.of(16, 29))))
+        assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.EVENING, LocalDateTime.of(date, LocalTime.of(16, 30))))
+    }
 }

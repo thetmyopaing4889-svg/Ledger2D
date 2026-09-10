@@ -66,3 +66,15 @@ import java.time.LocalDate
     @Query("DELETE FROM all_limits WHERE customerId=:customerId") suspend fun clearAll(customerId: Long)
     @Delete suspend fun delete(value: SpecialLimitEntity)
 }
+
+@Dao interface AgentLimitDao {
+    @Query("SELECT * FROM agent_all_limits WHERE agentId=:agentId") fun observeAllLimit(agentId: Long): Flow<AgentAllLimitEntity?>
+    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId ORDER BY digit") fun observeSpecialLimits(agentId: Long): Flow<List<AgentSpecialLimitEntity>>
+    @Query("SELECT * FROM agent_all_limits WHERE agentId=:agentId") suspend fun getAllLimit(agentId: Long): AgentAllLimitEntity?
+    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId") suspend fun getSpecialLimits(agentId: Long): List<AgentSpecialLimitEntity>
+    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId AND digit=:digit") suspend fun getSpecial(agentId: Long, digit: String): AgentSpecialLimitEntity?
+    @Upsert suspend fun upsert(value: AgentAllLimitEntity): Long
+    @Upsert suspend fun upsert(value: AgentSpecialLimitEntity): Long
+    @Query("DELETE FROM agent_all_limits WHERE agentId=:agentId") suspend fun clearAll(agentId: Long)
+    @Delete suspend fun deleteSpecial(value: AgentSpecialLimitEntity)
+}

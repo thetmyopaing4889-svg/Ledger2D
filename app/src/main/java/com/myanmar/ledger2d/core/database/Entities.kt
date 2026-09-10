@@ -11,7 +11,7 @@ data class AgentEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val na
 data class CustomerEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val name: String, val address: String = "", val phone: String = "", val remark: String = "", val commissionRateBasisPoints: Int = 0, val createdAt: Long, val updatedAt: Long)
 
 @Entity(tableName = "bet_entries", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE), ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("customerId"), Index("agentId"), Index(value = ["customerId", "drawDate", "drawSession"]), Index(value = ["agentId", "drawDate", "drawSession"])])
-data class BetEntryEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val agentId: Long, val drawDate: LocalDate, val drawSession: DrawSession, val sourceText: String, val createdAt: Long, val updatedAt: Long)
+data class BetEntryEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val agentId: Long, val drawDate: LocalDate, val drawSession: DrawSession, val sourceText: String, val inputFormat: String = "MANUAL", val createdAt: Long, val updatedAt: Long)
 
 @Entity(tableName = "bet_lines", foreignKeys = [ForeignKey(entity = BetEntryEntity::class, parentColumns = ["id"], childColumns = ["betEntryId"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)], indices = [Index("betEntryId"), Index("digit"), Index(value = ["betEntryId", "digit"], unique = true)])
 data class BetLineEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val betEntryId: Long, val digit: String, val amount: Long)
@@ -30,6 +30,12 @@ data class AllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val
 
 @Entity(tableName = "special_limits", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("customerId"), Index(value = ["customerId", "digit"], unique = true)])
 data class SpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long)
+
+@Entity(tableName = "agent_all_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index(value = ["agentId"], unique = true)])
+data class AgentAllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val amount: Long, val createdAt: Long, val updatedAt: Long)
+
+@Entity(tableName = "agent_special_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "digit"], unique = true)])
+data class AgentSpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long)
 
 data class DigitTotalRow(val digit: String, val amount: Long)
 data class BetEntryWithLines(@Embedded val entry: BetEntryEntity, @Relation(parentColumn = "id", entityColumn = "betEntryId") val lines: List<BetLineEntity>)

@@ -30,6 +30,7 @@ import com.myanmar.ledger2d.AppContainer
     composable("format"){FormatScreen{nav.popBackStack()}}
     composable("commission/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CommissionScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
     composable("limit/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->LimitScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
+    composable("agentLimit/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentLimitScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
     composable("winning"){WinningNumberScreen(vm){nav.popBackStack()}}
     composable("closedDays"){ClosedDayScreen(vm){nav.popBackStack()}}
     composable("settings"){SettingsScreen{nav.popBackStack()}}
