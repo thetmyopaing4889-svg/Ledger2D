@@ -342,7 +342,7 @@ fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                             }
                             if (existing != null) {
                                 Text("${existing.date} ${existing.session.label} • လက်ရှိ ${existing.digit}", color = MaterialTheme.colorScheme.primary)
-                                Text("Update လုပ်ရန် ပေါက်ဂဏန်းအသစ် ရိုက်ထည့်ပါ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("ပေါက်ဂဏန်းအသစ် ထည့်ပြီး ပြင်ဆင်ပါ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Input(digit, { digit = it.filter { ch -> ch in '0'..'9' }.take(2) }, "ပေါက်ဂဏန်း 00–99", true, KeyboardType.Number)
                             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.primary)

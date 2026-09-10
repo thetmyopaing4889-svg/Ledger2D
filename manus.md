@@ -364,10 +364,15 @@ The next batch is the correctness-and-release pass, not another cosmetic-only pa
 - Burmese/English localization still has remaining mixed copy and requires an emulator/device pass for Burmese font metrics, accessibility sizing, narrow screens, large font scale, IME behavior, and edge-to-edge layout.
 - Luxury UI still requires a real device visual pass: the current design system is a polished foundation, not a verified pixel-level luxury benchmark. The next visual pass should focus on stronger brand identity, premium empty/loading states, consistent iconography, surface elevation, and screen-by-screen spacing rather than adding more features.
 - Motion and theme behavior still requires a real emulator/device pass to verify reduced-motion expectations, Burmese text reflow, touch feedback timing, and performance on lower-end hardware.
+- A source-level user walkthrough found and removed an additional mixed-copy string (`Update လုပ်ရန်…`) and normalized the closed-number explanation and report mode labels. This does not replace a real Burmese device walkthrough.
 - Backup/restore is intentionally not shipped; the app has no tested local recovery path while Android system backup is disabled.
 - Signed/minified release build, lint, install checks on representative API levels, and production release artifact validation are not complete. CI currently verifies debug APK only.
 
 The repository must not be described as fully production-complete solely from the green debug CI run. The sandbox currently has no discoverable Android SDK, so the mandated local command cannot be run here until `ANDROID_HOME` or `local.properties` is supplied. A real emulator/device walkthrough remains required.
+
+### User-perspective walkthrough — remaining friction
+
+From a user perspective, the main journey is reachable: Welcome → Agent → Customer → Betting → Confirm → History → Reports → Analysis → Settings. The remaining friction is concentrated in production verification rather than missing primary routes: first-load loading feedback is not consistently distinct from an empty state; not-found and persistence-error states are not uniformly surfaced; Closed Day and Special Limit destructive actions still need confirmation; long Burmese report rows and the 100-digit grid need narrow-screen and large-font verification; winner history and report presentation can be more compact and scannable; and the app needs a real-device pass for touch targets, text reflow, motion performance, and edge-to-edge insets.
 
 For the next handoff, use:
 
