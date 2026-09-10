@@ -40,7 +40,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Locale
 
-private fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
+fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
 private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${year.toString().takeLast(2)}"
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
