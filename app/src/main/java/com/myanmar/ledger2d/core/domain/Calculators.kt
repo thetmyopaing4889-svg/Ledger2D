@@ -6,9 +6,10 @@ import java.math.BigInteger
 
 object MoneyMath {
     const val MaxSafeAmount: Long = 9_000_000_000_000_000L
+    private fun exactLong(value: BigInteger): Long = value.toString().toLong()
     fun percentage(amount: Long, basisPoints: Int): Long {
         require(amount >= 0 && basisPoints in 0..10_000)
-        return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)).longValueExact()
+        return exactLong(BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)))
     }
     fun multiply(amount: Long, multiplier: Long): Long { require(amount >= 0 && multiplier >= 0); return Math.multiplyExact(amount, multiplier) }
 }
