@@ -1,6 +1,5 @@
 package com.myanmar.ledger2d.core.design
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -34,4 +33,4 @@ val AppTypography = Typography(
     labelLarge=Typography().labelLarge.copy(fontFamily=AppFont,fontSize=14.sp,lineHeight=20.sp,fontWeight=FontWeight.Medium),
     labelMedium=Typography().labelMedium.copy(fontFamily=AppFont,fontSize=12.sp,lineHeight=17.sp)
 )
-@Composable fun LedgerTheme(darkTheme:Boolean=isSystemInDarkTheme(),content:@Composable () -> Unit){ MaterialTheme(colorScheme=if(darkTheme)Dark else Light,typography=AppTypography,shapes=AppShapes.shapes,content=content) }
+@Composable fun LedgerTheme(darkTheme:Boolean=false,content:@Composable () -> Unit){ MaterialTheme(colorScheme=if(darkTheme)Dark else Light,typography=AppTypography,shapes=AppShapes.shapes,content=content) }

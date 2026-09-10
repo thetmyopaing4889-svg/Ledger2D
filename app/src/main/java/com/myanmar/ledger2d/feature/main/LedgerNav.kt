@@ -11,7 +11,9 @@ import androidx.navigation.navArgument
 import com.myanmar.ledger2d.AppContainer
 
 @Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier){val nav=rememberNavController();val vm:LedgerViewModel=viewModel { LedgerViewModel(container) };NavHost(nav,"welcome",modifier){
-    composable("welcome"){WelcomeScreen{nav.navigate("agents"){popUpTo("welcome"){inclusive=true}}}}
+    composable("welcome"){WelcomeScreen{nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
+    composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agents")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")})}
+    composable("quickEntry"){QuickEntryScreen(vm,onBet={agentId,customerId->nav.navigate("bet/$agentId/$customerId")}){nav.popBackStack()}}
     composable("agents"){AgentListScreen(vm,{nav.navigate("agent/$it")},{nav.navigate("agentForm/0")},{nav.navigate("agentForm/$it")},{nav.navigate("winning")},{nav.navigate("closedDays")},{nav.navigate("settings")})}
     composable("agent/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentDetailScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){nav.navigate(it)}}
     composable("agentForm/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentFormScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
