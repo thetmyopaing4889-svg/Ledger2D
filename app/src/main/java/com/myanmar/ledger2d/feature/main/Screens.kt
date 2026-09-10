@@ -2,11 +2,17 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -54,7 +61,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
             )
         },
         floatingActionButton={fab?.invoke()},
-        content=content
+        content={padding->AnimatedVisibility(visible=true,enter=fadeIn(tween(AppMotion.Medium))+slideInVertically(tween(AppMotion.Medium)){it/12}){content(padding)}}
     )
 }
 @Composable fun WelcomeScreen(onContinue:()->Unit){
@@ -143,7 +150,8 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     }
 }
 @Composable private fun ActionTile(icon: androidx.compose.ui.graphics.vector.ImageVector, title:String, route:String, onRoute:(String)->Unit) {
-    ElevatedCard(onClick={onRoute(route)}, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large){
+    val interaction=remember{MutableInteractionSource()}; val pressed by interaction.collectIsPressedAsState(); val scale by animateFloatAsState(if(pressed) .965f else 1f, tween(AppMotion.Short), label="actionTileScale")
+    ElevatedCard(onClick={onRoute(route)}, interactionSource=interaction, modifier=Modifier.fillMaxWidth().graphicsLayer{scaleX=scale;scaleY=scale}, shape=MaterialTheme.shapes.large, elevation=CardDefaults.elevatedCardElevation(defaultElevation=AppDimens.cardElevation, pressedElevation=AppDimens.featuredElevation)){
         Column(Modifier.fillMaxWidth().padding(vertical=16.dp,horizontal=10.dp), horizontalAlignment=Alignment.CenterHorizontally, verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Surface(shape=MaterialTheme.shapes.medium, color=MaterialTheme.colorScheme.secondaryContainer){Box(Modifier.size(46.dp),contentAlignment=Alignment.Center){Icon(icon, null, tint=MaterialTheme.colorScheme.secondary)}}
             Text(title, style=MaterialTheme.typography.labelLarge, textAlign=TextAlign.Center, maxLines=2)

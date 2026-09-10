@@ -11,15 +11,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object AppColors {
-    val Primary = Color(0xFFD81B4E); val PrimaryDeep = Color(0xFFA80F3A); val Secondary = Color(0xFF6E3B52)
+    val Primary = Color(0xFFC81745); val PrimaryDeep = Color(0xFF8C1035); val Secondary = Color(0xFF6E3B52)
+    val Gold = Color(0xFFC3913D); val GoldSoft = Color(0xFFF5E7C8); val Ink = Color(0xFF21191D)
     val Success = Color(0xFF18794E); val Warning = Color(0xFF936500); val Closed = Color(0xFFB3264B); val Limit = Color(0xFF7C3F70)
     val MoneyPositive = Color(0xFF18794E); val MoneyNegative = Color(0xFFB3261E)
 }
-object AppDimens { val screen = 16.dp; val section = 20.dp; val card = 16.dp; val compact = 8.dp; val buttonHeight = 54.dp; val row = 72.dp }
-object AppShapes { val shapes = Shapes(extraSmall=RoundedCornerShape(10.dp), small=RoundedCornerShape(14.dp), medium=RoundedCornerShape(18.dp), large=RoundedCornerShape(24.dp)) }
-object AppMotion { const val Short = 180; const val Medium = 320 }
-private val Light = lightColorScheme(primary=AppColors.Primary,onPrimary=Color.White,primaryContainer=Color(0xFFFFDCE5),onPrimaryContainer=Color(0xFF5E0922),secondary=AppColors.Secondary,onSecondary=Color.White,secondaryContainer=Color(0xFFF8E3EA),onSecondaryContainer=Color(0xFF35111F),background=Color(0xFFF9F7F8),surface=Color.White,surfaceVariant=Color(0xFFF0EBED),onSurfaceVariant=Color(0xFF665C60),error=AppColors.MoneyNegative)
-private val Dark = darkColorScheme(primary=Color(0xFFFF9CB3),onPrimary=Color(0xFF650022),primaryContainer=Color(0xFF7F1640),onPrimaryContainer=Color(0xFFFFD9E2),secondary=Color(0xFFFFB0C6),background=Color(0xFF1C1115),surface=Color(0xFF24191E),surfaceVariant=Color(0xFF34242A),onSurfaceVariant=Color(0xFFD1BFC5),error=Color(0xFFFFB4AB))
+object AppDimens { val screen = 16.dp; val section = 20.dp; val card = 16.dp; val compact = 8.dp; val buttonHeight = 54.dp; val row = 72.dp; val cardElevation = 2.dp; val featuredElevation = 8.dp }
+object AppShapes { val shapes = Shapes(extraSmall=RoundedCornerShape(10.dp), small=RoundedCornerShape(14.dp), medium=RoundedCornerShape(18.dp), large=RoundedCornerShape(24.dp), extraLarge=RoundedCornerShape(30.dp)) }
+object AppMotion { const val Short = 180; const val Medium = 320; const val Long = 500 }
+private val Light = lightColorScheme(primary=AppColors.Primary,onPrimary=Color.White,primaryContainer=Color(0xFFFFDCE5),onPrimaryContainer=Color(0xFF5E0922),secondary=AppColors.Secondary,onSecondary=Color.White,secondaryContainer=Color(0xFFF8E3EA),onSecondaryContainer=Color(0xFF35111F),tertiary=AppColors.Gold,onTertiary=Color.White,tertiaryContainer=AppColors.GoldSoft,onTertiaryContainer=Color(0xFF3B2A0D),background=Color(0xFFF8F6F7),surface=Color.White,surfaceVariant=Color(0xFFF0EBED),onSurface=AppColors.Ink,onSurfaceVariant=Color(0xFF665C60),error=AppColors.MoneyNegative)
+private val Dark = darkColorScheme(primary=Color(0xFFFF9CB3),onPrimary=Color(0xFF650022),primaryContainer=Color(0xFF7F1640),onPrimaryContainer=Color(0xFFFFD9E2),secondary=Color(0xFFFFB0C6),tertiary=Color(0xFFE4BE72),tertiaryContainer=Color(0xFF574318),background=Color(0xFF181114),surface=Color(0xFF24191E),surfaceVariant=Color(0xFF34242A),onSurfaceVariant=Color(0xFFD1BFC5),error=Color(0xFFFFB4AB))
 private val AppFont = FontFamily.SansSerif
 val AppTypography = Typography(
     displaySmall=Typography().displaySmall.copy(fontFamily=AppFont,fontSize=30.sp,lineHeight=36.sp,fontWeight=FontWeight.Bold),
