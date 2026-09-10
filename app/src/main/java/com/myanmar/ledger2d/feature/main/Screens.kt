@@ -105,7 +105,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
         }
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     AppScaffold("${l.translate("မြန်မာ 2D")}\n${l.translate("ယနေ့အလုပ်ခွင်")}",action={IconButton(onClick=onWinning){Icon(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"))};IconButton(onClick=onSettings){Icon(Icons.Default.Settings,l.translate("ဆက်တင်များ"))}}){p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
@@ -113,7 +113,8 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
             item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large,tonalElevation=2.dp){Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Text(if(closed)"ယနေ့ ပိတ်ရက်ဖြစ်သည်" else "ယနေ့ 2D အလုပ်အခြေအနေ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(if(closed)"စာရင်းအသစ် လက်မခံပါ" else "မနက်နှင့် ညနေစာရင်းများကို တစ်နေရာတည်းမှ စီမံပါ",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeMetric("ဒိုင်",agents.size.toString(),Modifier.weight(1f));HomeMetric("နေ့",if(closed)"ပိတ်" else "ဖွင့်",Modifier.weight(1f))}}}}
             item{Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(10.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
             item{Text(l.translate("အမြန်လုပ်ဆောင်ရန်"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
-            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.Store,l.translate("ဒိုင်များ"),onAgents,Modifier.weight(1f));HomeAction(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"),onWinning,Modifier.weight(1f));HomeAction(Icons.Default.EventBusy,l.translate("ပိတ်ရက်"),onClosedDays,Modifier.weight(1f))}}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.Store,l.translate("ဒိုင်များ"),onAgents,Modifier.weight(1f));HomeAction(Icons.Default.ListAlt,"ယနေ့စာရင်း",onLedger,Modifier.weight(1f));HomeAction(Icons.Default.AccountBalanceWallet,"ရှင်းတမ်း",onSettlement,Modifier.weight(1f))}}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"),onWinning,Modifier.weight(1f));HomeAction(Icons.Default.EventBusy,l.translate("ပိတ်ရက်"),onClosedDays,Modifier.weight(1f));HomeAction(Icons.Default.Settings,l.translate("ဆက်တင်များ"),onSettings,Modifier.weight(1f))}}
             item{Surface(color=MaterialTheme.colorScheme.surface,shape=MaterialTheme.shapes.large,tonalElevation=1.dp){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.Info,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(if(agents.isEmpty())"ပထမဆုံး ဒိုင်ကိုထည့်ပြီး စတင်ပါ" else "ဒိုင် ${agents.size} ယောက်ရှိသည်။ အမြန်စာရင်းသွင်းရန် ခလုတ်ကို အသုံးပြုပါ။",color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
         }
     }
@@ -506,6 +507,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
             Text("လျော်ပေးငွေ  ${c.payout.mmk()}")
             Text("ကော်မရှင်  ${c.commission.mmk()}")
             Text("ရှုံး/မြတ်  ${c.profitLoss.mmk()}", fontWeight = FontWeight.Bold)
+            Text("Net ရှင်းတမ်း  ${c.netSettlement.mmk()}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
