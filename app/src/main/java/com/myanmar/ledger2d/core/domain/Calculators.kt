@@ -34,7 +34,10 @@ class LimitValidator {
         })
     }
 }
-data class DrawCalculation(val totalBet: Long, val distinctSlots: Int, val winningStake: Long, val payout: Long, val commission: Long, val profitLoss: Long)
+data class DrawCalculation(val totalBet: Long, val distinctSlots: Int, val winningStake: Long, val payout: Long, val commission: Long, val profitLoss: Long) {
+    /** Operational net after customer payout and commission returned by the agent. */
+    val netSettlement: Long get() = Math.addExact(profitLoss, commission)
+}
 class ReportCalculator(private val commission: CommissionCalculator = CommissionCalculator(), private val payout: PayoutCalculator = PayoutCalculator(), private val profitLoss: ProfitLossCalculator = ProfitLossCalculator()) {
     fun calculate(amountsByDigit: Map<String, Long>, winningDigit: String?, agentRate: Long, commissionBasisPoints: Int): DrawCalculation {
         val total = amountsByDigit.values.fold(0L, Math::addExact)

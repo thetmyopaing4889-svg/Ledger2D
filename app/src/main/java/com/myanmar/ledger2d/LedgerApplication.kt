@@ -12,7 +12,7 @@ class AppContainer(val database: LedgerDatabase) {
     val agents: AgentRepository = RoomAgentRepository(database.agentDao())
     val customers: CustomerRepository = RoomCustomerRepository(database.customerDao())
     val bets: BetRepository = RoomBetRepository(database)
-    val winners: WinningNumberRepository = RoomWinningNumberRepository(database.winningNumberDao())
+    val winners: WinningNumberRepository = RoomWinningNumberRepository(database)
     val closedDays: ClosedDayRepository = RoomClosedDayRepository(database.closedDayDao())
     val closedNumbers: ClosedNumberRepository = RoomClosedNumberRepository(database.closedNumberDao())
     val limits: LimitRepository = RoomLimitRepository(database.limitDao())
