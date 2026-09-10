@@ -5,17 +5,19 @@ import com.myanmar.ledger2d.core.model.ExpandedBet
 import java.math.BigInteger
 
 object MoneyMath {
+    const val MaxSafeAmount: Long = 9_000_000_000_000_000L
+    private fun safe(value: Long): Long { if (value > MaxSafeAmount) throw ArithmeticException("safe money bound exceeded"); return value }
     fun percentage(amount: Long, basisPoints: Int): Long {
-        require(amount >= 0 && basisPoints in 0..10_000)
-        return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)).longValueExact()
+        require(amount in 0..MaxSafeAmount && basisPoints in 0..10_000)
+        return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)).longValueExact().let(::safe)
     }
-    fun multiply(amount: Long, multiplier: Long): Long { require(amount >= 0 && multiplier >= 0); return Math.multiplyExact(amount, multiplier) }
+    fun multiply(amount: Long, multiplier: Long): Long { if (amount !in 0..MaxSafeAmount) throw ArithmeticException("safe money bound exceeded"); require(multiplier >= 0); return safe(Math.multiplyExact(amount, multiplier)) }
 }
 class CommissionCalculator { fun calculate(totalBet: Long, rateBasisPoints: Int) = MoneyMath.percentage(totalBet, rateBasisPoints) }
 class PayoutCalculator { fun calculate(winningStake: Long, agentRate: Long) = MoneyMath.multiply(winningStake, agentRate) }
 class ProfitLossCalculator { fun calculate(totalBet: Long, payout: Long): Long = Math.subtractExact(totalBet, payout) }
 class BetAggregator {
-    fun byDigit(bets: Iterable<ExpandedBet>): Map<String, Long> { val result = sortedMapOf<String, Long>(); bets.forEach { result[it.digit] = Math.addExact(result[it.digit] ?: 0, it.amount) }; return result }
+    fun byDigit(bets: Iterable<ExpandedBet>): Map<String, Long> { val result = sortedMapOf<String, Long>(); bets.forEach { require(it.amount in 1..MoneyMath.MaxSafeAmount); result[it.digit] = Math.addExact(result[it.digit] ?: 0, it.amount).also { total -> require(total <= MoneyMath.MaxSafeAmount) } }; return result }
     fun winningStake(bets: Iterable<ExpandedBet>, winningDigit: String): Long = byDigit(bets)[winningDigit] ?: 0
 }
 class ClosedNumberValidator { fun blockedDigits(bets: Iterable<ExpandedBet>, closed: Set<String>): Set<String> = bets.asSequence().map { it.digit }.filter { it in closed }.toSortedSet() }
@@ -38,6 +40,7 @@ class ReportCalculator(private val commission: CommissionCalculator = Commission
         val total = amountsByDigit.values.fold(0L, Math::addExact)
         val stake = winningDigit?.let { amountsByDigit[it] } ?: 0
         val paid = payout.calculate(stake, agentRate)
+        require(total in 0..MoneyMath.MaxSafeAmount && stake in 0..MoneyMath.MaxSafeAmount)
         return DrawCalculation(total, amountsByDigit.count { it.value > 0 }, stake, paid, commission.calculate(total, commissionBasisPoints), profitLoss.calculate(total, paid))
     }
 }
