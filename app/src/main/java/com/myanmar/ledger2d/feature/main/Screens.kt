@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.flow.first
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.design.*
 import com.myanmar.ledger2d.core.domain.*
@@ -50,6 +51,9 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     Text(value, modifier, style=primaryStyle, color=color)
 }
 @Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){
+    OperationalScaffold(title,onBack,action,fab,content,null)
+}
+@Composable private fun OperationalScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit,bottomBar:(@Composable () -> Unit)?=null){
     Scaffold(
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
@@ -61,6 +65,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
             )
         },
         floatingActionButton={fab?.invoke()},
+        bottomBar={bottomBar?.invoke()},
         content={padding->AnimatedVisibility(visible=true,enter=fadeIn(tween(AppMotion.Medium))+slideInVertically(tween(AppMotion.Medium)){it/12}){content(padding)}}
     )
 }
@@ -105,26 +110,28 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
         }
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onNavigate:(String)->Unit={}){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
-    AppScaffold("${l.translate("မြန်မာ 2D")}\n${l.translate("ယနေ့အလုပ်ခွင်")}",action={IconButton(onClick=onWinning){Icon(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"))};IconButton(onClick=onSettings){Icon(Icons.Default.Settings,l.translate("ဆက်တင်များ"))}}){p->
+    val total by produceState(0L,agents,vm.revision.collectAsStateWithLifecycle().value){ value=agents.sumOf { vm.agentTotals(it.id,today,DrawSession.MORNING).first().sumOf { row -> row.amount } + vm.agentTotals(it.id,today,DrawSession.EVENING).first().sumOf { row -> row.amount } } }
+    OperationalScaffold("${l.translate("မြန်မာ 2D")}\n${l.translate("ယနေ့အလုပ်ခွင်")}",action={IconButton(onClick=onWinning){Icon(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"))};IconButton(onClick=onSettings){Icon(Icons.Default.Settings,l.translate("ဆက်တင်များ"))}},content={p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(l.translate("မင်္ဂလာပါ"),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text(l.translate("ယနေ့စာရင်းကို အမြန်စီမံပါ"),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
-            item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large,tonalElevation=2.dp){Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Text(if(closed)"ယနေ့ ပိတ်ရက်ဖြစ်သည်" else "ယနေ့ 2D အလုပ်အခြေအနေ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(if(closed)"စာရင်းအသစ် လက်မခံပါ" else "မနက်နှင့် ညနေစာရင်းများကို တစ်နေရာတည်းမှ စီမံပါ",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeMetric("ဒိုင်",agents.size.toString(),Modifier.weight(1f));HomeMetric("နေ့",if(closed)"ပိတ်" else "ဖွင့်",Modifier.weight(1f))}}}}
+            item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large,tonalElevation=2.dp){Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Text(if(closed)"ယနေ့ ပိတ်ရက်ဖြစ်သည်" else "ယနေ့ 2D အလုပ်အခြေအနေ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(total.mmk(),style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.onPrimaryContainer);Text(if(closed)"စာရင်းအသစ် လက်မခံပါ" else "ယနေ့ထိုးကြေးစုစုပေါင်း",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeMetric("ဒိုင်",agents.size.toString(),Modifier.weight(1f));HomeMetric("အခြေအနေ",if(closed)"ပိတ်" else "ဖွင့်",Modifier.weight(1f))}}}}
             item{Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(10.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
             item{Text(l.translate("အမြန်လုပ်ဆောင်ရန်"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
-            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.Store,l.translate("ဒိုင်များ"),onAgents,Modifier.weight(1f));HomeAction(Icons.Default.ListAlt,"ယနေ့စာရင်း",onLedger,Modifier.weight(1f));HomeAction(Icons.Default.AccountBalanceWallet,"ရှင်းတမ်း",onSettlement,Modifier.weight(1f))}}
-            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"),onWinning,Modifier.weight(1f));HomeAction(Icons.Default.EventBusy,l.translate("ပိတ်ရက်"),onClosedDays,Modifier.weight(1f));HomeAction(Icons.Default.Settings,l.translate("ဆက်တင်များ"),onSettings,Modifier.weight(1f))}}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.AddCircle,l.translate("စာရင်းသွင်းရန်"),onQuickEntry,Modifier.weight(1f));HomeAction(Icons.Default.ListAlt,"စာရင်းကြည့်",onLedger,Modifier.weight(1f));HomeAction(Icons.Default.AccountBalanceWallet,"ရှင်းတမ်း",onSettlement,Modifier.weight(1f))}}
+            item{Text("စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            item{LazyVerticalGrid(columns=GridCells.Fixed(4),modifier=Modifier.height(102.dp),userScrollEnabled=false,horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){item{HomeAction(Icons.Default.Store,"ဒိုင်",onAgents)};item{HomeAction(Icons.Default.EmojiEvents,"ပေါက်",onWinning)};item{HomeAction(Icons.Default.EventBusy,"ပိတ်ရက်",onClosedDays)};item{HomeAction(Icons.Default.Settings,"ဆက်တင်",onSettings)}}}
             item{Surface(color=MaterialTheme.colorScheme.surface,shape=MaterialTheme.shapes.large,tonalElevation=1.dp){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.Info,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(if(agents.isEmpty())"ပထမဆုံး ဒိုင်ကိုထည့်ပြီး စတင်ပါ" else "ဒိုင် ${agents.size} ယောက်ရှိသည်။ အမြန်စာရင်းသွင်းရန် ခလုတ်ကို အသုံးပြုပါ။",color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
         }
-    }
+    },bottomBar={OperationalBottomBar("home",onNavigate,onQuickEntry)})
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier){Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
 @Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier,shape=MaterialTheme.shapes.large){Column(Modifier.fillMaxWidth().padding(vertical=16.dp,horizontal=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Text(title,style=MaterialTheme.typography.labelLarge,textAlign=TextAlign.Center)}}}
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); var agentId by rememberSaveable{mutableStateOf(0L)}; var customerId by rememberSaveable{mutableStateOf(0L)}; val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue=emptyList())
     LaunchedEffect(agentId){customerId=0L}
-    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0){customerId=it};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
+    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0){customerId=it};if(agentId>0&&customerId>0)Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Text("${agents.firstOrNull{it.id==agentId}?.name} • ${customers.firstOrNull{it.id==customerId}?.name} • မနက်",Modifier.fillMaxWidth().padding(14.dp),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer)};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
 }
 @Composable private fun SelectionField(label:String,selected:String,options:List<Pair<Long,String>>,value:Long,enabled:Boolean=true,onSelect:(Long)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded=expanded&&enabled,onExpandedChange={if(enabled)expanded=!expanded}){OutlinedTextField(selected,{},Modifier.fillMaxWidth().menuAnchor(),enabled=enabled,readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded&&enabled)},shape=MaterialTheme.shapes.medium);ExposedDropdownMenu(expanded=expanded&&enabled,onDismissRequest={expanded=false}){options.forEach{(id,title)->DropdownMenuItem(text={Text(title)},onClick={onSelect(id);expanded=false})}}}}
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit){
@@ -603,3 +610,13 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     }}
 }
 @Composable fun SimpleListScreen(title:String,onBack:()->Unit,subtitle:String,rows:List<String>){AppScaffold(title,onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text(subtitle,style=MaterialTheme.typography.headlineSmall)};items(rows){OutlinedCard{Text(it,Modifier.fillMaxWidth().padding(16.dp),style=MaterialTheme.typography.bodyLarge)}}}}}
+
+@Composable fun OperationalBottomBar(selected:String,onNavigate:(String)->Unit,onQuickEntry:()->Unit){
+    NavigationBar(containerColor=MaterialTheme.colorScheme.surface){
+        NavigationBarItem(selected=="home",{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("ယနေ့")})
+        NavigationBarItem(selected=="ledger",{onNavigate("ledger")},icon={Icon(Icons.Default.ListAlt,null)},label={Text("စာရင်း")})
+        NavigationBarItem(selected=="quick",onQuickEntry,icon={Icon(Icons.Default.AddCircle,null)},label={Text("သွင်းရန်")})
+        NavigationBarItem(selected=="settlement",{onNavigate("settlement")},icon={Icon(Icons.Default.AccountBalanceWallet,null)},label={Text("ရှင်းတမ်း")})
+        NavigationBarItem(selected=="manage",{onNavigate("manage")},icon={Icon(Icons.Default.Settings,null)},label={Text("စီမံရန်")})
+    }
+}
