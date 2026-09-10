@@ -321,7 +321,7 @@ The app is complete only when the architecture definition of done is satisfied: 
 
 ## 13. Current implementation status — 2026-09-09
 
-The repository is on `main` at commit `a0ec455` (`Fix closed number loading state`). The preceding UI polish run `34336091760` completed successfully, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload; `a0ec455` contains only the follow-up compile fix. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
+The repository is on `main` at commit `721c61c` (`Correct Burmese UI language and copy`). GitHub Actions run `34428454564` completed successfully, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
 
 ### Completed and verified in the current pass
 
@@ -337,6 +337,7 @@ The repository is on `main` at commit `a0ec455` (`Fix closed number loading stat
 - Report, scoped winning, and analysis screens now have a ViewModel revision refresh trigger after relevant mutations; weekly Before rows exclude future dates.
 - Customer Detail now exposes Commission and the 100-digit List routes.
 - Closed Number UI has a readable explanation, Burmese copy, empty state, and delete confirmation; Commission, List, History, and Settings copy/readability were polished.
+- Default Burmese UI copy was cleaned to remove visible English fragments such as `LEDGER`, `Offline`, `Fast`, `Clear`, `Edit`, `Update`, `All Limit`, `Special Limit`, and `Closed`; the English dictionary was expanded for the corresponding screens.
 - GitHub Actions debug build is green; no online account, cloud sync, ads, billing, or other unrequested service was added.
 
 ### Currently in progress / next implementation batch
@@ -360,6 +361,7 @@ The next batch is the correctness-and-release pass, not another cosmetic-only pa
 - Customer Commission and Customer 100-digit List are reachable from Customer Detail; their device-level usability and persistence-error states still require verification.
 - Scoped winner history, report completeness/responsive layout, loading/not-found/error states, and safe delete confirmations for Closed Day, Special Limit, and remaining configuration actions need completion.
 - Burmese/English localization still has remaining mixed copy and requires an emulator/device pass for Burmese font metrics, accessibility sizing, narrow screens, large font scale, IME behavior, and edge-to-edge layout.
+- Luxury UI still requires a real device visual pass: the current design system is a polished foundation, not a verified pixel-level luxury benchmark. The next visual pass should focus on stronger brand identity, premium empty/loading states, consistent iconography, surface elevation, and screen-by-screen spacing rather than adding more features.
 - Backup/restore is intentionally not shipped; the app has no tested local recovery path while Android system backup is disabled.
 - Signed/minified release build, lint, install checks on representative API levels, and production release artifact validation are not complete. CI currently verifies debug APK only.
 
