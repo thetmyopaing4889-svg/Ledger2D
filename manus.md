@@ -424,3 +424,18 @@ The following items are still genuinely open and must not be described as comple
 ### One-pass continuation instruction
 
 Do not stop after analysis or after a partial feature. Implement all feasible items above in one coherent pass, run formatting/static checks, run the complete Gradle test/build workflow, fix every failure, push `main`, verify GitHub Actions, and update this section with the exact final commit, run ID, and any item that is still objectively outside the verified scope. Never claim complete merely because CI is green.
+
+
+## 15. Latest verified continuation — 2026-09-10
+
+- Added immutable commission snapshot fields to `BetEntryEntity`: `commissionRateBasisPoints` and `commissionAmount`.
+- Added Room migration `4 -> 5` for the commission snapshot columns.
+- Commission is captured at bet confirmation from the Customer's current rate and historical reports read the stored aggregate commission rather than recalculating old bets from a later-edited Customer rate.
+- Added localized dictionary entries and routed the new Today Ledger and Settlement operational screens through `LanguageState`.
+- The first CI attempt for this batch failed only because `CommissionCalculator` was not imported in `Repositories.kt`; it was fixed in commit `ffb2b76`.
+- Final verified commit: `ffb2b76` (`Fix commission snapshot calculator import`).
+- Final GitHub Actions run: `34491160761`, green for unit tests, lint, debug APK, release APK verification, and both artifact uploads.
+
+### Remaining honest scope
+
+Full language routing across every legacy screen and a real Android emulator/device walkthrough are still not proven by source/CI alone. Backup/restore is also not shipped because it requires a complete file-picker and transactional validation implementation. These are verification/scope items, not silently claimed as complete.
