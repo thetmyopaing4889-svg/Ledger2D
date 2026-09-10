@@ -37,6 +37,12 @@ data class AgentAllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0
 @Entity(tableName = "agent_special_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "digit"], unique = true)])
 data class AgentSpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long)
 
+@Entity(tableName = "settlements", indices = [Index(value = ["agentId", "date", "session"], unique = true)])
+data class SettlementEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val date: LocalDate, val session: DrawSession, val totalBet: Long, val payout: Long, val commission: Long, val netSettlement: Long, val settledAt: Long)
+
+@Entity(tableName = "audit_events", indices = [Index("createdAt"), Index("entityType"), Index("entityId")])
+data class AuditEventEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val entityType: String, val entityId: Long, val action: String, val detail: String = "", val createdAt: Long)
+
 data class DigitTotalRow(val digit: String, val amount: Long)
 data class BetEntryWithLines(@Embedded val entry: BetEntryEntity, @Relation(parentColumn = "id", entityColumn = "betEntryId") val lines: List<BetLineEntity>)
 

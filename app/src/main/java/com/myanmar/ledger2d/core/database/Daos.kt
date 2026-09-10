@@ -79,3 +79,14 @@ import java.time.LocalDate
     @Query("DELETE FROM agent_all_limits WHERE agentId=:agentId") suspend fun clearAll(agentId: Long)
     @Delete suspend fun deleteSpecial(value: AgentSpecialLimitEntity)
 }
+
+@Dao interface SettlementDao {
+    @Query("SELECT * FROM settlements WHERE agentId=:agentId ORDER BY date DESC, session") fun observeAgent(agentId: Long): Flow<List<SettlementEntity>>
+    @Query("SELECT * FROM settlements WHERE agentId=:agentId AND date=:date AND session=:session") suspend fun get(agentId: Long, date: LocalDate, session: DrawSession): SettlementEntity?
+    @Upsert suspend fun upsert(value: SettlementEntity): Long
+}
+
+@Dao interface AuditDao {
+    @Query("SELECT * FROM audit_events ORDER BY createdAt DESC") fun observeAll(): Flow<List<AuditEventEntity>>
+    @Insert suspend fun insert(value: AuditEventEntity): Long
+}
