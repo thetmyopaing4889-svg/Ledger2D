@@ -22,7 +22,7 @@ jobs:
         run: chmod +x gradlew
       - name: Unit tests, lint, and debug APK
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
-      - name: Minified release verification
+      - name: Release APK verification
         run: ./gradlew --no-daemon assembleRelease
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -35,6 +35,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ledger2d-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
           retention-days: 14

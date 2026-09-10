@@ -21,8 +21,10 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // Keep the distributable release APK complete. R8/resource shrinking
+            // reduced the CI artifact from about 17 MiB to about 1.5 MiB.
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
