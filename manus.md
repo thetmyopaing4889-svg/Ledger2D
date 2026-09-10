@@ -321,7 +321,7 @@ The app is complete only when the architecture definition of done is satisfied: 
 
 ## 13. Current implementation status — 2026-09-09
 
-The repository is on `main` at commit `9f7a2f2` (`Add luxury theme and interaction motion`). GitHub Actions run `34429177896` completed successfully, including `testDebugUnitTest`, Kotlin compilation, debug APK assembly, and `ledger2d-debug-apk` artifact upload. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
+The repository is on `main` at commit `90e092f` (`Harden user flows and release verification`). This commit adds the user-perspective hardening pass; its GitHub Actions result must be checked before treating the new lint/release workflow as green. This status section is intentionally explicit so a future agent can resume without repeating already-completed work or claiming unverified completion.
 
 ### Completed and verified in the current pass
 
@@ -339,6 +339,9 @@ The repository is on `main` at commit `9f7a2f2` (`Add luxury theme and interacti
 - Closed Number UI has a readable explanation, Burmese copy, empty state, and delete confirmation; Commission, List, History, and Settings copy/readability were polished.
 - Default Burmese UI copy was cleaned to remove visible English fragments such as `LEDGER`, `Offline`, `Fast`, `Clear`, `Edit`, `Update`, `All Limit`, `Special Limit`, and `Closed`; the English dictionary was expanded for the corresponding screens.
 - Luxury visual pass added a custom burgundy/rose, champagne-gold, and ink palette; richer light/dark surface hierarchy; larger premium shapes; elevation tokens; and motion tokens. App content now enters with a fade/vertical lift, and action tiles use press-scale feedback with animated elevation.
+- User-flow hardening added Closed Day and Special Limit delete confirmations, clearer closed-day/limit empty states, Burmese format-help copy, and a more readable closed-day management layout.
+- Financial boundaries now reject amounts above a documented safe bound (`9_000_000_000_000_000` MMK) and convert payout/aggregate overflow into explicit arithmetic failures instead of silent wrapping.
+- GitHub Actions now runs unit tests, `lintDebug`, `assembleDebug`, and `assembleRelease`, and uploads both debug and release APK artifacts.
 - GitHub Actions debug build is green; no online account, cloud sync, ads, billing, or other unrequested service was added.
 
 ### Currently in progress / next implementation batch
@@ -367,6 +370,7 @@ The next batch is the correctness-and-release pass, not another cosmetic-only pa
 - A source-level user walkthrough found and removed an additional mixed-copy string (`Update လုပ်ရန်…`) and normalized the closed-number explanation and report mode labels. This does not replace a real Burmese device walkthrough.
 - Backup/restore is intentionally not shipped; the app has no tested local recovery path while Android system backup is disabled.
 - Signed/minified release build, lint, install checks on representative API levels, and production release artifact validation are not complete. CI currently verifies debug APK only.
+- The new CI workflow requests a minified release build and lint; the workflow result for commit `90e092f` is still the verification gate. Release signing is not configured for store distribution, so a successful release artifact is verification-only, not a publishable signed release.
 
 The repository must not be described as fully production-complete solely from the green debug CI run. The sandbox currently has no discoverable Android SDK, so the mandated local command cannot be run here until `ANDROID_HOME` or `local.properties` is supplied. A real emulator/device walkthrough remains required.
 
