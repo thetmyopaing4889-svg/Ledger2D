@@ -16,8 +16,8 @@ import com.myanmar.ledger2d.AppContainer
     NavHost(nav,"home",modifier){
         composable("welcome"){WelcomeScreen{nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
         composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agents")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={nav.navigate("todayLedger")},onSettlement={nav.navigate("settlement")},onNavigate={route->when(route){"home"->nav.navigate("home"){popUpTo("home")};"ledger"->nav.navigate("todayLedger");"settlement"->nav.navigate("settlement");"manage"->nav.navigate("agents")}})}
-        composable("todayLedger"){TodayLedgerScreen(vm){nav.popBackStack()}}
-        composable("settlement"){SettlementScreen(vm){nav.popBackStack()}}
+        composable("todayLedger"){TodayLedgerScreen(vm,{nav.popBackStack()},{route->when(route){"home"->nav.navigate("home");"ledger"->nav.navigate("todayLedger");"settlement"->nav.navigate("settlement");"manage"->nav.navigate("agents");"quick"->nav.navigate("quickEntry")}})}
+        composable("settlement"){SettlementScreen(vm,{nav.popBackStack()},{route->when(route){"home"->nav.navigate("home");"ledger"->nav.navigate("todayLedger");"settlement"->nav.navigate("settlement");"manage"->nav.navigate("agents");"quick"->nav.navigate("quickEntry")}})}
         composable("quickEntry"){QuickEntryScreen(vm,onBet={agentId,customerId->nav.navigate("bet/$agentId/$customerId")}){nav.popBackStack()}}
         composable("agents"){AgentListScreen(vm,{nav.navigate("agent/$it")},{nav.navigate("agentForm/0")},{nav.navigate("agentForm/$it")},{nav.navigate("winning")},{nav.navigate("closedDays")},{nav.navigate("settings")})}
         composable("agent/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentDetailScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){nav.navigate(it)}}

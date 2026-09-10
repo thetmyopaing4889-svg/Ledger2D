@@ -53,7 +53,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
 @Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit){
     OperationalScaffold(title,onBack,action,fab,content,null)
 }
-@Composable private fun OperationalScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit,bottomBar:(@Composable () -> Unit)?=null){
+@Composable fun OperationalScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit,bottomBar:(@Composable () -> Unit)?=null){
     Scaffold(
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
@@ -215,6 +215,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     var format by rememberSaveable { mutableStateOf(QuickFormat.MANUAL) }
     var backdated by rememberSaveable(entryId) { mutableStateOf(entryId > 0L) }
     var showLateError by rememberSaveable { mutableStateOf(false) }
+    var receiptId by rememberSaveable { mutableStateOf(0L) }
     val existing by vm.betEntry(entryId).collectAsStateWithLifecycle(initialValue = null)
     val preview by vm.preview.collectAsStateWithLifecycle()
     val submit by vm.submit.collectAsStateWithLifecycle()
@@ -227,7 +228,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     val visiblePreview = if (pastDraw && !backdated) null else preview
     LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.entry.sourceText; format = runCatching { QuickFormat.valueOf(it.entry.inputFormat) }.getOrDefault(QuickFormat.MANUAL) } }
     LaunchedEffect(raw, format, date, session, backdated) { date?.let { vm.refreshPreview(customerId, agentId, it, session, raw, format, entryId) } }
-    LaunchedEffect(submit) { if (submit is SubmitState.Success) { vm.resetSubmit(); onBack() } }
+    LaunchedEffect(submit) { if (submit is SubmitState.Success) { receiptId=(submit as SubmitState.Success).id; vm.resetSubmit() } }
     if (showLateError) AlertDialog(
         onDismissRequest = { showLateError = false },
         title = { Text("စာရင်းသွင်း၍ မရပါ") },
@@ -235,6 +236,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
         confirmButton = { TextButton({ showLateError = false }) { Text("OK") } },
         dismissButton = { TextButton({ showLateError = false }) { Text("မလုပ်တော့ပါ") } }
     )
+    if (receiptId>0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text("စာရင်းသွင်းပြီးပါပြီ")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text("စာရင်းစုစုပေါင်း • ${(preview.parse as? ParseResult.Success)?.total?.mmk()?:"-" )");Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw=""}){Text("ဒီထိုးသားအတွက် ဆက်သွင်းရန်")}},dismissButton={TextButton({receiptId=0L;onBack()}){Text("ပြီးပါပြီ")}})
     AppScaffold(if (entryId == 0L) "2D Form\nစာရင်းသွင်းရန်" else "2D Form\nစာရင်းပြင်ရန်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
