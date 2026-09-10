@@ -8,8 +8,8 @@ object MoneyMath {
     const val MaxSafeAmount: Long = 9_000_000_000_000_000L
     private fun safe(value: Long): Long { if (value > MaxSafeAmount) throw ArithmeticException("safe money bound exceeded"); return value }
     fun percentage(amount: Long, basisPoints: Int): Long {
-        require(amount in 0..MaxSafeAmount && basisPoints in 0..10_000)
-        return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)).longValueExact().let(::safe)
+        require(amount >= 0 && basisPoints in 0..10_000)
+        return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(basisPoints.toLong())).divide(BigInteger.valueOf(10_000)).longValueExact()
     }
     fun multiply(amount: Long, multiplier: Long): Long { if (amount !in 0..MaxSafeAmount) throw ArithmeticException("safe money bound exceeded"); require(multiplier >= 0); return safe(Math.multiplyExact(amount, multiplier)) }
 }
