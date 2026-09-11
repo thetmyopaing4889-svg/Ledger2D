@@ -128,6 +128,8 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     val monday=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
     val winnerMap=winners.associateBy{it.date to it.session}
     val closedSet=closedDays.map{it.date}.toSet()
+    data class DigitDetail(val date:LocalDate,val session:DrawSession,val digit:String,val stake:Long,val commission:Long)
+    var selectedDigit by remember { mutableStateOf<DigitDetail?>(null) }
     val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,vm.revision.collectAsStateWithLifecycle().value){
         value=(0L..4L).flatMap { offset -> DrawSession.entries.map { session ->
             val date=monday.plusDays(offset); var stake=0L; var commission=0L
@@ -142,16 +144,19 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
                 val date=monday.plusDays(offset)
                 Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.background),shape=MaterialTheme.shapes.large){
                     Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=5.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){
-                        Column(Modifier.width(58.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){Text("${date.dayOfMonth}.${date.monthValue}",style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                        Column(Modifier.width(78.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH)),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                         DrawSession.entries.forEach { session ->
                             val stats=totals[date to session] ?: (0L to 0L)
-                            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);Text("${stats.first.mmk().replace(" MMK","")} • ${stats.second.mmk().replace(" MMK","")}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1)}
+                            Card(onClick={selectedDigit=DigitDetail(date,session,winnerMap[date to session]?.digit ?: "—",stats.first,stats.second)},modifier=Modifier.weight(1f),shape=MaterialTheme.shapes.large,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=.22f)),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){Column(Modifier.padding(vertical=3.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
                         }
                         if(date in closedSet) Text("ပိတ်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
                     }
                 }
             }
         }
+    }
+    selectedDigit?.let { item ->
+        AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text("ပိတ်မည်")}},title={Text("${item.date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))} • ${item.session.label}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("ထွက်ဂဏန်း",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total ထိုးကြေး");Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total ကော်မရှင်");Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})
     }
 }
 @Composable private fun HomeBottomBar(onNavigate:(String)->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit,onSettings:()->Unit){
