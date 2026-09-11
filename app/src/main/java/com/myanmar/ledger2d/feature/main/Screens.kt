@@ -549,7 +549,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
     }
 }
 
-@Composable private fun UnavailableState(text: String) {
+@Composable fun UnavailableState(text: String) {
     Text(text, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium).padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
 }
 
