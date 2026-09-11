@@ -112,14 +112,14 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
 }
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={}){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
-    OperationalScaffold("Home",content={p->
-        LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+    Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)}){p->
+        LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Text("Welcome to",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold);Text("Myanmar 2D Ledger",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
             item{HomeWeeklyResults(vm)}
             item{Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(10.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"ဒိုင်အသစ်ထည့်ရန်",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"ထိုးသားအသစ်ထည့်ရန်",onAddCustomer,Modifier.weight(1f))}}
         }
-    },bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)})
+    }
 }
 @Composable private fun HomeWeeklyResults(vm:LedgerViewModel){
     val agents by vm.agents.collectAsStateWithLifecycle()
@@ -150,7 +150,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
                             DrawSession.entries.forEach { session ->
                                 val stats=totals[date to session] ?: (0L to 0L)
                                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                                    Surface(Modifier.size(width=45.dp,height=30.dp),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.surface){Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Text(session.label,style=MaterialTheme.typography.labelSmall);Spacer(Modifier.width(3.dp));Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
+                                    Surface(Modifier.size(width=60.dp,height=38.dp),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.surface){Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Text(session.label,style=MaterialTheme.typography.labelSmall);Spacer(Modifier.width(4.dp));Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
                                     Column(Modifier.weight(1f)){Text("Total ထိုးကြေး",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.first.mmk(),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold)}
                                     Column(Modifier.weight(1f)){Text("Total ကော်မရှင်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.second.mmk(),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold)}
                                 }
@@ -164,12 +164,12 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
 }
 @Composable private fun HomeBottomBar(onNavigate:(String)->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit,onSettings:()->Unit){
     NavigationBar(containerColor=MaterialTheme.colorScheme.surface){
-        NavigationBarItem(true,{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("Home")})
-        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("Agent")})
-        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("Customer")})
-        NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null)},label={Text("ပိတ်ရက်")})
-        NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null)},label={Text("ထီပေါက်စဉ်")})
-        NavigationBarItem(false,onSettings,icon={Icon(Icons.Default.Settings,null)},label={Text("ဆက်တင်")})
+        NavigationBarItem(true,{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("Home",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("Agent",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("Customer",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null)},label={Text("ပိတ်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null)},label={Text("ရလဒ်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onSettings,icon={Icon(Icons.Default.Settings,null)},label={Text("ဆက်တင်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier){Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
