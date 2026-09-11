@@ -110,21 +110,49 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
         }
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onNavigate:(String)->Unit={}){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={}){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     val total by produceState(0L,agents,vm.revision.collectAsStateWithLifecycle().value){ value=agents.sumOf { vm.agentTotals(it.id,today,DrawSession.MORNING).first().sumOf { row -> row.amount } + vm.agentTotals(it.id,today,DrawSession.EVENING).first().sumOf { row -> row.amount } } }
     OperationalScaffold("${l.translate("မြန်မာ 2D")}\n${l.translate("ယနေ့အလုပ်ခွင်")}",action={IconButton(onClick=onWinning){Icon(Icons.Default.EmojiEvents,l.translate("ပေါက်ဂဏန်း"))};IconButton(onClick=onSettings){Icon(Icons.Default.Settings,l.translate("ဆက်တင်များ"))}},content={p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(l.translate("မင်္ဂလာပါ"),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text(l.translate("ယနေ့စာရင်းကို အမြန်စီမံပါ"),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
             item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large,tonalElevation=2.dp){Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Text(if(closed)"ယနေ့ ပိတ်ရက်ဖြစ်သည်" else "ယနေ့ 2D အလုပ်အခြေအနေ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(total.mmk(),style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.onPrimaryContainer);Text(if(closed)"စာရင်းအသစ် လက်မခံပါ" else "ယနေ့ထိုးကြေးစုစုပေါင်း",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeMetric("ဒိုင်",agents.size.toString(),Modifier.weight(1f));HomeMetric("အခြေအနေ",if(closed)"ပိတ်" else "ဖွင့်",Modifier.weight(1f))}}}}
+            item{HomeWeeklyResults(vm)}
             item{Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(10.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
             item{Text(l.translate("အမြန်လုပ်ဆောင်ရန်"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.AddCircle,l.translate("စာရင်းသွင်းရန်"),onQuickEntry,Modifier.weight(1f));HomeAction(Icons.Default.ListAlt,"စာရင်းကြည့်",onLedger,Modifier.weight(1f));HomeAction(Icons.Default.AccountBalanceWallet,"ရှင်းတမ်း",onSettlement,Modifier.weight(1f))}}
-            item{Text("စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
-            item{LazyVerticalGrid(columns=GridCells.Fixed(4),modifier=Modifier.height(102.dp),userScrollEnabled=false,horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){item{HomeAction(Icons.Default.Store,"ဒိုင်",onAgents)};item{HomeAction(Icons.Default.EmojiEvents,"ပေါက်",onWinning)};item{HomeAction(Icons.Default.EventBusy,"ပိတ်ရက်",onClosedDays)};item{HomeAction(Icons.Default.Settings,"ဆက်တင်",onSettings)}}}
+            item{Text("အမြန်စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"ဒိုင်အသစ်ထည့်ရန်",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"ထိုးသားအသစ်ထည့်ရန်",onAddCustomer,Modifier.weight(1f))}}
+            item{Text("အလုပ်ခွင်များ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.Store,"Agent Dashboard",onAgentDashboard,Modifier.weight(1f));HomeAction(Icons.Default.People,"Customer Dashboard",onCustomerDashboard,Modifier.weight(1f))}}
+            item{Text("အထွေထွေ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            item{LazyVerticalGrid(columns=GridCells.Fixed(3),modifier=Modifier.height(102.dp),userScrollEnabled=false,horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){item{HomeAction(Icons.Default.EmojiEvents,"ပေါက်ဂဏန်း",onWinning)};item{HomeAction(Icons.Default.EventBusy,"ပိတ်ရက်",onClosedDays)};item{HomeAction(Icons.Default.Settings,"ဆက်တင်",onSettings)}}}
             item{Surface(color=MaterialTheme.colorScheme.surface,shape=MaterialTheme.shapes.large,tonalElevation=1.dp){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.Info,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(if(agents.isEmpty())"ပထမဆုံး ဒိုင်ကိုထည့်ပြီး စတင်ပါ" else "ဒိုင် ${agents.size} ယောက်ရှိသည်။ အမြန်စာရင်းသွင်းရန် ခလုတ်ကို အသုံးပြုပါ။",color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
         }
     },bottomBar={OperationalBottomBar("home",onNavigate,onQuickEntry)})
+}
+@Composable private fun HomeWeeklyResults(vm:LedgerViewModel){
+    val winners by vm.winners.collectAsStateWithLifecycle()
+    val closedDays by vm.closedDays.collectAsStateWithLifecycle()
+    val monday=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+    val winnerMap=winners.associateBy{it.date to it.session}
+    val closedSet=closedDays.map{it.date}.toSet()
+    ElevatedCard(Modifier.fillMaxWidth()){
+        Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            Text("ယခုတစ်ပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+            Text("တနင်္လာမှ သောကြာအထိ • မနက် / ညနေ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            DrawSession.entries.let{sessions->
+                (0L..4L).forEach{offset->
+                    val date=monday.plusDays(offset); val label=date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.US)
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+                        Text("$label ${date.dayOfMonth}/${date.monthValue}",fontWeight=FontWeight.SemiBold)
+                        if(date in closedSet) Text("ပိတ်ရက်",color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
+                        else Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){sessions.forEach{session->Text("${session.label}: ${winnerMap[date to session]?.digit ?: "—"}",style=MaterialTheme.typography.bodySmall)}}
+                    }
+                }
+            }
+        }
+    }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier){Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
 @Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier,shape=MaterialTheme.shapes.large){Column(Modifier.fillMaxWidth().padding(vertical=16.dp,horizontal=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Text(title,style=MaterialTheme.typography.labelLarge,textAlign=TextAlign.Center)}}}
