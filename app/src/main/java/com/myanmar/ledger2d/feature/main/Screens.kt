@@ -114,7 +114,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     AppScaffold(l.translate("မြန်မာ 2D"),content={p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(l.translate("မင်္ဂလာပါ"),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary);Text(l.translate("ယနေ့စာရင်းကို အမြန်စီမံပါ"),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
+            item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Text("Welcome to",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold);Text("Myanmar 2D Ledger",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
             item{HomeWeeklyResults(vm)}
             item{Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(10.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
             item{Text("အမြန်စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
@@ -127,22 +127,45 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     })
 }
 @Composable private fun HomeWeeklyResults(vm:LedgerViewModel){
+    val agents by vm.agents.collectAsStateWithLifecycle()
     val winners by vm.winners.collectAsStateWithLifecycle()
     val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val monday=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
     val winnerMap=winners.associateBy{it.date to it.session}
     val closedSet=closedDays.map{it.date}.toSet()
+    val totals by produceState(emptyMap<LocalDate,Pair<Long,Long>>(),agents,monday,vm.revision.collectAsStateWithLifecycle().value){
+        value=(0L..4L).associate { offset ->
+            val date=monday.plusDays(offset)
+            var stake=0L; var commission=0L
+            agents.forEach { agent ->
+                val report=vm.agentReport(agent.id,date,DrawSession.MORNING,true)
+                stake+=report.calculation.totalBet
+                commission+=report.calculation.commission
+            }
+            date to (stake to commission)
+        }
+    }
     ElevatedCard(Modifier.fillMaxWidth()){
-        Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text("ယခုတစ်ပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
-            Text("တနင်္လာမှ သောကြာအထိ • မနက် / ညနေ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            DrawSession.entries.let{sessions->
-                (0L..4L).forEach{offset->
-                    val date=monday.plusDays(offset); val label=date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.US)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
-                        Text("$label ${date.dayOfMonth}/${date.monthValue}",fontWeight=FontWeight.SemiBold)
-                        if(date in closedSet) Text("ပိတ်ရက်",color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
-                        else Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){sessions.forEach{session->Text("${session.label}: ${winnerMap[date to session]?.digit ?: "—"}",style=MaterialTheme.typography.bodySmall)}}
+        Column(Modifier.padding(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+            Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
+                Text("ယခုတစ်ပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+                Text("မနက်ပိုင်း • တနင်္လာမှ သောကြာအထိ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            LazyRow(contentPadding=PaddingValues(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                items((0L..4L).toList()){offset->
+                    val date=monday.plusDays(offset); val stats=totals[date] ?: (0L to 0L)
+                    Card(Modifier.width(164.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.large){
+                        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                            Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("${date.dayOfMonth}/${date.monthValue}",fontWeight=FontWeight.Bold)}
+                            Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL,Locale.ENGLISH),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            if(date in closedSet) Text("ပိတ်ရက်",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.error)
+                            else Text(winnerMap[date to DrawSession.MORNING]?.digit ?: "—",style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)
+                            HorizontalDivider()
+                            Text("Total ထိုးကြေး",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stats.first.mmk(),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
+                            Text("Total ကော်မရှင်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stats.second.mmk(),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
+                        }
                     }
                 }
             }
