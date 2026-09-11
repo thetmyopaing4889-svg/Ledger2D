@@ -160,13 +160,37 @@ fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate:
 }
 
 @Composable
+fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
+    AppScaffold("ဒိုင်အားလုံး", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { Text("ဒိုင်အားလုံး • ${agentActions.firstOrNull { it.key == feature }?.title ?: feature}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            if (summaries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် ဒိုင်စာရင်းမရှိသေးပါ") }
+            items(summaries, key = { it.id }) { summary ->
+                ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } }
+            }
+        }
+    }
+}
+
+@Composable
 fun AllCustomerScopeScreen(vm: LedgerViewModel, agentId: Long, feature: String, onBack: () -> Unit) {
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
+    val revision by vm.revision.collectAsStateWithLifecycle()
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") }
     AppScaffold("Customer အားလုံး", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { Text("ရွေးထားသော Agent အောက်က Customer များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+            item { Text("ရွေးထားသော Agent အောက်က Customer အားလုံး • $feature", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
             if (customers.isEmpty()) item { EmptyState("Customer မရှိသေးပါ", "ဒီ Agent အောက်မှာ Customer ထည့်ပါ") }
-            items(customers, key = { it.id }) { customer -> ListItem(headlineContent = { Text(customer.name) }, supportingContent = { Text("$feature • ${customer.phone}") }) }
+            else if (summaries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် Customer စာရင်းမရှိသေးပါ") }
+            items(summaries, key = { it.id }) { summary -> ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }
         }
     }
 }
