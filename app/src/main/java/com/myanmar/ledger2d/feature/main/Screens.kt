@@ -112,17 +112,12 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
 }
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={}){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
-    OperationalScaffold("Welcome to Myanmar 2D Ledger",content={p->
+    OperationalScaffold("Home",content={p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Text("Welcome to",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold);Text("Myanmar 2D Ledger",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
             item{HomeWeeklyResults(vm)}
             item{Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(10.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
-            item{Text("အမြန်စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"ဒိုင်အသစ်ထည့်ရန်",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"ထိုးသားအသစ်ထည့်ရန်",onAddCustomer,Modifier.weight(1f))}}
-            item{Text("အလုပ်ခွင်များ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
-            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.Store,"Agent Dashboard",onAgentDashboard,Modifier.weight(1f));HomeAction(Icons.Default.People,"Customer Dashboard",onCustomerDashboard,Modifier.weight(1f))}}
-            item{Text("နေ့စဉ်စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
-            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.EmojiEvents,"ပေါက်ဂဏန်းထည့်ရန်",onWinning,Modifier.weight(1f));HomeAction(Icons.Default.EventBusy,"ပိတ်ရက်",onClosedDays,Modifier.weight(1f))}}
         }
     },bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)})
 }
@@ -141,23 +136,23 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
         }}.toMap()
     }
     ElevatedCard(Modifier.fillMaxWidth()){
-        Column(Modifier.padding(vertical=14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Column(Modifier.padding(vertical=10.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
             Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
-                Text("ယခုတစ်ပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
-                Text("မနက်ပိုင်း • တနင်္လာမှ သောကြာအထိ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("ယခုတစ်ပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+                Text("မနက် • ညနေ  |  တနင်္လာမှ သောကြာအထိ",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            Column(Modifier.padding(horizontal=12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
                 (0L..4L).forEach { offset ->
                     val date=monday.plusDays(offset)
-                    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.large){
-                        Column(Modifier.padding(horizontal=12.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("${date.dayOfMonth}.${date.monthValue}.${date.year}  ${date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL,Locale.ENGLISH)}",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));if(date in closedSet) Text("ပိတ်ရက်",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)}
+                    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.medium){
+                        Column(Modifier.padding(horizontal=9.dp,vertical=5.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
+                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(15.dp));Spacer(Modifier.width(5.dp));Text("${date.dayOfMonth}.${date.monthValue}.${date.year}  ${date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH)}",style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));if(date in closedSet) Text("ပိတ်ရက်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)}
                             DrawSession.entries.forEach { session ->
                                 val stats=totals[date to session] ?: (0L to 0L)
-                                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                                    Surface(Modifier.size(width=52.dp,height=42.dp),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(session.label,style=MaterialTheme.typography.labelSmall);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
-                                    Column(Modifier.weight(1f)){Text("Total ထိုးကြေး",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.first.mmk(),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)}
-                                    Column(Modifier.weight(1f)){Text("Total ကော်မရှင်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.second.mmk(),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)}
+                                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                                    Surface(Modifier.size(width=45.dp,height=30.dp),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.surface){Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Text(session.label,style=MaterialTheme.typography.labelSmall);Spacer(Modifier.width(3.dp));Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
+                                    Column(Modifier.weight(1f)){Text("Total ထိုးကြေး",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.first.mmk(),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold)}
+                                    Column(Modifier.weight(1f)){Text("Total ကော်မရှင်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.second.mmk(),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold)}
                                 }
                             }
                         }
