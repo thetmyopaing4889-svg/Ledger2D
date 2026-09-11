@@ -112,7 +112,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
 }
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={}){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
-    AppScaffold(l.translate("မြန်မာ 2D"),content={p->
+    OperationalScaffold("Welcome to Myanmar 2D Ledger",content={p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             item{Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Text("Welcome to",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold);Text("Myanmar 2D Ledger",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(today.displayDate(),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
             item{HomeWeeklyResults(vm)}
@@ -124,7 +124,7 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
             item{Text("နေ့စဉ်စီမံရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.EmojiEvents,"ပေါက်ဂဏန်းထည့်ရန်",onWinning,Modifier.weight(1f));HomeAction(Icons.Default.EventBusy,"ပိတ်ရက်",onClosedDays,Modifier.weight(1f))}}
         }
-    })
+    },bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)})
 }
 @Composable private fun HomeWeeklyResults(vm:LedgerViewModel){
     val agents by vm.agents.collectAsStateWithLifecycle()
@@ -133,43 +133,48 @@ private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${yea
     val monday=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
     val winnerMap=winners.associateBy{it.date to it.session}
     val closedSet=closedDays.map{it.date}.toSet()
-    val totals by produceState(emptyMap<LocalDate,Pair<Long,Long>>(),agents,monday,vm.revision.collectAsStateWithLifecycle().value){
-        value=(0L..4L).associate { offset ->
-            val date=monday.plusDays(offset)
-            var stake=0L; var commission=0L
-            agents.forEach { agent ->
-                val report=vm.agentReport(agent.id,date,DrawSession.MORNING,true)
-                stake+=report.calculation.totalBet
-                commission+=report.calculation.commission
-            }
-            date to (stake to commission)
-        }
+    val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,vm.revision.collectAsStateWithLifecycle().value){
+        value=(0L..4L).flatMap { offset -> DrawSession.entries.map { session ->
+            val date=monday.plusDays(offset); var stake=0L; var commission=0L
+            agents.forEach { agent -> val report=vm.agentReport(agent.id,date,session,true); stake+=report.calculation.totalBet; commission+=report.calculation.commission }
+            (date to session) to (stake to commission)
+        }}.toMap()
     }
     ElevatedCard(Modifier.fillMaxWidth()){
-        Column(Modifier.padding(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Column(Modifier.padding(vertical=14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
                 Text("ယခုတစ်ပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
                 Text("မနက်ပိုင်း • တနင်္လာမှ သောကြာအထိ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            LazyRow(contentPadding=PaddingValues(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                items((0L..4L).toList()){offset->
-                    val date=monday.plusDays(offset); val stats=totals[date] ?: (0L to 0L)
-                    Card(Modifier.width(164.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.large){
-                        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-                            Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("${date.dayOfMonth}/${date.monthValue}",fontWeight=FontWeight.Bold)}
-                            Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL,Locale.ENGLISH),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            if(date in closedSet) Text("ပိတ်ရက်",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.error)
-                            else Text(winnerMap[date to DrawSession.MORNING]?.digit ?: "—",style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)
-                            HorizontalDivider()
-                            Text("Total ထိုးကြေး",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(stats.first.mmk(),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
-                            Text("Total ကော်မရှင်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(stats.second.mmk(),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
+            Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                (0L..4L).forEach { offset ->
+                    val date=monday.plusDays(offset)
+                    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.large){
+                        Column(Modifier.padding(horizontal=12.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("${date.dayOfMonth}.${date.monthValue}.${date.year}  ${date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL,Locale.ENGLISH)}",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));if(date in closedSet) Text("ပိတ်ရက်",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)}
+                            DrawSession.entries.forEach { session ->
+                                val stats=totals[date to session] ?: (0L to 0L)
+                                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                                    Surface(Modifier.size(width=52.dp,height=42.dp),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(session.label,style=MaterialTheme.typography.labelSmall);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
+                                    Column(Modifier.weight(1f)){Text("Total ထိုးကြေး",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.first.mmk(),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)}
+                                    Column(Modifier.weight(1f)){Text("Total ကော်မရှင်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(stats.second.mmk(),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)}
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+@Composable private fun HomeBottomBar(onNavigate:(String)->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit,onSettings:()->Unit){
+    NavigationBar(containerColor=MaterialTheme.colorScheme.surface){
+        NavigationBarItem(true,{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("Home")})
+        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("Agent")})
+        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("Customer")})
+        NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null)},label={Text("ပိတ်ရက်")})
+        NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null)},label={Text("ထီပေါက်စဉ်")})
+        NavigationBarItem(false,onSettings,icon={Icon(Icons.Default.Settings,null)},label={Text("ဆက်တင်")})
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier){Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
