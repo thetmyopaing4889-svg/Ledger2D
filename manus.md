@@ -439,3 +439,164 @@ Do not stop after analysis or after a partial feature. Implement all feasible it
 ### Remaining honest scope
 
 Full language routing across every legacy screen and a real Android emulator/device walkthrough are still not proven by source/CI alone. Backup/restore is also not shipped because it requires a complete file-picker and transactional validation implementation. These are verification/scope items, not silently claimed as complete.
+
+
+## 14. Provisional UX direction agreed for continued discussion — 2026-09-11
+
+The user clarified that the current problem is not missing features or broken business logic. The primary problem is that the current Home screen and navigation expose too many overlapping actions. The next AI must continue the UX discussion before changing code. This section records the current direction, but it is **not yet final approval for implementation**.
+
+### Core instruction for the next AI
+
+> **Do not start UI or navigation implementation yet. Continue discussing, validating, and confirming this information architecture with the user first.**
+
+The next AI must understand the user's intended structure, compare it with the current codebase, identify contradictions or missing decisions, and ask focused clarification questions where necessary. It must not silently convert this provisional direction into code.
+
+The work sequence is:
+
+```text
+Current application audit
+→ User-flow comparison
+→ Proposed structure
+→ Discussion with user
+→ Explicit confirmation
+→ UI/navigation implementation
+→ Build and verification
+```
+
+### Provisional Home direction
+
+The user is currently considering the following Home structure:
+
+```text
+Home
+├── အမြန်စာရင်းသွင်းရန်
+├── ဒိုင်အသစ်ထည့်ရန်
+├── ထိုးသားအသစ်ထည့်ရန်
+├── ပိတ်ရက်
+├── ထီပေါက်စဉ်
+├── လမ်းညွှန်
+├── Agent Dashboard / Panel
+└── Customer Dashboard / Panel
+```
+
+Home should also show the current date and useful current-day information. These are the currently discussed Home destinations, not a final implementation instruction. The next AI must help determine whether all of them should be equally prominent, compactly grouped, or separated into primary actions, global actions, and dashboard entry points.
+
+The user's main-entry intention is:
+
+- **အမြန်စာရင်းသွင်းရန်** must allow Agent selection and then Customer selection before entering the existing betting workflow.
+- **ဒိုင်အသစ်ထည့်ရန်** should open the normal Agent creation form.
+- **ထိုးသားအသစ်ထည့်ရန်** must first require Agent selection, then open the Customer creation form under that Agent.
+- Home should not become a random grid of every feature. Button prominence, grouping, duplication, and visual hierarchy still require discussion and confirmation.
+
+### Provisional Agent Dashboard / Panel direction
+
+The user is considering an Agent Dashboard / Panel as a dedicated workspace. It should contain Agent-oriented areas:
+
+```text
+Agent Dashboard / Panel
+├── Agent list
+├── စုစုပေါင်းစာရင်း
+├── အစီရင်ခံစာ
+├── ပိတ်ဂဏန်း
+├── ထီပေါက်စဉ်
+└── ကန့်သတ်ပမာဏ
+```
+
+The user specifically wants Agent-related list/report/configuration views to support explicit scope:
+
+- Is the view for **all Agents**?
+- Or is it for **one selected Agent**?
+
+For example, Agent totals should not require the old path of Agent List → Agent Detail → Total. The proposed direction is to let the Agent-oriented workspace or its child workspace make the Agent scope explicit, such as All Agents or one selected Agent. The exact placement of the selector, persistence of the selected Agent, and whether this is a shared workspace filter are still open decisions for discussion.
+
+The old Agent Detail screen should not be deleted automatically. The next AI must compare these options against the current workflow:
+
+- Keep and simplify Agent Detail as a context screen.
+- Merge its useful context into an Agent Dashboard.
+- Replace its crowded action hub with scope-aware Agent workspaces.
+- Remove it only if context and navigation remain clear after the replacement is confirmed.
+
+### Provisional Customer Dashboard / Panel direction
+
+The user is also considering a Customer Dashboard / Panel containing:
+
+```text
+Customer Dashboard / Panel
+├── Customer list
+├── စာရင်းမှတ်တမ်း
+├── အစီရင်ခံစာ
+├── အမြန်သုံးသပ်ချက်
+├── အကွက်စာရင်း
+├── ကော်မရှင်
+└── ထီပေါက်စဉ်
+```
+
+Because every Customer belongs to an Agent, Customer-oriented work must make both scopes clear:
+
+- Which Agent is selected?
+- Which Customer is selected?
+- Is the view for all Customers under the selected Agent?
+- Or is it for one Customer under that Agent?
+
+The next AI must not assume that a single global Customer list is sufficient. It must propose how Agent selector and Customer selector interact, how the selected context remains visible when moving to history/report/analysis/commission/winning views, and how an All Customers view differs from a single Customer view.
+
+### Important boundary between global and scoped features
+
+The next AI must distinguish:
+
+```text
+Global
+├── Closed Day
+├── Global winning-number entry/history
+└── Format Guide
+
+Agent-scoped
+├── Agent totals
+├── Agent reports
+├── Agent closed numbers
+├── Agent winning result view
+└── Agent limits
+
+Customer-scoped
+├── Customer bet history
+├── Customer reports
+├── Customer analysis
+├── Customer digit list
+├── Customer commission
+└── Customer winning result view
+```
+
+This is a discussion model, not yet a final route map. Global winning-number entry must remain distinct from Agent/Customer result views; Agent and Customer result screens should consume the global winning source rather than ask the user to enter duplicate winners.
+
+### Current user-flow questions that must be resolved before coding
+
+The next AI must continue the discussion and explicitly confirm:
+
+1. Whether Home's eight discussed destinations should all be visible at the same visual level.
+2. Whether Agent Dashboard and Customer Dashboard are top-level Home buttons, bottom navigation items, or management workspaces reached through a smaller number of destinations.
+3. Whether the old Agent Detail remains as a compact context screen or is merged into Agent Dashboard.
+4. Whether Customer Dashboard starts with Agent selection, Customer selection, or a recent-context default.
+5. Whether Agent totals/reports/configuration share one persistent Agent selector or each workspace owns its own selector.
+6. Whether Customer totals/reports/configuration share one persistent Agent + Customer selector.
+7. Which destinations are daily operational actions versus occasional setup/configuration.
+8. Whether Closed Day, Global Winning, and Guide should be Home quick actions or grouped under a global workspace.
+9. Whether the bottom navigation is necessary after the dashboard structure is finalized, and which destinations are genuinely visited repeatedly during a working day.
+10. How Home should prioritize current-day summary versus the three main data-entry actions.
+
+### Explicit no-implementation instruction
+
+Until the user and the next AI have discussed and confirmed the above structure:
+
+- Do not rewrite Home.
+- Do not remove Agent Detail.
+- Do not add or remove bottom-navigation destinations.
+- Do not move Closed Day, Winning, Guide, Limit, or Closed Number routes.
+- Do not change Room schema or business logic.
+- Do not claim that this provisional architecture is final.
+- Do not create duplicate routes merely to make a shortcut work.
+
+After explicit confirmation, implement the smallest coherent presentation/navigation change, preserve all existing domain behavior, run the full test/build workflow, and report exactly what was confirmed versus what remains open.
+
+### Handoff message to the next AI
+
+> The user is not asking for more random buttons or a cosmetic Home redesign. They are trying to reorganize the app by separating the main operational entry actions from Agent-scoped and Customer-scoped management workspaces. Carefully understand the provisional Home, Agent Dashboard, and Customer Dashboard structure above. Continue discussing and validating the navigation and scope model with the user first. Only after the user explicitly confirms the final information architecture should you modify the code.
