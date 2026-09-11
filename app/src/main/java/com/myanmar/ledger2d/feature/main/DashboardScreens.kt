@@ -138,6 +138,47 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
 }
 
 @Composable
+fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    val agents by vm.agents.collectAsStateWithLifecycle()
+    var selected by rememberSaveable { mutableStateOf(0L) }
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
+    val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
+    AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { Text("Agent ရွေးရန်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); ScopeDropdown("Agent ရွေးရန်", if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်", listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name }, selected) { selected = it }; DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အခြေအနေအတွက် အချက်အလက်မရှိသေးပါ") }
+            items(visible, key = { it.id }) { summary -> ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }
+        }
+    }
+}
+
+@Composable
+fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    val agents by vm.agents.collectAsStateWithLifecycle()
+    var agentId by rememberSaveable { mutableStateOf(0L) }
+    var customerId by rememberSaveable { mutableStateOf(0L) }
+    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = if (agentId > 0L) vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") else emptyList() }
+    val visible = if (customerId == -1L) summaries else summaries.filter { it.id == customerId }
+    AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", onBack) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { Text("Agent ရွေးရန် နှင့် Customer ရွေးရန်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); ScopeDropdown("Agent ရွေးရန်", agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်", agents.map { it.id to it.name }, agentId) { agentId = it; customerId = 0L }; ScopeDropdown("Customer ရွေးရန်", when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }, if (agentId == 0L) emptyList() else listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name }, customerId, enabled = agentId > 0L) { customerId = it }; DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
+            else if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }
+            items(visible, key = { it.id }) { summary -> ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }
+        }
+    }
+}
+
+@Composable
 private fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, enabled: Boolean = true, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }) {
