@@ -42,7 +42,7 @@ import java.time.ZoneId
 import java.util.Locale
 
 fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
-private fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${year.toString().takeLast(2)}"
+fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${year.toString().takeLast(2)}"
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
     val parts=text.split("\n", limit=2)
@@ -550,7 +550,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
     }
 }
 
-@Composable private fun ReportCard(c: DrawCalculation, winner: String?) {
+@Composable fun ReportCard(c: DrawCalculation, winner: String?) {
     Surface(shape=MaterialTheme.shapes.medium, color=MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BilingualText(if (winner == null) "ဂဏန်းမထွက်ခင်\nBefore" else "ပေါက်ဂဏန်း $winner", primaryStyle=MaterialTheme.typography.titleLarge)

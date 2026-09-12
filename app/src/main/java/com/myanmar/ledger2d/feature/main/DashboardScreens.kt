@@ -20,7 +20,6 @@ import com.myanmar.ledger2d.core.database.ClosedNumberEntity
 import com.myanmar.ledger2d.core.database.AgentSpecialLimitEntity
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.AnalysisResult
-import com.myanmar.ledger2d.core.domain.DrawReport
 import com.myanmar.ledger2d.core.domain.WeeklyReport
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
