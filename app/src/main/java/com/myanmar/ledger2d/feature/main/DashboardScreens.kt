@@ -175,7 +175,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
 }
 
 @Composable
-private fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, enabled: Boolean = true, onSelect: (Long) -> Unit) {
+fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, enabled: Boolean = true, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }) {
         OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(label) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
