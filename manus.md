@@ -600,3 +600,165 @@ After explicit confirmation, implement the smallest coherent presentation/naviga
 ### Handoff message to the next AI
 
 > The user is not asking for more random buttons or a cosmetic Home redesign. They are trying to reorganize the app by separating the main operational entry actions from Agent-scoped and Customer-scoped management workspaces. Carefully understand the provisional Home, Agent Dashboard, and Customer Dashboard structure above. Continue discussing and validating the navigation and scope model with the user first. Only after the user explicitly confirms the final information architecture should you modify the code.
+
+
+## 16. Latest authoritative implementation handoff — 2026-09-12
+
+> This section supersedes all earlier provisional UX notes, stale commit references, and older “remaining work” lists where they conflict with the current repository state. Earlier sections are retained as historical context only.
+
+### 16.1 Current repository and verification state
+
+The repository is `thetmyopaing4889-svg/Ledger2D`, on branch `main`, at commit `10f4b39` (`Expose shared report helpers to dashboard workspaces`). The working tree was clean and `main` was synchronized with `origin/main` at the time of this update. The final GitHub Actions run was `34663015704` and completed successfully.
+
+The successful CI workflow verified unit tests, lint, debug APK compilation, release APK verification, and upload of the debug and release APK artifacts. The GitHub Actions run is available at [34663015704](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/34663015704).
+
+This is the correct baseline for the next AI agent. Do not use older references such as `d2e1985`, `90e092f`, `e3f5d76`, `ffb2b76`, or their associated run IDs as the current implementation baseline unless investigating history.
+
+### 16.2 Why the application was changed
+
+The user’s main complaint was not that the app lacked isolated screens. The problem was that the original workflow was too long, repetitive, and difficult to use. The implementation therefore moved from a route-heavy workflow toward a dashboard-and-workspace model.
+
+The central design goal is to let a user choose the scope once and then operate the selected feature in the same workspace. Agent features use an Agent selector with an explicit “ဒိုင်အားလုံး” option where aggregation is meaningful. Customer features require an Agent first, then expose only that Agent’s customers plus “Customer အားလုံး”. No unrelated Agent or Customer may leak into the selected scope.
+
+The second design goal is to make Home a practical first-view screen: the weekly winning-number cards, quick entry, Add Agent, Add Customer, and the requested bottom navigation should be immediately understandable without duplicate welcome headings or unnecessary status cards. The Home weekly cards are compact, date-labelled, and digit-first; totals are available through the relevant interaction rather than competing with the primary winning digit.
+
+### 16.3 Foundation and navigation changes completed
+
+The current application preserves the offline-first Android architecture: Kotlin, Jetpack Compose, Material 3, Room, ViewModel, Kotlin Flow, Navigation Compose, LocalDate, DrawSession, integer MMK arithmetic, and basis-point commission rates. Room remains the authoritative data source and no login, cloud sync, ads, subscription, billing, or online service was added.
+
+The completed navigation and dashboard foundation includes:
+
+- Home as the operational landing screen.
+- Agent Dashboard with a real Agent List sourced from Add Agent records.
+- Customer Dashboard with a real Customer List scoped to the selected Agent.
+- Agent detail and Customer detail routes with edit behavior preserved.
+- Agent feature workspace containing Total, Report, Closed Number, Winning, and Limit features.
+- Customer feature workspace containing History, Report, Analysis, Digit List, Commission, and Winning features.
+- Inline Agent and Customer selectors inside feature workspaces to reduce unnecessary intermediate screens.
+- Agent “ဒိုင်အားလုံး” aggregation for report/total/winning-style views where aggregation is valid.
+- Customer “Customer အားလုံး” aggregation only after a specific Agent has been selected.
+- Feature-specific controls kept unavailable for invalid aggregate operations such as Agent-wide closed-number or limit management across all Agents.
+- Home bottom navigation for Home, Agent Dashboard, Customer Dashboard, Closed Day, Winning Number, and Settings.
+
+### 16.4 Home screen changes and their purpose
+
+The Home screen was repeatedly simplified to remove duplicated or low-value content. The current intent is:
+
+- Show one clear brand/welcome treatment rather than duplicate `Home`, `Welcome`, or repeated brand headings.
+- Keep weekly winning numbers as the main visual information.
+- Display five operating weekdays in compact daily cards, with morning and evening result slots separated.
+- Make the winning digits visually prominent and tappable.
+- Keep Total Bet and Commission out of the default card when they would make the digit unreadable; reveal detail only through the relevant interaction.
+- Keep Quick Entry, Add Agent, and Add Customer as the primary Home actions.
+- Avoid a long scrolling dashboard for information that should fit the first view on ordinary phone sizes.
+- Use localized/professional date presentation rather than ambiguous short dates such as `7.9` and `8.9`.
+- Keep bottom-bar labels and icon choices concise enough for narrow screens.
+
+The Home layout still requires practical verification on a real phone for exact Burmese font metrics, narrow widths, large font scale, and edge-to-edge insets. This is a device verification item, not a reason to reintroduce duplicate navigation screens.
+
+### 16.5 Agent Dashboard behavior completed
+
+The Agent Dashboard’s Agent List shows the Agents created through Add Agent, including the Agent name and rate. Selecting an Agent opens that Agent’s information/detail flow and preserves edit capability.
+
+Agent feature behavior is now workspace-based:
+
+- **စုစုပေါင်းစာရင်း / Total:** uses real date/session totals and supports Agent selection or valid Agent-wide aggregation.
+- **အစီရင်ခံစာ / Report:** supports an individual Agent and displays Agent-level totals plus customer-by-customer breakdown data, including stake, winning stake, payout, commission, and profit/loss.
+- **ပိတ်ဂဏန်း / Closed Number:** adds and removes Agent-specific closed digits. Removing a closed digit requires confirmation.
+- **ထီပေါက်စဉ် / Winning:** resolves the global winning number for the selected date/session and calculates the selected Agent’s aggregate result. If the winner is unavailable for an After view, the UI shows an unavailable state rather than inventing a result.
+- **ကန့်သတ်ပမာဏ / Limit:** supports Agent-wide limits and Agent-specific special limits. Special-limit removal requires confirmation. Special Limit precedence over All Limit remains a domain rule.
+
+Agent-wide closed-number and limit management is intentionally not offered as an invalid “all Agents” mutation. Aggregate read views and management mutations are treated differently.
+
+### 16.6 Customer Dashboard behavior completed
+
+The Customer Dashboard first requires an Agent selection. Only customers belonging to that Agent are then offered. The Customer selector includes the valid “Customer အားလုံး” aggregate option and individual customers. Changing the Agent resets the Customer selection so a customer from the previous Agent cannot remain selected accidentally.
+
+Customer feature behavior is now workspace-based:
+
+- **စာရင်းမှတ်တမ်း / History:** shows the selected Customer’s real betting entries; edit routes to the existing betting edit flow; delete requires confirmation.
+- **အစီရင်ခံစာ / Report:** supports Daily and Weekly views, Before and After modes, daily date/session context, and the required Monday–Friday × Morning/Evening ten-row weekly structure with blank/unavailable rows where appropriate. Weekly totals include stake, commission, payout, and profit/loss.
+- **အမြန်သုံးသပ်ချက် / Analysis:** shows current digit count, total stake, limited-digit count, 80% warning count, 90% near-limit count, 100% full/reject count, highest-stake digits, closed digits, reject digits, per-digit winning scenarios, worst-case payout, and worst-case profit/loss.
+- **အကွက်စာရင်း / Digit List:** displays the 00–99 grid with current stake, limit-use percentage where available, closed state, and full/limit-related visual state. The grid is a view of real Room-backed data, not placeholder digits.
+- **ကော်မရှင် / Commission:** allows the selected Customer’s commission rate to be updated with validation.
+- **ထီပေါက်စဉ် / Winning:** shows the global winner and the selected Customer’s stake, winning stake, payout, commission, and profit/loss. Missing winners produce an unavailable state for After results.
+
+### 16.7 Business rules preserved during the simplification
+
+The UI was simplified without changing the underlying business rules:
+
+- Room is the single source of truth.
+- Customer belongs to exactly one Agent.
+- A date plus DrawSession identifies a draw.
+- Global Winning Number is not owned by an Agent or Customer.
+- Closed Day is global.
+- Closed Number is Agent-specific and is validated after parser/format expansion.
+- Special Limit takes precedence over All Limit for the same digit.
+- Betting uses `Confirm`; winner forms use `Save` and `Cancel`.
+- Duplicate parsed digits are aggregated deterministically.
+- Money uses exact integer MMK arithmetic.
+- Commission uses deterministic basis-point rates.
+- Payout, winning stake, commission, net settlement, and profit/loss remain centralized in domain/repository calculations rather than being independently invented by each Composable.
+- Bets are blocked by invalid weekdays, closed days, closed numbers, limits, past-session rules, and an already-entered winner according to the existing ViewModel/repository guards.
+- Historical commission uses the stored commission snapshot behavior already added to the data model, so later rate edits do not silently rewrite old financial results.
+- Weekly reports always represent five operating weekdays × two sessions = ten rows, including blank/future rows where the domain rules require them.
+
+### 16.8 Safe mutation behavior completed
+
+The implementation includes safe destructive-action handling for the relevant dashboard workspaces:
+
+- Customer betting-entry deletion requires confirmation.
+- Agent closed-number removal requires confirmation.
+- Agent special-limit removal requires confirmation.
+- Closed-day and winner management retain the existing confirmation/edit behavior.
+- Relevant ViewModel mutations publish revision changes so report, winning, analysis, and aggregate views refresh after edits.
+
+### 16.9 Verification record and recent corrective fixes
+
+The final pass initially exposed compile errors after the complete inline workspace was added. Those failures were not ignored. The following corrections were made before the final green run:
+
+- Added missing database entity imports for confirmation dialogs.
+- Exposed the shared date-format helper to dashboard workspaces.
+- Exposed the shared ReportCard composable to dashboard workspaces.
+- Removed an incorrect import for DrawReport and used the existing ViewModel model location.
+- Re-ran the full GitHub Actions workflow after the corrections.
+
+The final successful commit is `10f4b39`. The successful run `34663015704` verified:
+
+```text
+Unit tests                         PASS
+lintDebug                          PASS
+assembleDebug                      PASS
+assembleRelease                    PASS
+Debug APK artifact upload          PASS
+Release APK artifact upload        PASS
+```
+
+A GitHub Actions green result proves the repository compiles, tests, lints, and produces APK artifacts. It does not by itself prove pixel-perfect rendering on every Android device.
+
+### 16.10 Items intentionally outside the verified repository claim
+
+The following must remain explicit rather than being falsely described as complete:
+
+1. A real Android phone/emulator walkthrough has not been performed in this sandbox. The user should install the final APK and test Home, Agent selection, Customer selection, betting confirmation, edit/delete, report, winning, analysis, digit list, Closed Day, Winning Number, and Settings.
+2. Device-level Burmese text reflow, narrow-screen layout, large-font accessibility, IME behavior, touch-target sizing, animation performance, and edge-to-edge insets require real-device verification.
+3. A tested local JSON backup/restore flow with Android file picker, schema validation, and transactional restore is not shipped. No fake backup button should be added without a complete implementation.
+4. Release APK verification is build verification; store-distribution signing and publishing credentials are not configured.
+5. Database-level proof against cross-process concurrent bet/winner races is outside the current verified CI scope. The current app-level mutation serialization must not be described as a multi-process database lock.
+
+These are verification or explicitly unshipped-scope items. They must not be converted into vague “feature missing” claims about the completed dashboard/report/analysis workspaces unless a new code audit demonstrates a concrete defect.
+
+### 16.11 Handoff instructions for the next AI
+
+Before changing code, read `/home/ubuntu/upload/architecture.md` and this entire `manus.md`. Treat section 16 as the current source of truth. Do not recreate the removed Agent Selector or Customer Selector route flow merely to add screens; selectors belong inside the existing feature workspaces unless the user explicitly requests a new route.
+
+Do not claim “everything is complete” from a compile-only result. For source changes, run at minimum:
+
+```bash
+cd /home/ubuntu/Ledger2D
+./gradlew clean testDebugUnitTest assembleDebug --no-daemon
+```
+
+Then push `main`, wait for GitHub Actions, and verify the corresponding run has passing unit tests, lint, debug APK, release APK verification, and artifact uploads. If a CI failure occurs, read the exact compiler/test log, fix it, rerun the workflow, and report the actual state rather than hiding the failure.
+
+The next practical action is a user-side APK install and device walkthrough. If that walkthrough reveals a specific UI defect, fix that defect without re-expanding the workflow into unnecessary intermediate screens.
