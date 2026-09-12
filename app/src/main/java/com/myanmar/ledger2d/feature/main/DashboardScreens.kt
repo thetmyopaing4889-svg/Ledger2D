@@ -16,6 +16,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.database.BetEntryEntity
+import com.myanmar.ledger2d.core.database.ClosedNumberEntity
+import com.myanmar.ledger2d.core.database.AgentSpecialLimitEntity
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.AnalysisResult
 import com.myanmar.ledger2d.core.model.DrawSession
