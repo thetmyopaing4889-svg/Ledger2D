@@ -607,7 +607,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         }
     }
 }
-@Composable private fun AnalysisMetric(label: String, value: String) {
+@Composable fun AnalysisMetric(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(label, style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
 }
 @Composable fun ClosedDayScreen(vm: LedgerViewModel, onBack: () -> Unit) {

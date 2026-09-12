@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.design.LocalLanguage
+import com.myanmar.ledger2d.core.domain.AnalysisResult
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
 
