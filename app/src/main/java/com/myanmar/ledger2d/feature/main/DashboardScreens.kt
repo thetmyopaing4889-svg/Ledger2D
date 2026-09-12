@@ -63,10 +63,11 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
                     )
                 }
             }
-            item { Text("Agent feature များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-            items(agentActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(action.title, fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(action.subtitle) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+            item {
+                OutlinedButton(onClick = onAddAgent, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("ဒိုင်အသစ်ထည့်ရန်")
                 }
             }
         }
@@ -107,12 +108,6 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
             else if (customers.isEmpty()) item { EmptyState("Customer မရှိသေးပါ", "ဒီ Agent အောက်မှာ Customer ထည့်ပါ") }
             else items(customers, key = { it.id }) { customer ->
                 ElevatedCard(onClick = { onCustomerInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) { ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text("$agentName • ${customer.phone}") }, leadingContent = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) }) }
-            }
-            item { Text("Customer feature များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-            items(customerActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(action.title, fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(action.subtitle) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
-                }
             }
         }
     }
