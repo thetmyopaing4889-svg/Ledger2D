@@ -27,6 +27,7 @@ import java.time.LocalDate
 private data class DashboardAction(val title: String, val subtitle: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val key: String)
 
 private val agentActions = listOf(
+    DashboardAction("Agent List", "Add Agent ဖြင့် ဖန်တီးထားသော Agent များ", Icons.Default.List, "agentList"),
     DashboardAction("စုစုပေါင်းစာရင်း", "Agent အလိုက် စာရင်းစုစုပေါင်း", Icons.Default.ReceiptLong, "total"),
     DashboardAction("အစီရင်ခံစာ", "Agent အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("ပိတ်ဂဏန်း", "Agent အလိုက် လက်မခံမည့်ဂဏန်း", Icons.Default.Lock, "closed"),
@@ -35,6 +36,7 @@ private val agentActions = listOf(
 )
 
 private val customerActions = listOf(
+    DashboardAction("Customer List", "ရွေးထားသော Agent အောက်ရှိ Customer များ", Icons.Default.List, "customerList"),
     DashboardAction("စာရင်းမှတ်တမ်း", "Customer ၏ စာရင်းများ", Icons.Default.ReceiptLong, "history"),
     DashboardAction("အစီရင်ခံစာ", "Customer အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("အမြန်သုံးသပ်ချက်", "လက်ရှိစာရင်းအခြေအနေ", Icons.Default.Insights, "analysis"),
@@ -45,31 +47,9 @@ private val customerActions = listOf(
 
 @Composable
 fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (Long) -> Unit, onAddAgent: () -> Unit, onFeature: (String) -> Unit) {
-    val agents by vm.agents.collectAsStateWithLifecycle()
     AppScaffold("Agent Dashboard", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Text("Agent List", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Add Agent နဲ့ ဖန်တီးထားသော Agent များကို ကြည့်ရန်", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (agents.isEmpty()) item { EmptyState("ဒိုင်မရှိသေးပါ", "Home မှ ဒိုင်အသစ်ထည့်ရန်ကို အသုံးပြုပါ") }
-            else items(agents, key = { it.id }) { agent ->
-                ElevatedCard(onClick = { onAgentInfo(agent.id) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(
-                        headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
-                        supportingContent = { Text("${agent.rate} Rate" + if (agent.phone.isNotBlank()) " • ${agent.phone}" else "") },
-                        leadingContent = { Icon(Icons.Default.Store, null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingContent = { Icon(Icons.Default.ChevronRight, "ကြည့်ရန်") }
-                    )
-                }
-            }
-            item {
-                OutlinedButton(onClick = onAddAgent, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Add, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("ဒိုင်အသစ်ထည့်ရန်")
-                }
-            }
+            item { Text("Agent feature များ", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             item { Text("Agent feature များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             items(agentActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
@@ -102,19 +82,9 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
 
 @Composable
 fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerInfo: (Long) -> Unit, onFeature: (String) -> Unit) {
-    val agents by vm.agents.collectAsStateWithLifecycle()
-    var selectedAgent by rememberSaveable { mutableStateOf(0L) }
-    val customers by vm.customers(selectedAgent).collectAsStateWithLifecycle(initialValue = emptyList())
-    val agentName = agents.firstOrNull { it.id == selectedAgent }?.name ?: "ဒိုင်ရွေးရန်"
     AppScaffold("Customer Dashboard", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Customer List", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Agent ရွေးပြီး ထို Agent အောက်က Customer များကို ကြည့်ပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            item { ScopeDropdown("Agent ရွေးရန်", agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent) { selectedAgent = it } }
-            if (selectedAgent == 0L) item { UnavailableState("Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ") }
-            else if (customers.isEmpty()) item { EmptyState("Customer မရှိသေးပါ", "ဒီ Agent အောက်မှာ Customer ထည့်ပါ") }
-            else items(customers, key = { it.id }) { customer ->
-                ElevatedCard(onClick = { onCustomerInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) { ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text("$agentName • ${customer.phone}") }, leadingContent = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) }) }
-            }
+            item { Text("Customer feature များ", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             item { Text("Customer feature များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             items(customerActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
