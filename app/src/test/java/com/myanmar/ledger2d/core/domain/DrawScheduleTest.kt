@@ -21,19 +21,28 @@ class DrawScheduleTest {
         assertEquals(DrawSession.EVENING, draw.session)
     }
 
-    @Test fun late_evening_still_defaults_to_same_day_evening_until_result_exists() {
+    @Test fun after_evening_cutoff_defaults_to_next_weekday_morning() {
         val draw = DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(18, 0)))
-        assertEquals(date, draw.date)
-        assertEquals(DrawSession.EVENING, draw.session)
+        assertEquals(date.plusDays(1), draw.date)
+        assertEquals(DrawSession.MORNING, draw.session)
     }
 
-    @Test fun noon_selects_evening_without_an_evening_clock_assumption() {
+    @Test fun noon_selects_evening_until_evening_cutoff() {
         assertEquals(DrawSession.EVENING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.NOON)).session)
-        assertEquals(date, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 30))).date)
+        val draw = DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 30)))
+        assertEquals(date.plusDays(1), draw.date)
+        assertEquals(DrawSession.MORNING, draw.session)
     }
 
     @Test fun weekend_is_not_a_business_day() {
         assertEquals(false, DrawSchedule.isWeekday(LocalDate.of(2026, 9, 12)))
+    }
+
+    @Test fun weekend_defaults_to_next_monday_morning() {
+        val saturday = LocalDate.of(2026, 9, 12)
+        val draw = DrawSchedule.nextDraw(LocalDateTime.of(saturday, LocalTime.NOON))
+        assertEquals(LocalDate.of(2026, 9, 14), draw.date)
+        assertEquals(DrawSession.MORNING, draw.session)
     }
 
     @Test fun session_cutoffs_are_strict() {

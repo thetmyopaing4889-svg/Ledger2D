@@ -15,8 +15,19 @@ object DrawSchedule {
         DrawSession.MORNING -> now.toLocalTime().isBefore(morningResultTime)
         DrawSession.EVENING -> now.toLocalTime().isBefore(eveningResultTime)
     }
-    fun nextDraw(now: LocalDateTime): DrawIdentity = when {
-        now.toLocalTime().isBefore(morningResultTime) -> DrawIdentity(now.toLocalDate(), DrawSession.MORNING)
-        else -> DrawIdentity(now.toLocalDate(), DrawSession.EVENING)
+    fun nextDraw(now: LocalDateTime): DrawIdentity {
+        var date = now.toLocalDate()
+        if (!isWeekday(date)) {
+            do { date = date.plusDays(1) } while (!isWeekday(date))
+            return DrawIdentity(date, DrawSession.MORNING)
+        }
+        return when {
+            now.toLocalTime().isBefore(morningResultTime) -> DrawIdentity(date, DrawSession.MORNING)
+            now.toLocalTime().isBefore(eveningResultTime) -> DrawIdentity(date, DrawSession.EVENING)
+            else -> {
+                do { date = date.plusDays(1) } while (!isWeekday(date))
+                DrawIdentity(date, DrawSession.MORNING)
+            }
+        }
     }
 }
