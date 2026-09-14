@@ -42,7 +42,7 @@ import java.time.ZoneId
 import java.util.Locale
 
 fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
-fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${year.toString().takeLast(2)}"
+fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH))
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
     val parts=text.split("\n", limit=2)
@@ -146,7 +146,7 @@ fun LocalDate.displayDate(): String = "${dayOfMonth}.${monthValue}.${year.toStri
                     Column(Modifier.width(82.dp)){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH)),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                     DrawSession.entries.forEach { session ->
                         val stats=totals[date to session] ?: (0L to 0L)
-                        Card(onClick={selectedDigit=DigitDetail(date,session,winnerMap[date to session]?.digit ?: "—",stats.first,stats.second)},modifier=Modifier.weight(1f).fillMaxHeight(),shape=MaterialTheme.shapes.medium,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=.22f)),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){Row(Modifier.fillMaxWidth().padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary)}}
+                        Card(onClick={selectedDigit=DigitDetail(date,session,winnerMap[date to session]?.digit ?: "—",stats.first,stats.second)},modifier=Modifier.weight(1f).fillMaxHeight(),shape=MaterialTheme.shapes.medium,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=.22f)),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){Column(Modifier.fillMaxWidth().padding(horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary,textAlign=TextAlign.Center)}}
                     }
                     if(date in closedSet) Text("ပိတ်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
                 }
