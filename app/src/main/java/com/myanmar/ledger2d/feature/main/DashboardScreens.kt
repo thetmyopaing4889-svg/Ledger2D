@@ -50,7 +50,6 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
     AppScaffold("Agent Dashboard", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text("Agent feature များ", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            item { Text("Agent feature များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             items(agentActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
                     ListItem(headlineContent = { Text(action.title, fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(action.subtitle) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
@@ -85,7 +84,6 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
     AppScaffold("Customer Dashboard", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text("Customer feature များ", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            item { Text("Customer feature များ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             items(customerActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
                     ListItem(headlineContent = { Text(action.title, fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(action.subtitle) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
