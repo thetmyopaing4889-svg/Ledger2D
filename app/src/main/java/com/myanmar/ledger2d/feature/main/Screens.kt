@@ -113,15 +113,15 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={}){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)}){p->
-        Column(Modifier.fillMaxSize().padding(p).padding(horizontal=12.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+        Column(Modifier.fillMaxSize().padding(p).padding(horizontal=12.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){Text("Welcome to",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);Text("Myanmar 2D Ledger",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(today.displayDate(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
-            HomeWeeklyResults(vm)
-            Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(42.dp),shape=MaterialTheme.shapes.large,contentPadding=PaddingValues(horizontal=12.dp)){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(6.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)}
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){HomeAction(Icons.Default.PersonAdd,"ဒိုင်အသစ်ထည့်ရန်",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"ထိုးသားအသစ်ထည့်ရန်",onAddCustomer,Modifier.weight(1f))}
+            HomeWeeklyResults(vm,Modifier.weight(1f))
+            Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(44.dp),shape=MaterialTheme.shapes.large,contentPadding=PaddingValues(horizontal=12.dp)){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(6.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){HomeAction(Icons.Default.Business,"ဒိုင်အသစ်ထည့်ရန်",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.Person,"ထိုးသားအသစ်ထည့်ရန်",onAddCustomer,Modifier.weight(1f))}
         }
     }
 }
-@Composable private fun HomeWeeklyResults(vm:LedgerViewModel){
+@Composable private fun HomeWeeklyResults(vm:LedgerViewModel,modifier:Modifier=Modifier){
     val agents by vm.agents.collectAsStateWithLifecycle()
     val winners by vm.winners.collectAsStateWithLifecycle()
     val closedDays by vm.closedDays.collectAsStateWithLifecycle()
@@ -137,12 +137,12 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
             (date to session) to (stake to commission)
         }}.toMap()
     }
-    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.extraLarge){
+    Card(modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.extraLarge){
         Column(Modifier.padding(horizontal=8.dp,vertical=6.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("ယခုအပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));Text("မနက် / ညနေ",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Icon(Icons.Default.AutoGraph,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp))}
             (0L..4L).forEach { offset ->
                 val date=monday.plusDays(offset)
-                Row(Modifier.fillMaxWidth().height(44.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                Row(Modifier.fillMaxWidth().weight(1f),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
                     Column(Modifier.width(82.dp)){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH)),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                     DrawSession.entries.forEach { session ->
                         val stats=totals[date to session] ?: (0L to 0L)
