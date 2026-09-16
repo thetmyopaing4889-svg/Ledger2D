@@ -29,7 +29,13 @@ class LanguageState(context: Context) {
         "ဒိုင်ရွေးရန်" to "Select agent", "ထိုးသားရွေးရန်" to "Select customer", "အချက်အလက်" to "Information",
         "ပိတ်မည်" to "Close", "ဖျက်မည်" to "Delete", "ရွေးမည်" to "Select", "ရှင်းမည်" to "Clear", "ထပ်ထည့်မည်" to "Add another",
         "မရှိသေးပါ" to "None yet", "ထိုးသားမရှိသေးပါ" to "No customers yet", "ရလဒ်" to "Results", "ယနေ့" to "Today",
-        "ထိုးသား" to "Customer", "ဒိုင်" to "Agent", "အဆင်ပြေ" to "OK", "အတည်ပြုနေသည်…" to "Confirming…", "သိမ်းပြီးပါပြီ" to "Saved"
+        "ထိုးသား" to "Customer", "ဒိုင်" to "Agent", "အဆင်ပြေ" to "OK", "အတည်ပြုနေသည်…" to "Confirming…", "သိမ်းပြီးပါပြီ" to "Saved",
+        "Agent Dashboard" to "Agent Dashboard", "Customer Dashboard" to "Customer Dashboard", "Agent feature များ" to "Agent features", "Customer feature များ" to "Customer features",
+        "လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ" to "Choose a feature, then select an agent", "Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ" to "Select an agent before using customer features",
+        "Agent List" to "Agent List", "Customer List" to "Customer List", "ဒိုင်အားလုံး" to "All agents", "Customer အားလုံး" to "All customers",
+        "ဆက်သွားရန်" to "Continue", "Agent ရွေးရန်" to "Select agent", "Customer ရွေးရန်" to "Select customer", "ဒိုင်ရွေးရန်" to "Select agent",
+        "ဒိုင်ရွေးပြီးမှ ရွေးပါ" to "Select an agent first", "ရွေးထားသည်" to "Selected", "Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ" to "Select an agent or all agents",
+        "Agent တစ်ယောက်နှင့် Customer အားလုံး သို့မဟုတ် Customer တစ်ယောက်ကို ရွေးပါ" to "Select an agent and all customers or one customer"
     )
 }
 val LocalLanguage = staticCompositionLocalOf<LanguageState> { error("LanguageState not provided") }

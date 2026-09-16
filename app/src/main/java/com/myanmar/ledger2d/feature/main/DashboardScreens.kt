@@ -47,12 +47,13 @@ private val customerActions = listOf(
 
 @Composable
 fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (Long) -> Unit, onAddAgent: () -> Unit, onFeature: (String) -> Unit) {
-    AppScaffold("Agent Dashboard", onBack) { padding ->
+    val l = LocalLanguage.current
+    AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Agent feature များ", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(l.translate("Agent feature များ"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(l.translate("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(agentActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(action.title, fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(action.subtitle) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
                 }
             }
         }
@@ -81,12 +82,13 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
 
 @Composable
 fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerInfo: (Long) -> Unit, onFeature: (String) -> Unit) {
-    AppScaffold("Customer Dashboard", onBack) { padding ->
+    val l = LocalLanguage.current
+    AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Customer feature များ", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(l.translate("Customer feature များ"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(l.translate("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(customerActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(action.title, fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(action.subtitle) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
                 }
             }
         }
