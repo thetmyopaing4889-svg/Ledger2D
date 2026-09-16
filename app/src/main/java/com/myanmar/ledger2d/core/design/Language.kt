@@ -35,7 +35,18 @@ class LanguageState(context: Context) {
         "Agent List" to "Agent List", "Customer List" to "Customer List", "ဒိုင်အားလုံး" to "All agents", "Customer အားလုံး" to "All customers",
         "ဆက်သွားရန်" to "Continue", "Agent ရွေးရန်" to "Select agent", "Customer ရွေးရန်" to "Select customer", "ဒိုင်ရွေးရန်" to "Select agent",
         "ဒိုင်ရွေးပြီးမှ ရွေးပါ" to "Select an agent first", "ရွေးထားသည်" to "Selected", "Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ" to "Select an agent or all agents",
-        "Agent တစ်ယောက်နှင့် Customer အားလုံး သို့မဟုတ် Customer တစ်ယောက်ကို ရွေးပါ" to "Select an agent and all customers or one customer"
+        "Agent တစ်ယောက်နှင့် Customer အားလုံး သို့မဟုတ် Customer တစ်ယောက်ကို ရွေးပါ" to "Select an agent and all customers or one customer",
+        "Add Agent နဲ့ ဖန်တီးထားသော Agent များ" to "Agents created with Add Agent", "Home မှ ဒိုင်အသစ်ထည့်ရန်ကို အသုံးပြုပါ" to "Use Add agent from Home",
+        "ကြည့်ရန်" to "View", "Agent ကိုအရင်ရွေးပါ" to "Select an agent first", "အောက်ရှိ Customer များ" to "customers under this agent",
+        "ဒီ Agent အောက်မှာ Customer ထည့်ပါ" to "Add a customer under this agent", "Customer မရှိသေးပါ" to "No customers yet",
+        "Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ" to "Select an agent to view the customer list", "Agent Information" to "Agent Information",
+        "Customer Information" to "Customer Information", "ပြင်ရန်" to "Edit", "စာရင်း" to "entries", "ပြီး" to "Settled",
+        "Net settlement" to "Net settlement", "ပေါက်ဂဏန်းမရှိသေးပါ" to "No winning number yet",
+        "ရက်စွဲကို စစ်ဆေးပါ" to "Check the date", "ထီပေါက်ဂဏန်း မရှိသေးပါ" to "No winning number yet",
+        "ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ" to "No result is available after the draw yet",
+        "အချက်အလက် မရှိသေးပါ" to "No information yet", "စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။" to "Cannot submit. Check the details and limits.",
+        "စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။" to "Cannot edit. Check the details and limits.",
+        "အတည်ပြုထားသော စာရင်းမရှိသေးပါ" to "No confirmed entries yet"
     )
 }
 val LocalLanguage = staticCompositionLocalOf<LanguageState> { error("LanguageState not provided") }

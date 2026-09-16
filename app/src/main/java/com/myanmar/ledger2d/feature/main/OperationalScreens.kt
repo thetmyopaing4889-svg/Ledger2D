@@ -30,11 +30,11 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
                     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(totals.sumOf{it.amount}.mmk(),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)}
                         HorizontalDivider()
-                        if(customers.isEmpty())Text("ထိုးသားမရှိသေးပါ",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        if(customers.isEmpty())Text(l.translate("ထိုးသားမရှိသေးပါ"),color=MaterialTheme.colorScheme.onSurfaceVariant)
                         else customers.forEach{customer->
                             val entries by vm.customerEntries(customer.id).collectAsStateWithLifecycle(initialValue=emptyList())
                             val amount=entries.filter{it.entry.drawDate==date&&it.entry.drawSession==session}.flatMap{it.lines}.sumOf{it.amount}
-                            if(amount>0L)ListItem(headlineContent={Text(customer.name,fontWeight=FontWeight.SemiBold)},supportingContent={Text("${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} စာရင်း")},trailingContent={Text(amount.mmk(),fontWeight=FontWeight.Bold)})
+                            if(amount>0L)ListItem(headlineContent={Text(customer.name,fontWeight=FontWeight.SemiBold)},supportingContent={Text("${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} ${l.translate("စာရင်း")}")},trailingContent={Text(amount.mmk(),fontWeight=FontWeight.Bold)})
                         }
                     }
                 }
@@ -59,7 +59,7 @@ fun SettlementScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Uni
             items(agents,key={it.id}){agent->
                 val report=reports[agent.id]
                 val settled by produceState<Boolean?>(null,agent.id,date,session,revision){value=vm.isSettled(agent.id,date,session)}
-                report?.let{r->ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);if(settled==true)Text("ပြီး",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)};SettlementMetric("ထိုးကြေး",r.calculation.totalBet.mmk());SettlementMetric("ပေါက်ကြေး",r.calculation.winningStake.mmk());SettlementMetric("လျော်ပေးငွေ",r.calculation.payout.mmk());SettlementMetric("ကော်မရှင်",r.calculation.commission.mmk());HorizontalDivider();SettlementMetric("Net settlement",r.calculation.netSettlement.mmk(),true);if(settled!=true)Button({vm.settleAgent(agent.id,date,session)},enabled=r.winnerAvailable,modifier=Modifier.fillMaxWidth()){Text(if(r.winnerAvailable)l.translate("ရှင်းတမ်းအတည်ပြုမည်") else "ပေါက်ဂဏန်းမရှိသေးပါ")}}}}
+                report?.let{r->ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);if(settled==true)Text(l.translate("ပြီး"),color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)};SettlementMetric(l.translate("ထိုးကြေး"),r.calculation.totalBet.mmk());SettlementMetric(l.translate("ပေါက်ကြေး"),r.calculation.winningStake.mmk());SettlementMetric(l.translate("လျော်ပေးငွေ"),r.calculation.payout.mmk());SettlementMetric(l.translate("ကော်မရှင်"),r.calculation.commission.mmk());HorizontalDivider();SettlementMetric(l.translate("Net settlement"),r.calculation.netSettlement.mmk(),true);if(settled!=true)Button({vm.settleAgent(agent.id,date,session)},enabled=r.winnerAvailable,modifier=Modifier.fillMaxWidth()){Text(if(r.winnerAvailable)l.translate("ရှင်းတမ်းအတည်ပြုမည်") else l.translate("ပေါက်ဂဏန်းမရှိသေးပါ"))}}}}
             }
         }
     },bottomBar={OperationalBottomBar("settlement",onNavigate,{onNavigate("quick")})})
