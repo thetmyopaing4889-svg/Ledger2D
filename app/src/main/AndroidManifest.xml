@@ -5,7 +5,7 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
-        android:icon="@drawable/ic_launcher_foreground"
+        android:icon="@mipmap/ic_launcher"
         android:label="Myanmar 2D Agent Ledger"
         android:supportsRtl="true"
         android:theme="@style/Theme.Ledger2D">

@@ -114,10 +114,10 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)}){p->
         Column(Modifier.fillMaxSize().padding(p).padding(horizontal=12.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){Text("Welcome to",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);Text("Myanmar 2D Ledger",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(today.displayDate(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
+            Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){Text(l.text("ကြိုဆိုပါသည်","Welcome to"),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);Text(l.text("မြန်မာ 2D စာရင်း","Myanmar 2D Ledger"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(today.displayDate(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
             HomeWeeklyResults(vm,Modifier.weight(1f))
             Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(44.dp),shape=MaterialTheme.shapes.large,contentPadding=PaddingValues(horizontal=12.dp)){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(6.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)}
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){HomeAction(Icons.Default.Business,"ဒိုင်အသစ်ထည့်ရန်",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.Person,"ထိုးသားအသစ်ထည့်ရန်",onAddCustomer,Modifier.weight(1f))}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){HomeAction(Icons.Default.Business,l.text("ဒိုင်အသစ်ထည့်ရန်","Add agent"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.Person,l.text("ထိုးသားအသစ်ထည့်ရန်","Add customer"),onAddCustomer,Modifier.weight(1f))}
         }
     }
 }
@@ -139,7 +139,7 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
     }
     Card(modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.extraLarge){
         Column(Modifier.padding(horizontal=8.dp,vertical=6.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("ယခုအပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));Text("မနက် / ညနေ",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Icon(Icons.Default.AutoGraph,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp))}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(LocalLanguage.current.text("ယခုအပတ် ထွက်ဂဏန်းများ","This week's results"),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));Text(LocalLanguage.current.text("မနက် / ညနေ","Morning / Evening"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Icon(Icons.Default.AutoGraph,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp))}
             (0L..4L).forEach { offset ->
                 val date=monday.plusDays(offset)
                 Row(Modifier.fillMaxWidth().weight(1f),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
@@ -646,10 +646,10 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
 }
 @Composable fun SettingsScreen(onBack:()->Unit){
     val language=LocalLanguage.current
-    AppScaffold("ဆက်တင်များ",onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        Text("ဘာသာစကား",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Text(language.text("ဘာသာစကား","Language"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         OutlinedCard{Column{ListItem(headlineContent={Text("မြန်မာ")},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text("English")},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
-        Text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }}
 }
 @Composable fun SimpleListScreen(title:String,onBack:()->Unit,subtitle:String,rows:List<String>){AppScaffold(title,onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text(subtitle,style=MaterialTheme.typography.headlineSmall)};items(rows){OutlinedCard{Text(it,Modifier.fillMaxWidth().padding(16.dp),style=MaterialTheme.typography.bodyLarge)}}}}}
