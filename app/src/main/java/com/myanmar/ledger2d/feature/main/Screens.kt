@@ -58,7 +58,7 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
             CenterAlignedTopAppBar(
-                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=MaterialTheme.colorScheme.background),
+                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=MaterialTheme.colorScheme.surface.copy(alpha=.96f)),
                 title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
                 navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription="နောက်သို့") } }},
                 actions={action?.invoke(this)}
@@ -114,7 +114,12 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)}){p->
         Column(Modifier.fillMaxSize().padding(p).padding(horizontal=12.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Column(Modifier.padding(horizontal=4.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){Text(l.text("ကြိုဆိုပါသည်","Welcome to"),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);Text(l.text("မြန်မာ 2D စာရင်း","Myanmar 2D Ledger"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(today.displayDate(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
+            Surface(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,tonalElevation=2.dp, color=Color.Transparent){
+                Row(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(AppColors.PrimaryDeep,AppColors.Primary,AppColors.Accent)),MaterialTheme.shapes.large).padding(horizontal=16.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
+                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(l.text("ကြိုဆိုပါသည်","Welcome to"),style=MaterialTheme.typography.labelMedium,color=Color.White.copy(alpha=.82f),fontWeight=FontWeight.Bold);Text(l.text("မြန်မာ 2D စာရင်း","Myanmar 2D Ledger"),style=MaterialTheme.typography.titleLarge,color=Color.White,fontWeight=FontWeight.Black);Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.CalendarMonth,null,tint=Color.White.copy(alpha=.82f),modifier=Modifier.size(14.dp));Spacer(Modifier.width(4.dp));Text(today.displayDate(),style=MaterialTheme.typography.labelSmall,color=Color.White.copy(alpha=.82f))}}
+                    Surface(color=Color.White.copy(alpha=.16f),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.AutoGraph,null,tint=Color.White,modifier=Modifier.padding(10.dp).size(24.dp))}
+                }
+            }
             HomeWeeklyResults(vm,Modifier.weight(1f))
             Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(44.dp),shape=MaterialTheme.shapes.large,contentPadding=PaddingValues(horizontal=12.dp)){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(6.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)}
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){HomeAction(Icons.Default.Business,l.text("ဒိုင်အသစ်ထည့်ရန်","Add agent"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.Person,l.text("ထိုးသားအသစ်ထည့်ရန်","Add customer"),onAddCustomer,Modifier.weight(1f))}
@@ -137,7 +142,7 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
             (date to session) to (stake to commission)
         }}.toMap()
     }
-    Card(modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.extraLarge){
+    Card(modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),shape=MaterialTheme.shapes.extraLarge,elevation=CardDefaults.cardElevation(defaultElevation=AppDimens.cardElevation)){
         Column(Modifier.padding(horizontal=8.dp,vertical=6.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(LocalLanguage.current.text("ယခုအပတ် ထွက်ဂဏန်းများ","This week's results"),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));Text(LocalLanguage.current.text("မနက် / ညနေ","Morning / Evening"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Icon(Icons.Default.AutoGraph,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp))}
             (0L..4L).forEach { offset ->
@@ -158,7 +163,7 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
     }
 }
 @Composable private fun HomeBottomBar(onNavigate:(String)->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit,onSettings:()->Unit){
-    NavigationBar(containerColor=MaterialTheme.colorScheme.surface){
+    NavigationBar(containerColor=MaterialTheme.colorScheme.surface,tonalElevation=4.dp){
         NavigationBarItem(true,{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("Home",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("Agent",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("Customer",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
@@ -168,7 +173,7 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier){Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
-@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier,shape=MaterialTheme.shapes.large){Column(Modifier.fillMaxWidth().padding(vertical=8.dp,horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(4.dp)){Icon(icon,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(20.dp));Text(title,style=MaterialTheme.typography.labelMedium,textAlign=TextAlign.Center,maxLines=1)}}}
+@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier,shape=MaterialTheme.shapes.large,colors=CardDefaults.elevatedCardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)){Column(Modifier.fillMaxWidth().padding(vertical=9.dp,horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)){Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Icon(icon,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.padding(8.dp).size(20.dp))};Text(title,style=MaterialTheme.typography.labelMedium,textAlign=TextAlign.Center,maxLines=1)}}}
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); var agentId by rememberSaveable{mutableStateOf(0L)}; var customerId by rememberSaveable{mutableStateOf(0L)}; val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue=emptyList())
     LaunchedEffect(agentId){customerId=0L}

@@ -53,7 +53,7 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
             item { Text(l.translate("Agent feature များ"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(l.translate("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(agentActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(9.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary) })
                 }
             }
         }
@@ -88,7 +88,7 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
             item { Text(l.translate("Customer feature များ"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(l.translate("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(customerActions) { action ->
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium) { Icon(action.icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(9.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary) })
                 }
             }
         }

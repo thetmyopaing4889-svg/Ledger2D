@@ -46,7 +46,11 @@ class LanguageState(context: Context) {
         "ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ" to "No result is available after the draw yet",
         "အချက်အလက် မရှိသေးပါ" to "No information yet", "စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။" to "Cannot submit. Check the details and limits.",
         "စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။" to "Cannot edit. Check the details and limits.",
-        "အတည်ပြုထားသော စာရင်းမရှိသေးပါ" to "No confirmed entries yet"
+        "အတည်ပြုထားသော စာရင်းမရှိသေးပါ" to "No confirmed entries yet", "ဒိုင်အလိုက် ကန့်သတ်ပမာဏ" to "Agent limits",
+        "အထူးကန့်သတ်ချက်ဖျက်မည်လား" to "Delete special limit?", "ကို ဒီဒိုင်အောက်ရှိ ထိုးသားအားလုံးအတွက် ဖျက်မည်လား?" to "for all customers under this agent?",
+        "မလုပ်ပါ" to "No", "ဒီဒိုင်အောက်က ထိုးသားအားလုံး၏ digit စုစုပေါင်း limit" to "Total digit limit for all customers under this agent",
+        "အကွက်အားလုံးအတွက် limit" to "Limit for all digits", "ရွေးချယ်ထားသော digit အတွက် limit" to "Limit for selected digit",
+        "ဂဏန်း" to "Digit", "ပမာဏ" to "Amount", "ဖယ်ရှားမည်" to "Remove"
     )
 }
 val LocalLanguage = staticCompositionLocalOf<LanguageState> { error("LanguageState not provided") }
