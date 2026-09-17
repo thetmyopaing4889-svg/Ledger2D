@@ -22,6 +22,9 @@ class BetParser {
                 if (index == segments.lastIndex) continue
                 return ParseResult.Error("Each entry must contain a digit and amount")
             }
+            if (Regex("\\d+\\s+-\\s*\\d+").containsMatchIn(line)) {
+                return ParseResult.Error("Amount must be a positive MMK integer")
+            }
             // A whitespace-delimited decimal-looking amount is never valid MMK.
             // Keep dot-separated digit syntax such as `10.13.14 100` intact.
             if (Regex("\\d+\\s+\\d+\\.\\d+").containsMatchIn(line)) {
