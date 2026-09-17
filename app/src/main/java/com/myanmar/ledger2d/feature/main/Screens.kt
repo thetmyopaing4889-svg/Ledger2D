@@ -294,7 +294,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                         Column { Text("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း", fontWeight = FontWeight.SemiBold); Text("အချိန်လွန်စာရင်းသွင်းခြင်း", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 10.13.14 100" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
+                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 10.13.14 100, 25 100" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100, 456 100" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
                 item { Text("အမြန်ထည့်သွင်းပုံများ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
                 item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။") else PreviewCard(visiblePreview ?: BetPreview()) }
                 item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }

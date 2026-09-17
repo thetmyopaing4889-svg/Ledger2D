@@ -13,7 +13,7 @@ class BetParser {
     fun parse(raw: String): ParseResult {
         if (raw.isBlank()) return ParseResult.Error("Input is required")
         val expanded = mutableListOf<ExpandedBet>()
-        for (line in raw.lines().map(String::trim).filter(String::isNotEmpty)) {
+        for (line in raw.split(Regex("[,\\n]")).map(String::trim).filter(String::isNotEmpty)) {
             // A whitespace-delimited decimal-looking amount is never valid MMK.
             // Keep dot-separated digit syntax such as `10.13.14 100` intact.
             if (Regex("\\d+\\s+\\d+\\.\\d+").containsMatchIn(line)) {
@@ -55,7 +55,20 @@ class BetExpansionEngine(private val parser: BetParser = BetParser()) {
     private val astrology = listOf("07","70","18","81","24","42","35","53","69","96")
     private val doubles = (0..9).map { "$it$it" }
     private val siblings = listOf("01","10","12","21","23","32","34","43","45","54","56","65","67","76","78","87","89","98","09","90")
-    fun expand(raw: String, format: QuickFormat = QuickFormat.MANUAL): ParseResult = when (format) {
+    fun expand(raw: String, format: QuickFormat = QuickFormat.MANUAL): ParseResult {
+        if (format == QuickFormat.MANUAL) return parser.parse(raw)
+        val parts = raw.split(Regex("[,\\n]")).map(String::trim).filter(String::isNotEmpty)
+        if (parts.isEmpty()) return ParseResult.Error("Input is required")
+        val expanded = mutableListOf<ExpandedBet>()
+        for (part in parts) {
+            when (val result = expandSingle(part, format)) {
+                is ParseResult.Error -> return result
+                is ParseResult.Success -> expanded += result.bets
+            }
+        }
+        return parser.aggregate(expanded)
+    }
+    private fun expandSingle(raw: String, format: QuickFormat): ParseResult = when (format) {
         QuickFormat.MANUAL -> parser.parse(raw)
         QuickFormat.POWER -> fixed(raw, power)
         QuickFormat.ASTROLOGY -> fixed(raw, astrology)

@@ -17,6 +17,8 @@ class BetParserTest {
     @Test fun reverse_multiple(){val r=success("10.20.30R100");assertEquals(setOf("10","01","20","02","30","03"),r.bets.map{it.digit}.toSet());assertEquals(600,r.total)}
     @Test fun duplicate_reverse_is_aggregated(){val r=success("11R100");assertEquals(listOf("11"),r.bets.map{it.digit});assertEquals(200,r.total)}
     @Test fun multiple_lines_are_supported(){assertEquals(300,success("10.100\n11 200").total)}
+    @Test fun comma_separated_entries_are_supported(){val r=success("34 100, 56 100");assertEquals(200,r.total);assertEquals(mapOf("34" to 100L,"56" to 100L),r.bets.associate{it.digit to it.amount})}
+    @Test fun comma_separated_combination_entries_are_supported(){val r=BetExpansionEngine().expand("345 100, 456 100",QuickFormat.COMBINATION) as ParseResult.Success;assertEquals(1200,r.total)}
     @Test fun rejects_invalid_digit(){assertTrue(parser.parse("1 100") is ParseResult.Error)}
     @Test fun valid_digit_is_ascii_00_to_99(){assertTrue(BetParser.validDigit("00"));assertTrue(BetParser.validDigit("99"));assertFalse(BetParser.validDigit("၀၁"));assertFalse(BetParser.validDigit("١٢"))}
     @Test fun rejects_non_positive_amount(){assertTrue(parser.parse("10 0") is ParseResult.Error)}
