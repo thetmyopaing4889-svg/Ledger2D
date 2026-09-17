@@ -50,7 +50,12 @@ class LanguageState(context: Context) {
         "အထူးကန့်သတ်ချက်ဖျက်မည်လား" to "Delete special limit?", "ကို ဒီဒိုင်အောက်ရှိ ထိုးသားအားလုံးအတွက် ဖျက်မည်လား?" to "for all customers under this agent?",
         "မလုပ်ပါ" to "No", "ဒီဒိုင်အောက်က ထိုးသားအားလုံး၏ digit စုစုပေါင်း limit" to "Total digit limit for all customers under this agent",
         "အကွက်အားလုံးအတွက် limit" to "Limit for all digits", "ရွေးချယ်ထားသော digit အတွက် limit" to "Limit for selected digit",
-        "ဂဏန်း" to "Digit", "ပမာဏ" to "Amount", "ဖယ်ရှားမည်" to "Remove"
+        "ဂဏန်း" to "Digit", "ပမာဏ" to "Amount", "ဖယ်ရှားမည်" to "Remove",
+        "ထည့်သွင်းရန် လိုအပ်ပါသည်" to "Input is required", "ငွေပမာဏကို အပေါင်းကိန်းပြည့်ဖြင့် ထည့်ပါ" to "Enter a positive whole-number amount",
+        "ဂဏန်းကို 00 မှ 99 အတွင်း ထည့်ပါ" to "Enter a two-digit number from 00 to 99", "ဂဏန်းနှင့် ငွေပမာဏ ထည့်ပါ" to "Enter a digit and amount",
+        "ပိတ်ရက်ဖြစ်သောကြောင့် စာရင်းသွင်း၍ မရပါ" to "Cannot submit on a closed day",
+        "Each entry must contain a digit and amount" to "Each entry must contain a digit and amount",
+        "Each entry must contain a valid format" to "Each entry must contain a valid format"
     )
 }
 val LocalLanguage = staticCompositionLocalOf<LanguageState> { error("LanguageState not provided") }

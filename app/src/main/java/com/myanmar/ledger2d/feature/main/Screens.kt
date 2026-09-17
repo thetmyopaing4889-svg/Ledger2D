@@ -316,7 +316,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                 }
             }
             when(val parsed=preview.parse){
-                is ParseResult.Error -> Text(previewError(parsed.message),color=MaterialTheme.colorScheme.error)
+                is ParseResult.Error -> Text(LocalLanguage.current.translate(previewError(parsed.message)),color=MaterialTheme.colorScheme.error)
                 is ParseResult.Success -> {
                     if(preview.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     preview.validation?.rows?.let { rows ->

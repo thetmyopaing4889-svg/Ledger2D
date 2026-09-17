@@ -13,7 +13,15 @@ class BetParser {
     fun parse(raw: String): ParseResult {
         if (raw.isBlank()) return ParseResult.Error("Input is required")
         val expanded = mutableListOf<ExpandedBet>()
-        for (line in raw.split(Regex("[,\\n]")).map(String::trim).filter(String::isNotEmpty)) {
+        val segments = raw.split(Regex("[,\\n]"), limit = Int.MAX_VALUE).map(String::trim)
+        if (segments.firstOrNull().orEmpty().isEmpty()) return ParseResult.Error("Enter digit and amount")
+        for ((index, line) in segments.withIndex()) {
+            // A final comma/newline is harmless, but an empty segment between entries
+            // usually means a mistyped separator and must be reported.
+            if (line.isEmpty()) {
+                if (index == segments.lastIndex) continue
+                return ParseResult.Error("Each entry must contain a digit and amount")
+            }
             // A whitespace-delimited decimal-looking amount is never valid MMK.
             // Keep dot-separated digit syntax such as `10.13.14 100` intact.
             if (Regex("\\d+\\s+\\d+\\.\\d+").containsMatchIn(line)) {
@@ -57,10 +65,14 @@ class BetExpansionEngine(private val parser: BetParser = BetParser()) {
     private val siblings = listOf("01","10","12","21","23","32","34","43","45","54","56","65","67","76","78","87","89","98","09","90")
     fun expand(raw: String, format: QuickFormat = QuickFormat.MANUAL): ParseResult {
         if (format == QuickFormat.MANUAL) return parser.parse(raw)
-        val parts = raw.split(Regex("[,\\n]")).map(String::trim).filter(String::isNotEmpty)
+        val parts = raw.split(Regex("[,\\n]"), limit = Int.MAX_VALUE).map(String::trim)
         if (parts.isEmpty()) return ParseResult.Error("Input is required")
         val expanded = mutableListOf<ExpandedBet>()
-        for (part in parts) {
+        for ((index, part) in parts.withIndex()) {
+            if (part.isEmpty()) {
+                if (index == parts.lastIndex) continue
+                return ParseResult.Error("Each entry must contain a valid format")
+            }
             when (val result = expandSingle(part, format)) {
                 is ParseResult.Error -> return result
                 is ParseResult.Success -> expanded += result.bets

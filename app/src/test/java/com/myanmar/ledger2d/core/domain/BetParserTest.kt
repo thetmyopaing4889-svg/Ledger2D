@@ -18,6 +18,13 @@ class BetParserTest {
     @Test fun duplicate_reverse_is_aggregated(){val r=success("11R100");assertEquals(listOf("11"),r.bets.map{it.digit});assertEquals(200,r.total)}
     @Test fun multiple_lines_are_supported(){assertEquals(300,success("10.100\n11 200").total)}
     @Test fun comma_separated_entries_are_supported(){val r=success("34 100, 56 100");assertEquals(200,r.total);assertEquals(mapOf("34" to 100L,"56" to 100L),r.bets.associate{it.digit to it.amount})}
+    @Test fun comma_entries_allow_extra_spaces_and_trailing_comma(){assertEquals(200,success("  34   100  ,   56  100, ").total)}
+    @Test fun comma_entries_reject_empty_middle_segment(){assertTrue(parser.parse("34 100,,56 100") is ParseResult.Error)}
+    @Test fun comma_entries_reject_leading_empty_segment(){assertTrue(parser.parse(",34 100") is ParseResult.Error)}
+    @Test fun comma_entries_reject_missing_amount(){assertTrue(parser.parse("34 100,56") is ParseResult.Error)}
+    @Test fun comma_entries_reject_decimal_amount(){assertTrue(parser.parse("34 100,56 10.5") is ParseResult.Error)}
+    @Test fun comma_entries_reject_negative_amount(){assertTrue(parser.parse("34 100,56 -10") is ParseResult.Error)}
+    @Test fun comma_entries_aggregate_duplicate_digits(){assertEquals(200,success("34 100,34 100").total)}
     @Test fun comma_separated_combination_entries_are_supported(){val r=BetExpansionEngine().expand("345 100, 456 100",QuickFormat.COMBINATION) as ParseResult.Success;assertEquals(1200,r.total)}
     @Test fun rejects_invalid_digit(){assertTrue(parser.parse("1 100") is ParseResult.Error)}
     @Test fun valid_digit_is_ascii_00_to_99(){assertTrue(BetParser.validDigit("00"));assertTrue(BetParser.validDigit("99"));assertFalse(BetParser.validDigit("၀၁"));assertFalse(BetParser.validDigit("١٢"))}
