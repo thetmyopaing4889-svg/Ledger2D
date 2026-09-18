@@ -30,4 +30,44 @@ class BetParserTest {
     @Test fun valid_digit_is_ascii_00_to_99(){assertTrue(BetParser.validDigit("00"));assertTrue(BetParser.validDigit("99"));assertFalse(BetParser.validDigit("၀၁"));assertFalse(BetParser.validDigit("١٢"))}
     @Test fun rejects_non_positive_amount(){assertTrue(parser.parse("10 0") is ParseResult.Error)}
     @Test fun rejects_decimal_money(){assertTrue(parser.parse("10 10.5") is ParseResult.Error)}
+
+    @Test fun smart_mixed_message_detects_inline_formats() {
+        val r = BetExpansionEngine().smartExpand("23R1000,123အခေပူး1000,11 500,456အခွေ1000")
+        assertEquals(4, r.lines.size)
+        assertEquals(QuickFormat.MANUAL, r.lines[0].format)
+        assertEquals(QuickFormat.COMBINATION_DOUBLES, r.lines[1].format)
+        assertEquals(QuickFormat.COMBINATION, r.lines[3].format)
+        assertTrue(r.lines.all { it.result is ParseResult.Success })
+        assertEquals(17500, r.total)
+    }
+
+    @Test fun smart_combination_doubles_accepts_all_separators() {
+        val engine = BetExpansionEngine()
+        listOf("123.1000", "123/1000", "123r1000", "123R1000", "123 1000").forEach { raw ->
+            val r = engine.smartExpand(raw, QuickFormat.COMBINATION_DOUBLES)
+            assertEquals(9000, r.total)
+            assertEquals(9, r.bets.size)
+        }
+    }
+
+    @Test fun smart_round_accepts_all_separators() {
+        val engine = BetExpansionEngine()
+        listOf("9.1000", "9/1000", "9r1000", "9R1000", "9 1000").forEach { raw ->
+            val r = engine.smartExpand(raw, QuickFormat.ROUND)
+            assertEquals(19000, r.total)
+            assertEquals(19, r.bets.size)
+        }
+    }
+
+    @Test fun smart_reverse_keeps_r_as_reverse_operator() {
+        val r = BetExpansionEngine().smartExpand("12.13.14R1000")
+        assertEquals(6000, r.total)
+        assertEquals(setOf("12", "21", "13", "31", "14", "41"), r.bets.map { it.digit }.toSet())
+    }
+
+    @Test fun smart_burmese_comma_supports_multiple_lines() {
+        val r = BetExpansionEngine().smartExpand("11 500၊ 22 500")
+        assertEquals(1000, r.total)
+        assertEquals(2, r.lines.size)
+    }
 }
