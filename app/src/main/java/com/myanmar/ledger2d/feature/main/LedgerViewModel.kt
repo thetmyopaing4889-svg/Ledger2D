@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 
 sealed interface SubmitState { data object Idle:SubmitState; data object Working:SubmitState; data class Success(val id:Long):SubmitState; data class Error(val message:String):SubmitState }
-data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်"),val validation:ValidationResult?=null,val loading:Boolean=false){ val canConfirm get()=parse is ParseResult.Success&&validation?.canConfirm==true&&!loading }
+data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်"),val validation:ValidationResult?=null,val loading:Boolean=false,val issues:List<String> = emptyList()){ val canConfirm get()=parse is ParseResult.Success&&validation?.canConfirm==true&&!loading }
 data class DrawReport(val calculation:DrawCalculation, val winningDigit:String?, val winnerAvailable:Boolean, val after:Boolean)
 data class AgentCustomerReportRow(val customer:CustomerEntity, val calculation:DrawCalculation)
 data class ScopeSummary(val id:Long, val name:String, val totalBet:Long, val winningStake:Long, val payout:Long, val profitLoss:Long, val commission:Long)
@@ -30,6 +30,45 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         val smart = engine.smartExpand(raw, format)
         val error = smart.lines.mapNotNull { it.result as? ParseResult.Error }.firstOrNull()
         return error ?: ParseResult.Success(smart.bets, smart.total)
+    }
+
+    private suspend fun prepareInput(
+        raw: String,
+        format: QuickFormat,
+        agentId: Long,
+        customerId: Long,
+        date: LocalDate,
+        session: DrawSession,
+        editing: BetEntryWithLines? = null,
+    ): Pair<ParseResult, List<String>> {
+        val smart = engine.smartExpand(raw, format)
+        val current = container.bets.getAgentTotals(agentId, date, session).toMutableMap()
+        val sameDraw = editing != null && editing.entry.drawDate == date && editing.entry.drawSession == session
+        if (sameDraw) editing!!.lines.forEach { current[it.digit] = (current[it.digit] ?: 0L) - it.amount }
+        val limits = effectiveLimits(agentId, customerId)
+        val closed = container.closedNumbers.getDigits(agentId)
+        val accepted = mutableListOf<ExpandedBet>()
+        val issues = mutableListOf<String>()
+        for (line in smart.lines) {
+            val result = line.result
+            if (result is ParseResult.Error) {
+                issues += "${line.source}: ${result.message}"
+                continue
+            }
+            val bets = (result as ParseResult.Success).bets
+            val check = validator.validate(bets, current, limits, closed)
+            if (check.canConfirm) {
+                accepted += bets
+                bets.forEach { current[it.digit] = (current[it.digit] ?: 0L) + it.amount }
+            } else {
+                val bad = check.rows.filter { it.isClosed || it.exceedsLimit }.joinToString(", ") { row ->
+                    "${row.digit} ${if (row.isClosed) "ပိတ်" else "ကန့်သတ်ချက်ကျော်"}"
+                }
+                issues += "${line.source}: $bad"
+            }
+        }
+        return if (accepted.isEmpty()) ParseResult.Error(issues.firstOrNull() ?: "စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်") to issues
+        else engine.run { BetParser().aggregate(accepted) } to issues
     }
     private suspend fun effectiveLimits(agentId:Long,customerId:Long):EffectiveLimits {
         val agent=container.agentLimits.get(agentId)
@@ -63,7 +102,22 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun removeAgentSpecialLimit(value:AgentSpecialLimitEntity){ viewModelScope.launch { container.agentLimits.deleteSpecial(value);changed() } }
     fun addClosedNumber(agentId:Long,digit:String){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { container.closedNumbers.add(agentId,digit);changed() } }
     fun removeClosedNumber(value:ClosedNumberEntity){ viewModelScope.launch { container.closedNumbers.remove(value);changed() } }
-    fun refreshPreview(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,raw:String,format:QuickFormat,editingEntryId:Long=0L,allowBackdated:Boolean=false){ val parsed=expandInput(raw,format); _preview.value=BetPreview(parsed,loading=parsed is ParseResult.Success); if(parsed !is ParseResult.Success)return; viewModelScope.launch { val existing=if(editingEntryId>0) container.bets.getEntry(editingEntryId) else null; if(!DrawSchedule.isWeekday(date)){_preview.value=BetPreview(ParseResult.Error("စနေ၊ တနင်္ဂနွေတွင် 2D စာရင်းမလုပ်ပါ"));return@launch}; if(!allowBackdated&&date==LocalDate.now()&&!DrawSchedule.isSessionOpenForToday(session,java.time.LocalDateTime.now())&&existing==null){_preview.value=BetPreview(ParseResult.Error("ဒီ session အတွက် စာရင်းလက်ခံချိန် ကျော်လွန်သွားပါပြီ"));return@launch}; if(container.closedDays.isClosed(date)){_preview.value=BetPreview(ParseResult.Error("ဒီရက်သည် ပိတ်ရက်ဖြစ်သောကြောင့် စာရင်းသွင်း၍ မရပါ"));return@launch}; val sameDraw=existing?.entry?.customerId==customerId&&existing.entry.drawDate==date&&existing.entry.drawSession==session; if(!allowBackdated&&container.winners.get(date,session)!=null&&!sameDraw){_preview.value=BetPreview(ParseResult.Error("ဒီရက်နှင့် အချိန်အတွက် ထီပေါက်စဉ် ထည့်ပြီးပါပြီ"));return@launch}; val current=container.bets.getAgentTotals(agentId,date,session).toMutableMap(); if(sameDraw){existing!!.lines.forEach{current[it.digit]=(current[it.digit]?:0L)-it.amount;if(current[it.digit]==0L)current.remove(it.digit)}}; val limits=effectiveLimits(agentId,customerId); val closed=container.closedNumbers.getDigits(agentId); _preview.value=BetPreview(parsed,validator.validate(parsed.bets,current,limits,closed)) } }
+    fun refreshPreview(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,raw:String,format:QuickFormat,editingEntryId:Long=0L,allowBackdated:Boolean=false){
+        viewModelScope.launch {
+            val existing=if(editingEntryId>0) container.bets.getEntry(editingEntryId) else null
+            if(!DrawSchedule.isWeekday(date)){_preview.value=BetPreview(ParseResult.Error("စနေ၊ တနင်္ဂနွေတွင် 2D စာရင်းမလုပ်ပါ"));return@launch}
+            if(!allowBackdated&&date==LocalDate.now()&&!DrawSchedule.isSessionOpenForToday(session,java.time.LocalDateTime.now())&&existing==null){_preview.value=BetPreview(ParseResult.Error("ဒီ session အတွက် စာရင်းလက်ခံချိန် ကျော်လွန်သွားပါပြီ"));return@launch}
+            if(container.closedDays.isClosed(date)){_preview.value=BetPreview(ParseResult.Error("ဒီရက်သည် ပိတ်ရက်ဖြစ်သောကြောင့် စာရင်းသွင်း၍ မရပါ"));return@launch}
+            val sameDraw=existing?.entry?.customerId==customerId&&existing.entry.drawDate==date&&existing.entry.drawSession==session
+            if(!allowBackdated&&container.winners.get(date,session)!=null&&!sameDraw){_preview.value=BetPreview(ParseResult.Error("ဒီရက်နှင့် အချိန်အတွက် ထီပေါက်စဉ် ထည့်ပြီးပါပြီ"));return@launch}
+            val (parsed,issues)=prepareInput(raw,format,agentId,customerId,date,session,existing?.takeIf { sameDraw })
+            if(parsed is ParseResult.Error){_preview.value=BetPreview(parsed,issues=issues);return@launch}
+            val current=container.bets.getAgentTotals(agentId,date,session).toMutableMap()
+            if(sameDraw) existing!!.lines.forEach{current[it.digit]=(current[it.digit]?:0L)-it.amount;if(current[it.digit]==0L)current.remove(it.digit)}
+            val limits=effectiveLimits(agentId,customerId)
+            _preview.value=BetPreview(parsed,validator.validate((parsed as ParseResult.Success).bets,current,limits,container.closedNumbers.getDigits(agentId)),issues=issues)
+        }
+    }
     private suspend fun canSubmit(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,bets:List<ExpandedBet>,editing:BetEntryWithLines?=null,allowBackdated:Boolean=false):Boolean {
         val customer=container.customers.get(customerId) ?: return false
         if(customer.agentId!=agentId || (editing != null && editing.entry.customerId != customerId)) return false
@@ -76,9 +130,9 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         if(sameDraw) editing!!.lines.forEach { current[it.digit]=(current[it.digit]?:0L)-it.amount; if(current[it.digit]==0L) current.remove(it.digit) }
         return validator.validate(bets,current,effectiveLimits(agentId,customerId),container.closedNumbers.getDigits(agentId)).canConfirm
     }
-    fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL,allowBackdated:Boolean=false){ val parsed=expandInput(source,format) as? ParseResult.Success?:return; _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { require(canSubmit(customerId,agentId,date,session,parsed.bets,allowBackdated=allowBackdated)); container.bets.confirm(customerId,agentId,date,session,source,format,parsed.bets) }.onSuccess { container.audit.record("BET",it,"CREATE","$date/${session.name}"); changed(); _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
+    fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL,allowBackdated:Boolean=false){ _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { val prepared=prepareInput(source,format,agentId,customerId,date,session); val parsed=prepared.first as? ParseResult.Success ?: error("စာရင်းသွင်းရန် အဆင်ပြေသောစာရင်းမရှိပါ"); require(canSubmit(customerId,agentId,date,session,parsed.bets,allowBackdated=allowBackdated)); container.bets.confirm(customerId,agentId,date,session,source,format,parsed.bets) }.onSuccess { container.audit.record("BET",it,"CREATE","$date/${session.name}"); changed(); _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
     fun deleteBet(value:BetEntryEntity){ viewModelScope.launch { runCatching { container.bets.delete(value) }.onSuccess { changed() } } }
-    fun editConfirm(entry:BetEntryWithLines,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL){ val parsed=expandInput(source,format) as? ParseResult.Success?:return; _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { require(canSubmit(entry.entry.customerId,entry.entry.agentId,date,session,parsed.bets,entry)); container.bets.edit(entry.entry.copy(drawDate=date,drawSession=session,sourceText=source),parsed.bets,format) }.onSuccess { changed(); _submit.value=SubmitState.Success(entry.entry.id) }.onFailure { _submit.value=SubmitState.Error("စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
+    fun editConfirm(entry:BetEntryWithLines,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL){ _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { val prepared=prepareInput(source,format,entry.entry.agentId,entry.entry.customerId,date,session,entry); val parsed=prepared.first as? ParseResult.Success ?: error("စာရင်းပြင်ရန် အဆင်ပြေသောစာရင်းမရှိပါ"); require(canSubmit(entry.entry.customerId,entry.entry.agentId,date,session,parsed.bets,entry)); container.bets.edit(entry.entry.copy(drawDate=date,drawSession=session,sourceText=source),parsed.bets,format) }.onSuccess { changed(); _submit.value=SubmitState.Success(entry.entry.id) }.onFailure { _submit.value=SubmitState.Error("စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
     fun resetSubmit(){_submit.value=SubmitState.Idle}
     fun saveWinner(date:LocalDate,session:DrawSession,digit:String,onDone:()->Unit){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { if(container.winners.get(date,session)==null){val id=container.winners.save(date,session,digit);container.audit.record("WINNER",id,"CREATE","$date/${session.name}/$digit");changed();onDone()} } }
     fun updateWinner(existing:WinningNumberEntity,digit:String,onDone:()->Unit){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { runCatching { container.winners.save(existing.date,existing.session,digit) }.onSuccess { changed();onDone() } } }

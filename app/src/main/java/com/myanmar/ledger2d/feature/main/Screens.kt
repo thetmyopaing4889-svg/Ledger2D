@@ -328,6 +328,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                 is ParseResult.Error -> Text(LocalLanguage.current.translate(previewError(parsed.message)),color=MaterialTheme.colorScheme.error)
                 is ParseResult.Success -> {
                     if(preview.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if(preview.issues.isNotEmpty()) Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){Text("ချန်ထားသောစာရင်း",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer);preview.issues.forEach{Text("• $it",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onErrorContainer)}}}
                     preview.validation?.rows?.let { rows ->
                         FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalArrangement=Arrangement.spacedBy(6.dp),maxItemsInEachRow=2){
                             rows.forEach{r->

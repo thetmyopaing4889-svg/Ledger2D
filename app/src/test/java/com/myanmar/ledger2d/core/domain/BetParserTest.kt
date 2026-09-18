@@ -83,4 +83,13 @@ class BetParserTest {
         assertEquals(1, r.lines.size)
         assertEquals(500, r.total)
     }
+
+    @Test fun smart_keeps_valid_lines_and_marks_later_malformed_lines() {
+        val r = BetExpansionEngine().smartExpand("12 1000,234")
+        assertEquals(2, r.lines.size)
+        assertTrue(r.lines[0].result is ParseResult.Success)
+        assertTrue(r.lines[1].result is ParseResult.Error)
+        assertEquals(1000, r.total)
+        assertTrue(r.hasErrors)
+    }
 }
