@@ -121,7 +121,7 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
                 }
             }
             HomeWeeklyResults(vm,Modifier.weight(1f))
-            Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(44.dp),shape=MaterialTheme.shapes.large,contentPadding=PaddingValues(horizontal=12.dp)){Icon(Icons.Default.AddCircle,null);Spacer(Modifier.width(6.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)}
+            Button(onClick=onQuickEntry,enabled=!closed,modifier=Modifier.fillMaxWidth().height(58.dp),shape=MaterialTheme.shapes.large,contentPadding=PaddingValues(horizontal=16.dp)){Icon(Icons.Default.AddCircle,null,modifier=Modifier.size(26.dp));Spacer(Modifier.width(8.dp));Text(l.translate("အမြန်စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)}
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){HomeAction(Icons.Default.Business,l.text("ဒိုင်အသစ်ထည့်ရန်","Add agent"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.Person,l.text("ထိုးသားအသစ်ထည့်ရန်","Add customer"),onAddCustomer,Modifier.weight(1f))}
         }
     }
@@ -554,16 +554,34 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
 }
 
 @Composable fun ReportCard(c: DrawCalculation, winner: String?) {
-    Surface(shape=MaterialTheme.shapes.medium, color=MaterialTheme.colorScheme.surfaceVariant) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BilingualText(if (winner == null) "ဂဏန်းမထွက်ခင်\nBefore" else "ပေါက်ဂဏန်း $winner", primaryStyle=MaterialTheme.typography.titleLarge)
-            Text("ထိုးကြေးစုစုပေါင်း  ${c.totalBet.mmk()}")
-            Text("ပေါက်ကြေး  ${c.winningStake.mmk()}")
-            Text("လျော်ပေးငွေ  ${c.payout.mmk()}")
-            Text("ကော်မရှင်  ${c.commission.mmk()}")
-            Text("ရှုံး/မြတ်  ${c.profitLoss.mmk()}", fontWeight = FontWeight.Bold)
-            Text("Net ရှင်းတမ်း  ${c.netSettlement.mmk()}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+    val netColor = if (c.netSettlement < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val profitColor = if (c.profitLoss < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    ElevatedCard(shape = MaterialTheme.shapes.large) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column { Text("ဘဏ္ဍာရေးရှင်းတမ်း", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black); Text(if (winner == null) "ဂဏန်းမထွက်ခင် • Before" else "ပေါက်ဂဏန်း $winner", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+            HorizontalDivider()
+            Text("အခြေခံစာရင်း", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            FinancialMetric("စုစုပေါင်းထိုးကြေး", c.totalBet.mmk())
+            FinancialMetric("ပေါက်ကြေး", c.winningStake.mmk())
+            FinancialMetric("လျော်ပေးငွေ", c.payout.mmk())
+            HorizontalDivider()
+            Text("ရှင်းတမ်းရလဒ်", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            FinancialMetric("ကော်မရှင်", c.commission.mmk())
+            FinancialMetric("ရှုံး / မြတ်", c.profitLoss.mmk(), valueColor = profitColor, emphasized = true)
+            Surface(Modifier.fillMaxWidth(), color = netColor.copy(alpha = .10f), shape = MaterialTheme.shapes.medium) {
+                FinancialMetric("Net ရှင်းတမ်း", c.netSettlement.mmk(), valueColor = netColor, emphasized = true, modifier = Modifier.padding(12.dp))
+            }
         }
+    }
+}
+
+@Composable private fun FinancialMetric(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface, emphasized: Boolean = false, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (emphasized) FontWeight.Bold else FontWeight.Normal)
+        Text(value, color = valueColor, fontWeight = if (emphasized) FontWeight.Black else FontWeight.SemiBold, textAlign = TextAlign.End)
     }
 }
 
@@ -630,6 +648,22 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
 @Composable fun BetHistoryScreen(vm: LedgerViewModel, customerId: Long, onEdit: (BetEntryWithLines) -> Unit, onBack: () -> Unit) {
     val entries by vm.customerEntries(customerId).collectAsState(initial = emptyList())
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
+    var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
+    expandedEntry?.let { record ->
+        AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Input: ${record.entry.sourceText}", fontWeight = FontWeight.Bold)
+                Text("Format: ${record.entry.inputFormat}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                HorizontalDivider()
+                LazyColumn(Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(record.lines, key = { it.id }) { line -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(line.digit, fontWeight = FontWeight.Bold); Text(line.amount.mmk()) } }
+                }
+                HorizontalDivider()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", fontWeight = FontWeight.Bold); Text(record.lines.sumOf { it.amount }.mmk(), fontWeight = FontWeight.Black) }
+                Text("${record.lines.size} entries", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        })
+    }
     pendingDelete?.let { entry -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("စာရင်းဖျက်မည်လား")}, text={Text("ဒီစာရင်းကို အပြီးဖျက်မလား?")}, confirmButton={TextButton(onClick={vm.deleteBet(entry);pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton(onClick={pendingDelete=null}){Text("မလုပ်ပါ")}}) }
     AppScaffold("စာရင်းမှတ်တမ်း", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -639,8 +673,10 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("${record.entry.drawDate} • ${record.entry.drawSession.label}", fontWeight = FontWeight.Bold)
-                            Text(record.entry.sourceText, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်")
+                            Text("Input: ${record.entry.sourceText}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text("Format: ${record.entry.inputFormat}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            Text("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်", fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { expandedEntry = record }, contentPadding = PaddingValues(0.dp)) { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }
                         }
                         Column { TextButton(onClick = { onEdit(record) }) { Text("ပြင်မည်") }; TextButton(onClick = { pendingDelete = record.entry }) { Text("ဖယ်ရှားမည်") } }
                     }

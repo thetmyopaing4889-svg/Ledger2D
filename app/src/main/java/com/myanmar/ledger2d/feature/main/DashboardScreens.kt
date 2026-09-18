@@ -198,9 +198,38 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
 
 @Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) { val revision by vm.revision.collectAsStateWithLifecycle(); val result by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = vm.analysis(customerId, date, session) }; result?.let { analysis -> AnalysisMetric("လက်ရှိအကွက်အရေအတွက်", analysis.distinctDigits.toString()); AnalysisMetric("ထိုးကြေးစုစုပေါင်း", analysis.totalBet.mmk()); AnalysisMetric("ကန့်သတ်ထားသောအကွက်", analysis.limitedDigits.toString()); AnalysisMetric("80%+ သတိပေး", analysis.warningDigits.toString()); AnalysisMetric("90%+ အလွန်နီး", analysis.nearDigits.toString()); AnalysisMetric("100% ပြည့်ပြီး", analysis.fullDigits.toString()); AnalysisMetric("အဆိုးဆုံးလျော်ပေးရနိုင်မှု", analysis.worstCasePayout.mmk()); AnalysisMetric("အဆိုးဆုံး ရှုံး/မြတ်", analysis.worstCaseProfitLoss.mmk()); Text("ထိုးကြေးအများဆုံးအကွက်များ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.highest.forEach { Text("${it.first} • ${it.second.mmk()}") }; Text("ပိတ်ထားသောအကွက်များ: ${analysis.closedDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("ထပ်မလက်ခံသင့်သောအကွက်များ: ${analysis.rejectDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("အကွက်အနိုင်ရ scenario", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.scenarios.filter { it.stake > 0 }.forEach { scenario -> Text("${scenario.digit}: ထိုး ${scenario.stake.mmk()} • လျော် ${scenario.payout.mmk()} • ရှုံး/မြတ် ${scenario.profitLoss.mmk()}") } } }
 
-@Composable private fun CustomerDigitsWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) { val totals by vm.customerTotals(customerId, date, session).collectAsStateWithLifecycle(initialValue = emptyList()); val amounts = totals.associate { it.digit to it.amount }; val revision by vm.revision.collectAsStateWithLifecycle(); val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = vm.analysis(customerId, date, session) }; val scenarios = analysis?.scenarios?.associateBy { it.digit }.orEmpty(); Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { Text("00–99 အကွက်စာရင်း", style = MaterialTheme.typography.titleMedium); (0..99).chunked(5).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { row.forEach { n -> val digit = n.toString().padStart(2, '0'); val scenario = scenarios[digit]; Surface(Modifier.weight(1f), color = when { scenario?.closed == true -> MaterialTheme.colorScheme.errorContainer; (scenario?.percentUsed ?: 0) >= 100 -> MaterialTheme.colorScheme.tertiaryContainer; (amounts[digit] ?: 0L) > 0 -> MaterialTheme.colorScheme.primaryContainer; else -> MaterialTheme.colorScheme.surfaceVariant }, shape = MaterialTheme.shapes.small) { Column(Modifier.padding(5.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) { Text(digit, fontWeight = FontWeight.Bold); Text((amounts[digit] ?: 0L).mmk(), style = MaterialTheme.typography.labelSmall); scenario?.percentUsed?.let { Text("$it%", style = MaterialTheme.typography.labelSmall) } } } } } } } }
+@Composable private fun CustomerDigitsWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) {
+    val totals by vm.customerTotals(customerId, date, session).collectAsStateWithLifecycle(initialValue = emptyList())
+    val specialLimits by vm.specialLimits(customerId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val amounts = totals.associate { it.digit to it.amount }
+    val specialDigits = specialLimits.map { it.digit }.toSet()
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = vm.analysis(customerId, date, session) }
+    val scenarios = analysis?.scenarios?.associateBy { it.digit }.orEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("00–99 အကွက်စာရင်း", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("အနီ = ထိုးကြေးရှိ • မီးခိုး = မရှိ • အဝါ = special limit • အနီရင့် = ပိတ်ဂဏန်း", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        (0..99).chunked(5).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { row.forEach { n ->
+            val digit = n.toString().padStart(2, '0'); val scenario = scenarios[digit]; val amount = amounts[digit] ?: 0L
+            val amountColor = when { scenario?.closed == true -> MaterialTheme.colorScheme.error; digit in specialDigits -> MaterialTheme.colorScheme.tertiary; amount > 0 -> MaterialTheme.colorScheme.error; else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f) }
+            Surface(Modifier.weight(1f), color = if (scenario?.closed == true) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small) { Column(Modifier.padding(5.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) { Text(digit, fontWeight = FontWeight.Bold, color = if (scenario?.closed == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface); Text(amount.mmk(), style = MaterialTheme.typography.labelSmall, color = amountColor, fontWeight = if (amount > 0) FontWeight.Bold else FontWeight.Normal); scenario?.percentUsed?.let { Text("$it%", style = MaterialTheme.typography.labelSmall, color = amountColor) } } }
+        } } }
+    }
+}
 
-@Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, customerId: Long) { val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null); var value by rememberSaveable { mutableStateOf("") }; LaunchedEffect(customer) { customer?.let { value = (it.commissionRateBasisPoints / 100.0).toString().removeSuffix(".0") } }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("ဒီ Customer ၏ ကော်မရှင်နှုန်းထား", style = MaterialTheme.typography.titleMedium); OutlinedTextField(value, { value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) }, Modifier.fillMaxWidth(), label = { Text("ရာခိုင်နှုန်း") }); Button({ vm.updateCommission(customerId, value) {} }, enabled = value.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100) } == true) { Text("သိမ်းမည်") } } }
+@Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, customerId: Long) {
+    val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
+    var value by rememberSaveable { mutableStateOf("") }
+    var saved by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(customer) { customer?.let { value = java.math.BigDecimal(it.commissionRateBasisPoints).movePointLeft(2).stripTrailingZeros().toPlainString() } }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("ဒီ Customer ၏ ကော်မရှင်နှုန်းထား", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("စုစုပေါင်းထိုးကြေး၏ ရာခိုင်နှုန်းအဖြစ် တွက်ပြီး စာရင်းတစ်ခုချင်း snapshot သိမ်းထားသည်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(value, { saved = false; value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) }, Modifier.fillMaxWidth(), label = { Text("ရာခိုင်နှုန်း") })
+        Button({ vm.updateCommission(customerId, value) { saved = true } }, enabled = value.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100) } == true) { Text("သိမ်းမည်") }
+        if (saved) Text("သိမ်းပြီးပါပြီ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+    }
+}
 
 @Composable
 fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate: (Long) -> Unit) {
