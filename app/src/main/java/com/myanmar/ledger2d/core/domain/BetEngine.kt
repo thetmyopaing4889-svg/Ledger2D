@@ -56,12 +56,19 @@ class BetExpansionEngine(private val parser: BetParser = BetParser()) {
 
     /** Parses a pasted Messenger message. Each comma/newline-separated line may declare its own Burmese format. */
     fun smartExpand(raw: String, fallback: QuickFormat = QuickFormat.MANUAL): SmartParseResult {
-        val parts = raw.split(Regex("[,၊\\n]"), limit = Int.MAX_VALUE).map(String::trim).filter(String::isNotEmpty)
+        val parts = raw.split(Regex("[,၊\\n]"), limit = Int.MAX_VALUE).map(String::trim)
+        if (parts.firstOrNull().orEmpty().isEmpty()) {
+            return SmartParseResult(
+                lines = listOf(SmartLine(raw, fallback, ParseResult.Error("Enter digit and amount"))),
+                bets = emptyList(),
+                total = 0L,
+            )
+        }
         val lines = parts.map { source ->
             val detected = detectFormat(source) ?: fallback
             val cleaned = removeFormatMarker(source, detected)
             SmartLine(source, detected, expand(cleaned, detected))
-        }
+        }.filterIndexed { index, line -> line.source.isNotEmpty() || index != parts.lastIndex }
         val successful = lines.mapNotNull { (it.result as? ParseResult.Success)?.bets }.flatten()
         val aggregate = parser.aggregate(successful)
         return when (aggregate) {

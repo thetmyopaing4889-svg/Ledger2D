@@ -70,4 +70,17 @@ class BetParserTest {
         assertEquals(1000, r.total)
         assertEquals(2, r.lines.size)
     }
+
+    @Test fun smart_does_not_silently_skip_empty_middle_entry() {
+        val r = BetExpansionEngine().smartExpand("11 500,,22 500")
+        assertEquals(3, r.lines.size)
+        assertTrue(r.lines[1].result is ParseResult.Error)
+        assertTrue(r.hasErrors)
+    }
+
+    @Test fun smart_preserves_trailing_separator_as_harmless_paste_noise() {
+        val r = BetExpansionEngine().smartExpand("11 500,")
+        assertEquals(1, r.lines.size)
+        assertEquals(500, r.total)
+    }
 }
