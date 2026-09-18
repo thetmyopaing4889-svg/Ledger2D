@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,7 +66,8 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
 @Composable
 fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, onOpen: (String, Long) -> Unit) {
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var selected by rememberSaveable { mutableStateOf(0L) }
+    val language = LocalLanguage.current
+    var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
     val selectedLabel = if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်"
     val featureTitle = agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature"
     AppScaffold(featureTitle, onBack) { padding ->
@@ -100,8 +102,9 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
 @Composable
 fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, onOpen: (String, Long, Long) -> Unit) {
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var agentId by rememberSaveable { mutableStateOf(0L) }
-    var customerId by rememberSaveable { mutableStateOf(0L) }
+    val language = LocalLanguage.current
+    var agentId by rememberSaveable { mutableStateOf(language.defaultAgentId) }
+    var customerId by rememberSaveable { mutableStateOf(language.defaultCustomerId) }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     LaunchedEffect(agentId) { customerId = 0L }
     val agentLabel = agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်"
@@ -124,7 +127,8 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
 @Composable
 fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var selected by rememberSaveable { mutableStateOf(0L) }
+    val language = LocalLanguage.current
+    var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
@@ -133,7 +137,7 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
     AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("Agent ရွေးရန်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); ScopeDropdown("Agent ရွေးရန်", if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်", listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name }, selected) { selected = it }; DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            item { SelectionCard { ScopeDropdown("Agent ရွေးရန်", if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်", listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name }, selected, Modifier.weight(1f)) { selected = it }; Spacer(Modifier.width(8.dp)); DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f)); Row(Modifier.padding(top=6.dp)) { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } } }
             if (selected == 0L) item { UnavailableState("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ") }
             else if (selected == -1L && feature in setOf("closed", "limit")) item { UnavailableState("ပိတ်ဂဏန်းနှင့် ကန့်သတ်ပမာဏအတွက် Agent တစ်ယောက်ကို ရွေးပါ") }
             else when (feature) {
@@ -150,8 +154,9 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
 @Composable
 fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, onEditEntry: (Long) -> Unit) {
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var agentId by rememberSaveable { mutableStateOf(0L) }
-    var customerId by rememberSaveable { mutableStateOf(0L) }
+    val language = LocalLanguage.current
+    var agentId by rememberSaveable { mutableStateOf(language.defaultAgentId) }
+    var customerId by rememberSaveable { mutableStateOf(language.defaultCustomerId) }
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
@@ -161,7 +166,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     val visible = if (customerId == -1L) summaries else summaries.filter { it.id == customerId }
     AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("Agent ရွေးရန် နှင့် Customer ရွေးရန်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); ScopeDropdown("Agent ရွေးရန်", agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်", agents.map { it.id to it.name }, agentId) { agentId = it; customerId = 0L }; ScopeDropdown("Customer ရွေးရန်", when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }, if (agentId == 0L) emptyList() else listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name }, customerId, enabled = agentId > 0L) { customerId = it }; DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            item { SelectionCard { ScopeDropdown("Agent ရွေးရန်", agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်", agents.map { it.id to it.name }, agentId, Modifier.weight(1f)) { agentId = it; customerId = if (it == language.defaultAgentId) language.defaultCustomerId else 0L }; Spacer(Modifier.width(8.dp)); ScopeDropdown("Customer ရွေးရန်", when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }, if (agentId == 0L) emptyList() else listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name }, customerId, Modifier.weight(1f), enabled = agentId > 0L) { customerId = it }; Row(Modifier.padding(top=6.dp)) { DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f)); Spacer(Modifier.width(8.dp)); DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } } }
             if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
             else when (feature) {
                 "history" -> item { CustomerHistoryWorkspace(vm, customerId, onEditEntry) }
@@ -176,10 +181,12 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     }
 }
 
+@Composable private fun SelectionCard(content: @Composable RowScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Champagne, shape=MaterialTheme.shapes.large, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.35f)), shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(12.dp)) { Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically, content=content) } } }
+
 @Composable
-fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, enabled: Boolean = true, onSelect: (Long) -> Unit) {
+fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }) {
+    ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }, modifier = modifier) {
         OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(label) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
         ExposedDropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) { options.forEach { (id, title) -> DropdownMenuItem(text = { Text(title) }, onClick = { onSelect(id); expanded = false }) } }
     }

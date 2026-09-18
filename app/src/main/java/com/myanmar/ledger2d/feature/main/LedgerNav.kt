@@ -49,7 +49,7 @@ import com.myanmar.ledger2d.AppContainer
         composable("agentLimit/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentLimitScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
         composable("winning"){WinningNumberScreen(vm){nav.popBackStack()}}
         composable("closedDays"){ClosedDayScreen(vm){nav.popBackStack()}}
-        composable("settings"){SettingsScreen{nav.popBackStack()}}
+        composable("settings"){SettingsScreen(vm){nav.popBackStack()}}
         composable("winning/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ScopedWinningScreen(vm,scope,id){nav.popBackStack()}}
         composable("report/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ReportScreen(vm,scope,id){nav.popBackStack()}}
     }

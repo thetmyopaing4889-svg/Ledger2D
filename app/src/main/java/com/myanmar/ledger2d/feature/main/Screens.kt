@@ -209,10 +209,10 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
 @Composable fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){val existing by vm.customer(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;remark=it.remark}};AppScaffold(if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){Input(name,{name=it},"အမည်",true);Input(address,{address=it},"လိပ်စာ");Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone);Input(remark,{remark=it},"မှတ်ချက်");FormActions(onBack,{vm.saveCustomer(id,agentId,name,address,phone,remark,onBack)},name.isNotBlank())}}}
 @Composable private fun FormColumn(p:PaddingValues,content:@Composable ColumnScope.() -> Unit)=Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp),content=content)
 @Composable fun Input(value:String,onValue:(String)->Unit,label:String,required:Boolean=false,keyboard:KeyboardType=KeyboardType.Text){val display=LocalLanguage.current.translate(label);OutlinedTextField(value,onValue,Modifier.fillMaxWidth(),label={Text(display+(if(required)" *" else ""))},singleLine=label!="မှတ်ချက်",keyboardOptions=KeyboardOptions(keyboardType=keyboard),shape=MaterialTheme.shapes.medium)}
-@Composable fun DateInput(value:String,onValue:(String)->Unit,label:String,enabled:Boolean=true){
+@Composable fun DateInput(value:String,onValue:(String)->Unit,label:String,modifier:Modifier=Modifier,enabled:Boolean=true){
     var open by rememberSaveable{mutableStateOf(false)}
     val display=runCatching{LocalDate.parse(value).displayDate()}.getOrElse{value}
-    OutlinedTextField(value=display,onValueChange={},modifier=Modifier.fillMaxWidth(),label={Text(label)},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text("ရွေး")}},shape=MaterialTheme.shapes.medium)
+    OutlinedTextField(value=display,onValueChange={},modifier=modifier.fillMaxWidth(),label={Text(label)},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text("ရွေး")}},shape=MaterialTheme.shapes.medium)
     if(open){val initial=runCatching{LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()}.getOrNull();val state=rememberDatePickerState(initialSelectedDateMillis=initial);DatePickerDialog(onDismissRequest={open=false},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{onValue(java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().toString())};open=false}){Text("ရွေးမည်")}},dismissButton={TextButton(onClick={open=false}){Text("မလုပ်ပါ")}}){DatePicker(state)}}
 }
 @Composable private fun FormActions(cancel:()->Unit,save:()->Unit,enabled:Boolean){val l=LocalLanguage.current;Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){OutlinedButton(cancel,Modifier.weight(1f)){Text(l.text("မလုပ်တော့ပါ","Cancel"))};Button(save,Modifier.weight(1f),enabled=enabled){Text(l.text("သိမ်းမည်","Save"))}}}
@@ -694,9 +694,21 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         }
     }
 }
-@Composable fun SettingsScreen(onBack:()->Unit){
+@Composable fun SettingsScreen(vm: LedgerViewModel, onBack:()->Unit){
     val language=LocalLanguage.current
-    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    val agents by vm.agents.collectAsStateWithLifecycle()
+    val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
+    val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
+    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
+            Column(Modifier.padding(14.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth()) { language.setDefaultAgent(it) }
+                ScopeDropdown(language.text("Customer ရွေးရန်","Select customer"), defaultCustomer?.name ?: if (language.defaultAgentId > 0) language.text("Customer ရွေးရန်","Select customer") else language.text("Agent အရင်ရွေးပါ","Select agent first"), if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(), language.defaultCustomerId, Modifier.fillMaxWidth(), enabled = language.defaultAgentId > 0) { language.setDefaultCustomer(it) }
+            }
+        }
         Text(language.text("ဘာသာစကား","Language"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         OutlinedCard{Column{ListItem(headlineContent={Text("မြန်မာ")},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text("English")},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
         Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)

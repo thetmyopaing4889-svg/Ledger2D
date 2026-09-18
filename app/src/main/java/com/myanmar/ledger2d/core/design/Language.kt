@@ -12,7 +12,13 @@ class LanguageState(context: Context) {
     private val preferences = context.getSharedPreferences("ledger_settings", Context.MODE_PRIVATE)
     var code by mutableStateOf(preferences.getString("language", "my") ?: "my")
         private set
+    var defaultAgentId by mutableStateOf(preferences.getLong("default_agent_id", 0L))
+        private set
+    var defaultCustomerId by mutableStateOf(preferences.getLong("default_customer_id", 0L))
+        private set
     fun set(code: String) { this.code = code; preferences.edit().putString("language", code).apply() }
+    fun setDefaultAgent(id: Long) { defaultAgentId = id; defaultCustomerId = 0L; preferences.edit().putLong("default_agent_id", id).putLong("default_customer_id", 0L).apply() }
+    fun setDefaultCustomer(id: Long) { defaultCustomerId = id; preferences.edit().putLong("default_customer_id", id).apply() }
     fun text(my: String, en: String): String = if (code == "en") en else my
     fun translate(value: String): String = if (code == "my") value else english[value] ?: value
     private val english = mapOf(
