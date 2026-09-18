@@ -2,6 +2,7 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,7 +20,7 @@ import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.database.BetEntryEntity
 import com.myanmar.ledger2d.core.database.ClosedNumberEntity
 import com.myanmar.ledger2d.core.database.AgentSpecialLimitEntity
-import com.myanmar.ledger2d.core.design.LocalLanguage
+import com.myanmar.ledger2d.core.design.*
 import com.myanmar.ledger2d.core.domain.AnalysisResult
 import com.myanmar.ledger2d.core.domain.WeeklyReport
 import com.myanmar.ledger2d.core.model.DrawSession
@@ -50,10 +52,10 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
     val l = LocalLanguage.current
     AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(l.translate("Agent feature များ"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(l.translate("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Surface(Modifier.fillMaxWidth(), color=AppColors.Wine, shape=MaterialTheme.shapes.extraLarge, shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(20.dp), verticalArrangement=Arrangement.spacedBy(5.dp)) { Text(l.translate("Agent feature များ"), style = MaterialTheme.typography.headlineSmall, color=Color.White, fontWeight = FontWeight.Black); Text(l.translate("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ"), color = AppColors.GoldSoft) } } }
             items(agentActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Icon(action.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(9.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary) })
+                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)) {
+                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.Bold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.medium, border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(10.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary) })
                 }
             }
         }
@@ -85,10 +87,10 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(l.translate("Customer feature များ"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(l.translate("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Surface(Modifier.fillMaxWidth(), color=AppColors.PrimaryDeep, shape=MaterialTheme.shapes.extraLarge, shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(20.dp), verticalArrangement=Arrangement.spacedBy(5.dp)) { Text(l.translate("Customer feature များ"), style = MaterialTheme.typography.headlineSmall, color=Color.White, fontWeight = FontWeight.Black); Text(l.translate("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ"), color = AppColors.GoldSoft) } } }
             items(customerActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.SemiBold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium) { Icon(action.icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(9.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary) })
+                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)) {
+                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.Bold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.medium, border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(10.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary) })
                 }
             }
         }

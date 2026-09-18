@@ -10,15 +10,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object AppColors {
-    val Primary = Color(0xFFB51E4B); val PrimaryDeep = Color(0xFF741338); val Secondary = Color(0xFF5F3B59)
-    val Accent = Color(0xFFF08A68); val Gold = Color(0xFFC3913D); val GoldSoft = Color(0xFFF5E7C8); val Ink = Color(0xFF21191D)
+    val Primary = Color(0xFF9B1744); val PrimaryDeep = Color(0xFF4B102B); val Secondary = Color(0xFF60405E)
+    val Accent = Color(0xFFE87559); val Gold = Color(0xFFC49345); val GoldSoft = Color(0xFFF4E5C7); val Ink = Color(0xFF24191E)
+    val Wine = Color(0xFF351021); val Blush = Color(0xFFFFF1F3); val Champagne = Color(0xFFFFFBF3); val Stone = Color(0xFFE9DFE2)
     val Success = Color(0xFF18794E); val Warning = Color(0xFF936500); val Closed = Color(0xFFB3264B); val Limit = Color(0xFF7C3F70)
     val MoneyPositive = Color(0xFF18794E); val MoneyNegative = Color(0xFFB3261E)
 }
-object AppDimens { val screen = 16.dp; val section = 20.dp; val card = 16.dp; val compact = 8.dp; val buttonHeight = 54.dp; val row = 72.dp; val cardElevation = 2.dp; val featuredElevation = 8.dp }
-object AppShapes { val shapes = Shapes(extraSmall=RoundedCornerShape(12.dp), small=RoundedCornerShape(16.dp), medium=RoundedCornerShape(20.dp), large=RoundedCornerShape(26.dp), extraLarge=RoundedCornerShape(32.dp)) }
+object AppDimens { val screen = 18.dp; val section = 24.dp; val card = 18.dp; val compact = 8.dp; val buttonHeight = 56.dp; val row = 76.dp; val cardElevation = 3.dp; val featuredElevation = 10.dp }
+object AppShapes { val shapes = Shapes(extraSmall=RoundedCornerShape(10.dp), small=RoundedCornerShape(16.dp), medium=RoundedCornerShape(22.dp), large=RoundedCornerShape(28.dp), extraLarge=RoundedCornerShape(34.dp)) }
 object AppMotion { const val Short = 180; const val Medium = 320; const val Long = 500 }
-private val Light = lightColorScheme(primary=AppColors.Primary,onPrimary=Color.White,primaryContainer=Color(0xFFFFD7E3),onPrimaryContainer=Color(0xFF5E0922),secondary=AppColors.Secondary,onSecondary=Color.White,secondaryContainer=Color(0xFFF5E2EC),onSecondaryContainer=Color(0xFF35111F),tertiary=AppColors.Gold,onTertiary=Color.White,tertiaryContainer=AppColors.GoldSoft,onTertiaryContainer=Color(0xFF3B2A0D),background=Color(0xFFFAF7F8),surface=Color.White,surfaceVariant=Color(0xFFF2ECEF),onSurface=AppColors.Ink,onSurfaceVariant=Color(0xFF665C60),error=AppColors.MoneyNegative)
+private val Light = lightColorScheme(primary=AppColors.Primary,onPrimary=Color.White,primaryContainer=Color(0xFFFFD7E3),onPrimaryContainer=Color(0xFF5E0922),secondary=AppColors.Secondary,onSecondary=Color.White,secondaryContainer=Color(0xFFF5E2EC),onSecondaryContainer=Color(0xFF35111F),tertiary=AppColors.Gold,onTertiary=Color.White,tertiaryContainer=AppColors.GoldSoft,onTertiaryContainer=Color(0xFF3B2A0D),background=AppColors.Champagne,surface=Color.White,surfaceVariant=AppColors.Blush,surfaceTint=AppColors.Primary,onSurface=AppColors.Ink,onSurfaceVariant=Color(0xFF665C60),outline=AppColors.Stone,error=AppColors.MoneyNegative)
 private val Dark = darkColorScheme(primary=Color(0xFFFF9CB3),onPrimary=Color(0xFF650022),primaryContainer=Color(0xFF7F1640),onPrimaryContainer=Color(0xFFFFD9E2),secondary=Color(0xFFFFB0C6),tertiary=Color(0xFFE4BE72),tertiaryContainer=Color(0xFF574318),background=Color(0xFF181114),surface=Color(0xFF24191E),surfaceVariant=Color(0xFF34242A),onSurfaceVariant=Color(0xFFD1BFC5),error=Color(0xFFFFB4AB))
 private val AppFont = FontFamily.SansSerif
 val AppTypography = Typography(
