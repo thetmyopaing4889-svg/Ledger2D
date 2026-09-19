@@ -44,6 +44,7 @@ data class SettlementEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, v
 data class AuditEventEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val entityType: String, val entityId: Long, val action: String, val detail: String = "", val createdAt: Long)
 
 data class DigitTotalRow(val digit: String, val amount: Long)
+data class DigitCommissionRow(val digit: String, val amount: Long, val commission: Long)
 data class BetEntryWithLines(@Embedded val entry: BetEntryEntity, @Relation(parentColumn = "id", entityColumn = "betEntryId") val lines: List<BetLineEntity>)
 
 class DatabaseConverters {
