@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import java.time.LocalDate
+import com.myanmar.ledger2d.core.model.DrawSession
 
 class LanguageState(context: Context) {
     private val preferences = context.getSharedPreferences("ledger_settings", Context.MODE_PRIVATE)
@@ -16,9 +18,15 @@ class LanguageState(context: Context) {
         private set
     var defaultCustomerId by mutableStateOf(preferences.getLong("default_customer_id", 0L))
         private set
+    var selectedDate by mutableStateOf(preferences.getString("selected_date", LocalDate.now().toString()) ?: LocalDate.now().toString())
+        private set
+    var selectedSession by mutableStateOf(DrawSession.valueOf(preferences.getString("selected_session", DrawSession.MORNING.name) ?: DrawSession.MORNING.name))
+        private set
     fun set(code: String) { this.code = code; preferences.edit().putString("language", code).apply() }
     fun setDefaultAgent(id: Long) { defaultAgentId = id; defaultCustomerId = 0L; preferences.edit().putLong("default_agent_id", id).putLong("default_customer_id", 0L).apply() }
     fun setDefaultCustomer(id: Long) { defaultCustomerId = id; preferences.edit().putLong("default_customer_id", id).apply() }
+    fun setDate(value: String) { selectedDate = value; preferences.edit().putString("selected_date", value).apply() }
+    fun setSession(value: DrawSession) { selectedSession = value; preferences.edit().putString("selected_session", value.name).apply() }
     fun text(my: String, en: String): String = if (code == "en") en else my
     fun translate(value: String): String = if (code == "my") value else english[value] ?: value
     private val english = mapOf(

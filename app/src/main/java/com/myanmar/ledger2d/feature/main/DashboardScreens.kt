@@ -130,8 +130,8 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val agents by vm.agents.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
-    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
+    var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
@@ -141,8 +141,8 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
             item { SelectionCard {
                 ScopeDropdown("Agent ရွေးရန်", if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်", listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name }, selected) { selected = it }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f))
-                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }) }
+                    DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ", Modifier.weight(1f))
+                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) }
                 }
             } }
             if (selected == 0L) item { UnavailableState("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ") }
@@ -164,8 +164,8 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     val language = LocalLanguage.current
     var agentId by rememberSaveable { mutableStateOf(language.defaultAgentId) }
     var customerId by rememberSaveable { mutableStateOf(language.defaultCustomerId) }
-    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
+    var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
@@ -179,8 +179,8 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
                     ScopeDropdown("Customer ရွေးရန်", when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }, if (agentId == 0L) emptyList() else listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name }, customerId, Modifier.weight(1f), enabled = agentId > 0L) { customerId = it }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f))
-                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }) }
+                    DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ", Modifier.weight(1f))
+                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) }
                 }
             } }
             if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
@@ -220,14 +220,16 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
 @Composable private fun AgentLimitWorkspace(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) { val all by vm.agentAllLimit(agentId).collectAsStateWithLifecycle(initialValue = null); val specials by vm.agentSpecialLimits(agentId).collectAsStateWithLifecycle(initialValue = emptyList()); var allText by rememberSaveable { mutableStateOf("") }; var digit by rememberSaveable { mutableStateOf("") }; var amount by rememberSaveable { mutableStateOf("") }; var pending by remember { mutableStateOf<AgentSpecialLimitEntity?>(null) }; LaunchedEffect(all) { allText = all?.amount?.toString() ?: "" }; pending?.let { value -> AlertDialog(onDismissRequest = { pending = null }, title = { Text("အထူးကန့်သတ်ချက်ဖယ်ရှားမည်လား") }, text = { Text("${value.digit} အတွက် limit ကို ဖယ်ရှားမည်လား?") }, confirmButton = { TextButton({ vm.removeAgentSpecialLimit(value); pending = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pending = null }) { Text("မလုပ်ပါ") } }) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Agent-wide limit", style = MaterialTheme.typography.titleMedium); OutlinedTextField(allText, { allText = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("အကွက်အားလုံးအတွက် limit") }); Button({ vm.updateAgentAllLimit(agentId, allText) {} }) { Text("သိမ်းမည်") }; HorizontalDivider(); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(digit, { digit = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = { Text("ဂဏန်း") }); OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, Modifier.weight(1f), label = { Text("ပမာဏ") }); Button({ vm.addAgentSpecialLimit(agentId, digit, amount); digit = ""; amount = "" }, enabled = com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit) && (amount.toLongOrNull()?.let { value -> value > 0 } == true)) { Text("သိမ်းမည်") } }; specials.forEach { limit -> ListItem(headlineContent = { Text(limit.digit) }, supportingContent = { Text(limit.amount.mmk()) }, trailingContent = { TextButton({ pending = limit }) { Text("ဖယ်ရှားမည်") } }) } } }
 
 @Composable private fun CustomerHistoryWorkspace(vm: LedgerViewModel, customerId: Long, onEditEntry: (Long) -> Unit) {
-    val entries by vm.customerEntries(customerId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val language = LocalLanguage.current
+    val selectedDate = runCatching { LocalDate.parse(language.selectedDate) }.getOrElse { LocalDate.now() }
+    val entries by vm.customerEntries(customerId, selectedDate, language.selectedSession).collectAsStateWithLifecycle(initialValue = emptyList())
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
     expandedEntry?.let { record ->
         AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်") }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text("Input: ${record.entry.sourceText}", fontWeight = FontWeight.Bold)
-                Text("Format: ${record.entry.inputFormat}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${inputFormatDisplay(record.entry.inputFormat)} ${record.entry.sourceText}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 HorizontalDivider()
                 LazyColumn(Modifier.heightIn(max = 340.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(record.lines, key = { it.id }) { line ->
@@ -308,14 +310,15 @@ fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate:
 
 @Composable
 fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
-    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val language = LocalLanguage.current
+    var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
+    var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
     AppScaffold("ဒိုင်အားလုံး", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("ဒိုင်အားလုံး • ${agentActions.firstOrNull { it.key == feature }?.title ?: feature}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            item { Text("ဒိုင်အားလုံး • ${agentActions.firstOrNull { it.key == feature }?.title ?: feature}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
             if (summaries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် ဒိုင်စာရင်းမရှိသေးပါ") }
             items(summaries, key = { it.id }) { summary ->
                 ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } }
@@ -326,15 +329,16 @@ fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Un
 
 @Composable
 fun AllCustomerScopeScreen(vm: LedgerViewModel, agentId: Long, feature: String, onBack: () -> Unit) {
-    var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var session by rememberSaveable { mutableStateOf(DrawSession.MORNING) }
+    val language = LocalLanguage.current
+    var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
+    var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") }
     AppScaffold("Customer အားလုံး", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { Text("ရွေးထားသော Agent အောက်က Customer အားလုံး • $feature", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
+            item { Text("ရွေးထားသော Agent အောက်က Customer အားလုံး • $feature", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
             if (customers.isEmpty()) item { EmptyState("Customer မရှိသေးပါ", "ဒီ Agent အောက်မှာ Customer ထည့်ပါ") }
             else if (summaries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် Customer စာရင်းမရှိသေးပါ") }
             items(summaries, key = { it.id }) { summary -> ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }

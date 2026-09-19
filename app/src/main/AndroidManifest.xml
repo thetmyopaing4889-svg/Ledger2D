@@ -6,7 +6,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="Myanmar 2D Agent Ledger"
+        android:label="Cherry 2D Ledger"
         android:supportsRtl="true"
         android:theme="@style/Theme.Ledger2D">
         <activity android:name=".MainActivity" android:exported="true">
