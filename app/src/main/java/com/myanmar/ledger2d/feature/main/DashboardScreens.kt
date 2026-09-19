@@ -138,7 +138,13 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
     AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { SelectionCard { ScopeDropdown("Agent ရွေးရန်", if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်", listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name }, selected, Modifier.weight(1f)) { selected = it }; Spacer(Modifier.width(8.dp)); DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f)); Row(Modifier.padding(top=6.dp)) { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } } }
+            item { SelectionCard {
+                ScopeDropdown("Agent ရွေးရန်", if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်", listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name }, selected) { selected = it }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f))
+                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }) }
+                }
+            } }
             if (selected == 0L) item { UnavailableState("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ") }
             else if (selected == -1L && feature in setOf("closed", "limit")) item { UnavailableState("ပိတ်ဂဏန်းနှင့် ကန့်သတ်ပမာဏအတွက် Agent တစ်ယောက်ကို ရွေးပါ") }
             else when (feature) {
@@ -167,7 +173,16 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     val visible = if (customerId == -1L) summaries else summaries.filter { it.id == customerId }
     AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { SelectionCard { ScopeDropdown("Agent ရွေးရန်", agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်", agents.map { it.id to it.name }, agentId, Modifier.weight(1f)) { agentId = it; customerId = if (it == language.defaultAgentId) language.defaultCustomerId else 0L }; Spacer(Modifier.width(8.dp)); ScopeDropdown("Customer ရွေးရန်", when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }, if (agentId == 0L) emptyList() else listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name }, customerId, Modifier.weight(1f), enabled = agentId > 0L) { customerId = it }; Row(Modifier.padding(top=6.dp)) { DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f)); Spacer(Modifier.width(8.dp)); DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } } }
+            item { SelectionCard {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ScopeDropdown("Agent ရွေးရန်", agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်", agents.map { it.id to it.name }, agentId, Modifier.weight(1f)) { agentId = it; customerId = if (it == language.defaultAgentId) language.defaultCustomerId else 0L }
+                    ScopeDropdown("Customer ရွေးရန်", when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }, if (agentId == 0L) emptyList() else listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name }, customerId, Modifier.weight(1f), enabled = agentId > 0L) { customerId = it }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DateInput(dateText, { dateText = it }, "ရက်စွဲ", Modifier.weight(1f))
+                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw }, label = { Text(draw.label) }) }
+                }
+            } }
             if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
             else when (feature) {
                 "history" -> item { CustomerHistoryWorkspace(vm, customerId, onEditEntry) }
@@ -182,7 +197,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     }
 }
 
-@Composable private fun SelectionCard(content: @Composable RowScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Champagne, shape=MaterialTheme.shapes.large, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.35f)), shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(12.dp)) { Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically, content=content) } } }
+@Composable private fun SelectionCard(content: @Composable ColumnScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Champagne, shape=MaterialTheme.shapes.large, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.35f)), shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content=content) } }
 
 @Composable
 fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, onSelect: (Long) -> Unit) {
