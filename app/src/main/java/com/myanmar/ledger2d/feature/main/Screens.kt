@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.flow.first
+import android.content.Context
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.design.*
 import com.myanmar.ledger2d.core.domain.*
@@ -49,8 +50,10 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
 val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
 
 @Composable private fun QuickEntryFab(onClick: () -> Unit) {
-    var x by rememberSaveable { mutableStateOf(0f) }
-    var y by rememberSaveable { mutableStateOf(0f) }
+    val context = LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("ledger_ui", Context.MODE_PRIVATE) }
+    var x by rememberSaveable { mutableStateOf(prefs.getFloat("quick_entry_x", 0f)) }
+    var y by rememberSaveable { mutableStateOf(prefs.getFloat("quick_entry_y", 0f)) }
     SmallFloatingActionButton(
         onClick = onClick,
         modifier = Modifier.offset { IntOffset(x.roundToInt(), y.roundToInt()) }.pointerInput(Unit) {
@@ -58,6 +61,7 @@ val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
                 change.consume()
                 x += dragAmount.x
                 y += dragAmount.y
+                prefs.edit().putFloat("quick_entry_x", x).putFloat("quick_entry_y", y).apply()
             }
         },
         containerColor = AppColors.Primary.copy(alpha = .68f),
@@ -434,14 +438,15 @@ private fun previewError(message:String):String = when{
 @Composable fun WinningHubScreen(onInput: () -> Unit, onView: () -> Unit, onBack: () -> Unit) {
     AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ResultViewCard("ပေါက်ဂဏန်းထည့်ရန်", "ထွက်ဂဏန်းကို ရက်နှင့်အချိန်အလိုက် ထည့်ရန်", Icons.Default.Edit, AppColors.Blush, onInput, Modifier.fillMaxWidth())
-            ResultViewCard("ထီပေါက်စဉ်ကြည့်ရန်", "ရက်အလိုက်၊ အပတ်စဉ်၊ လစဉ် ကြည့်ရန်", Icons.Default.CalendarMonth, AppColors.Champagne, onView, Modifier.fillMaxWidth())
+            ResultViewCard("ပေါက်ဂဏန်းထည့်ရန်", "ထွက်ဂဏန်းကို ရက်နှင့်အချိန်အလိုက် ထည့်ရန်", Icons.Default.Edit, onInput, Modifier.fillMaxWidth())
+            ResultViewCard("ထီပေါက်စဉ်ကြည့်ရန်", "ရက်အလိုက်၊ အပတ်စဉ်၊ လစဉ် ကြည့်ရန်", Icons.Default.CalendarMonth, onView, Modifier.fillMaxWidth())
         }
     }
 }
 
 @Composable fun WinningNumberScreen(vm: LedgerViewModel, mode: String = "input", onBack: () -> Unit) {
     val winners by vm.winners.collectAsStateWithLifecycle()
+    val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var date by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
@@ -473,9 +478,9 @@ private fun previewError(message:String):String = when{
             }
             if (mode == "view") item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ResultViewCard("ရက်အလိုက်", "တစ်ရက်", Icons.Default.Today, AppColors.Blush, { resultView = "daily"; showForm = false }, Modifier.weight(1f).height(108.dp))
-                    ResultViewCard("အပတ်စဉ်", "တစ်ပတ်", Icons.Default.DateRange, AppColors.Champagne, { resultView = "weekly"; showForm = false }, Modifier.weight(1f).height(108.dp))
-                    ResultViewCard("လစဉ်", "တစ်လ", Icons.Default.CalendarMonth, AppColors.GoldSoft.copy(alpha=.42f), { resultView = "monthly"; showForm = false }, Modifier.weight(1f).height(108.dp))
+                    ResultViewCard("ရက်အလိုက်", "တစ်ရက်", Icons.Default.Today, { resultView = "daily"; showForm = false }, Modifier.weight(1f).height(108.dp))
+                    ResultViewCard("အပတ်စဉ်", "တစ်ပတ်", Icons.Default.DateRange, { resultView = "weekly"; showForm = false }, Modifier.weight(1f).height(108.dp))
+                    ResultViewCard("လစဉ်", "တစ်လ", Icons.Default.CalendarMonth, { resultView = "monthly"; showForm = false }, Modifier.weight(1f).height(108.dp))
                 }
             }
             if (mode == "input" && showForm && resultView.isBlank()) {
@@ -513,14 +518,26 @@ private fun previewError(message:String):String = when{
                 }
             } else if (mode == "view" && resultView.isNotBlank()) {
                 val selected = runCatching { LocalDate.parse(date) }.getOrElse { LocalDate.now() }
-                val visible = when (resultView) {
-                    "daily" -> winners.filter { it.date == selected }
-                    "weekly" -> { val monday = selected.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)); winners.filter { !it.date.isBefore(monday) && it.date.dayOfWeek != java.time.DayOfWeek.SATURDAY && it.date.dayOfWeek != java.time.DayOfWeek.SUNDAY && it.date.isBefore(monday.plusDays(5)) } }
-                    else -> winners.filter { it.date.year == selected.year && it.date.month == selected.month }
-                }
                 item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(when(resultView) { "daily" -> "ရက်အလိုက်ရလဒ်"; "weekly" -> "အပတ်စဉ်ရလဒ်"; else -> "လစဉ်ရလဒ်" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); TextButton({ resultView = ""; showForm = true }) { Text("ပြန်ထည့်ရန်") } } }
-                if (visible.isEmpty()) item { EmptyState("မှတ်တမ်းမရှိသေးပါ", "ရွေးထားသောကာလအတွက် ရလဒ်မရှိသေးပါ") }
-                else visible.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) -> item { ElevatedCard { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(day.displayDate(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); dayWinners.forEach { winner -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(winner.session.label); Text(winner.digit, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = AppColors.Primary) } } } } } }
+                item {
+                    when (resultView) {
+                        "daily" -> WinningDayCard(selected, winners.filter { it.date == selected }, closedDays.any { it.date == selected })
+                        "weekly" -> {
+                            val monday = selected.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                (0L..4L).forEach { offset -> val day = monday.plusDays(offset); WinningDayCard(day, winners.filter { it.date == day }, closedDays.any { it.date == day }, compact = true) }
+                            }
+                        }
+                        else -> {
+                            val first = selected.withDayOfMonth(1)
+                            val last = selected.withDayOfMonth(selected.lengthOfMonth())
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                var day = first
+                                while (!day.isAfter(last)) { WinningDayCard(day, winners.filter { it.date == day }, closedDays.any { it.date == day }, compact = true); day = day.plusDays(1) }
+                            }
+                        }
+                    }
+                }
             } else if (mode == "view" && winners.isEmpty()) {
                 item { EmptyState("မှတ်တမ်းမရှိသေးပါ", "အသစ်ထည့်ရန်မှ ပေါက်ဂဏန်းကို ထည့်ပါ") }
             } else if (mode == "view") {
@@ -550,12 +567,37 @@ private fun previewError(message:String):String = when{
         }
     }
 }
-@Composable private fun ResultViewCard(title: String, description: String, icon: androidx.compose.ui.graphics.vector.ImageVector, containerColor: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ElevatedCard(onClick = onClick, modifier = modifier, colors = CardDefaults.elevatedCardColors(containerColor = containerColor), shape = MaterialTheme.shapes.medium) {
+@Composable private fun ResultViewCard(title: String, description: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ElevatedCard(onClick = onClick, modifier = modifier.border(1.dp, AppColors.Stone, MaterialTheme.shapes.medium), colors = CardDefaults.elevatedCardColors(containerColor = Color.White), shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(icon, null, tint = AppColors.Primary, modifier = Modifier.size(22.dp))
             Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
+        }
+    }
+}
+
+@Composable private fun WinningDayCard(date: LocalDate, winners: List<WinningNumberEntity>, closed: Boolean, compact: Boolean = false) {
+    val dateLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH))
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().border(1.dp, if (closed) AppColors.Stone else AppColors.Stone.copy(alpha = .7f), MaterialTheme.shapes.small),
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = if (compact) 7.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.width(if (compact) 92.dp else 110.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(dateLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                if (closed) Text("ပိတ်ရက်", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            }
+            DrawSession.entries.forEach { draw ->
+                val winner = winners.firstOrNull { it.session == draw }
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(draw.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(winner?.digit ?: "—", style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.Primary)
+                }
+                if (draw == DrawSession.MORNING) Spacer(Modifier.width(8.dp))
+            }
         }
     }
 }
@@ -652,26 +694,21 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
 }
 
 @Composable fun ReportCard(c: DrawCalculation, winner: String?) {
-    val netColor = if (c.netSettlement < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     val profitColor = if (c.profitLoss < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     ElevatedCard(shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column { Text("ဘဏ္ဍာရေးရှင်းတမ်း", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black); Text(if (winner == null) "ဂဏန်းမထွက်ခင် • Before" else "ပေါက်ဂဏန်း $winner", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Column { Text("အစီရင်ခံစာ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black); Text(if (winner == null) "ဂဏန်းမထွက်ခင် • Before" else "ပေါက်ဂဏန်း $winner", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             HorizontalDivider()
-            Text("အခြေခံစာရင်း", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            FinancialMetric("စုစုပေါင်းအကွက်", "${c.distinctSlots} ကွက်")
             FinancialMetric("စုစုပေါင်းထိုးကြေး", c.totalBet.mmk())
             FinancialMetric("ပေါက်ကြေး", c.winningStake.mmk())
             FinancialMetric("လျော်ပေးငွေ", c.payout.mmk())
             HorizontalDivider()
-            Text("ရှင်းတမ်းရလဒ်", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            FinancialMetric("ကော်မရှင်", c.commission.mmk())
+            FinancialMetric("ကော်မရှင်ရငွေ", c.commission.mmk())
             FinancialMetric("ရှုံး / မြတ်", c.profitLoss.mmk(), valueColor = profitColor, emphasized = true)
-            Surface(Modifier.fillMaxWidth(), color = netColor.copy(alpha = .10f), shape = MaterialTheme.shapes.medium) {
-                FinancialMetric("Net ရှင်းတမ်း", c.netSettlement.mmk(), valueColor = netColor, emphasized = true, modifier = Modifier.padding(12.dp))
-            }
         }
     }
 }
