@@ -432,7 +432,7 @@ private fun previewError(message:String):String = when{
             onDismissRequest = { pendingDelete = null },
             title = { Text("ပေါက်ဂဏန်းဖျက်မည်လား") },
             text = { Text("${winner.date} ${winner.session.label} မှ ${winner.digit} ကို ဖျက်မလား?") },
-            confirmButton = { TextButton(onClick = { vm.deleteWinner(winner); pendingDelete = null }) { Text("ဖျက်မည်") } },
+            confirmButton = { TextButton(onClick = { vm.deleteWinner(winner) { notice = it }; pendingDelete = null }) { Text("ဖျက်မည်") } },
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("မလုပ်ပါ") } },
         )
     }
@@ -474,8 +474,8 @@ private fun previewError(message:String):String = when{
                                 Button(
                                     onClick = {
                                         runCatching { LocalDate.parse(date) }.getOrNull()?.let { parsedDate ->
-                                            if (existing == null) vm.saveWinner(parsedDate, session, digit) { digit = ""; notice = "သိမ်းပြီးပါပြီ" }
-                                            else vm.updateWinner(existing, digit) { digit = ""; notice = "ပြင်ဆင်ပြီးပါပြီ" }
+                                            if (existing == null) vm.saveWinner(parsedDate, session, digit, { digit = ""; notice = "သိမ်းပြီးပါပြီ" }) { notice = it }
+                                            else vm.updateWinner(existing, parsedDate, session, digit, { digit = ""; notice = "ပြင်ဆင်ပြီးပါပြီ" }) { notice = it }
                                         }
                                     },
                                     enabled = BetParser.validDigit(digit),
@@ -709,13 +709,15 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val language = LocalLanguage.current
     val days by vm.closedDays.collectAsStateWithLifecycle()
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var notice by rememberSaveable { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<ClosedDayEntity?>(null) }
     pendingDelete?.let { day -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("ပိတ်ရက်ဖျက်မည်လား")}, text={Text("${day.date.displayDate()} ကို ပြန်ဖွင့်မည်လား?")}, confirmButton={TextButton({vm.removeClosedDay(day);pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton({pendingDelete=null}){Text("မလုပ်ပါ")}}) }
     AppScaffold("ပိတ်ရက်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("သတ်မှတ်ထားသော ပိတ်ရက်များတွင် စာရင်းအသစ် လက်မခံပါ", style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
             DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-            Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let(vm::addClosedDay) }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text("ပိတ်ရက်သတ်မှတ်မည်") }
+            Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text("ပိတ်ရက်သတ်မှတ်မည်") }
+            if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.error)
             if(days.isEmpty()) EmptyState("ပိတ်ရက် မရှိသေးပါ", "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=MaterialTheme.shapes.medium) { ListItem(headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text("စာရင်းအသစ် လက်မခံပါ")}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text("ဖယ်ရှားမည်") } }) } } }
         }
     }

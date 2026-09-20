@@ -10,14 +10,16 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.myanmar.ledger2d.AppContainer
+import com.myanmar.ledger2d.core.design.LocalLanguage
 
 @Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier){
     val nav=rememberNavController()
+    val language = LocalLanguage.current
     val vm:LedgerViewModel=viewModel { LedgerViewModel(container) }
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
     CompositionLocalProvider(LocalQuickEntryAction provides { nav.navigate("quickEntry") }) {
-    NavHost(nav,"home",modifier){
-        composable("welcome"){WelcomeScreen{nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
+    NavHost(nav, if (language.onboardingComplete) "home" else "welcome", modifier){
+        composable("welcome"){WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
         composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onSettlement={goTab("settlement")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}})}
         composable("todayLedger"){TodayLedgerScreen(vm,{nav.popBackStack()},{route->when(route){"home"->goTab("home");"ledger"->goTab("todayLedger");"settlement"->goTab("settlement");"manage"->goTab("agents");"quick"->nav.navigate("quickEntry")}})}
         composable("settlement"){SettlementScreen(vm,{nav.popBackStack()},{route->when(route){"home"->goTab("home");"ledger"->goTab("todayLedger");"settlement"->goTab("settlement");"manage"->goTab("agents");"quick"->nav.navigate("quickEntry")}})}

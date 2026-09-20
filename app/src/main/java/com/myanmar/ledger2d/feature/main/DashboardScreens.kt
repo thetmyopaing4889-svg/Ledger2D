@@ -138,6 +138,8 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
+    val winners by vm.winners.collectAsStateWithLifecycle()
+    val winnerAvailable = winners.any { it.date == date && it.session == session }
     val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
     AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -154,7 +156,7 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
                 "closed" -> item { AgentClosedWorkspace(vm, selected, onBack) }
                 "limit" -> item { AgentLimitWorkspace(vm, selected, onBack) }
                 "report" -> item { if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session) }
-                "winning" -> item { if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session, winningOnly = true) }
+                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session, winningOnly = true) }
                 else -> {
                     if (feature == "total" && selected > 0L) item { AgentTotalTableWorkspace(vm, selected, date, session) }
                     else { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အခြေအနေအတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
@@ -179,6 +181,8 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = if (agentId > 0L) vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") else emptyList() }
+    val winners by vm.winners.collectAsStateWithLifecycle()
+    val winnerAvailable = winners.any { it.date == date && it.session == session }
     val visible = if (customerId == -1L) summaries else summaries.filter { it.id == customerId }
     AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -199,7 +203,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
                 "digits" -> item { CustomerDigitsWorkspace(vm, customerId, date, session) }
                 "commission" -> item { CustomerCommissionWorkspace(vm, customerId, date, session) }
                 "report" -> item { if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session) }
-                "winning" -> item { if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session, winningOnly = true) }
+                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session, winningOnly = true) }
                 else -> { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
             }
         }
@@ -220,7 +224,7 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
 @Composable private fun ScopeSummaryCard(summary: ScopeSummary) { ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }
 @Composable private fun SummaryRows(rows: List<ScopeSummary>) { if (rows.isEmpty()) EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် စာရင်းမရှိသေးပါ") else rows.forEach { ScopeSummaryCard(it) } }
 
-@Composable private fun AgentReportWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) { var after by rememberSaveable { mutableStateOf(winningOnly) }; val revision by vm.revision.collectAsStateWithLifecycle(); val report by produceState<DrawReport?>(null, agentId, date, session, after, revision) { value = vm.agentReport(agentId, date, session, after) }; val rows by produceState<List<AgentCustomerReportRow>>(emptyList(), agentId, date, session, after, revision) { value = vm.agentCustomerReport(agentId, date, session, after) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { if (!winningOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!after, { after = false }, label = { Text("Before") }); FilterChip(after, { after = true }, label = { Text("After") }) }; if (after && report?.winnerAvailable != true) UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") else report?.let { ReportCard(it.calculation, it.winningDigit) }; Text("Customer တစ်ယောက်ချင်း breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> ElevatedCard { ListItem(headlineContent = { Text(row.customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ပေါက်ကြေး ${row.calculation.winningStake.mmk()} • လျော် ${row.calculation.payout.mmk()}") }, trailingContent = { Text(row.calculation.profitLoss.mmk(), fontWeight = FontWeight.Bold) }) } } } }
+@Composable private fun AgentReportWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) { var after by rememberSaveable { mutableStateOf(winningOnly) }; val revision by vm.revision.collectAsStateWithLifecycle(); val report by produceState<DrawReport?>(null, agentId, date, session, after, revision) { value = vm.agentReport(agentId, date, session, after) }; val rows by produceState<List<AgentCustomerReportRow>>(emptyList(), agentId, date, session, after, revision) { value = vm.agentCustomerReport(agentId, date, session, after) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { if (!winningOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!after, { after = false }, label = { Text("Before") }); FilterChip(after, { after = true }, label = { Text("After") }) }; if (after && report?.winnerAvailable != true) UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") else { report?.let { ReportCard(it.calculation, it.winningDigit) }; Text("Customer တစ်ယောက်ချင်း breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> ElevatedCard { ListItem(headlineContent = { Text(row.customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ပေါက်ကြေး ${row.calculation.winningStake.mmk()} • လျော် ${row.calculation.payout.mmk()}") }, trailingContent = { Text(row.calculation.profitLoss.mmk(), fontWeight = FontWeight.Bold) }) } } } } }
 
 @Composable private fun CustomerReportWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) { var after by rememberSaveable { mutableStateOf(winningOnly) }; var weekly by rememberSaveable { mutableStateOf(false) }; val revision by vm.revision.collectAsStateWithLifecycle(); val report by produceState<DrawReport?>(null, customerId, date, session, after, revision) { value = vm.customerReport(customerId, date, session, after) }; val week by produceState<WeeklyReport?>(null, customerId, date, after, weekly, revision) { value = if (weekly) vm.weeklyCustomerReport(customerId, date, after) else null }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!weekly, { weekly = false }, label = { Text("နေ့စဉ်") }); FilterChip(weekly, { weekly = true }, label = { Text("အပတ်စဉ်") }) }; Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!after, { after = false }, label = { Text("Before") }); FilterChip(after, { after = true }, label = { Text("After") }) }; if (weekly) week?.let { weeklyReport -> weeklyReport.rows.forEach { row -> OutlinedCard { Column(Modifier.padding(10.dp)) { Text("${row.date.displayDate()} • ${row.session.label}", fontWeight = FontWeight.Bold); Text("ထွက်ဂဏန်း: ${row.winningDigit ?: "—"}"); row.calculation?.let { Text("ထိုးကြေး ${it.totalBet.mmk()} • ပေါက်ကြေး ${it.winningStake.mmk()} • လျော် ${it.payout.mmk()} • ကော်မရှင် ${it.commission.mmk()} • ရှုံး/မြတ် ${it.profitLoss.mmk()}") } ?: Text("အချက်အလက် မရှိသေးပါ") } } }; AnalysisMetric("အပတ်စဉ် ထိုးကြေးစုစုပေါင်း", weeklyReport.totalBet.mmk()); AnalysisMetric("အပတ်စဉ် ကော်မရှင်", weeklyReport.commission.mmk()); AnalysisMetric("အပတ်စဉ် လျော်ပေးငွေ", weeklyReport.payout.mmk()); AnalysisMetric("အပတ်စဉ် ရှုံး/မြတ်", weeklyReport.profitLoss.mmk()) } else if (after && report?.winnerAvailable != true) UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") else report?.let { ReportCard(it.calculation, it.winningDigit) } } }
 
@@ -331,22 +335,22 @@ private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: L
                 SummaryAmount("စုစုပေါင်းထိုးကြေး", totalBet, Color.White)
                 SummaryAmount("ကော်မရှင်", totalCommission, Color.White)
                 HorizontalDivider(color = AppColors.GoldSoft.copy(alpha = .45f))
-                SummaryAmount("အသားတင်", totalBet - totalCommission, AppColors.GoldSoft)
+                SummaryAmount("ကော်မရှင်ပြီးနောက်ကျန်ငွေ", totalBet - totalCommission, AppColors.GoldSoft)
             }
         }
         Row(Modifier.fillMaxWidth().background(AppColors.Wine, MaterialTheme.shapes.small).padding(10.dp)) {
             Text("ဂဏန်း", Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Bold)
             Text("ထိုးကြေး", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text("ကော်မရှင်", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-            Text("အသားတင်", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text("ကော်မရှင်ပြီးနောက်", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
         }
         if (totals.isEmpty()) Text("ဒီအချိန်အတွက် အတည်ပြုထားသော စာရင်းမရှိသေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        else totals.forEach { row -> OutlinedCard(Modifier.fillMaxWidth()) { Row(Modifier.fillMaxWidth().padding(12.dp)) {
+        else totals.forEach { row -> Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)) { Row(Modifier.fillMaxWidth()) {
             Text(row.digit, Modifier.weight(1f), fontWeight = FontWeight.Bold)
             Text(row.amount.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Primary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text(row.commission.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Secondary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text((row.amount - row.commission).mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-        } } }
+        }; HorizontalDivider() } }
     }
 }
 
