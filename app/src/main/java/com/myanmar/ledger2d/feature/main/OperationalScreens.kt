@@ -17,6 +17,7 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
     val l=com.myanmar.ledger2d.core.design.LocalLanguage.current
     var dateText by rememberSaveable{mutableStateOf(l.selectedDate)}
     var session by rememberSaveable{mutableStateOf(l.selectedSession)}
+    LaunchedEffect(l.selectedDate, l.selectedSession) { dateText = l.selectedDate; session = l.selectedSession }
     val date=runCatching{LocalDate.parse(dateText)}.getOrElse{LocalDate.now()}
     val agents by vm.agents.collectAsStateWithLifecycle()
     OperationalScaffold(l.translate("ယနေ့စာရင်း"),onBack,content={padding->
@@ -48,6 +49,7 @@ fun SettlementScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Uni
     val l=com.myanmar.ledger2d.core.design.LocalLanguage.current
     var dateText by rememberSaveable{mutableStateOf(l.selectedDate)}
     var session by rememberSaveable{mutableStateOf(l.selectedSession)}
+    LaunchedEffect(l.selectedDate, l.selectedSession) { dateText = l.selectedDate; session = l.selectedSession }
     val date=runCatching{LocalDate.parse(dateText)}.getOrElse{LocalDate.now()}
     val revision by vm.revision.collectAsStateWithLifecycle()
     val agents by vm.agents.collectAsStateWithLifecycle()

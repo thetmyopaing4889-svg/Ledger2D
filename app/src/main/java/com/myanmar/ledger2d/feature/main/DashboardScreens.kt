@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -69,6 +70,7 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
     val agents by vm.agents.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
+    LaunchedEffect(agents, language.defaultAgentId) { if (selected != -1L && agents.none { it.id == selected }) selected = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: agents.firstOrNull()?.id ?: 0L }
     val selectedLabel = if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်"
     val featureTitle = agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature"
     AppScaffold(featureTitle, onBack) { padding ->
@@ -132,6 +134,7 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
+    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
@@ -152,7 +155,10 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
                 "limit" -> item { AgentLimitWorkspace(vm, selected, onBack) }
                 "report" -> item { if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session) }
                 "winning" -> item { if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session, winningOnly = true) }
-                else -> { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အခြေအနေအတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
+                else -> {
+                    if (feature == "total" && selected > 0L) item { AgentTotalTableWorkspace(vm, selected, date, session) }
+                    else { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အခြေအနေအတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
+                }
             }
         }
     }
@@ -166,7 +172,10 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     var customerId by rememberSaveable { mutableStateOf(language.defaultCustomerId) }
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
+    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
+    LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: agents.firstOrNull()?.id ?: 0L }
+    LaunchedEffect(customers, agentId, language.defaultCustomerId) { if (customers.none { it.id == customerId }) customerId = customers.firstOrNull { it.id == language.defaultCustomerId }?.id ?: customers.firstOrNull()?.id ?: 0L }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = if (agentId > 0L) vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") else emptyList() }
@@ -188,7 +197,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
                 "history" -> item { CustomerHistoryWorkspace(vm, customerId, onEditEntry) }
                 "analysis" -> item { CustomerAnalysisWorkspace(vm, customerId, date, session) }
                 "digits" -> item { CustomerDigitsWorkspace(vm, customerId, date, session) }
-                "commission" -> item { CustomerCommissionWorkspace(vm, customerId) }
+                "commission" -> item { CustomerCommissionWorkspace(vm, customerId, date, session) }
                 "report" -> item { if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session) }
                 "winning" -> item { if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session, winningOnly = true) }
                 else -> { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
@@ -281,14 +290,15 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
     }
 }
 
-@Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, customerId: Long) {
+@Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) {
     val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
     var value by rememberSaveable { mutableStateOf("") }
     var saved by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(customer) { customer?.let { value = java.math.BigDecimal(it.commissionRateBasisPoints).movePointLeft(2).stripTrailingZeros().toPlainString() } }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("ဒီ Customer ၏ ကော်မရှင်နှုန်းထား", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("စုစုပေါင်းထိုးကြေး၏ ရာခိုင်နှုန်းအဖြစ် တွက်ပြီး စာရင်းတစ်ခုချင်း snapshot သိမ်းထားသည်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("တွက်ချက်မည့်ကာလ • ${date.displayDate()} • ${session.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text("စုစုပေါင်းထိုးကြေး၏ ရာခိုင်နှုန်းအဖြစ် တွက်ပြီး စာရင်းတစ်ခုချင်း snapshot သိမ်းထားသည်။ Rate ပြောင်းလဲပါက ရှိပြီးသားစာရင်းများကိုလည်း ပြန်တွက်မည်။", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(value, { saved = false; value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) }, Modifier.fillMaxWidth(), label = { Text("ရာခိုင်နှုန်း") })
         Button({ vm.updateCommission(customerId, value) { saved = true } }, enabled = value.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100) } == true) { Text("သိမ်းမည်") }
         if (saved) Text("သိမ်းပြီးပါပြီ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -309,10 +319,47 @@ fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate:
 }
 
 @Composable
+private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession) {
+    val totals by vm.agentTotalsWithCommission(agentId, date, session).collectAsStateWithLifecycle(initialValue = emptyList())
+    val totalBet = totals.sumOf { it.amount }
+    val totalCommission = totals.sumOf { it.commission }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("${date.displayDate()} • ${session.label}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Surface(Modifier.fillMaxWidth(), color = AppColors.Wine, shape = MaterialTheme.shapes.large, shadowElevation = 4.dp) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("စုစုပေါင်းအနှစ်ချုပ်", color = AppColors.GoldSoft, fontWeight = FontWeight.Bold)
+                SummaryAmount("စုစုပေါင်းထိုးကြေး", totalBet, Color.White)
+                SummaryAmount("ကော်မရှင်", totalCommission, Color.White)
+                HorizontalDivider(color = AppColors.GoldSoft.copy(alpha = .45f))
+                SummaryAmount("အသားတင်", totalBet - totalCommission, AppColors.GoldSoft)
+            }
+        }
+        Row(Modifier.fillMaxWidth().background(AppColors.Wine, MaterialTheme.shapes.small).padding(10.dp)) {
+            Text("ဂဏန်း", Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Bold)
+            Text("ထိုးကြေး", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text("ကော်မရှင်", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text("အသားတင်", Modifier.weight(1.2f), color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
+        if (totals.isEmpty()) Text("ဒီအချိန်အတွက် အတည်ပြုထားသော စာရင်းမရှိသေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else totals.forEach { row -> OutlinedCard(Modifier.fillMaxWidth()) { Row(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(row.digit, Modifier.weight(1f), fontWeight = FontWeight.Bold)
+            Text(row.amount.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Primary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text(row.commission.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Secondary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text((row.amount - row.commission).mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        } } }
+    }
+}
+
+@Composable private fun SummaryAmount(label: String, amount: Long, color: Color) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, color = color); Text(amount.mmk(), color = color, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End) }
+}
+
+@Composable
 fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
+    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
@@ -332,6 +379,7 @@ fun AllCustomerScopeScreen(vm: LedgerViewModel, agentId: Long, feature: String, 
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
+    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
