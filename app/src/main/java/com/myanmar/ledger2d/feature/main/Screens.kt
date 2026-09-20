@@ -24,6 +24,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -119,35 +121,9 @@ fun transactionDisplayText(format: String, raw: String): String {
     )
 }
 @Composable fun WelcomeScreen(onContinue:()->Unit){
-    val l=LocalLanguage.current
-    Surface(Modifier.fillMaxSize(), color=MaterialTheme.colorScheme.background){
-        Column(Modifier.fillMaxSize().padding(horizontal=24.dp, vertical=28.dp), verticalArrangement=Arrangement.SpaceBetween){
-            Column(Modifier.padding(top=44.dp)){
-                Row(verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                    Surface(color=MaterialTheme.colorScheme.primary, shape=MaterialTheme.shapes.large, shadowElevation=4.dp){
-                        Text("2D", Modifier.padding(horizontal=18.dp, vertical=12.dp), color=MaterialTheme.colorScheme.onPrimary, style=MaterialTheme.typography.headlineMedium, fontWeight=FontWeight.Black)
-                    }
-                    Column{
-                        Text("စာရင်း", style=MaterialTheme.typography.labelLarge, color=MaterialTheme.colorScheme.primary, fontWeight=FontWeight.Bold)
-                        Text("Cherry 2D", style=MaterialTheme.typography.titleLarge, fontWeight=FontWeight.Bold)
-                    }
-                }
-                Spacer(Modifier.height(34.dp))
-                Text(l.text("Cherry 2D စာရင်း", "Cherry 2D Ledger"), style=MaterialTheme.typography.displaySmall, fontWeight=FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
-                Text(l.text("ဒိုင်၊ ထိုးသား၊ ထိုးကြေးနှင့် ထီပေါက်စဉ်များကို တစ်နေရာတည်းတွင် စီမံပါ", "Manage agents, customers, bets and results in one place"), style=MaterialTheme.typography.bodyLarge, color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(28.dp))
-                Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                    WelcomeStat("အော့ဖ်လိုင်း", "လုံခြုံ")
-                    WelcomeStat("မြန်ဆန်", "လွယ်ကူ")
-                    WelcomeStat("ရှင်းလင်း", "နားလည်လွယ်")
-                }
-            }
-            Button(onClick=onContinue, modifier=Modifier.fillMaxWidth().height(56.dp), shape=MaterialTheme.shapes.medium){
-                Text(l.text("စတင်အသုံးပြုမည်", "Get started"), style=MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.width(8.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
-            }
-        }
+    Box(Modifier.fillMaxSize()) {
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.welcome_cherry_ledger), "Cherry 2D Ledger welcome", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Button(onClick=onContinue, modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom=22.dp), colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF8D2344), contentColor=Color.White)) { Text("စတင်အသုံးပြုမည်") }
     }
 }
 
@@ -433,7 +409,7 @@ private fun previewError(message:String):String = when{
     }}
 }
 @Composable fun FormatScreen(onBack:()->Unit){val rows=listOf("ပါဝါ" to "05 50 16 61 27 72 38 83 49 94","နက္ခတ်" to "07 70 18 81 24 42 35 53 69 96","အပူး" to "00 11 22 33 44 55 66 77 88 99","ညီအကို" to "20 နှင့် ဆက်စပ်အတွဲဂဏန်းများ","အခွေ" to "345.100 → 34 43 45 54 35 53","အခွေပူး" to "အခွေ နှင့် အပူးဂဏန်းများ","ပတ်သီး" to "9.100 → 19 unique numbers","ထိပ်စည်း" to "9.100 → 90…99","နောက်ပိတ်" to "9.100 → 09…99","R / ပြောင်းပြန်" to "10.20R100 → both directions");AppScaffold("ထည့်သွင်းပုံ",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text("ထည့်သွင်းပုံ လမ်းညွှန်",style=MaterialTheme.typography.headlineSmall)};items(rows){(title,body)->OutlinedCard{Column(Modifier.padding(16.dp)){Text(title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(body,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}}}
-@Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold("ကော်မရှင်နှုန်းထား",onBack){p->FormColumn(p){Text("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။",Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value,onBack)},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
+@Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold("ကော်မရှင်နှုန်းထား",onBack){p->FormColumn(p){Text("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။",Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value){value="";onBack()}},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
 @Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val all by vm.allLimit(id).collectAsState(initial=null);val specials by vm.specialLimits(id).collectAsState(initial=emptyList());var allText by rememberSaveable{mutableStateOf("")};var digit by rememberSaveable{mutableStateOf("")};var amount by rememberSaveable{mutableStateOf("")};var pendingSpecial by remember{mutableStateOf<SpecialLimitEntity?>(null)};LaunchedEffect(all){allText=all?.amount?.toString()?:""};pendingSpecial?.let{value->AlertDialog(onDismissRequest={pendingSpecial=null},title={Text("အထူးကန့်သတ်ချက်ဖျက်မည်လား")},text={Text("${value.digit} အတွက် ${value.amount.mmk()} ကန့်သတ်ချက်ကို ဖျက်မည်လား?")},confirmButton={TextButton({vm.removeSpecialLimit(value);pendingSpecial=null}){Text("ဖျက်မည်")}},dismissButton={TextButton({pendingSpecial=null}){Text("မလုပ်ပါ")}})};AppScaffold("ကန့်သတ်ပမာဏ",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Text("ကန့်သတ်ပမာဏ\nအားလုံးအတွက် ကန့်သတ်ချက်",style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"မထည့်ပါက အားလုံးအတွက် ကန့်သတ်ချက်မရှိပါ",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,allText){}}){Text("သိမ်းမည်")}};item{HorizontalDivider();Text("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်",style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"ဂဏန်း",keyboard=KeyboardType.Number);Input(amount,{amount=it},"ပမာဏ",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text("သိမ်းမည်")}};items(specials){limit->Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween){Text("${limit.digit}  →  ${limit.amount.mmk()}");TextButton({pendingSpecial=limit}){Text("ဖယ်ရှားမည်")}}}}}}
 @Composable fun WinningHubScreen(onInput: () -> Unit, onView: () -> Unit, onBack: () -> Unit) {
     AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
@@ -658,10 +634,10 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
             }
             if (scope == "customer" && weekly) {
                 weeklyReport?.let { report ->
-                    items(report.rows) { row ->
-                        OutlinedCard { Column(Modifier.padding(12.dp)) { Text("${row.date.displayDate()} • ${row.session.label}"); if (row.calculation == null) Text("အချက်အလက် မရှိသေးပါ") else Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • လျော် ${row.calculation.payout.mmk()} • ရှုံး/မြတ် ${row.calculation.profitLoss.mmk()}") } }
+                    report.rows.chunked(DrawSession.entries.size).forEach { dayRows ->
+                        item { WeeklyDayCard(dayRows, after) }
                     }
-                    item { AnalysisMetric("အပတ်စဉ် ထိုးကြေးစုစုပေါင်း", report.totalBet.mmk()); AnalysisMetric("အပတ်စဉ် လျော်ပေးငွေ", report.payout.mmk()); AnalysisMetric("အပတ်စဉ် ရှုံး/မြတ်", report.profitLoss.mmk()) }
+                    item { AnalysisMetric("အပတ်စဉ် ထိုးကြေးစုစုပေါင်း", report.totalBet.mmk()); AnalysisMetric("အပတ်စဉ် ကော်မရှင်", report.commission.mmk()); if (after) AnalysisMetric("အပတ်စဉ် လျော်ပေးငွေ", report.payout.mmk()); AnalysisMetric("အပတ်စဉ် ရှုံး/မြတ်", report.profitLoss.mmk()) }
                 }
             } else if (scope == "agent" && after && report?.winnerAvailable != true) {
                 item { UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") }
@@ -671,6 +647,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                         Text("ဖောက်သည်", Modifier.weight(1.2f), fontWeight = FontWeight.Bold)
                         Text("ထိုးကြေး", Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         Text("လျော်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text("ကော်မရှင်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         Text("ရှုံး/မြတ်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
                     }
                 }
@@ -679,6 +656,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                             Text(row.customer.name, Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold)
                             Text(row.calculation.totalBet.mmk(), Modifier.weight(1f))
                             Text(row.calculation.payout.mmk(), Modifier.weight(1f))
+                            Text(row.calculation.commission.mmk(), Modifier.weight(1f))
                             Text(row.calculation.profitLoss.mmk(), Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         }
                 }
@@ -692,6 +670,8 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
         }
     }
 }
+
+@Composable private fun WeeklyDayCard(rows: List<com.myanmar.ledger2d.core.domain.WeeklyDrawRow>, after: Boolean) { OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(rows.first().date.displayDate(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> Surface(Modifier.fillMaxWidth(), color = if (row.session == DrawSession.MORNING) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .35f), shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(row.session.label, fontWeight = FontWeight.Bold); if (after && row.winningDigit != null) Text("ပေါက်ဂဏန်း ${row.winningDigit}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }; if (row.calculation == null) Text("အချက်အလက် မရှိသေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) else { Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ကော်မရှင် ${row.calculation.commission.mmk()}"); if (after) Text("လျော် ${row.calculation.payout.mmk()} • ရှုံး/မြတ် ${row.calculation.profitLoss.mmk()}") } } } } } } }
 
 @Composable fun ReportCard(c: DrawCalculation, winner: String?) {
     val profitColor = if (c.profitLoss < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
