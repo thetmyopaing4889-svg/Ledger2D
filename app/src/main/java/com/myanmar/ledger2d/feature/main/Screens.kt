@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -104,7 +103,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
             CenterAlignedTopAppBar(
-                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=AppColors.Champagne, scrolledContainerColor=AppColors.Champagne, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
+                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Color.White, scrolledContainerColor=Color.White, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
                 title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
                 navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription="နောက်သို့") } }},
                 actions={action?.invoke(this)}
@@ -160,18 +159,18 @@ fun transactionDisplayText(format: String, raw: String): String {
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
     Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)}){p->
         Column(Modifier.fillMaxSize().padding(p).padding(horizontal=12.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Surface(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.extraLarge,shadowElevation=AppDimens.featuredElevation, color=AppColors.Wine){
-                Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(AppColors.Wine,AppColors.PrimaryDeep,AppColors.Primary)),MaterialTheme.shapes.extraLarge)) {
-                    Column(Modifier.padding(start=22.dp, top=22.dp, bottom=20.dp, end=18.dp), verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Surface(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,shadowElevation=AppDimens.cardElevation, color=Color.White, border=BorderStroke(1.dp, AppColors.Stone)){
+                Box(Modifier.fillMaxWidth().background(AppColors.Blush,MaterialTheme.shapes.large)) {
+                    Column(Modifier.padding(start=18.dp, top=18.dp, bottom=16.dp, end=16.dp), verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) {
                             Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                                Text(l.text("ကြိုဆိုပါသည်","Welcome to"), style=MaterialTheme.typography.labelLarge, color=AppColors.GoldSoft, fontWeight=FontWeight.Bold)
-                                Text(l.text("Cherry 2D စာရင်း","Cherry 2D Ledger"), style=MaterialTheme.typography.headlineSmall, color=Color.White, fontWeight=FontWeight.Black)
-                                Text(l.text("ယနေ့လုပ်ငန်းအခြေအနေကို တစ်ချက်ကြည့်ပါ","Your daily business at a glance"), style=MaterialTheme.typography.bodySmall, color=Color.White.copy(alpha=.76f))
+                                Text(l.text("ကြိုဆိုပါသည်","Welcome to"), style=MaterialTheme.typography.labelLarge, color=AppColors.PrimaryDeep, fontWeight=FontWeight.Bold)
+                                Text(l.text("Cherry 2D စာရင်း","Cherry 2D Ledger"), style=MaterialTheme.typography.headlineSmall, color=AppColors.PrimaryDeep, fontWeight=FontWeight.Black)
+                                Text(l.text("ယနေ့လုပ်ငန်းအခြေအနေကို တစ်ချက်ကြည့်ပါ","Your daily business at a glance"), style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Surface(color=AppColors.Gold.copy(alpha=.20f), shape=MaterialTheme.shapes.large, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.65f))) { Icon(Icons.Default.AutoGraph, null, tint=AppColors.GoldSoft, modifier=Modifier.padding(14.dp).size(30.dp)) }
+                            Surface(color=Color.White, shape=MaterialTheme.shapes.medium, border=BorderStroke(1.dp, AppColors.Stone)) { Icon(Icons.Default.AutoGraph, null, tint=AppColors.Primary, modifier=Modifier.padding(12.dp).size(28.dp)) }
                         }
-                        Row(verticalAlignment=Alignment.CenterVertically) { Icon(Icons.Default.CalendarMonth,null,tint=Color.White.copy(alpha=.78f),modifier=Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(today.displayDate(), style=MaterialTheme.typography.labelMedium, color=Color.White.copy(alpha=.78f)) }
+                        Row(verticalAlignment=Alignment.CenterVertically) { Icon(Icons.Default.CalendarMonth,null,tint=AppColors.Primary,modifier=Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(today.displayDate(), style=MaterialTheme.typography.labelMedium, color=MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
             }

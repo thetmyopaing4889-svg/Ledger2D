@@ -57,10 +57,13 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
     val l = LocalLanguage.current
     AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Surface(Modifier.fillMaxWidth(), color=AppColors.Wine, shape=MaterialTheme.shapes.extraLarge, shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(20.dp), verticalArrangement=Arrangement.spacedBy(5.dp)) { Text(l.translate("Agent feature များ"), style = MaterialTheme.typography.headlineSmall, color=Color.White, fontWeight = FontWeight.Black); Text(l.translate("လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ"), color = AppColors.GoldSoft) } } }
             items(agentActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)) {
-                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.Bold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.medium, border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(10.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary) })
+                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=Color.White), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal=14.dp, vertical=10.dp), verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Surface(color=AppColors.GoldSoft, shape=MaterialTheme.shapes.small, border=BorderStroke(1.dp, AppColors.Stone)) { Icon(action.icon, null, tint=AppColors.PrimaryDeep, modifier=Modifier.padding(9.dp).size(22.dp)) }
+                        Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(2.dp)) { Text(l.translate(action.title), fontWeight=FontWeight.Bold); Text(l.translate(action.subtitle), style=MaterialTheme.typography.labelSmall, color=MaterialTheme.colorScheme.onSurfaceVariant, maxLines=1) }
+                        Icon(Icons.Default.ChevronRight, null, tint=AppColors.Primary)
+                    }
                 }
             }
         }
