@@ -57,8 +57,8 @@ val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
         modifier = Modifier.offset { IntOffset(x.roundToInt(), y.roundToInt()) }.pointerInput(Unit) {
             detectDragGestures { change, dragAmount ->
                 change.consume()
-                x = (x + dragAmount.x).coerceIn(-260f, 260f)
-                y = (y + dragAmount.y).coerceIn(-520f, 520f)
+                x += dragAmount.x
+                y += dragAmount.y
             }
         },
         containerColor = AppColors.Primary.copy(alpha = .68f),
@@ -473,16 +473,10 @@ private fun previewError(message:String):String = when{
                 }
             }
             if (mode == "view") item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DateInput(date, { date = it; language.setDate(it) }, "ရက်စွဲ", Modifier.weight(1f))
-                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) }
-                }
-            }
-            if (mode == "view") item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ResultViewCard("ရက်အလိုက်ကြည့်ရန်", "တစ်ရက်ချင်းစီ၏ ရလဒ်ကိုကြည့်ရန်", Icons.Default.Today, AppColors.Blush, { resultView = "daily"; showForm = false }, Modifier.weight(1f))
-                    ResultViewCard("အပတ်စဉ်ကြည့်ရန်", "တစ်ပတ်စာ ရလဒ်များကိုကြည့်ရန်", Icons.Default.DateRange, AppColors.Champagne, { resultView = "weekly"; showForm = false }, Modifier.weight(1f))
-                    ResultViewCard("လစဉ်ကြည့်ရန်", "တစ်လစာ ရလဒ်များကိုကြည့်ရန်", Icons.Default.CalendarMonth, AppColors.GoldSoft.copy(alpha=.42f), { resultView = "monthly"; showForm = false }, Modifier.weight(1f))
+                    ResultViewCard("ရက်အလိုက်", "တစ်ရက်", Icons.Default.Today, AppColors.Blush, { resultView = "daily"; showForm = false }, Modifier.weight(1f).height(108.dp))
+                    ResultViewCard("အပတ်စဉ်", "တစ်ပတ်", Icons.Default.DateRange, AppColors.Champagne, { resultView = "weekly"; showForm = false }, Modifier.weight(1f).height(108.dp))
+                    ResultViewCard("လစဉ်", "တစ်လ", Icons.Default.CalendarMonth, AppColors.GoldSoft.copy(alpha=.42f), { resultView = "monthly"; showForm = false }, Modifier.weight(1f).height(108.dp))
                 }
             }
             if (mode == "input" && showForm && resultView.isBlank()) {
