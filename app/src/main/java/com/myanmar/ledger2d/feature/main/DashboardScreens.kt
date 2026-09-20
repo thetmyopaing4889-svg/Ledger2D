@@ -215,7 +215,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     }
 }
 
-@Composable private fun SelectionCard(content: @Composable ColumnScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Blush.copy(alpha = .72f), shape=MaterialTheme.shapes.medium, border=BorderStroke(1.dp, AppColors.Primary.copy(alpha=.22f))) { Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content=content) } }
+@Composable private fun SelectionCard(content: @Composable ColumnScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Champagne, shape=MaterialTheme.shapes.medium, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.35f))) { Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content=content) } }
 
 @Composable
 fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, onSelect: (Long) -> Unit) {
@@ -263,8 +263,8 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
     pendingDelete?.let { entry -> AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("စာရင်းဖျက်မည်လား") }, text = { Text("ဒီစာရင်းကို အပြီးဖျက်မလား?") }, confirmButton = { TextButton({ vm.deleteBet(entry); pendingDelete = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pendingDelete = null }) { Text("မလုပ်ပါ") } }) }
     actionEntry?.let { entry -> AlertDialog(onDismissRequest = { actionEntry = null }, title = { Text("စာရင်းလုပ်ဆောင်ချက်") }, text = { Text(transactionDisplayText(entry.entry.inputFormat, entry.entry.sourceText)) }, confirmButton = { TextButton({ actionEntry = null; onEditEntry(entry.entry.id) }) { Text("ပြင်မည်") } }, dismissButton = { TextButton({ actionEntry = null; pendingDelete = entry.entry }) { Text("ဖျက်မည်") } }) }
     if (entries.isEmpty()) EmptyState("စာရင်းမရှိသေးပါ", "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") else {
-        Column(Modifier.fillMaxWidth().background(AppColors.Champagne, MaterialTheme.shapes.medium).padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Text("စဉ်", Modifier.weight(.45f), fontWeight = FontWeight.Bold); Text("အကွက်", Modifier.weight(2f), fontWeight = FontWeight.Bold); Text("အကွက်အရေအတွက်", Modifier.weight(1.25f), fontWeight = FontWeight.Bold, color = AppColors.Primary); Text("ငွေပမာဏ", Modifier.weight(1.1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.End) }
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Text("စဉ်", Modifier.weight(.45f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold); Text("အကွက်", Modifier.weight(2f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold); Text("အကွက်အရေအတွက်", Modifier.weight(1.25f), style = MaterialTheme.typography.labelSmall, color = AppColors.Primary, fontWeight = FontWeight.SemiBold); Text("ငွေပမာဏ", Modifier.weight(1.1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End) }
             HorizontalDivider()
             entries.forEachIndexed { index, entry ->
                 val amount = entry.lines.sumOf { it.amount }
@@ -276,7 +276,7 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
                 }
                 HorizontalDivider()
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("စုစုပေါင်း", fontWeight = FontWeight.Black); Text("${entries.sumOf { it.lines.size }} ကွက်   ${entries.sumOf { it.lines.sumOf { line -> line.amount } }.mmk()}", fontWeight = FontWeight.Black, color = AppColors.Primary) }
+            Row(Modifier.fillMaxWidth().background(AppColors.Blush.copy(alpha = .45f), MaterialTheme.shapes.small).padding(horizontal = 8.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("စုစုပေါင်း", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold); Text("${entries.sumOf { it.lines.size }} ကွက်   ${entries.sumOf { it.lines.sumOf { line -> line.amount } }.mmk()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = AppColors.Primary) }
         }
     }
 }
