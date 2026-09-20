@@ -12,14 +12,14 @@ import androidx.navigation.navArgument
 import com.myanmar.ledger2d.AppContainer
 import com.myanmar.ledger2d.core.design.LocalLanguage
 
-@Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier){
+@Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier,startAtWelcome:Boolean=false){
     val nav=rememberNavController()
     val language = LocalLanguage.current
     val vm:LedgerViewModel=viewModel { LedgerViewModel(container) }
     val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
     CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
-    NavHost(nav, if (language.onboardingComplete) "home" else "welcome", modifier){
+    NavHost(nav, if (startAtWelcome || !language.onboardingComplete) "welcome" else "home", modifier){
         composable("welcome"){WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
         composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onSettlement={goTab("settlement")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}})}
         composable("todayLedger"){TodayLedgerScreen(vm,{nav.popBackStack()},{route->when(route){"home"->goTab("home");"ledger"->goTab("todayLedger");"settlement"->goTab("settlement");"manage"->goTab("agents");"quick"->nav.navigate("quickEntry")}})}
@@ -27,16 +27,16 @@ import com.myanmar.ledger2d.core.design.LocalLanguage
         composable("quickEntry"){QuickEntryScreen(vm,onBet={agentId,customerId->nav.navigate("bet/$agentId/$customerId")}){nav.popBackStack()}}
         composable("agents"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");else->nav.navigate("agentScope/$feature")}})}
         composable("agentDashboard"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");else->nav.navigate("agentWorkspace/$feature")}})}
-        composable("agentWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AgentFeatureWorkspaceScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()})}
+        composable("agentWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "total";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else AgentFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()})}
         composable("agentList"){AgentListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("agentInfo/$it")},{nav.navigate("agentForm/0")})}
         composable("agentInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentInformationScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){nav.navigate("agentForm/$it")}}
-        composable("agentScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AgentScopeScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()}){feature,id->when(feature){"total"->if(id==-1L)nav.navigate("allAgentFeature/total") else nav.navigate("total/$id");"report"->if(id==-1L)nav.navigate("allAgentFeature/report") else nav.navigate("report/agent/$id");"closed"->if(id==-1L)nav.navigate("allAgentFeature/closed") else nav.navigate("closed/$id");"winning"->if(id==-1L)nav.navigate("allAgentFeature/winning") else nav.navigate("winning/agent/$id");"limit"->if(id==-1L)nav.navigate("allAgentFeature/limit") else nav.navigate("agentLimit/$id")}}}
+        composable("agentScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AgentScopeScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()}){feature,id->when(feature){"total"->if(id==-1L)nav.navigate("allAgentFeature/total") else nav.navigate("total/$id");"report"->if(id==-1L)nav.navigate("allAgentFeature/report") else nav.navigate("report/agent/$id");"closed"->if(id==-1L)nav.navigate("allAgentFeature/closed") else nav.navigate("closed/$id");"winning"->nav.navigate("winning/view");"limit"->if(id==-1L)nav.navigate("allAgentFeature/limit") else nav.navigate("agentLimit/$id")}}}
         composable("allAgentFeature/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AllAgentFeatureScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()})}
         composable("customerDashboard"){CustomerDashboardScreen(vm,{nav.popBackStack()},{},{feature->when(feature){"customerList"->nav.navigate("customerList");else->nav.navigate("customerWorkspace/$feature")}})}
         composable("customerList"){CustomerListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("customerInfo/$it")},{agentId->nav.navigate("customerForm/$agentId/0")})}
         composable("customerInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CustomerInformationScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){agentId,id->nav.navigate("customerForm/$agentId/$id")}}
-        composable("customerWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->CustomerFeatureWorkspaceScreen(vm,e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()},{entryId->nav.navigate("betEdit/$entryId")})}
-        composable("customerScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->CustomerScopeScreen(vm,e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()}){feature,agentId,customerId->if(customerId==-1L)nav.navigate("allCustomerScope/$agentId/$feature") else when(feature){"history"->nav.navigate("betHistory/$customerId");"report"->nav.navigate("report/customer/$customerId");"analysis"->nav.navigate("analysis/$customerId");"digits"->nav.navigate("digitList/$agentId/$customerId");"commission"->nav.navigate("commission/$customerId");"winning"->nav.navigate("winning/customer/$customerId")}}}
+        composable("customerWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "history";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else CustomerFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()},{entryId->nav.navigate("betEdit/$entryId")})}
+        composable("customerScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->CustomerScopeScreen(vm,e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()}){feature,agentId,customerId->if(feature=="winning")nav.navigate("winning/view") else if(customerId==-1L)nav.navigate("allCustomerScope/$agentId/$feature") else when(feature){"history"->nav.navigate("betHistory/$customerId");"report"->nav.navigate("report/customer/$customerId");"analysis"->nav.navigate("analysis/$customerId");"digits"->nav.navigate("digitList/$agentId/$customerId");"commission"->nav.navigate("commission/$customerId")}}}
         composable("allCustomerScope/{agentId}/{feature}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("feature"){type=NavType.StringType})){e->AllCustomerScopeScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()})}
         composable("addCustomerHome"){AddCustomerFromHomeScreen(vm,{nav.popBackStack()}){nav.navigate("customerForm/$it/0")}}
         composable("agentForm/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentFormScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
@@ -57,7 +57,7 @@ import com.myanmar.ledger2d.core.design.LocalLanguage
         composable("winning/view"){WinningNumberScreen(vm, "view"){nav.popBackStack()}}
         composable("closedDays"){ClosedDayScreen(vm){nav.popBackStack()}}
         composable("settings"){SettingsScreen(vm){nav.popBackStack()}}
-        composable("winning/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ScopedWinningScreen(vm,scope,id){nav.popBackStack()}}
+        composable("winning/{scope}/{id}"){WinningNumberScreen(vm,"view"){nav.popBackStack()}}
         composable("report/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ReportScreen(vm,scope,id){nav.popBackStack()}}
     }
     }

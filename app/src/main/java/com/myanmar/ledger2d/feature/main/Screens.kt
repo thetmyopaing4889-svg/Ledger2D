@@ -123,7 +123,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable fun WelcomeScreen(onContinue:()->Unit){
     Box(Modifier.fillMaxSize()) {
         Image(painterResource(com.myanmar.ledger2d.R.drawable.welcome_cherry_ledger), "Cherry 2D Ledger welcome", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Button(onClick=onContinue, modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom=22.dp), colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF8D2344), contentColor=Color.White)) { Text("စတင်အသုံးပြုမည်") }
+        Button(onClick=onContinue, modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom=22.dp).fillMaxWidth(.86f).height(60.dp), colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF8D2344), contentColor=Color.White), shape=MaterialTheme.shapes.large) { Text("စတင်အသုံးပြုမည်", style=MaterialTheme.typography.titleMedium, fontWeight=FontWeight.Bold) }
     }
 }
 
@@ -459,6 +459,9 @@ private fun previewError(message:String):String = when{
                     ResultViewCard("လစဉ်", "တစ်လ", Icons.Default.CalendarMonth, { resultView = "monthly"; showForm = false }, Modifier.weight(1f).height(108.dp))
                 }
             }
+            if (mode == "view") item {
+                DateInput(date, { date = it; language.setDate(it) }, when (resultView) { "weekly" -> "ကြည့်မည့်အပတ်"; "monthly" -> "ကြည့်မည့်လ"; else -> "ကြည့်မည့်ရက်" })
+            }
             if (mode == "input" && showForm && resultView.isBlank()) {
                 item {
                     ElevatedCard {
@@ -500,17 +503,12 @@ private fun previewError(message:String):String = when{
                         "daily" -> WinningDayCard(selected, winners.filter { it.date == selected }, closedDays.any { it.date == selected })
                         "weekly" -> {
                             val monday = selected.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                (0L..4L).forEach { offset -> val day = monday.plusDays(offset); WinningDayCard(day, winners.filter { it.date == day }, closedDays.any { it.date == day }, compact = true) }
-                            }
+                            WinningWeekGrid(monday, winners, closedDays)
                         }
                         else -> {
                             val first = selected.withDayOfMonth(1)
                             val last = selected.withDayOfMonth(selected.lengthOfMonth())
-                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                var day = first
-                                while (!day.isAfter(last)) { WinningDayCard(day, winners.filter { it.date == day }, closedDays.any { it.date == day }, compact = true); day = day.plusDays(1) }
-                            }
+                            WinningMonthGrid(first, last, winners, closedDays)
                         }
                     }
                 }
@@ -549,6 +547,33 @@ private fun previewError(message:String):String = when{
             Icon(icon, null, tint = AppColors.Primary, modifier = Modifier.size(22.dp))
             Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
+        }
+    }
+}
+
+@Composable private fun WinningWeekGrid(monday: LocalDate, winners: List<WinningNumberEntity>, closedDays: List<ClosedDayEntity>) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { listOf("တနင်္လာ", "အင်္ဂါ", "ဗုဒ္ဓဟူး", "ကြာသပတေး", "သောကြာ").forEach { Text(it, Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) } }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { (0L..4L).forEach { offset -> val day = monday.plusDays(offset); WinningGridCell(day, winners.filter { it.date == day }, closedDays.any { it.date == day }) } }
+    }
+}
+
+@Composable private fun WinningMonthGrid(first: LocalDate, last: LocalDate, winners: List<WinningNumberEntity>, closedDays: List<ClosedDayEntity>) {
+    val weekdays = buildList { var day = first; while (!day.isAfter(last)) { if (day.dayOfWeek.value <= 5) add(day); day = day.plusDays(1) } }
+    val leading = if (first.dayOfWeek.value <= 5) first.dayOfWeek.value - 1 else 0
+    val cells: List<LocalDate?> = List(leading) { null } + weekdays
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { listOf("တနင်္လာ", "အင်္ဂါ", "ဗုဒ္ဓဟူး", "ကြာသပတေး", "သောကြာ").forEach { Text(it, Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) } }
+        cells.chunked(5).forEach { week -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { week.forEach { day -> if (day == null) Spacer(Modifier.weight(1f).height(112.dp)) else WinningGridCell(day, winners.filter { it.date == day }, closedDays.any { it.date == day }) }; repeat(5 - week.size) { Spacer(Modifier.weight(1f).height(112.dp)) } } }
+    }
+}
+
+@Composable private fun RowScope.WinningGridCell(date: LocalDate, winners: List<WinningNumberEntity>, closed: Boolean) {
+    val dateLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
+    Surface(Modifier.weight(1f).height(112.dp), color = if (closed) MaterialTheme.colorScheme.errorContainer.copy(alpha = .45f) else Color.White, shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, AppColors.Stone)) {
+        Column(Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(dateLabel, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+            DrawSession.entries.forEach { draw -> val winner = winners.firstOrNull { it.session == draw }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(if (draw == DrawSession.MORNING) "မနက်" else "ည", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(winner?.digit ?: if (closed) "ပိတ်" else "—", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.Primary) } }
         }
     }
 }
