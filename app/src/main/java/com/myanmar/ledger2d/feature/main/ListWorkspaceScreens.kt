@@ -42,7 +42,13 @@ fun AgentListWorkspaceScreen(vm: LedgerViewModel, onBack: () -> Unit, onInfo: (L
 @Composable
 fun CustomerListWorkspaceScreen(vm: LedgerViewModel, onBack: () -> Unit, onInfo: (Long) -> Unit, onAdd: (Long) -> Unit) {
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var selectedAgent by rememberSaveable { mutableStateOf(0L) }
+    val language = LocalLanguage.current
+    var selectedAgent by rememberSaveable { mutableStateOf(language.defaultAgentId) }
+    LaunchedEffect(agents, language.defaultAgentId) {
+        if (selectedAgent == 0L || agents.none { it.id == selectedAgent }) {
+            selectedAgent = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L
+        }
+    }
     val customers by vm.customers(selectedAgent).collectAsStateWithLifecycle(initialValue = emptyList())
     val agentName = agents.firstOrNull { it.id == selectedAgent }?.name ?: "ဒိုင်ရွေးရန်"
     val l = LocalLanguage.current

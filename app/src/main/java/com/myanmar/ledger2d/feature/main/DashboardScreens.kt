@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
@@ -92,10 +94,13 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Surface(Modifier.fillMaxWidth(), color=AppColors.PrimaryDeep, shape=MaterialTheme.shapes.extraLarge, shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(20.dp), verticalArrangement=Arrangement.spacedBy(5.dp)) { Text(l.translate("Customer feature များ"), style = MaterialTheme.typography.headlineSmall, color=Color.White, fontWeight = FontWeight.Black); Text(l.translate("Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ"), color = AppColors.GoldSoft) } } }
             items(customerActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)) {
-                    ListItem(headlineContent = { Text(l.translate(action.title), fontWeight = FontWeight.Bold) }, supportingContent = { Text(l.translate(action.subtitle)) }, leadingContent = { Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.medium, border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(10.dp)) } }, trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary) })
+                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(8.dp).size(22.dp)) }
+                        Text(l.translate(action.title), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary)
+                    }
                 }
             }
         }
@@ -210,7 +215,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     }
 }
 
-@Composable private fun SelectionCard(content: @Composable ColumnScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Champagne, shape=MaterialTheme.shapes.large, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.35f)), shadowElevation=AppDimens.cardElevation) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content=content) } }
+@Composable private fun SelectionCard(content: @Composable ColumnScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Blush.copy(alpha = .72f), shape=MaterialTheme.shapes.medium, border=BorderStroke(1.dp, AppColors.Primary.copy(alpha=.22f))) { Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content=content) } }
 
 @Composable
 fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, onSelect: (Long) -> Unit) {
@@ -238,11 +243,11 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
     val entries by vm.customerEntries(customerId, selectedDate, language.selectedSession).collectAsStateWithLifecycle(initialValue = emptyList())
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
+    var actionEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
     expandedEntry?.let { record ->
         AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်") }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text("Input: ${record.entry.sourceText}", fontWeight = FontWeight.Bold)
-                Text("${inputFormatDisplay(record.entry.inputFormat)} ${record.entry.sourceText}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText), fontWeight = FontWeight.Bold)
                 HorizontalDivider()
                 LazyColumn(Modifier.heightIn(max = 340.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(record.lines, key = { it.id }) { line ->
@@ -251,24 +256,27 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
                 }
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", fontWeight = FontWeight.Bold); Text(record.lines.sumOf { it.amount }.mmk(), fontWeight = FontWeight.Black) }
-                Text("${record.lines.size} entries", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${record.lines.size} ကွက်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         })
     }
     pendingDelete?.let { entry -> AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("စာရင်းဖျက်မည်လား") }, text = { Text("ဒီစာရင်းကို အပြီးဖျက်မလား?") }, confirmButton = { TextButton({ vm.deleteBet(entry); pendingDelete = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pendingDelete = null }) { Text("မလုပ်ပါ") } }) }
-    if (entries.isEmpty()) EmptyState("စာရင်းမရှိသေးပါ", "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") else entries.forEach { entry ->
-        ElevatedCard(shape = MaterialTheme.shapes.large, colors = CardDefaults.elevatedCardColors(containerColor = AppColors.Champagne), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("${entry.entry.drawDate} • ${entry.entry.drawSession.label}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(entry.lines.sumOf { it.amount }.mmk(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
+    actionEntry?.let { entry -> AlertDialog(onDismissRequest = { actionEntry = null }, title = { Text("စာရင်းလုပ်ဆောင်ချက်") }, text = { Text(transactionDisplayText(entry.entry.inputFormat, entry.entry.sourceText)) }, confirmButton = { TextButton({ actionEntry = null; onEditEntry(entry.entry.id) }) { Text("ပြင်မည်") } }, dismissButton = { TextButton({ actionEntry = null; pendingDelete = entry.entry }) { Text("ဖျက်မည်") } }) }
+    if (entries.isEmpty()) EmptyState("စာရင်းမရှိသေးပါ", "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") else {
+        Column(Modifier.fillMaxWidth().background(AppColors.Champagne, MaterialTheme.shapes.medium).padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Text("စဉ်", Modifier.weight(.45f), fontWeight = FontWeight.Bold); Text("အကွက်", Modifier.weight(2f), fontWeight = FontWeight.Bold); Text("အကွက်အရေအတွက်", Modifier.weight(1.25f), fontWeight = FontWeight.Bold, color = AppColors.Primary); Text("ငွေပမာဏ", Modifier.weight(1.1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.End) }
+            HorizontalDivider()
+            entries.forEachIndexed { index, entry ->
+                val amount = entry.lines.sumOf { it.amount }
+                Row(Modifier.fillMaxWidth().combinedClickable(onClick = { expandedEntry = entry }, onLongClick = { actionEntry = entry }).padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${index + 1}", Modifier.weight(.45f), style = MaterialTheme.typography.bodySmall)
+                    Text(transactionDisplayText(entry.entry.inputFormat, entry.entry.sourceText), Modifier.weight(2f), style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                    Text("${entry.lines.size} ကွက်", Modifier.weight(1.25f), color = AppColors.Primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                    Text(amount.mmk(), Modifier.weight(1.1f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("Input: ${entry.entry.sourceText}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Format: ${entry.entry.inputFormat}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${entry.lines.size} entries", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { expandedEntry = entry }, contentPadding = PaddingValues(0.dp)) { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { TextButton({ onEditEntry(entry.entry.id) }) { Text("ပြင်မည်") }; TextButton({ pendingDelete = entry.entry }) { Text("ဖျက်မည်") } }
+                HorizontalDivider()
             }
+            Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("စုစုပေါင်း", fontWeight = FontWeight.Black); Text("${entries.sumOf { it.lines.size }} ကွက်   ${entries.sumOf { it.lines.sumOf { line -> line.amount } }.mmk()}", fontWeight = FontWeight.Black, color = AppColors.Primary) }
         }
     }
 }

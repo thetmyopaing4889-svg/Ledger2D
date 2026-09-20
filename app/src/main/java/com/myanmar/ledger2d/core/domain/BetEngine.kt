@@ -3,7 +3,7 @@ package com.myanmar.ledger2d.core.domain
 import com.myanmar.ledger2d.core.model.ExpandedBet
 
 enum class QuickFormat(val label: String) {
-    MANUAL("Manual"), POWER("ပါဝါ"), ASTROLOGY("နက္ခတ်"), DOUBLES("အပူး"), SIBLINGS("ညီအကို"), COMBINATION("အခွေ"), COMBINATION_DOUBLES("အခွေပူး"), ROUND("ပတ်သီး"), HEAD("ထိပ်စည်း"), TAIL("နောက်ပိတ်")
+    MANUAL("လက်ဖြင့်"), POWER("ပါဝါ"), ASTROLOGY("နက္ခတ်"), DOUBLES("အပူး"), SIBLINGS("ညီအကို"), COMBINATION("အခွေ"), COMBINATION_DOUBLES("အခွေပူး"), ROUND("ပတ်သီး"), HEAD("ထိပ်စည်း"), TAIL("နောက်ပိတ်")
 }
 sealed interface ParseResult { data class Success(val bets: List<ExpandedBet>, val total: Long) : ParseResult; data class Error(val message: String) : ParseResult }
 data class SmartLine(val source: String, val format: QuickFormat, val result: ParseResult)

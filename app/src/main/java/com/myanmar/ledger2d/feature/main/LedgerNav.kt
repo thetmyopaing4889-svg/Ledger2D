@@ -16,8 +16,9 @@ import com.myanmar.ledger2d.core.design.LocalLanguage
     val nav=rememberNavController()
     val language = LocalLanguage.current
     val vm:LedgerViewModel=viewModel { LedgerViewModel(container) }
+    val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
-    CompositionLocalProvider(LocalQuickEntryAction provides { nav.navigate("quickEntry") }) {
+    CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
     NavHost(nav, if (language.onboardingComplete) "home" else "welcome", modifier){
         composable("welcome"){WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
         composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onSettlement={goTab("settlement")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}})}
@@ -51,7 +52,9 @@ import com.myanmar.ledger2d.core.design.LocalLanguage
         composable("commission/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CommissionScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
         composable("limit/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->LimitScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
         composable("agentLimit/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentLimitScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
-        composable("winning"){WinningNumberScreen(vm){nav.popBackStack()}}
+        composable("winning"){WinningHubScreen({ nav.navigate("winning/input") }, { nav.navigate("winning/view") }, { nav.popBackStack() })}
+        composable("winning/input"){WinningNumberScreen(vm, "input"){nav.popBackStack()}}
+        composable("winning/view"){WinningNumberScreen(vm, "view"){nav.popBackStack()}}
         composable("closedDays"){ClosedDayScreen(vm){nav.popBackStack()}}
         composable("settings"){SettingsScreen(vm){nav.popBackStack()}}
         composable("winning/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ScopedWinningScreen(vm,scope,id){nav.popBackStack()}}

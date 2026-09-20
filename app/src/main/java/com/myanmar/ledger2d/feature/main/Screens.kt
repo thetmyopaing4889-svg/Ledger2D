@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
@@ -28,8 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.flow.first
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.design.*
@@ -46,8 +50,17 @@ fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.
 val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
 
 @Composable private fun QuickEntryFab(onClick: () -> Unit) {
+    var x by rememberSaveable { mutableStateOf(0f) }
+    var y by rememberSaveable { mutableStateOf(0f) }
     SmallFloatingActionButton(
         onClick = onClick,
+        modifier = Modifier.offset { IntOffset(x.roundToInt(), y.roundToInt()) }.pointerInput(Unit) {
+            detectDragGestures { change, dragAmount ->
+                change.consume()
+                x = (x + dragAmount.x).coerceIn(-260f, 260f)
+                y = (y + dragAmount.y).coerceIn(-520f, 520f)
+            }
+        },
         containerColor = AppColors.Primary.copy(alpha = .68f),
         contentColor = Color.White,
         shape = MaterialTheme.shapes.large,
@@ -66,6 +79,11 @@ fun inputFormatDisplay(value: String): String = when (value.uppercase()) {
     "HEAD" -> "ထိပ်စည်း"
     "TAIL" -> "နောက်ပိတ်"
     else -> "လက်ဖြင့်ထည့်သွင်းမှု"
+}
+fun transactionDisplayText(format: String, raw: String): String {
+    if (format.equals("MANUAL", ignoreCase = true)) return raw.trim()
+    val value = raw.trim().replace(Regex("[Rr]"), " ").replace(Regex("\\s+"), " ")
+    return "${inputFormatDisplay(format)} $value".trim()
 }
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
@@ -414,15 +432,24 @@ private fun previewError(message:String):String = when{
 @Composable fun FormatScreen(onBack:()->Unit){val rows=listOf("ပါဝါ" to "05 50 16 61 27 72 38 83 49 94","နက္ခတ်" to "07 70 18 81 24 42 35 53 69 96","အပူး" to "00 11 22 33 44 55 66 77 88 99","ညီအကို" to "20 နှင့် ဆက်စပ်အတွဲဂဏန်းများ","အခွေ" to "345.100 → 34 43 45 54 35 53","အခွေပူး" to "အခွေ နှင့် အပူးဂဏန်းများ","ပတ်သီး" to "9.100 → 19 unique numbers","ထိပ်စည်း" to "9.100 → 90…99","နောက်ပိတ်" to "9.100 → 09…99","R / ပြောင်းပြန်" to "10.20R100 → both directions");AppScaffold("ထည့်သွင်းပုံ",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text("ထည့်သွင်းပုံ လမ်းညွှန်",style=MaterialTheme.typography.headlineSmall)};items(rows){(title,body)->OutlinedCard{Column(Modifier.padding(16.dp)){Text(title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(body,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}}}
 @Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold("ကော်မရှင်နှုန်းထား",onBack){p->FormColumn(p){Text("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။",Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value,onBack)},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
 @Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val all by vm.allLimit(id).collectAsState(initial=null);val specials by vm.specialLimits(id).collectAsState(initial=emptyList());var allText by rememberSaveable{mutableStateOf("")};var digit by rememberSaveable{mutableStateOf("")};var amount by rememberSaveable{mutableStateOf("")};var pendingSpecial by remember{mutableStateOf<SpecialLimitEntity?>(null)};LaunchedEffect(all){allText=all?.amount?.toString()?:""};pendingSpecial?.let{value->AlertDialog(onDismissRequest={pendingSpecial=null},title={Text("အထူးကန့်သတ်ချက်ဖျက်မည်လား")},text={Text("${value.digit} အတွက် ${value.amount.mmk()} ကန့်သတ်ချက်ကို ဖျက်မည်လား?")},confirmButton={TextButton({vm.removeSpecialLimit(value);pendingSpecial=null}){Text("ဖျက်မည်")}},dismissButton={TextButton({pendingSpecial=null}){Text("မလုပ်ပါ")}})};AppScaffold("ကန့်သတ်ပမာဏ",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){item{Text("ကန့်သတ်ပမာဏ\nအားလုံးအတွက် ကန့်သတ်ချက်",style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"မထည့်ပါက အားလုံးအတွက် ကန့်သတ်ချက်မရှိပါ",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,allText){}}){Text("သိမ်းမည်")}};item{HorizontalDivider();Text("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်",style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"ဂဏန်း",keyboard=KeyboardType.Number);Input(amount,{amount=it},"ပမာဏ",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text("သိမ်းမည်")}};items(specials){limit->Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween){Text("${limit.digit}  →  ${limit.amount.mmk()}");TextButton({pendingSpecial=limit}){Text("ဖယ်ရှားမည်")}}}}}}
-@Composable fun WinningNumberScreen(vm: LedgerViewModel, onBack: () -> Unit) {
+@Composable fun WinningHubScreen(onInput: () -> Unit, onView: () -> Unit, onBack: () -> Unit) {
+    AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ResultViewCard("ပေါက်ဂဏန်းထည့်ရန်", "ထွက်ဂဏန်းကို ရက်နှင့်အချိန်အလိုက် ထည့်ရန်", Icons.Default.Edit, AppColors.Blush, onInput, Modifier.fillMaxWidth())
+            ResultViewCard("ထီပေါက်စဉ်ကြည့်ရန်", "ရက်အလိုက်၊ အပတ်စဉ်၊ လစဉ် ကြည့်ရန်", Icons.Default.CalendarMonth, AppColors.Champagne, onView, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable fun WinningNumberScreen(vm: LedgerViewModel, mode: String = "input", onBack: () -> Unit) {
     val winners by vm.winners.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var date by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     LaunchedEffect(language.selectedDate, language.selectedSession) { date = language.selectedDate; session = language.selectedSession }
     var digit by rememberSaveable { mutableStateOf("") }
-    var showForm by rememberSaveable { mutableStateOf(true) }
-    var resultView by rememberSaveable { mutableStateOf("") }
+    var showForm by rememberSaveable(mode) { mutableStateOf(mode == "input") }
+    var resultView by rememberSaveable(mode) { mutableStateOf(if (mode == "view") "daily" else "") }
     var pendingDelete by remember { mutableStateOf<WinningNumberEntity?>(null) }
     var notice by rememberSaveable { mutableStateOf("") }
     val existing = winners.firstOrNull { it.date.toString() == date && it.session == session }
@@ -445,14 +472,20 @@ private fun previewError(message:String):String = when{
                     Text("ရက်စွဲနှင့် အချိန်အလိုက် ရလဒ်များကို စီမံပါ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            item {
+            if (mode == "view") item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DateInput(date, { date = it; language.setDate(it) }, "ရက်စွဲ", Modifier.weight(1f))
+                    DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) }
+                }
+            }
+            if (mode == "view") item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ResultViewCard("ရက်အလိုက်ကြည့်ရန်", "တစ်ရက်ချင်းစီ၏ ရလဒ်ကိုကြည့်ရန်", Icons.Default.Today, AppColors.Blush, { resultView = "daily"; showForm = false }, Modifier.weight(1f))
                     ResultViewCard("အပတ်စဉ်ကြည့်ရန်", "တစ်ပတ်စာ ရလဒ်များကိုကြည့်ရန်", Icons.Default.DateRange, AppColors.Champagne, { resultView = "weekly"; showForm = false }, Modifier.weight(1f))
                     ResultViewCard("လစဉ်ကြည့်ရန်", "တစ်လစာ ရလဒ်များကိုကြည့်ရန်", Icons.Default.CalendarMonth, AppColors.GoldSoft.copy(alpha=.42f), { resultView = "monthly"; showForm = false }, Modifier.weight(1f))
                 }
             }
-            if (showForm && resultView.isBlank()) {
+            if (mode == "input" && showForm && resultView.isBlank()) {
                 item {
                     ElevatedCard {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
@@ -485,7 +518,7 @@ private fun previewError(message:String):String = when{
                         }
                     }
                 }
-            } else if (resultView.isNotBlank()) {
+            } else if (mode == "view" && resultView.isNotBlank()) {
                 val selected = runCatching { LocalDate.parse(date) }.getOrElse { LocalDate.now() }
                 val visible = when (resultView) {
                     "daily" -> winners.filter { it.date == selected }
@@ -495,9 +528,9 @@ private fun previewError(message:String):String = when{
                 item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(when(resultView) { "daily" -> "ရက်အလိုက်ရလဒ်"; "weekly" -> "အပတ်စဉ်ရလဒ်"; else -> "လစဉ်ရလဒ်" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); TextButton({ resultView = ""; showForm = true }) { Text("ပြန်ထည့်ရန်") } } }
                 if (visible.isEmpty()) item { EmptyState("မှတ်တမ်းမရှိသေးပါ", "ရွေးထားသောကာလအတွက် ရလဒ်မရှိသေးပါ") }
                 else visible.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) -> item { ElevatedCard { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(day.displayDate(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); dayWinners.forEach { winner -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(winner.session.label); Text(winner.digit, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = AppColors.Primary) } } } } } }
-            } else if (winners.isEmpty()) {
+            } else if (mode == "view" && winners.isEmpty()) {
                 item { EmptyState("မှတ်တမ်းမရှိသေးပါ", "အသစ်ထည့်ရန်မှ ပေါက်ဂဏန်းကို ထည့်ပါ") }
-            } else {
+            } else if (mode == "view") {
                 winners.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) ->
                     item {
                         ElevatedCard {
