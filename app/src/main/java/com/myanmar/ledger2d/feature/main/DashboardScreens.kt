@@ -151,6 +151,7 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
     val winners by vm.winners.collectAsStateWithLifecycle()
+    val aggregate by produceState<ScopeSummary?>(null, date, session, feature, selected, revision) { value = if (selected == -1L) vm.aggregateAgentSummary(date, session, feature == "winning" || feature == "report") else null }
     val winnerAvailable = winners.any { it.date == date && it.session == session }
     val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
     AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", onBack) { padding ->
@@ -167,10 +168,11 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
             else when (feature) {
                 "closed" -> item { AgentClosedWorkspace(vm, selected, onBack) }
                 "limit" -> item { AgentLimitWorkspace(vm, selected, onBack) }
-                "report" -> item { if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session) }
-                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (selected == -1L) SummaryRows(visible) else AgentReportWorkspace(vm, selected, date, session, winningOnly = true) }
+                "report" -> item { if (selected == -1L) aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အချိန်အတွက် စုစုပေါင်းစာရင်းမရှိသေးပါ") else AgentReportWorkspace(vm, selected, date, session) }
+                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (selected == -1L) aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အချိန်အတွက် စုစုပေါင်းစာရင်းမရှိသေးပါ") else AgentReportWorkspace(vm, selected, date, session, winningOnly = true) }
                 else -> {
                     if (feature == "total" && selected > 0L) item { AgentTotalTableWorkspace(vm, selected, date, session) }
+                    else if (selected == -1L) item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အခြေအနေအတွက် စုစုပေါင်းစာရင်းမရှိသေးပါ") }
                     else { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အခြေအနေအတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
                 }
             }
@@ -189,11 +191,12 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: agents.firstOrNull()?.id ?: 0L }
-    LaunchedEffect(customers, agentId, language.defaultCustomerId) { if (customers.none { it.id == customerId }) customerId = customers.firstOrNull { it.id == language.defaultCustomerId }?.id ?: customers.firstOrNull()?.id ?: 0L }
+    LaunchedEffect(customers, agentId, language.defaultCustomerId) { if (customerId != -1L && customers.none { it.id == customerId }) customerId = customers.firstOrNull { it.id == language.defaultCustomerId }?.id ?: customers.firstOrNull()?.id ?: 0L }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = if (agentId > 0L) vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") else emptyList() }
     val winners by vm.winners.collectAsStateWithLifecycle()
+    val aggregate by produceState<ScopeSummary?>(null, date, session, feature, agentId, customerId, revision) { value = if (agentId > 0L && customerId == -1L) vm.aggregateCustomerSummary(agentId, date, session, feature == "winning" || feature == "report") else null }
     val winnerAvailable = winners.any { it.date == date && it.session == session }
     val visible = if (customerId == -1L) summaries else summaries.filter { it.id == customerId }
     AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", onBack) { padding ->
@@ -214,9 +217,9 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
                 "analysis" -> item { CustomerAnalysisWorkspace(vm, customerId, date, session) }
                 "digits" -> item { CustomerDigitsWorkspace(vm, customerId, date, session) }
                 "commission" -> item { CustomerCommissionWorkspace(vm, customerId, date, session) }
-                "report" -> item { if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session) }
-                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (customerId == -1L) SummaryRows(visible) else CustomerReportWorkspace(vm, customerId, date, session, winningOnly = true) }
-                else -> { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
+                "report" -> item { if (customerId == -1L) aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အချိန်အတွက် Customer အားလုံးစာရင်းမရှိသေးပါ") else CustomerReportWorkspace(vm, customerId, date, session) }
+                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (customerId == -1L) aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အချိန်အတွက် Customer အားလုံးစာရင်းမရှိသေးပါ") else CustomerReportWorkspace(vm, customerId, date, session, winningOnly = true) }
+                else -> if (customerId == -1L) item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အားလုံးအတွက် စာရင်းမရှိသေးပါ") } else { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
             }
         }
     }
@@ -472,14 +475,11 @@ fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Un
     LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
-    val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, revision) { value = vm.allAgentSummaries(date, session, feature == "winning" || feature == "report") }
+    val aggregate by produceState<ScopeSummary?>(null, date, session, feature, revision) { value = vm.aggregateAgentSummary(date, session, feature == "winning" || feature == "report") }
     AppScaffold("ဒိုင်အားလုံး", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text("ဒိုင်အားလုံး • ${agentActions.firstOrNull { it.key == feature }?.title ?: feature}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
-            if (summaries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် ဒိုင်စာရင်းမရှိသေးပါ") }
-            items(summaries, key = { it.id }) { summary ->
-                ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } }
-            }
+            item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် ဒိုင်အားလုံးစာရင်းမရှိသေးပါ") }
         }
     }
 }
@@ -493,13 +493,12 @@ fun AllCustomerScopeScreen(vm: LedgerViewModel, agentId: Long, feature: String, 
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
-    val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") }
+    val aggregate by produceState<ScopeSummary?>(null, date, session, feature, agentId, revision) { value = vm.aggregateCustomerSummary(agentId, date, session, feature == "winning" || feature == "report") }
     AppScaffold("Customer အားလုံး", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { Text("ရွေးထားသော Agent အောက်က Customer အားလုံး • $feature", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } } }
             if (customers.isEmpty()) item { EmptyState("Customer မရှိသေးပါ", "ဒီ Agent အောက်မှာ Customer ထည့်ပါ") }
-            else if (summaries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် Customer စာရင်းမရှိသေးပါ") }
-            items(summaries, key = { it.id }) { summary -> ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }
+            else item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော ရက်နှင့်အချိန်အတွက် Customer အားလုံးစာရင်းမရှိသေးပါ") }
         }
     }
 }
