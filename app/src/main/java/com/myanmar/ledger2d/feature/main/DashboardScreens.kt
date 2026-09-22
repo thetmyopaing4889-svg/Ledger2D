@@ -404,7 +404,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 }
 
 @Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
-    val customer by if (customerId == -1L) androidx.compose.runtime.produceState<CustomerEntity?>(null) { } else vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
+    val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
     var value by rememberSaveable { mutableStateOf("") }
     var saved by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(customer, saved) { if (!saved) customer?.let { value = java.math.BigDecimal(it.commissionRateBasisPoints).movePointLeft(2).stripTrailingZeros().toPlainString() } }
