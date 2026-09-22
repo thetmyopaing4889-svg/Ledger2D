@@ -8,6 +8,19 @@ import com.myanmar.ledger2d.core.design.LedgerTheme
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.design.rememberLanguageState
 import com.myanmar.ledger2d.feature.main.LedgerNav
-import com.myanmar.ledger2d.feature.main.WelcomeScreen
 
-class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);enableEdgeToEdge();setContent{LedgerTheme{val language=rememberLanguageState(this);androidx.compose.runtime.CompositionLocalProvider(LocalLanguage provides language){LedgerNav((application as LedgerApplication).container,startAtWelcome=true)}}}}}
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            val container = (application as LedgerApplication).container
+            LedgerTheme {
+                val language = rememberLanguageState(this, container.workingContext)
+                androidx.compose.runtime.CompositionLocalProvider(LocalLanguage provides language) {
+                    LedgerNav(container, startAtWelcome = true)
+                }
+            }
+        }
+    }
+}

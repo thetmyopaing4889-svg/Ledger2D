@@ -2,16 +2,23 @@ package com.myanmar.ledger2d.core.design
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import java.time.LocalDate
+import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
+import java.time.LocalDate
 
-class LanguageState(context: Context) {
+class LanguageState(context: Context, private val workingContext: WorkingContextStore) {
     private val preferences = context.getSharedPreferences("ledger_settings", Context.MODE_PRIVATE)
+
+    init {
+        // Legacy releases stored this UI-only state. It must never be restored into a new app session.
+        preferences.edit().remove("selected_date").remove("selected_session").apply()
+    }
+
     var code by mutableStateOf(preferences.getString("language", "my") ?: "my")
         private set
     var defaultAgentId by mutableStateOf(preferences.getLong("default_agent_id", 0L))
@@ -20,16 +27,21 @@ class LanguageState(context: Context) {
         private set
     var onboardingComplete by mutableStateOf(preferences.getBoolean("onboarding_complete", false))
         private set
-    var selectedDate by mutableStateOf(preferences.getString("selected_date", LocalDate.now().toString()) ?: LocalDate.now().toString())
-        private set
-    var selectedSession by mutableStateOf(DrawSession.valueOf(preferences.getString("selected_session", DrawSession.MORNING.name) ?: DrawSession.MORNING.name))
-        private set
+
+    val selectedDate: String
+        get() = workingContext.current.date.toString()
+    val selectedSession: DrawSession
+        get() = workingContext.current.session
+    val workingContextReady: Boolean
+        get() = workingContext.isInitialized
+
+    fun initializeWorkingContext(default: DrawIdentity) = workingContext.initialize(default)
     fun set(code: String) { this.code = code; preferences.edit().putString("language", code).apply() }
     fun setDefaultAgent(id: Long) { defaultAgentId = id; defaultCustomerId = 0L; preferences.edit().putLong("default_agent_id", id).putLong("default_customer_id", 0L).apply() }
     fun setDefaultCustomer(id: Long) { defaultCustomerId = id; preferences.edit().putLong("default_customer_id", id).apply() }
     fun completeOnboarding() { onboardingComplete = true; preferences.edit().putBoolean("onboarding_complete", true).apply() }
-    fun setDate(value: String) { selectedDate = value; preferences.edit().putString("selected_date", value).apply() }
-    fun setSession(value: DrawSession) { selectedSession = value; preferences.edit().putString("selected_session", value.name).apply() }
+    fun setDate(value: String) { workingContext.setDate(LocalDate.parse(value)) }
+    fun setSession(value: DrawSession) { workingContext.setSession(value) }
     fun text(my: String, en: String): String = if (code == "en") en else my
     fun translate(value: String): String = if (code == "my") value else english[value] ?: value
     private val english = mapOf(
@@ -76,4 +88,4 @@ class LanguageState(context: Context) {
     )
 }
 val LocalLanguage = staticCompositionLocalOf<LanguageState> { error("LanguageState not provided") }
-@Composable fun rememberLanguageState(context: Context): LanguageState = remember { LanguageState(context) }
+@Composable fun rememberLanguageState(context: Context, workingContext: WorkingContextStore): LanguageState = remember(workingContext) { LanguageState(context, workingContext) }
