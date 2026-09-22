@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import java.time.LocalDate
+import java.time.LocalDateTime
+import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.core.model.DrawSession
 
 class LanguageState(context: Context) {
@@ -20,16 +22,24 @@ class LanguageState(context: Context) {
         private set
     var onboardingComplete by mutableStateOf(preferences.getBoolean("onboarding_complete", false))
         private set
-    var selectedDate by mutableStateOf(preferences.getString("selected_date", LocalDate.now().toString()) ?: LocalDate.now().toString())
+    private var useDefaultDraw by mutableStateOf(!preferences.contains("selected_date") && !preferences.contains("selected_session"))
+    private val initialDraw = DrawSchedule.nextDraw(LocalDateTime.now())
+    var selectedDate by mutableStateOf(preferences.getString("selected_date", initialDraw.date.toString()) ?: initialDraw.date.toString())
         private set
-    var selectedSession by mutableStateOf(DrawSession.valueOf(preferences.getString("selected_session", DrawSession.MORNING.name) ?: DrawSession.MORNING.name))
+    var selectedSession by mutableStateOf(DrawSession.valueOf(preferences.getString("selected_session", initialDraw.session.name) ?: initialDraw.session.name))
         private set
     fun set(code: String) { this.code = code; preferences.edit().putString("language", code).apply() }
     fun setDefaultAgent(id: Long) { defaultAgentId = id; defaultCustomerId = 0L; preferences.edit().putLong("default_agent_id", id).putLong("default_customer_id", 0L).apply() }
     fun setDefaultCustomer(id: Long) { defaultCustomerId = id; preferences.edit().putLong("default_customer_id", id).apply() }
     fun completeOnboarding() { onboardingComplete = true; preferences.edit().putBoolean("onboarding_complete", true).apply() }
-    fun setDate(value: String) { selectedDate = value; preferences.edit().putString("selected_date", value).apply() }
-    fun setSession(value: DrawSession) { selectedSession = value; preferences.edit().putString("selected_session", value.name).apply() }
+    fun setDate(value: String) { useDefaultDraw = false; selectedDate = value; preferences.edit().putString("selected_date", value).apply() }
+    fun setSession(value: DrawSession) { useDefaultDraw = false; selectedSession = value; preferences.edit().putString("selected_session", value.name).apply() }
+    fun updateDefaultDraw(closedDays: Set<LocalDate>) {
+        if (!useDefaultDraw) return
+        val draw = DrawSchedule.nextDraw(LocalDateTime.now(), closedDays)
+        selectedDate = draw.date.toString()
+        selectedSession = draw.session
+    }
     fun text(my: String, en: String): String = if (code == "en") en else my
     fun translate(value: String): String = if (code == "my") value else english[value] ?: value
     private val english = mapOf(

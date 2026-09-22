@@ -2,6 +2,7 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -16,6 +17,8 @@ import com.myanmar.ledger2d.core.design.LocalLanguage
     val nav=rememberNavController()
     val language = LocalLanguage.current
     val vm:LedgerViewModel=viewModel { LedgerViewModel(container) }
+    val closedDays by vm.closedDays.collectAsStateWithLifecycle()
+    LaunchedEffect(closedDays) { language.updateDefaultDraw(closedDays.map { it.date }.toSet()) }
     val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
     CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
