@@ -27,8 +27,9 @@ class DrawScheduleTest {
         assertEquals(DrawSession.MORNING, draw.session)
     }
 
-    @Test fun noon_selects_evening_until_evening_cutoff() {
-        assertEquals(DrawSession.EVENING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.NOON)).session)
+    @Test fun morning_remains_default_until_1201_pm() {
+        assertEquals(DrawSession.MORNING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.NOON)).session)
+        assertEquals(DrawSession.EVENING, DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(12, 1))).session)
         val draw = DrawSchedule.nextDraw(LocalDateTime.of(date, LocalTime.of(16, 30)))
         assertEquals(date.plusDays(1), draw.date)
         assertEquals(DrawSession.MORNING, draw.session)
@@ -47,8 +48,19 @@ class DrawScheduleTest {
 
     @Test fun session_cutoffs_are_strict() {
         assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(date, LocalTime.of(11, 59))))
-        assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(date, LocalTime.NOON)))
+        assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(date, LocalTime.NOON)))
+        assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(date, LocalTime.of(12, 1))))
         assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.EVENING, LocalDateTime.of(date, LocalTime.of(16, 29))))
         assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.EVENING, LocalDateTime.of(date, LocalTime.of(16, 30))))
+    }
+
+    @Test fun closed_days_are_skipped_when_selecting_the_next_working_draw() {
+        val friday = LocalDate.of(2026, 9, 11)
+        val draw = DrawSchedule.nextDraw(
+            LocalDateTime.of(friday, LocalTime.of(16, 30)),
+            setOf(LocalDate.of(2026, 9, 14)),
+        )
+        assertEquals(LocalDate.of(2026, 9, 15), draw.date)
+        assertEquals(DrawSession.MORNING, draw.session)
     }
 }
