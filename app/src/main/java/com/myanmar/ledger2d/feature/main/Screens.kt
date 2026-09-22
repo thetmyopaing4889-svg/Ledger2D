@@ -136,7 +136,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={}){
-    val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=LocalDate.now(); val closed=days.any{it.date==today}
+    val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); val days by vm.closedDays.collectAsStateWithLifecycle(); val today=DeviceCalendar.today(); val closed=days.any{it.date==today}
     Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onNavigate,onAgentDashboard,onCustomerDashboard,onClosedDays,onWinning,onSettings)}){p->
         Column(Modifier.fillMaxSize().padding(p).padding(horizontal=12.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Surface(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,shadowElevation=AppDimens.cardElevation, color=Color.White, border=BorderStroke(1.dp, AppColors.Stone)){
@@ -774,7 +774,6 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(label, style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
 }
 @Composable fun ClosedDayScreen(vm: LedgerViewModel, onBack: () -> Unit) {
-    val language = LocalLanguage.current
     val days by vm.closedDays.collectAsStateWithLifecycle()
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var notice by rememberSaveable { mutableStateOf("") }
@@ -783,7 +782,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     AppScaffold("ပိတ်ရက်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("သတ်မှတ်ထားသော ပိတ်ရက်များတွင် စာရင်းအသစ် လက်မခံပါ", style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
-            DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
+            DateInput(dateText, { dateText = it }, "ရက်စွဲ")
             Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text("ပိတ်ရက်သတ်မှတ်မည်") }
             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.error)
             if(days.isEmpty()) EmptyState("ပိတ်ရက် မရှိသေးပါ", "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=MaterialTheme.shapes.medium) { ListItem(headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text("စာရင်းအသစ် လက်မခံပါ")}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text("ဖယ်ရှားမည်") } }) } } }

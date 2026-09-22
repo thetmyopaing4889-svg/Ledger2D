@@ -2,7 +2,12 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -11,11 +16,22 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.myanmar.ledger2d.AppContainer
 import com.myanmar.ledger2d.core.design.LocalLanguage
+import com.myanmar.ledger2d.core.domain.DrawSchedule
+import kotlinx.coroutines.flow.first
+import java.time.LocalDateTime
 
 @Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier,startAtWelcome:Boolean=false){
     val nav=rememberNavController()
     val language = LocalLanguage.current
     val vm:LedgerViewModel=viewModel { LedgerViewModel(container) }
+    LaunchedEffect(Unit) {
+        val closedDays = container.closedDays.observeAll().first().map { it.date }.toSet()
+        language.initializeWorkingContext(DrawSchedule.defaultWorkingContext(LocalDateTime.now(), closedDays))
+    }
+    if (!language.workingContextReady) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
     val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
     CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
