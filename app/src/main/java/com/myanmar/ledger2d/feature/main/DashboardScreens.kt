@@ -213,12 +213,12 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
             } }
             if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
             else when (feature) {
-                "history" -> item { CustomerHistoryWorkspace(vm, customerId, onEditEntry) }
-                "analysis" -> item { CustomerAnalysisWorkspace(vm, customerId, date, session) }
-                "digits" -> item { CustomerDigitsWorkspace(vm, customerId, date, session) }
-                "commission" -> item { CustomerCommissionWorkspace(vm, customerId, date, session) }
-                "report" -> item { if (customerId == -1L) aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အချိန်အတွက် Customer အားလုံးစာရင်းမရှိသေးပါ") else CustomerReportWorkspace(vm, customerId, date, session) }
-                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else if (customerId == -1L) aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော အချိန်အတွက် Customer အားလုံးစာရင်းမရှိသေးပါ") else CustomerReportWorkspace(vm, customerId, date, session, winningOnly = true) }
+                "history" -> item { CustomerHistoryWorkspace(vm, agentId, customerId, onEditEntry) }
+                "analysis" -> item { CustomerAnalysisWorkspace(vm, agentId, customerId, date, session) }
+                "digits" -> item { CustomerDigitsWorkspace(vm, agentId, customerId, date, session) }
+                "commission" -> item { CustomerCommissionWorkspace(vm, agentId, customerId, date, session) }
+                "report" -> item { CustomerReportWorkspace(vm, agentId, customerId, date, session) }
+                "winning" -> item { if (!winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else CustomerReportWorkspace(vm, agentId, customerId, date, session, winningOnly = true) }
                 else -> if (customerId == -1L) item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အားလုံးအတွက် စာရင်းမရှိသေးပါ") } else { if (visible.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
             }
         }
@@ -242,15 +242,15 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
 @Composable private fun AgentReportWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) { var after by rememberSaveable { mutableStateOf(winningOnly) }; val revision by vm.revision.collectAsStateWithLifecycle(); val report by produceState<DrawReport?>(null, agentId, date, session, after, revision) { value = vm.agentReport(agentId, date, session, after) }; val rows by produceState<List<AgentCustomerReportRow>>(emptyList(), agentId, date, session, after, revision) { value = vm.agentCustomerReport(agentId, date, session, after) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { if (!winningOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!after, { after = false }, label = { Text("Before") }); FilterChip(after, { after = true }, label = { Text("After") }) }; if (after && report?.winnerAvailable != true) UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") else { report?.let { ReportCard(it.calculation, it.winningDigit) }; Text("Customer တစ်ယောက်ချင်း breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> ElevatedCard { ListItem(headlineContent = { Text(row.customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ပေါက်ကြေး ${row.calculation.winningStake.mmk()} • လျော် ${row.calculation.payout.mmk()}") }, trailingContent = { Text(row.calculation.profitLoss.mmk(), fontWeight = FontWeight.Bold) }) } } } } }
 
 @Composable
-private fun CustomerReportWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) {
+private fun CustomerReportWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) {
     var after by rememberSaveable { mutableStateOf(winningOnly) }
     var weekly by rememberSaveable { mutableStateOf(false) }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val report by produceState<DrawReport?>(null, customerId, date, session, after, revision) {
-        value = vm.customerReport(customerId, date, session, after)
+        value = if (customerId == -1L) vm.aggregateCustomerReport(agentId, date, session, after) else vm.customerReport(customerId, date, session, after)
     }
     val week by produceState<WeeklyReport?>(null, customerId, date, after, weekly, revision) {
-        value = if (weekly) vm.weeklyCustomerReport(customerId, date, after) else null
+        value = if (weekly) { if (customerId == -1L) vm.aggregateWeeklyCustomerReport(agentId, date, after) else vm.weeklyCustomerReport(customerId, date, after) } else null
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -328,10 +328,10 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 
 @Composable private fun AgentLimitWorkspace(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) { val all by vm.agentAllLimit(agentId).collectAsStateWithLifecycle(initialValue = null); val specials by vm.agentSpecialLimits(agentId).collectAsStateWithLifecycle(initialValue = emptyList()); var allText by rememberSaveable { mutableStateOf("") }; var digit by rememberSaveable { mutableStateOf("") }; var amount by rememberSaveable { mutableStateOf("") }; var pending by remember { mutableStateOf<AgentSpecialLimitEntity?>(null) }; LaunchedEffect(all) { allText = all?.amount?.toString() ?: "" }; pending?.let { value -> AlertDialog(onDismissRequest = { pending = null }, title = { Text("အထူးကန့်သတ်ချက်ဖယ်ရှားမည်လား") }, text = { Text("${value.digit} အတွက် limit ကို ဖယ်ရှားမည်လား?") }, confirmButton = { TextButton({ vm.removeAgentSpecialLimit(value); pending = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pending = null }) { Text("မလုပ်ပါ") } }) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Agent-wide limit", style = MaterialTheme.typography.titleMedium); OutlinedTextField(allText, { allText = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("အကွက်အားလုံးအတွက် limit") }); Button({ vm.updateAgentAllLimit(agentId, allText) {} }) { Text("သိမ်းမည်") }; HorizontalDivider(); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(digit, { digit = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = { Text("ဂဏန်း") }); OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, Modifier.weight(1f), label = { Text("ပမာဏ") }); Button({ vm.addAgentSpecialLimit(agentId, digit, amount); digit = ""; amount = "" }, enabled = com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit) && (amount.toLongOrNull()?.let { value -> value > 0 } == true)) { Text("သိမ်းမည်") } }; specials.forEach { limit -> ListItem(headlineContent = { Text(limit.digit) }, supportingContent = { Text(limit.amount.mmk()) }, trailingContent = { TextButton({ pending = limit }) { Text("ဖယ်ရှားမည်") } }) } } }
 
-@Composable private fun CustomerHistoryWorkspace(vm: LedgerViewModel, customerId: Long, onEditEntry: (Long) -> Unit) {
+@Composable private fun CustomerHistoryWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, onEditEntry: (Long) -> Unit) {
     val language = LocalLanguage.current
     val selectedDate = runCatching { LocalDate.parse(language.selectedDate) }.getOrElse { LocalDate.now() }
-    val entries by vm.customerEntries(customerId, selectedDate, language.selectedSession).collectAsStateWithLifecycle(initialValue = emptyList())
+    val entries by (if (customerId == -1L) vm.agentEntries(agentId, selectedDate, language.selectedSession) else vm.customerEntries(customerId, selectedDate, language.selectedSession)).collectAsStateWithLifecycle(initialValue = emptyList())
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
     var actionEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
@@ -372,17 +372,17 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     }
 }
 
-@Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) { val revision by vm.revision.collectAsStateWithLifecycle(); val result by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = vm.analysis(customerId, date, session) }; result?.let { analysis -> AnalysisMetric("လက်ရှိအကွက်အရေအတွက်", analysis.distinctDigits.toString()); AnalysisMetric("ထိုးကြေးစုစုပေါင်း", analysis.totalBet.mmk()); AnalysisMetric("ကန့်သတ်ထားသောအကွက်", analysis.limitedDigits.toString()); AnalysisMetric("80%+ သတိပေး", analysis.warningDigits.toString()); AnalysisMetric("90%+ အလွန်နီး", analysis.nearDigits.toString()); AnalysisMetric("100% ပြည့်ပြီး", analysis.fullDigits.toString()); AnalysisMetric("အဆိုးဆုံးလျော်ပေးရနိုင်မှု", analysis.worstCasePayout.mmk()); AnalysisMetric("အဆိုးဆုံး ရှုံး/မြတ်", analysis.worstCaseProfitLoss.mmk()); Text("ထိုးကြေးအများဆုံးအကွက်များ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.highest.forEach { Text("${it.first} • ${it.second.mmk()}") }; Text("ပိတ်ထားသောအကွက်များ: ${analysis.closedDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("ထပ်မလက်ခံသင့်သောအကွက်များ: ${analysis.rejectDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("အကွက်အနိုင်ရ scenario", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.scenarios.filter { it.stake > 0 }.forEach { scenario -> Text("${scenario.digit}: ထိုး ${scenario.stake.mmk()} • လျော် ${scenario.payout.mmk()} • ရှုံး/မြတ် ${scenario.profitLoss.mmk()}") } } }
+@Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) { val revision by vm.revision.collectAsStateWithLifecycle(); val result by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session) else vm.analysis(customerId, date, session) }; result?.let { analysis -> AnalysisMetric("လက်ရှိအကွက်အရေအတွက်", analysis.distinctDigits.toString()); AnalysisMetric("ထိုးကြေးစုစုပေါင်း", analysis.totalBet.mmk()); AnalysisMetric("ကန့်သတ်ထားသောအကွက်", analysis.limitedDigits.toString()); AnalysisMetric("80%+ သတိပေး", analysis.warningDigits.toString()); AnalysisMetric("90%+ အလွန်နီး", analysis.nearDigits.toString()); AnalysisMetric("100% ပြည့်ပြီး", analysis.fullDigits.toString()); AnalysisMetric("အဆိုးဆုံးလျော်ပေးရနိုင်မှု", analysis.worstCasePayout.mmk()); AnalysisMetric("အဆိုးဆုံး ရှုံး/မြတ်", analysis.worstCaseProfitLoss.mmk()); Text("ထိုးကြေးအများဆုံးအကွက်များ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.highest.forEach { Text("${it.first} • ${it.second.mmk()}") }; Text("ပိတ်ထားသောအကွက်များ: ${analysis.closedDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("ထပ်မလက်ခံသင့်သောအကွက်များ: ${analysis.rejectDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("အကွက်အနိုင်ရ scenario", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.scenarios.filter { it.stake > 0 }.forEach { scenario -> Text("${scenario.digit}: ထိုး ${scenario.stake.mmk()} • လျော် ${scenario.payout.mmk()} • ရှုံး/မြတ် ${scenario.profitLoss.mmk()}") } } }
 
 @Composable private fun RowScope.DigitCountSummary(label: String, count: Int, color: Color) { Surface(Modifier.weight(1f), color = color.copy(alpha = .08f), shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, color.copy(alpha = .35f))) { Column(Modifier.padding(7.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(count.toString(), fontWeight = FontWeight.Black, color = color); Text(label, style = MaterialTheme.typography.labelSmall, color = color, textAlign = TextAlign.Center, maxLines = 2) } } }
 
-@Composable private fun CustomerDigitsWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) {
-    val totals by vm.customerTotals(customerId, date, session).collectAsStateWithLifecycle(initialValue = emptyList())
+@Composable private fun CustomerDigitsWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
+    val totals by (if (customerId == -1L) vm.agentTotals(agentId, date, session) else vm.customerTotals(customerId, date, session)).collectAsStateWithLifecycle(initialValue = emptyList())
     val specialLimits by vm.specialLimits(customerId).collectAsStateWithLifecycle(initialValue = emptyList())
     val amounts = totals.associate { it.digit to it.amount }
     val specialDigits = specialLimits.map { it.digit }.toSet()
     val revision by vm.revision.collectAsStateWithLifecycle()
-    val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = vm.analysis(customerId, date, session) }
+    val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session) else vm.analysis(customerId, date, session) }
     val scenarios = analysis?.scenarios?.associateBy { it.digit }.orEmpty()
     val winningNumber by vm.winner(date, session).collectAsStateWithLifecycle(initialValue = null)
     val paidCount = amounts.count { it.value > 0L }
@@ -403,18 +403,24 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     }
 }
 
-@Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, customerId: Long, date: LocalDate, session: DrawSession) {
-    val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
+@Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
+    val customer by if (customerId == -1L) androidx.compose.runtime.produceState<CustomerEntity?>(null) { } else vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
     var value by rememberSaveable { mutableStateOf("") }
     var saved by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(customer, saved) { if (!saved) customer?.let { value = java.math.BigDecimal(it.commissionRateBasisPoints).movePointLeft(2).stripTrailingZeros().toPlainString() } }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("ဒီ Customer ၏ ကော်မရှင်နှုန်းထား", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(if (customerId == -1L) "Customer အားလုံး၏ ကော်မရှင်" else "ဒီ Customer ၏ ကော်မရှင်နှုန်းထား", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text("တွက်ချက်မည့်ကာလ • ${date.displayDate()} • ${session.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        Text("စုစုပေါင်းထိုးကြေး၏ ရာခိုင်နှုန်းအဖြစ် တွက်ပြီး စာရင်းတစ်ခုချင်း snapshot သိမ်းထားသည်။ Rate ပြောင်းလဲပါက ရှိပြီးသားစာရင်းများကိုလည်း ပြန်တွက်မည်။", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedTextField(value, { saved = false; value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) }, Modifier.fillMaxWidth(), label = { Text("ရာခိုင်နှုန်း") })
-        Button({ vm.updateCommission(customerId, value) { value = ""; saved = true } }, enabled = value.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100) } == true) { Text("သိမ်းမည်") }
-        if (saved) Text("သိမ်းပြီးပါပြီ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text(if (customerId == -1L) "ရွေးထားသော Agent အောက်က Customer အားလုံး၏ snapshot commission ကို ပေါင်းပြထားသည်။" else "စုစုပေါင်းထိုးကြေး၏ ရာခိုင်နှုန်းအဖြစ် တွက်ပြီး စာရင်းတစ်ခုချင်း snapshot သိမ်းထားသည်။", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (customerId == -1L) {
+            val revision by vm.revision.collectAsStateWithLifecycle()
+            val total by produceState(initialValue = 0L, agentId, date, session, revision) { this.value = vm.agentReport(agentId, date, session, true).calculation.commission }
+            AnalysisMetric("စုစုပေါင်းကော်မရှင်", total.mmk())
+        } else {
+            OutlinedTextField(value, { saved = false; value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) }, Modifier.fillMaxWidth(), label = { Text("ရာခိုင်နှုန်း") })
+            Button({ vm.updateCommission(customerId, value) { value = ""; saved = true } }, enabled = value.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100) } == true) { Text("သိမ်းမည်") }
+            if (saved) Text("သိမ်းပြီးပါပြီ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
