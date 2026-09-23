@@ -175,9 +175,9 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
     val configuration=LocalConfiguration.current
     Box(Modifier.fillMaxWidth().requiredWidth((configuration.screenWidthDp+12).dp).offset(x=(-12).dp).height(220.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp))){
-        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop)
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.FillBounds)
         Row(Modifier.fillMaxWidth().padding(start=(configuration.screenWidthDp*.36f).dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
-            Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text(today.displayDate(),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp),maxLines=1,softWrap=false)}
+            Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.94f),fontSize=16.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false);Text(today.displayDate(),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=6.dp),maxLines=1,softWrap=false)}
             IconButton(onClick=onSettings,modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(31.dp))}
         }
     }
