@@ -33,16 +33,23 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
@@ -164,17 +171,39 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
-    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.extraLarge,shadowElevation=8.dp,color=AppColors.PrimaryDeep){
-        Box(Modifier.fillMaxWidth().background(AppColors.PrimaryDeep,MaterialTheme.shapes.extraLarge)){
-            Box(Modifier.size(120.dp).align(Alignment.TopEnd).offset(x=24.dp,y=(-26).dp).background(Color.White.copy(alpha=.08f),CircleShape))
-            Box(Modifier.size(70.dp).align(Alignment.BottomEnd).offset(x=(-18).dp,y=22.dp).background(Color.White.copy(alpha=.08f),CircleShape))
-            Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=16.dp),verticalAlignment=Alignment.CenterVertically){
-                Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Cherry",Modifier.size(56.dp).clip(CircleShape),contentScale=ContentScale.Crop)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)){Text("Cherry 2D",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=Color.White);Text(today.displayDate(),style=MaterialTheme.typography.labelLarge,color=Color.White.copy(alpha=.82f),fontWeight=FontWeight.SemiBold)}
-                IconButton(onClick=onSettings){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(28.dp))}
-            }
+    Box(Modifier.fillMaxWidth().heightIn(min=230.dp).height(250.dp).background(Brush.linearGradient(listOf(Color(0xFFA9003D),Color(0xFFD20A4F),Color(0xFF8E0034)),start=Offset.Zero,end=Offset(Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY)),RoundedCornerShape(bottomStart=28.dp,bottomEnd=28.dp))){
+        CherryHeaderLighting(Modifier.matchParentSize())
+        CherryBlossomDecoration(Modifier.align(Alignment.BottomEnd).size(142.dp,118.dp))
+        Row(Modifier.fillMaxWidth().padding(start=20.dp,end=18.dp,top=18.dp),verticalAlignment=Alignment.Top){
+            CherryBrandMark(Modifier.size(72.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f).padding(top=7.dp)){Text("Cherry 2D",style=MaterialTheme.typography.headlineLarge.copy(fontSize=30.sp),fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false);Text(today.displayDate(),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=Color.White.copy(alpha=.88f),modifier=Modifier.padding(top=3.dp),maxLines=1,softWrap=false)}
+            IconButton(onClick=onSettings,modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(30.dp))}
         }
+    }
+}
+@Composable private fun CherryHeaderLighting(modifier:Modifier){
+    Canvas(modifier){drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha=.09f),Color.Transparent)),radius=size.minDimension*.78f,center=Offset(size.width*.16f,size.height*.02f));drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha=.05f),Color.Transparent)),radius=size.minDimension*.66f,center=Offset(size.width*.7f,size.height*.9f))}
+}
+@Composable private fun CherryBrandMark(modifier:Modifier){
+    Canvas(modifier){
+        val cherryBrush=Brush.radialGradient(listOf(Color(0xFFFF4D78),Color(0xFFC6003D),Color(0xFF7A002B)),center=Offset(size.width*.32f,size.height*.58f),radius=size.width*.34f)
+        val cherryBrush2=Brush.radialGradient(listOf(Color(0xFFFF6D91),Color(0xFFC6003D),Color(0xFF7A002B)),center=Offset(size.width*.68f,size.height*.58f),radius=size.width*.34f)
+        drawLine(Color(0xFF5A321F),Offset(size.width*.47f,size.height*.45f),Offset(size.width*.51f,size.height*.12f),strokeWidth=3.dp.toPx())
+        drawLine(Color(0xFF5A321F),Offset(size.width*.51f,size.height*.16f),Offset(size.width*.72f,size.height*.08f),strokeWidth=3.dp.toPx())
+        drawOval(Brush.linearGradient(listOf(Color(0xFF7CCB61),Color(0xFF4A9B3F))),Offset(size.width*.5f,size.height*.02f),androidx.compose.ui.geometry.Size(size.width*.3f,size.height*.14f))
+        drawCircle(cherryBrush,size.width*.31f,Offset(size.width*.32f,size.height*.62f));drawCircle(cherryBrush2,size.width*.31f,Offset(size.width*.68f,size.height*.62f))
+        drawCircle(Color.White.copy(alpha=.7f),size.width*.055f,Offset(size.width*.22f,size.height*.51f));drawCircle(Color.White.copy(alpha=.62f),size.width*.055f,Offset(size.width*.58f,size.height*.51f))
+    }
+}
+@Composable private fun CherryBlossomDecoration(modifier:Modifier){
+    Canvas(modifier){
+        fun flower(center:Offset,scale:Float){
+            val petal=Brush.radialGradient(listOf(Color(0xFFFFD0DD).copy(alpha=.94f),Color(0xFFFF9FBC).copy(alpha=.9f),Color(0xFFE94B79).copy(alpha=.82f)),radius=22.dp.toPx()*scale)
+            repeat(5){index->rotate(index*72f,center){drawOval(petal,Offset(center.x-7.dp.toPx()*scale,center.y-22.dp.toPx()*scale),androidx.compose.ui.geometry.Size(14.dp.toPx()*scale,25.dp.toPx()*scale))}}
+            drawCircle(Color(0xFFFFD36A),radius=4.dp.toPx()*scale,center=center)
+        }
+        flower(Offset(size.width*.74f,size.height*.62f),1f);flower(Offset(size.width*.42f,size.height*.82f),.72f);flower(Offset(size.width*.92f,size.height*.3f),.58f)
     }
 }
 @Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int){
