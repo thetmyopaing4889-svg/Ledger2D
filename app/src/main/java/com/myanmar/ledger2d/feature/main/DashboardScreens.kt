@@ -79,7 +79,7 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
     val agents by vm.agents.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
-    LaunchedEffect(agents, language.defaultAgentId) { if (selected != -1L && agents.none { it.id == selected }) selected = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: agents.firstOrNull()?.id ?: 0L }
+    LaunchedEffect(agents, language.defaultAgentId) { if (selected != -1L && agents.none { it.id == selected }) selected = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L }
     val selectedLabel = if (selected == -1L) "ဒိုင်အားလုံး" else agents.firstOrNull { it.id == selected }?.name ?: "ဒိုင်ရွေးရန်"
     val featureTitle = agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature"
     AppScaffold(featureTitle, onBack) { padding ->
@@ -121,7 +121,8 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
     var agentId by rememberSaveable { mutableStateOf(language.defaultAgentId) }
     var customerId by rememberSaveable { mutableStateOf(language.defaultCustomerId) }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
-    LaunchedEffect(agentId) { customerId = 0L }
+    LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L }
+    LaunchedEffect(customers, agentId, language.defaultCustomerId) { if (customers.none { it.id == customerId }) customerId = if (agentId == language.defaultAgentId) customers.firstOrNull { it.id == language.defaultCustomerId }?.id ?: 0L else 0L }
     val agentLabel = agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်"
     val customerLabel = when { agentId == 0L -> "ဒိုင်ရွေးပြီးမှ ရွေးပါ"; customerId == -1L -> "Customer အားလုံး"; else -> customers.firstOrNull { it.id == customerId }?.name ?: "Customer ရွေးရန်" }
     val featureTitle = customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature"
@@ -190,8 +191,8 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
-    LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: agents.firstOrNull()?.id ?: 0L }
-    LaunchedEffect(customers, agentId, language.defaultCustomerId) { if (customerId != -1L && customers.none { it.id == customerId }) customerId = customers.firstOrNull { it.id == language.defaultCustomerId }?.id ?: customers.firstOrNull()?.id ?: 0L }
+    LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L }
+    LaunchedEffect(customers, agentId, language.defaultCustomerId) { if (customerId != -1L && customers.none { it.id == customerId }) customerId = if (agentId == language.defaultAgentId) customers.firstOrNull { it.id == language.defaultCustomerId }?.id ?: 0L else 0L }
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val summaries by produceState<List<ScopeSummary>>(emptyList(), date, session, feature, agentId, revision) { value = if (agentId > 0L) vm.allCustomerSummaries(agentId, date, session, feature == "winning" || feature == "report") else emptyList() }
@@ -427,7 +428,9 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 @Composable
 fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate: (Long) -> Unit) {
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var selected by rememberSaveable { mutableStateOf(0L) }
+    val language = LocalLanguage.current
+    var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
+    LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == selected }) selected = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L }
     AppScaffold("ထိုးသားအသစ်ထည့်ရန်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Customer ကို ဘယ် Agent အောက်မှာထည့်မလဲ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
