@@ -156,8 +156,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=12.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             item { HomeHeader(today,onSettings) }
-            item { HomeLiveEntry() }
-            item { HomeSummary(agents.size,customerCount) }
+            item { HomeLiveAndSummary(agents.size,customerCount) }
             item { HomeWeeklyResults(vm) }
             item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.Business,l.text("ဒိုင်အသစ်","New Agent"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.Person,l.text("ထိုးသားအသစ်","New Customer"),onAddCustomer,Modifier.weight(1f))} }
             item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.Insights,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))} }
@@ -166,24 +165,31 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
     Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.extraLarge,shadowElevation=8.dp,color=AppColors.PrimaryDeep){
-        Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
-            Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Cherry",Modifier.size(54.dp).clip(CircleShape),contentScale=ContentScale.Crop)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)){Text("Cherry 2D",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=Color.White);Text(today.displayDate(),style=MaterialTheme.typography.labelLarge,color=Color.White.copy(alpha=.78f),fontWeight=FontWeight.SemiBold)}
-            IconButton(onClick=onSettings){Icon(Icons.Default.Settings,"Settings",tint=Color.White)}
+        Box(Modifier.fillMaxWidth().background(AppColors.PrimaryDeep,MaterialTheme.shapes.extraLarge)){
+            Box(Modifier.size(120.dp).align(Alignment.TopEnd).offset(x=24.dp,y=(-26).dp).background(Color.White.copy(alpha=.08f),CircleShape))
+            Box(Modifier.size(70.dp).align(Alignment.BottomEnd).offset(x=(-18).dp,y=22.dp).background(Color.White.copy(alpha=.08f),CircleShape))
+            Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=16.dp),verticalAlignment=Alignment.CenterVertically){
+                Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Cherry",Modifier.size(56.dp).clip(CircleShape),contentScale=ContentScale.Crop)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)){Text("Cherry 2D",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=Color.White);Text(today.displayDate(),style=MaterialTheme.typography.labelLarge,color=Color.White.copy(alpha=.82f),fontWeight=FontWeight.SemiBold)}
+                IconButton(onClick=onSettings){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(28.dp))}
+            }
         }
     }
 }
-@Composable private fun HomeLiveEntry(){
+@Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int){
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.55f,targetValue=1f,animationSpec=infiniteRepeatable(tween(900),RepeatMode.Reverse),label="live-alpha")
-    ElevatedCard(onClick={},modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Blush),elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)){
-        Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(10.dp).background(AppColors.Primary.copy(alpha=pulse),CircleShape));Spacer(Modifier.width(9.dp));Text("2D LIVE",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep);Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep)}
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
+        ElevatedCard(onClick={},modifier=Modifier.weight(1.55f),shape=MaterialTheme.shapes.large,colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Blush),elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)){
+            Row(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(18.dp).background(AppColors.Primary.copy(alpha=pulse),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(7.dp).background(Color.White,CircleShape))};Spacer(Modifier.width(8.dp));Text("2D LIVE",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep);Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep)}
+        }
+        HomeCountCard(Icons.Default.Business,"Agent",agentCount,Modifier.weight(.72f))
+        HomeCountCard(Icons.Default.People,"Customer",customerCount,Modifier.weight(.72f))
     }
 }
-@Composable private fun HomeSummary(agentCount:Int,customerCount:Int){
-    Surface(Modifier.fillMaxWidth(),color=Color.White,shape=MaterialTheme.shapes.large,border=BorderStroke(1.dp,AppColors.Stone)){Row(Modifier.fillMaxWidth().padding(vertical=12.dp),horizontalArrangement=Arrangement.SpaceEvenly){HomeCount(agentCount,"Agent");VerticalDivider(Modifier.height(36.dp),color=AppColors.Stone);HomeCount(customerCount,"Customer")}}
+@Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,modifier:Modifier){
+    Surface(modifier,color=Color.White,shape=MaterialTheme.shapes.large,border=BorderStroke(1.dp,AppColors.Stone)){Column(Modifier.fillMaxWidth().padding(vertical=8.dp,horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(1.dp)){Icon(icon,null,tint=AppColors.Primary,modifier=Modifier.size(18.dp));Text(value.toString(),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep);Text(label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)}}
 }
-@Composable private fun HomeCount(value:Int,label:String){Column(horizontalAlignment=Alignment.CenterHorizontally){Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep);Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
 @Composable private fun HomeWeeklyResults(vm:LedgerViewModel,modifier:Modifier=Modifier){
     val agents by vm.agents.collectAsStateWithLifecycle()
     val winners by vm.winners.collectAsStateWithLifecycle()
@@ -238,17 +244,27 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,WinningNumberEntity>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
-    (0L..4L).forEach { offset ->
-        val date=monday.plusDays(offset)
-        Row(Modifier.fillMaxWidth().height(54.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
-            Column(Modifier.width(76.dp)){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH)),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-            DrawSession.entries.forEach { session ->
+    val dates=(0L..4L).map(monday::plusDays)
+    val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
+        Spacer(Modifier.width(52.dp))
+        dates.forEach { date ->
+            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(1.dp)){
+                Text(date.format(dateFormat),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Black,maxLines=1)
+                Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+            }
+        }
+    }
+    DrawSession.entries.forEach { session ->
+        Row(Modifier.fillMaxWidth().height(48.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
+            Text(session.label,Modifier.width(52.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,maxLines=1,softWrap=false)
+            dates.forEach { date ->
                 val stats=totals[date to session] ?: (0L to 0L)
-                Card(onClick={onSelect(date,session,winnerMap[date to session]?.digit ?: "—",stats.first,stats.second)},modifier=Modifier.weight(1f).fillMaxHeight(),shape=MaterialTheme.shapes.medium,border=BorderStroke(1.dp,if(date==DeviceCalendar.today())AppColors.Primary.copy(alpha=.55f) else MaterialTheme.colorScheme.primary.copy(alpha=.22f)),colors=CardDefaults.cardColors(containerColor=Color.White)){
-                    Column(Modifier.fillMaxWidth().padding(horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=if(winnerMap[date to session]==null)MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,textAlign=TextAlign.Center)}
+                val digit=winnerMap[date to session]?.digit ?: "—"
+                Card(onClick={onSelect(date,session,digit,stats.first,stats.second)},modifier=Modifier.weight(1f).height(42.dp),shape=MaterialTheme.shapes.small,border=BorderStroke(1.dp,if(date in closedSet)AppColors.Primary.copy(alpha=.3f) else MaterialTheme.colorScheme.outlineVariant),colors=CardDefaults.cardColors(containerColor=if(date in closedSet)AppColors.Blush else Color.White)){
+                    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(if(date in closedSet) "ပိတ်" else digit,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=if(date in closedSet)AppColors.PrimaryDeep else if(digit=="—")MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
                 }
             }
-            if(date in closedSet) Text("ပိတ်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
         }
     }
 }
@@ -256,7 +272,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     NavigationBar(containerColor=MaterialTheme.colorScheme.surface,tonalElevation=4.dp){
         NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("Agent",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("Customer",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onQuickEntry,icon={Surface(color=AppColors.PrimaryDeep,shape=CircleShape,modifier=Modifier.size(48.dp)){Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Quick Entry",Modifier.fillMaxSize().padding(5.dp),contentScale=ContentScale.Crop)}},label={Text("2D",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(52.dp),contentAlignment=Alignment.Center){Surface(color=AppColors.PrimaryDeep,shape=CircleShape,shadowElevation=8.dp,modifier=Modifier.size(54.dp).offset(y=(-8).dp)){Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Quick Entry",Modifier.fillMaxSize().padding(5.dp),contentScale=ContentScale.Crop)}}},label={Text("2D",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null)},label={Text("ပိတ်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null)},label={Text("ရလဒ်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
     }
