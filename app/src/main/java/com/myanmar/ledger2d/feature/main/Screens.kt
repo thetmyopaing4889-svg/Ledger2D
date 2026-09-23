@@ -175,14 +175,8 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
     val configuration=LocalConfiguration.current
     Box(Modifier.fillMaxWidth().requiredWidth((configuration.screenWidthDp+12).dp).offset(x=(-12).dp).height(220.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp))){
-        Box(Modifier.matchParentSize().background(Brush.linearGradient(colors=listOf(Color(0xFFB00040),Color(0xFFD30950),Color(0xFFA6003B)),start=Offset(0f,0f),end=Offset(900f,900f))))
-        Canvas(Modifier.matchParentSize()){
-            drawCircle(brush=Brush.radialGradient(colors=listOf(Color.White.copy(alpha=.10f),Color.Transparent),center=Offset(size.width*.20f,size.height*.05f),radius=size.width*.65f),radius=size.width*.65f,center=Offset(size.width*.20f,size.height*.05f))
-            drawCircle(brush=Brush.radialGradient(colors=listOf(Color.White.copy(alpha=.045f),Color.Transparent),center=Offset(size.width*.80f,size.height*.95f),radius=size.width*.55f),radius=size.width*.55f,center=Offset(size.width*.80f,size.height*.95f))
-        }
-        CherryBlossomDecoration(Modifier.align(Alignment.BottomEnd).size(width=150.dp,height=105.dp))
-        Row(Modifier.fillMaxWidth().padding(start=22.dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
-            CherryBrandMark(Modifier.size(70.dp));Spacer(Modifier.width(13.dp))
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop)
+        Row(Modifier.fillMaxWidth().padding(start=(configuration.screenWidthDp*.36f).dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
             Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text(today.displayDate(),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp),maxLines=1,softWrap=false)}
             IconButton(onClick=onSettings,modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(31.dp))}
         }
