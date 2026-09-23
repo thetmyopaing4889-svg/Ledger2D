@@ -164,28 +164,52 @@ fun transactionDisplayText(format: String, raw: String): String {
     val agents by vm.agents.collectAsStateWithLifecycle()
     val winners by vm.winners.collectAsStateWithLifecycle()
     val closedDays by vm.closedDays.collectAsStateWithLifecycle()
-    val monday=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-    val winnerMap=winners.associateBy{it.date to it.session}
-    val closedSet=closedDays.map{it.date}.toSet()
+    val currentMonday = DeviceCalendar.today().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+    var weekOffset by remember { mutableIntStateOf(0) }
+    val monday = currentMonday.plusWeeks(weekOffset.toLong())
+    val winnerMap = winners.associateBy { it.date to it.session }
+    val closedSet = closedDays.map { it.date }.toSet()
     data class DigitDetail(val date:LocalDate,val session:DrawSession,val digit:String,val stake:Long,val commission:Long)
     var selectedDigit by remember { mutableStateOf<DigitDetail?>(null) }
-    val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,vm.revision.collectAsStateWithLifecycle().value){
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,revision){
         value=(0L..4L).flatMap { offset -> DrawSession.entries.map { session ->
             val date=monday.plusDays(offset); var stake=0L; var commission=0L
             agents.forEach { agent -> val report=vm.agentReport(agent.id,date,session,true); stake+=report.calculation.totalBet; commission+=report.calculation.commission }
             (date to session) to (stake to commission)
         }}.toMap()
     }
-    Card(modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=AppColors.Champagne),shape=MaterialTheme.shapes.extraLarge,border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.28f)),elevation=CardDefaults.cardElevation(defaultElevation=AppDimens.cardElevation)){
-        Column(Modifier.padding(horizontal=8.dp,vertical=6.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(LocalLanguage.current.text("ယခုအပတ် ထွက်ဂဏန်းများ","This week's results"),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,modifier=Modifier.weight(1f));Text(LocalLanguage.current.text("မနက် / ညနေ","Morning / Evening"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant);Icon(Icons.Default.AutoGraph,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(18.dp))}
+    val weekEnd = monday.plusDays(4)
+    val weekLabel = "${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
+    Card(modifier.fillMaxWidth().pointerInput(Unit) {
+        var horizontalDistance = 0f
+        detectDragGestures(
+            onDragStart = { horizontalDistance = 0f },
+            onDrag = { change, dragAmount -> change.consume(); horizontalDistance += dragAmount.x },
+            onDragEnd = { if (kotlin.math.abs(horizontalDistance) > 72f) weekOffset += if (horizontalDistance < 0) 1 else -1 },
+        )
+    },colors=CardDefaults.cardColors(containerColor=AppColors.Champagne),shape=MaterialTheme.shapes.extraLarge,border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.28f)),elevation=CardDefaults.cardElevation(defaultElevation=AppDimens.cardElevation)){
+        Column(Modifier.padding(horizontal=10.dp,vertical=9.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick={weekOffset--},modifier=Modifier.size(30.dp)){Icon(Icons.AutoMirrored.Filled.ArrowBack,null,tint=AppColors.PrimaryDeep)}
+                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
+                    Text(LocalLanguage.current.text("ယခုအပတ် ထွက်ဂဏန်းများ","Weekly results"),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black)
+                    Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=if(weekOffset==0)AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick={weekOffset++},modifier=Modifier.size(30.dp)){Icon(Icons.AutoMirrored.Filled.ArrowForward,null,tint=AppColors.PrimaryDeep)}
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){
+                Text(if(weekOffset==0) "လက်ရှိအပတ်" else if(weekOffset<0) "ယခင်အပတ်" else "နောက်အပတ်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             (0L..4L).forEach { offset ->
                 val date=monday.plusDays(offset)
-                        Row(Modifier.fillMaxWidth().weight(1f),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
-                    Column(Modifier.width(82.dp)){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH)),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                Row(Modifier.fillMaxWidth().height(54.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                    Column(Modifier.width(76.dp)){Text(date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH)),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                     DrawSession.entries.forEach { session ->
                         val stats=totals[date to session] ?: (0L to 0L)
-                        Card(onClick={selectedDigit=DigitDetail(date,session,winnerMap[date to session]?.digit ?: "—",stats.first,stats.second)},modifier=Modifier.weight(1f).fillMaxHeight(),shape=MaterialTheme.shapes.medium,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=.22f)),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){Column(Modifier.fillMaxWidth().padding(horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary,textAlign=TextAlign.Center,modifier=Modifier.offset(y=(-2).dp))}}
+                        Card(onClick={selectedDigit=DigitDetail(date,session,winnerMap[date to session]?.digit ?: "—",stats.first,stats.second)},modifier=Modifier.weight(1f).fillMaxHeight(),shape=MaterialTheme.shapes.medium,border=BorderStroke(1.dp,if(date==DeviceCalendar.today())AppColors.Primary.copy(alpha=.55f) else MaterialTheme.colorScheme.primary.copy(alpha=.22f)),colors=CardDefaults.cardColors(containerColor=Color.White)){
+                            Column(Modifier.fillMaxWidth().padding(horizontal=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(session.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center);Text(winnerMap[date to session]?.digit ?: "—",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=if(winnerMap[date to session]==null)MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,textAlign=TextAlign.Center)}
+                        }
                     }
                     if(date in closedSet) Text("ပိတ်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
                 }
@@ -211,10 +235,10 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); var agentId by rememberSaveable{mutableStateOf(l.defaultAgentId)}; var customerId by rememberSaveable{mutableStateOf(l.defaultCustomerId)}; val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue=emptyList())
     LaunchedEffect(agents, l.defaultAgentId) {
-        if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == l.defaultAgentId }?.id ?: agents.firstOrNull()?.id ?: 0L
+        if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == l.defaultAgentId }?.id ?: 0L
     }
     LaunchedEffect(customers, agentId, l.defaultCustomerId) {
-        if (customers.none { it.id == customerId }) customerId = customers.firstOrNull { it.id == l.defaultCustomerId }?.id ?: customers.firstOrNull()?.id ?: 0L
+        if (customers.none { it.id == customerId }) customerId = if (agentId == l.defaultAgentId) customers.firstOrNull { it.id == l.defaultCustomerId }?.id ?: 0L else 0L
     }
     AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack,includeQuickEntryFab=false){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0){customerId=it};if(agentId>0&&customerId>0)Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Text("${agents.firstOrNull{it.id==agentId}?.name} • ${customers.firstOrNull{it.id==customerId}?.name} • ${l.selectedSession.label}",Modifier.fillMaxWidth().padding(14.dp),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer)};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
 }
