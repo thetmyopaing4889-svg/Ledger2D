@@ -162,8 +162,8 @@ fun transactionDisplayText(format: String, raw: String): String {
     val revision by vm.revision.collectAsStateWithLifecycle()
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
-    Scaffold(containerColor=MaterialTheme.colorScheme.background,bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
-        LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=12.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
+        LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=12.dp,vertical=0.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             item { HomeHeader(today,onSettings) }
             item { HomeLiveAndSummary(agents.size,customerCount) }
             item { HomeWeeklyResults(vm) }
@@ -174,7 +174,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
     val configuration=LocalConfiguration.current
-    Box(Modifier.fillMaxWidth().requiredWidth((configuration.screenWidthDp+12).dp).offset(x=(-12).dp).height(220.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp))){
+    Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(220.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.FillBounds)
         Row(Modifier.fillMaxWidth().padding(start=(configuration.screenWidthDp*.36f).dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
             Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.94f),fontSize=16.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false);Text(today.displayDate(),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=6.dp),maxLines=1,softWrap=false)}
