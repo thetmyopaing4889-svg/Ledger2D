@@ -177,7 +177,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(220.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.FillBounds)
         Row(Modifier.fillMaxWidth().padding(start=(configuration.screenWidthDp*.36f).dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
-            Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.94f),fontSize=16.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false);Text(today.displayDate(),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=6.dp),maxLines=1,softWrap=false)}
+            Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.94f),fontSize=16.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false);Text(today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH)),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=6.dp),maxLines=1,softWrap=false)}
             IconButton(onClick=onSettings,modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(31.dp))}
         }
     }
@@ -240,18 +240,13 @@ fun transactionDisplayText(format: String, raw: String): String {
             onDrag = { change, dragAmount -> change.consume(); horizontalDistance += dragAmount.x },
             onDragEnd = { if (kotlin.math.abs(horizontalDistance) > 72f) weekOffset += if (horizontalDistance < 0) 1 else -1 },
         )
-    },colors=CardDefaults.cardColors(containerColor=AppColors.Champagne),shape=MaterialTheme.shapes.extraLarge,border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.28f)),elevation=CardDefaults.cardElevation(defaultElevation=AppDimens.cardElevation)){
-        Column(Modifier.padding(horizontal=10.dp,vertical=9.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
+    },colors=CardDefaults.cardColors(containerColor=Color.White),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.8f)),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+        Column(Modifier.padding(horizontal=12.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                IconButton(onClick={weekOffset--},modifier=Modifier.size(30.dp)){Icon(Icons.AutoMirrored.Filled.ArrowBack,null,tint=AppColors.PrimaryDeep)}
-                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text(LocalLanguage.current.text("ထွက်ဂဏန်း","Results"),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black)
-                    Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=if(weekOffset==0)AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick={weekOffset++},modifier=Modifier.size(30.dp)){Icon(Icons.AutoMirrored.Filled.ArrowForward,null,tint=AppColors.PrimaryDeep)}
-            }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){
-                Text(if(weekOffset==0) "လက်ရှိ" else if(weekOffset<0) "ယခင်" else "နောက်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(Modifier.size(46.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp))}
+                Column(Modifier.weight(1f).padding(start=10.dp)){Text("ယခုအပတ် ထွက်ဂဏန်းများ",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)}
+                IconButton(onClick={weekOffset--},modifier=Modifier.size(40.dp)){Icon(Icons.AutoMirrored.Filled.ArrowBack,null,tint=AppColors.PrimaryDeep)}
+                IconButton(onClick={weekOffset++},modifier=Modifier.size(40.dp)){Icon(Icons.AutoMirrored.Filled.ArrowForward,null,tint=AppColors.PrimaryDeep)}
             }
             AnimatedContent(targetState=monday,transitionSpec={
                 val forward=targetState.isAfter(initialState)
@@ -268,23 +263,23 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,WinningNumberEntity>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
     val dates=(0L..4L).map(monday::plusDays)
     val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
-    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){
-        Spacer(Modifier.width(52.dp))
+    Row(Modifier.fillMaxWidth().height(42.dp),verticalAlignment=Alignment.CenterVertically){
+        Spacer(Modifier.width(58.dp))
         dates.forEach { date ->
-            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(1.dp)){
-                Text(date.format(dateFormat),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Black,maxLines=1)
-                Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+            Column(Modifier.weight(1f).fillMaxHeight().border(1.dp,AppColors.Stone.copy(alpha=.35f)).padding(vertical=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+                Row(horizontalArrangement=Arrangement.spacedBy(3.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Black,maxLines=1);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)}
             }
         }
     }
     DrawSession.entries.forEach { session ->
-        Row(Modifier.fillMaxWidth().height(48.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
-            Text(session.label,Modifier.width(52.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,maxLines=1,softWrap=false)
+        Row(Modifier.fillMaxWidth().height(58.dp),verticalAlignment=Alignment.CenterVertically){
+            Text(session.label,Modifier.width(58.dp).padding(start=4.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,maxLines=1,softWrap=false)
             dates.forEach { date ->
                 val stats=totals[date to session] ?: (0L to 0L)
                 val digit=winnerMap[date to session]?.digit ?: "—"
-                Card(onClick={onSelect(date,session,digit,stats.first,stats.second)},modifier=Modifier.weight(1f).height(42.dp),shape=MaterialTheme.shapes.small,border=BorderStroke(1.dp,if(date in closedSet)AppColors.Primary.copy(alpha=.3f) else MaterialTheme.colorScheme.outlineVariant),colors=CardDefaults.cardColors(containerColor=if(date in closedSet)AppColors.Blush else Color.White)){
-                    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(if(date in closedSet) "ပိတ်" else digit,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=if(date in closedSet)AppColors.PrimaryDeep else if(digit=="—")MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
+                val shown=if(date in closedSet) "ပိတ်" else digit
+                Box(Modifier.weight(1f).fillMaxHeight().border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
+                    Surface(Modifier.size(42.dp),shape=CircleShape,color=if(date in closedSet||digit=="—") Color(0xFFF0F1F4) else AppColors.Blush){Text(shown,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=if(date in closedSet)AppColors.PrimaryDeep else if(digit=="—")MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
                 }
             }
         }
