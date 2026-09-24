@@ -176,7 +176,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val configuration=LocalConfiguration.current
     Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(220.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.FillBounds)
-        Row(Modifier.fillMaxWidth().padding(start=(configuration.screenWidthDp*.36f).dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
+        Row(Modifier.fillMaxWidth().padding(start=(configuration.screenWidthDp*.24f).dp,end=14.dp,top=30.dp),verticalAlignment=Alignment.Top){
             Column(Modifier.weight(1f).padding(top=1.dp)){Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false);Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.94f),fontSize=16.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false);Text(today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH)),color=Color.White.copy(alpha=.90f),fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=6.dp),maxLines=1,softWrap=false)}
             IconButton(onClick=onSettings,modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(31.dp))}
         }
@@ -287,9 +287,9 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 @Composable private fun HomeBottomBar(onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onQuickEntry:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit){
     NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=4.dp){
-        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("Agent",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("Customer",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(58.dp),contentAlignment=Alignment.Center){Surface(color=AppColors.PrimaryDeep,shape=CircleShape,shadowElevation=10.dp,modifier=Modifier.size(58.dp).offset(y=(-9).dp)){CherryBrandMark(Modifier.fillMaxSize().padding(9.dp))}}},label={Text("2D",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
+        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null)},label={Text("ဒိုင်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null)},label={Text("ထိုးသား",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(58.dp),contentAlignment=Alignment.Center){Surface(color=AppColors.PrimaryDeep,shape=CircleShape,shadowElevation=10.dp,modifier=Modifier.size(58.dp).offset(y=(-9).dp)){CherryBrandMark(Modifier.fillMaxSize().padding(9.dp))}}},label={Text("ထိုးသွင်း",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
         NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null)},label={Text("ပိတ်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null)},label={Text("ရလဒ်",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
     }
