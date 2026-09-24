@@ -38,12 +38,12 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.myanmar.ledger2d
             adb shell monkey -p com.myanmar.ledger2d 1
-            sleep 3
+            sleep 12
             screen_size=$(adb shell wm size | awk -F: '/Physical|Override/{gsub(/ /,"",$2); print $2}' | tail -1 | tr -d '\r')
             screen_width=${screen_size%x*}
             screen_height=${screen_size#*x}
             adb shell input tap $((screen_width / 2)) $((screen_height - 120))
-            sleep 3
+            sleep 8
             mkdir -p app/build/visual-verification
             adb exec-out screencap -p > app/build/visual-verification/home.png
             adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
