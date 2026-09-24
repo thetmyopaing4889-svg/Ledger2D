@@ -42,6 +42,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -179,8 +180,8 @@ fun transactionDisplayText(format: String, raw: String): String {
                     ) {
                         HomeLiveAndSummary(agents.size,customerCount)
                     HomeWeeklyResults(vm)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"New Agent",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"New Customer",onAddCustomer,Modifier.weight(1f))}
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))}
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",l.translate("လာမည်"),Modifier.weight(1f))}
                         Spacer(Modifier.height(12.dp))
                     }
                 }
@@ -194,23 +195,29 @@ fun transactionDisplayText(format: String, raw: String): String {
     val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH))
     Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(height).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
-        Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.27f).dp,end=12.dp,top=18.dp,bottom=12.dp)){
-            Column(Modifier.fillMaxWidth().padding(top=6.dp,end=92.dp)){
-                Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
-                Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+        Column(Modifier.fillMaxSize().padding(top=18.dp,bottom=12.dp)){
+            Row(Modifier.fillMaxWidth().padding(end=110.dp),verticalAlignment=Alignment.CenterVertically){
+                Spacer(Modifier.width((configuration.screenWidthDp*.26f).dp))
+                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
+                    Text("Cherry 2D",color=Color.White,fontSize=33.sp,fontWeight=FontWeight.Black,fontStyle=FontStyle.Italic,maxLines=1,softWrap=false)
+                    Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=2.dp),maxLines=1,softWrap=false)
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            Surface(Modifier.fillMaxWidth(.80f).height(50.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
-                Row(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
+            Spacer(Modifier.height(14.dp))
+            Surface(Modifier.fillMaxWidth().padding(horizontal=16.dp).height(54.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
+                Row(Modifier.fillMaxSize().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(25.dp))
-                    Text(dateText,Modifier.weight(1f).padding(start=12.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
+                    Text(dateText,Modifier.weight(1f).padding(horizontal=8.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
                     Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(28.dp))
                 }
             }
         }
         Row(Modifier.align(Alignment.TopEnd).padding(top=18.dp,end=12.dp),verticalAlignment=Alignment.CenterVertically){
-            Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){Icon(Icons.Default.Notifications,"Notifications",tint=Color.White,modifier=Modifier.size(29.dp))}
-            IconButton(onClick=onSettings,modifier=Modifier.size(46.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(30.dp))}
+            Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){
+                Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(29.dp))
+                Box(Modifier.align(Alignment.TopEnd).size(11.dp).background(Color(0xFFFF3158),CircleShape).border(1.5.dp,Color.White,CircleShape))
+            }
+            IconButton(onClick=onSettings,modifier=Modifier.size(46.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(30.dp))}
         }
     }
 }
@@ -220,6 +227,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 
 @Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int){
+    val l=LocalLanguage.current
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
         ElevatedCard(onClick={},modifier=Modifier.weight(1.52f).height(88.dp),shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
@@ -229,22 +237,25 @@ fun transactionDisplayText(format: String, raw: String): String {
                 Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(30.dp))
             }
         }
-        HomeCountCard(Icons.Default.Business,"Agents",agentCount,Modifier.weight(.72f))
-        HomeCountCard(Icons.Default.People,"Customers",customerCount,Modifier.weight(.72f))
+        HomeCountCard(Icons.Default.Person,l.translate("ဒိုင်"),agentCount,AppColors.PrimaryDeep,Modifier.weight(.78f))
+        HomeCountCard(Icons.Default.People,l.translate("ထိုးသား"),customerCount,AppColors.Success,Modifier.weight(.78f))
     }
 }
 
-@Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,modifier:Modifier){
+@Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,iconTint:Color,modifier:Modifier){
     Surface(modifier.height(88.dp),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
-        Column(Modifier.fillMaxSize().padding(vertical=8.dp,horizontal=3.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(1.dp)){
-            Surface(Modifier.size(34.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(7.dp).fillMaxSize())}
-            Text(label,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
-            Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
+        Row(Modifier.fillMaxSize().padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){
+            Surface(Modifier.size(38.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=iconTint,modifier=Modifier.padding(8.dp).fillMaxSize())}
+            Column(verticalArrangement=Arrangement.spacedBy(0.dp)){
+                Text(label,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+                Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
+            }
         }
     }
 }
 
 @Composable private fun HomeWeeklyResults(vm:LedgerViewModel,modifier:Modifier=Modifier){
+    val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle(); val winners by vm.winners.collectAsStateWithLifecycle(); val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val currentMonday=DeviceCalendar.today().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)); var weekOffset by remember{mutableIntStateOf(0)}; val monday=currentMonday.plusWeeks(weekOffset.toLong())
     val winnerMap=winners.associateBy{it.date to it.session}; val closedSet=closedDays.map{it.date}.toSet(); val revision by vm.revision.collectAsStateWithLifecycle()
@@ -253,16 +264,17 @@ fun transactionDisplayText(format: String, raw: String): String {
     val weekEnd=monday.plusDays(4); val weekLabel="${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
     Card(Modifier.fillMaxWidth().pointerInput(Unit){var distance=0f;detectDragGestures(onDragStart={distance=0f},onDrag={change,amount->change.consume();distance+=amount.x},onDragEnd={if(kotlin.math.abs(distance)>72f)weekOffset+=if(distance<0)1 else -1})},colors=CardDefaults.cardColors(containerColor=Color.White),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.8f)),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
         Column(Modifier.padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text("Weekly Results",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrow(Icons.AutoMirrored.Filled.ArrowBack){weekOffset--};HomeWeekArrow(Icons.AutoMirrored.Filled.ArrowForward){weekOffset++}}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrow(Icons.Default.ChevronLeft){weekOffset--};HomeWeekArrow(Icons.Default.ChevronRight){weekOffset++}}
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
         }
     }
-    selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text("Close")}},title={Text("${item.date.displayDate()} • ${if(item.session == DrawSession.MORNING) "AM" else "PM"}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("Winning digit",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total stake");Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total commission");Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
+    selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text(l.translate("ပိတ်မည်"))}},title={Text("${item.date.displayDate()} • ${l.translate(if(item.session == DrawSession.MORNING) "မနက်" else "ညနေ")}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(l.translate("ပေါက်ဂဏန်း"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ထိုးကြေး"));Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ကော်မရှင်"));Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
 }
 
 @Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(Modifier.size(38.dp).clickable(onClick=onClick),shape=CircleShape,color=AppColors.Blush){Box(contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(25.dp))}}}
 
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,WinningNumberEntity>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
+    val l=LocalLanguage.current
     val dates=(0L..4L).map(monday::plusDays); val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().height(38.dp),verticalAlignment=Alignment.CenterVertically){
@@ -275,11 +287,15 @@ fun transactionDisplayText(format: String, raw: String): String {
         }
         listOf(DrawSession.MORNING,DrawSession.EVENING).forEach { session ->
             Row(Modifier.fillMaxWidth().height(56.dp),verticalAlignment=Alignment.CenterVertically){
-                Text(if(session == DrawSession.MORNING) "AM" else "PM",Modifier.width(48.dp).padding(start=4.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
+                Text(l.translate(if(session == DrawSession.MORNING) "မနက်" else "ညနေ"),Modifier.width(48.dp).padding(start=2.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
                 dates.forEach { date ->
-                    val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session]?.digit ?: "—"; val shown=if(date in closedSet) "OFF" else digit
+                    val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session]?.digit ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
+                    val morning=session == DrawSession.MORNING
+                    val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> if(morning) Color(0xFFFDF2F5) else Color(0xFFF0F1F4); morning -> AppColors.Blush; else -> Color.White }
+                    val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
+                    val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else null
                     Box(Modifier.weight(1f).fillMaxHeight().border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
-                        Surface(Modifier.size(40.dp),shape=CircleShape,color=if(date in closedSet) Color(0xFFFFE1EA) else if(digit=="—") Color(0xFFF0F1F4) else AppColors.Blush){Text(shown,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=if(digit=="—") MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
+                        Surface(Modifier.size(40.dp),shape=CircleShape,color=circleColor,border=eveningStroke){Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
                     }
                 }
             }
@@ -288,17 +304,29 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 
 @Composable private fun HomeBottomBar(onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onQuickEntry:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit){
+    val l=LocalLanguage.current
     NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=4.dp){
-        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null,modifier=Modifier.size(27.dp))},label={Text("Agents",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null,modifier=Modifier.size(27.dp))},label={Text("Customers",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(72.dp).offset(y=(-12).dp),contentAlignment=Alignment.Center){Surface(color=Color.White,shape=CircleShape,shadowElevation=9.dp,modifier=Modifier.size(72.dp)){Surface(color=AppColors.PrimaryDeep,shape=CircleShape,shadowElevation=8.dp,modifier=Modifier.size(62.dp)){CherryBrandMark(Modifier.fillMaxSize().padding(10.dp))}}}},label={Text("Quick Entry",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
-        NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null,modifier=Modifier.size(27.dp))},label={Text("Closed",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null,modifier=Modifier.size(27.dp))},label={Text("Results",maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ဒိုင်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ထိုးသား"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(72.dp).offset(y=(-12).dp),contentAlignment=Alignment.Center){Surface(color=Color.White,shape=CircleShape,shadowElevation=9.dp,modifier=Modifier.size(72.dp)){Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFE23A64),Color(0xFF8D123A))),CircleShape).border(2.dp,Color.White.copy(alpha=.9f),CircleShape),contentAlignment=Alignment.Center){CherryBrandMark(Modifier.size(34.dp))}}}},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
+        NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ပိတ်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ရလဒ်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier)=Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}
-@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier.height(76.dp),shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
-@Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,modifier:Modifier=Modifier){ElevatedCard(onClick={},modifier=modifier.height(68.dp),shape=RoundedCornerShape(18.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color(0xFFFFF0F5)),elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)){Row(Modifier.fillMaxSize().padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){Surface(Modifier.size(38.dp),color=Color(0xFFFFE0EA),shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(8.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false,overflow=TextOverflow.Clip,modifier=Modifier.weight(1f));Surface(color=Color(0xFFFFE0EA),shape=RoundedCornerShape(12.dp)){Text("Soon",Modifier.padding(horizontal=5.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=11.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)};Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(20.dp))}}}
+@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier.height(76.dp),shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
+@Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,badge:String,modifier:Modifier=Modifier){
+    ElevatedCard(onClick={},modifier=modifier.height(88.dp),shape=RoundedCornerShape(18.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color(0xFFFFF0F5)),elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)){
+        Box(Modifier.fillMaxSize()){
+            Surface(color=Color(0xFFFFE0EA),shape=RoundedCornerShape(10.dp),modifier=Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=10.dp)){Text(badge,Modifier.padding(horizontal=7.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=11.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
+            Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                Surface(Modifier.size(44.dp),color=Color(0xFFFFE0EA),shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())}
+                Text(title,style=MaterialTheme.typography.titleMedium,fontSize=15.sp,fontWeight=FontWeight.Bold,maxLines=2,modifier=Modifier.weight(1f))
+                Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))
+            }
+        }
+    }
+}
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); var agentId by rememberSaveable{mutableStateOf(l.defaultAgentId)}; var customerId by rememberSaveable{mutableStateOf(l.defaultCustomerId)}; val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue=emptyList())
     LaunchedEffect(agents, l.defaultAgentId) {
