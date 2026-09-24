@@ -179,14 +179,11 @@ fun transactionDisplayText(format: String, raw: String): String {
     val headerHeight=(configuration.screenWidthDp*.57f).dp.coerceIn(218.dp,238.dp)
     Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(headerHeight).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
-        Column(Modifier.fillMaxSize().padding(start=14.dp,end=14.dp,top=12.dp,bottom=12.dp)){
+        Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.27f).dp,end=12.dp,top=18.dp,bottom=12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Top){
-                Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically){
-                    Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Cherry 2D logo",Modifier.size(68.dp),contentScale=ContentScale.Fit)
-                    Column(Modifier.padding(start=8.dp).padding(top=2.dp)){
-                        Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
-                        Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
-                    }
+                Column(Modifier.weight(1f).padding(top=6.dp)){
+                    Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
+                    Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
                 }
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){Icon(Icons.Default.Notifications,"Notifications",tint=Color.White,modifier=Modifier.size(29.dp))}
@@ -194,7 +191,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Surface(Modifier.fillMaxWidth().height(50.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
+            Surface(Modifier.fillMaxWidth(.80f).height(50.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
                 Row(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(25.dp))
                     Text(dateText,Modifier.weight(1f).padding(start=12.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
