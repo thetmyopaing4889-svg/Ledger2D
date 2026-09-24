@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
@@ -161,23 +162,36 @@ fun transactionDisplayText(format: String, raw: String): String {
     val revision by vm.revision.collectAsStateWithLifecycle()
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
-    Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
-        LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=12.dp,vertical=0.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-            item { HomeHeader(today,onSettings) }
-            item { Box(Modifier.offset(y=(-24).dp)) { HomeLiveAndSummary(agents.size,customerCount) } }
-            item { HomeWeeklyResults(vm) }
-            item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"New Agent",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"New Customer",onAddCustomer,Modifier.weight(1f))} }
-            item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))} }
-            item { Spacer(Modifier.height(4.dp)) }
+    Scaffold(containerColor=Color(0xFFFFF5F8),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
+        Box(Modifier.fillMaxSize().padding(p)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Box(Modifier.fillMaxWidth().height(370.dp)) {
+                    HomeHeader(today,onSettings,Modifier.align(Alignment.TopCenter))
+                    Column(
+                        Modifier.align(Alignment.TopCenter).offset(y=326.dp).fillMaxWidth()
+                            .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
+                            .background(Color(0xFFFFF9FB))
+                            .shadow(8.dp,RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
+                            .padding(start=12.dp,end=12.dp,top=20.dp,bottom=12.dp),
+                        verticalArrangement=Arrangement.spacedBy(10.dp)
+                    ) { HomeLiveAndSummary(agents.size,customerCount) }
+                }
+                Column(Modifier.fillMaxWidth().padding(horizontal=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    HomeWeeklyResults(vm)
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"New Agent",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"New Customer",onAddCustomer,Modifier.weight(1f))}
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))}
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
         }
     }
 }
 
-@Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
+@Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit,modifier:Modifier=Modifier){
     val configuration=LocalConfiguration.current
     val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH))
     val headerHeight=(configuration.screenWidthDp*.50f).dp.coerceIn(188.dp,210.dp)
-    Box(Modifier.requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(headerHeight).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
+    Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(headerHeight).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
         Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.27f).dp,end=12.dp,top=18.dp,bottom=12.dp)){
             Column(Modifier.fillMaxWidth().padding(top=6.dp,end=92.dp)){
@@ -201,9 +215,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 
 @Composable private fun CherryBrandMark(modifier:Modifier){
-    Box(modifier.clip(CircleShape).background(AppColors.PrimaryDeep),contentAlignment=Alignment.Center){
-        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),"Cherry 2D",Modifier.fillMaxSize(),contentScale=ContentScale.Crop,alignment=Alignment.TopStart)
-    }
+    Image(painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),"Cherry 2D",modifier,contentScale=ContentScale.Fit)
 }
 
 @Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int){
