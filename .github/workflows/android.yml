@@ -27,6 +27,32 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
       - name: Release APK verification
         run: ./gradlew --no-daemon assembleRelease
+      - name: Install APK and capture Home screenshot
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: Pixel_5
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
+          disable-animations: true
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am force-stop com.myanmar.ledger2d
+            adb shell monkey -p com.myanmar.ledger2d 1
+            sleep 3
+            adb shell input tap 540 2140
+            sleep 3
+            mkdir -p app/build/visual-verification
+            adb exec-out screencap -p > app/build/visual-verification/home.png
+            adb shell uiautomator dump /sdcard/window.xml >/dev/null
+            adb shell cat /sdcard/window.xml > app/build/visual-verification/window.xml
+      - name: Upload Home visual verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledger2d-home-visual-verification
+          path: app/build/visual-verification
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
