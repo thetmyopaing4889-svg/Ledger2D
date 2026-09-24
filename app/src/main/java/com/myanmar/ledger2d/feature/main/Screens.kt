@@ -172,7 +172,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     HomeHeader(today,onSettings,Modifier.align(Alignment.TopCenter),heroHeight)
                     Column(
                         Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
-                            .heightIn(min = maxHeight - (heroHeight - sheetOverlap))
+                            .heightIn(min = this@BoxWithConstraints.maxHeight - (heroHeight - sheetOverlap))
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                             .background(Color(0xFFFFF9FB))
                             .shadow(8.dp,RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
