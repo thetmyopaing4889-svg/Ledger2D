@@ -32,7 +32,6 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
-          profile: Pixel_5
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
           disable-animations: true
           script: |
@@ -40,7 +39,10 @@ jobs:
             adb shell am force-stop com.myanmar.ledger2d
             adb shell monkey -p com.myanmar.ledger2d 1
             sleep 3
-            adb shell input tap 540 2140
+            screen_size=$(adb shell wm size | awk -F: '/Physical|Override/{gsub(/ /,"",$2); print $2}' | tail -1 | tr -d '\r')
+            screen_width=${screen_size%x*}
+            screen_height=${screen_size#*x}
+            adb shell input tap $((screen_width / 2)) $((screen_height - 120))
             sleep 3
             mkdir -p app/build/visual-verification
             adb exec-out screencap -p > app/build/visual-verification/home.png
