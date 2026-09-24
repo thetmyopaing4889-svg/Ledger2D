@@ -1,0 +1,891 @@
+LEDGER2D — FINAL HOME SCREEN VISUAL CORRECTION
+
+Repository:
+thetmyopaing4889-svg/Ledger2D
+
+WORK DIRECTLY ON MAIN.
+
+DO NOT:
+- create a branch
+- create a PR
+- create a pull request
+- change unrelated features
+- change business logic
+- change database/schema
+- change existing saved-data behavior
+
+The supplied Reference Screenshot is the PRIMARY VISUAL SOURCE OF TRUTH.
+
+The currently installed APK screenshot is the CURRENT IMPLEMENTATION.
+
+Your job now is to correct the entire Home Screen visual/layout implementation so that it closely matches the supplied Reference Screenshot while preserving all existing real functionality and data.
+
+Do not invent new business behavior.
+
+==================================================
+1. VERY IMPORTANT — VISUAL SOURCE OF TRUTH
+==================================================
+
+Use the supplied Reference Screenshot as the visual source of truth.
+
+Do NOT redesign the Home Screen according to your own interpretation.
+
+Do NOT create a "similar" design.
+
+Do NOT make arbitrary stylistic improvements.
+
+Match the reference's:
+
+- overall composition
+- proportions
+- spacing
+- hierarchy
+- card sizes
+- typography hierarchy
+- icon placement
+- colors
+- header composition
+- image/background treatment
+- navigation composition
+
+The target is the SAME DESIGN LANGUAGE and STRUCTURAL COMPOSITION as the reference, adapted to the actual Ledger2D data and existing navigation.
+
+==================================================
+2. CURRENT PROBLEMS TO FIX
+==================================================
+
+The current APK still has these visible problems:
+
+1. Header is too tall.
+2. Header contains too much empty vertical space.
+3. Cherry logo is too large and poorly positioned.
+4. Cherry 2D title is positioned too high and does not form the same compact brand group as the reference.
+5. Subtitle positioning is incorrect.
+6. Date selector position/size is incorrect.
+7. Header-to-2D-LIVE transition does not visually match the reference.
+8. Agent/Customer summary cards have incorrect proportions and Burmese text clipping.
+9. Weekly Results is not a proper 5-column × 2-session matrix.
+10. Weekly result rows/cells are misaligned.
+11. New Agent/New Customer cards do not match the reference's horizontal composition.
+12. 2D Analysis text wraps incorrectly into multiple lines.
+13. Better Data text wraps incorrectly into multiple lines.
+14. Secondary action cards have incorrect icon/text/badge proportions.
+15. Center Cherry Quick Entry button does not match the reference's floating/glowing treatment.
+16. Overall Home vertical rhythm and spacing do not match the reference.
+
+Fix ALL of these in this task.
+
+==================================================
+3. DO NOT CHANGE BUSINESS LOGIC
+==================================================
+
+The following must remain untouched:
+
+- Room database
+- entities
+- DAOs
+- repositories
+- ViewModels
+- betting parser
+- betting calculations
+- commission calculations
+- payout calculations
+- limits
+- closed numbers
+- winning numbers
+- reports
+- settlements
+- Agent data
+- Customer data
+- WorkingContextStore
+- global Working Date / Session behavior
+- app-session date/session behavior
+- saved data
+- navigation destinations
+
+Only change the Home UI/layout/visual implementation required for this task.
+
+If existing callbacks already exist, reuse them.
+
+Do not create fake functionality just to match the reference.
+
+==================================================
+4. HEADER — FINAL STRUCTURE
+==================================================
+
+The Header must behave as ONE top Hero/Header surface.
+
+IMPORTANT:
+
+The supplied Cherry background asset is NOT a separate image banner floating above the Home content.
+
+It must be the background of the entire Header Hero container.
+
+The visual result must be:
+
+HEADER HERO
+    ↓
+smooth/intentional transition
+    ↓
+2D LIVE + Agent + Customer row
+
+Do NOT create:
+
+[large image banner]
+[large empty gap]
+[separate cards]
+
+The Header background must visually belong to the Home's top Hero section.
+
+Use the existing supplied Cherry background asset.
+
+Do NOT redraw the photographic Cherry/blossom environment with Compose Canvas.
+
+Use the asset as the visual background.
+
+==================================================
+5. HEADER HEIGHT AND PROPORTION
+==================================================
+
+The current Header is too tall.
+
+Reduce it substantially.
+
+Do NOT use the previous 220dp/250dp arbitrary design if that creates excessive empty space.
+
+Instead, make the Header height responsive to the actual phone width/aspect ratio and match the supplied Reference Screenshot's visual proportion.
+
+The Header should contain only the necessary hero content:
+
+- Cherry logo
+- Cherry 2D
+- subtitle
+- notification
+- settings
+- date selector
+
+There must NOT be a large empty vertical region between the date selector and the bottom of the Header.
+
+The bottom of the Header should visually lead directly into the first Home content section.
+
+==================================================
+6. HEADER BACKGROUND ASSET
+==================================================
+
+Use the supplied Cherry background asset.
+
+Requirements:
+
+- full width
+- crop without distortion
+- preserve aspect ratio
+- use ContentScale.Crop or equivalent
+- no non-uniform stretching
+- no second artificial gradient that changes the asset appearance
+- no Canvas recreation of the flowers/cherries
+
+The Cherry and blossom environment should remain visually rich and photographic/glossy as in the reference.
+
+The lower-right blossom cluster should remain visible.
+
+The upper/left Cherry area should remain visible.
+
+Do not crop away the important Cherry branding.
+
+==================================================
+7. HEADER CONTENT COMPOSITION
+==================================================
+
+The brand group must be compact.
+
+Structure:
+
+[Cherry logo] [Cherry 2D]
+             [For Myanmar 2D Agents]
+
+Then below:
+
+[Date Selector]
+
+Right side:
+
+[Notification] [Settings]
+
+Do NOT allow the title group to drift too close to the status bar.
+
+Do NOT allow the Cherry logo to become oversized.
+
+Do NOT allow the date selector to overlap the Cherry logo.
+
+Do NOT allow the blossom asset to obscure important interactive elements.
+
+==================================================
+8. CHERRY LOGO
+==================================================
+
+Use the Cherry logo from the supplied visual asset/reference where possible.
+
+Do NOT create a second unrelated Canvas cherry.
+
+Do NOT stretch the logo.
+
+Target visual relationship:
+
+Cherry logo:
+approximately 65–80dp visual height depending on available width.
+
+It should be visually smaller and more balanced than the current APK.
+
+The logo must sit naturally beside the "Cherry 2D" title.
+
+==================================================
+9. TITLE
+==================================================
+
+Text:
+
+Cherry 2D
+
+Use:
+- white
+- bold/heavy
+- approximately 30–32sp
+- single line
+- no wrapping
+
+Position it to the right of the Cherry logo.
+
+The title must form a compact brand group with the logo.
+
+==================================================
+10. SUBTITLE
+==================================================
+
+Text:
+
+For Myanmar 2D Agents
+
+Use:
+- white
+- approximately 16–18sp
+- single line
+- slightly lower visual weight than the title
+
+Position directly below Cherry 2D.
+
+Do NOT allow it to overlap the date selector.
+
+==================================================
+11. NOTIFICATION
+==================================================
+
+Reference has:
+
+notification bell + badge
+
+However:
+
+DO NOT invent notification data.
+
+If the application already has a real notification/count source:
+use it.
+
+If no real notification system exists:
+show the bell only, without a fake number.
+
+Do NOT hardcode "3" merely to imitate the screenshot.
+
+Use a real clickable callback only if one already exists.
+
+Do not create fake notification behavior.
+
+==================================================
+12. SETTINGS
+==================================================
+
+Keep the existing real Settings callback.
+
+Use:
+Icons.Default.Settings
+
+White icon.
+
+Touch target:
+minimum 48dp.
+
+Place it at the top-right as in the reference.
+
+Do not change Settings navigation behavior.
+
+==================================================
+13. DATE SELECTOR
+==================================================
+
+The Reference contains a date selector inside the Header.
+
+Implement it as a compact outlined pill.
+
+Visual structure:
+
+[calendar icon]  23 Sep 2026 (Wed)  >
+
+Use the ACTUAL current calendar date for Home display.
+
+IMPORTANT:
+Home's displayed date must NOT silently become the Working Date.
+
+Preserve the previously established Home rule:
+Home header date = actual current calendar date.
+
+Do not change WorkingContextStore behavior.
+
+If the current app already has an appropriate date-selection callback for this
+UI, reuse it.
+
+Do not invent a new business rule.
+
+Target:
+- horizontal pill
+- rounded outline
+- white/soft white border
+- transparent/dark red interior
+- white calendar icon
+- white date text
+- white chevron
+
+The pill must sit below the title/subtitle group.
+
+==================================================
+14. HEADER → CONTENT TRANSITION
+==================================================
+
+This is important.
+
+The Header background must NOT look like an isolated banner.
+
+The visual transition between Header and the first row must be compact and intentional.
+
+The 2D LIVE / Agent / Customer row should begin close to the bottom edge of the Hero.
+
+Do not create a large blank gap.
+
+If necessary, use a controlled negative offset/overlap for the first content row, but do not break scrolling or touch behavior.
+
+The reference has a strong "Hero → first action row" relationship.
+
+Reproduce that relationship.
+
+==================================================
+15. 2D LIVE + AGENT + CUSTOMER
+==================================================
+
+Keep the existing real callbacks/data.
+
+Visual target:
+
+┌──────────────────────────────┐
+│  2D LIVE                 >   │
+└──────────────────────────────┘
+       ┌────────┐ ┌────────┐
+       │ Agent  │ │Customer│
+       │   5    │ │   28   │
+       └────────┘ └────────┘
+
+The 2D LIVE card is the dominant card.
+
+Agent and Customer are compact summary cards.
+
+Use actual:
+- agent count
+- customer count
+
+Do not use fake example values.
+
+Ensure Burmese labels are NOT clipped.
+
+Use proper width allocation.
+
+==================================================
+16. WEEKLY RESULTS — MUST BE A REAL 5×2 MATRIX
+==================================================
+
+The Reference shows:
+
+              Mon   Tue   Wed   Thu   Fri
+
+Morning       --    --    --    --    --
+
+Evening       --    --    --    --    --
+
+The Home Weekly Results section must preserve the existing real result data.
+
+It must render:
+
+5 columns:
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+
+2 session rows:
+Morning
+Evening
+
+Each cell must be aligned.
+
+Do NOT allow circles to float outside their cells.
+
+Do NOT allow row labels to overlap cells.
+
+Do NOT distort the grid.
+
+Closed days must continue to use the existing Closed Day behavior.
+
+Missing results must continue to use the existing missing-result display.
+
+Do not change the underlying result logic.
+
+The arrows must remain functional.
+
+Existing swipe/week navigation must remain functional.
+
+==================================================
+17. WEEKLY RESULT TYPOGRAPHY
+==================================================
+
+Use compact typography.
+
+Column header:
+date + weekday
+
+Rows:
+မနက်
+ညနေ
+
+Result numbers:
+large enough to read
+center aligned
+
+Do not allow Burmese labels to collide with the grid.
+
+The matrix must remain readable on narrow Android phones.
+
+==================================================
+18. NEW AGENT / NEW CUSTOMER
+==================================================
+
+Use existing callbacks:
+
+onAddAgent
+onAddCustomer
+
+Do not change their behavior.
+
+Visual target:
+
+horizontal card
+
+[large circular icon]   label                         >
+
+The icon should be left aligned.
+
+Text should be centered vertically.
+
+Arrow should be at the far right.
+
+Do NOT put the icon above the text.
+
+Do NOT clip Burmese text.
+
+==================================================
+19. 2D ANALYSIS / BETTER DATA
+==================================================
+
+These are currently suffering from severe text wrapping.
+
+Fix the layout.
+
+Target:
+
+[icon]  2D Analysis                         [badge] >
+
+[icon]  Better Data                         [badge] >
+
+The English titles MUST remain on one line on normal phone widths.
+
+Do not allow:
+
+2D
+Ana
+lysi
+s
+
+or:
+
+Bett
+er
+Dat
+a
+
+Use proper Row/weight arrangement.
+
+Example structural approach:
+
+Row {
+    icon
+    Spacer(12.dp)
+    Text(
+        modifier = Modifier.weight(1f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+    badge
+    chevron
+}
+
+Do not use fixed widths that cause text clipping.
+
+==================================================
+20. SECONDARY BADGES
+==================================================
+
+Keep the existing "မကြာမီ" concept if it is already implemented.
+
+Use a compact pill/badge.
+
+It must NOT consume so much width that the main title wraps.
+
+The badge belongs to the right side.
+
+==================================================
+21. BOTTOM NAVIGATION
+==================================================
+
+Keep the existing navigation destinations.
+
+Structure must remain:
+
+Agent
+Customer
+Center Cherry Quick Entry
+ပိတ်
+ရလဒ်
+
+The center Cherry Quick Entry button should visually resemble the reference:
+
+- larger than other nav icons
+- circular
+- elevated
+- visually floating above the navigation bar
+- subtle glow/shadow
+- Cherry branding
+
+Do not change the Quick Entry callback.
+
+Do not add Home as a sixth item.
+
+==================================================
+22. OVERALL HOME SPACING
+==================================================
+
+The entire Home screen must have a coherent vertical rhythm:
+
+HEADER HERO
+↓
+2D LIVE / COUNTS
+↓
+WEEKLY RESULTS
+↓
+NEW AGENT / NEW CUSTOMER
+↓
+2D ANALYSIS / BETTER DATA
+↓
+BOTTOM NAV
+
+Avoid:
+
+- excessive blank space
+- excessive card gaps
+- oversized cards
+- tiny cards
+- unnecessary padding
+- clipped text
+
+The screen should visually resemble the supplied reference in density and rhythm.
+
+==================================================
+23. BURMESE TEXT SAFETY
+==================================================
+
+This is critical.
+
+Do not assume English typography rules are sufficient.
+
+Burmese text must:
+- render completely
+- not clip
+- not overlap
+- not be split incorrectly
+- remain vertically centered
+- have adequate line height
+
+For single-line UI labels:
+use maxLines = 1 where appropriate.
+
+For intentionally multi-line labels:
+define the layout explicitly rather than allowing uncontrolled wrapping.
+
+Do not solve Burmese clipping by simply increasing the entire screen height.
+
+Fix the actual layout constraints.
+
+==================================================
+24. COLORS
+==================================================
+
+Preserve the Cherry visual identity from the reference.
+
+Primary:
+deep Cherry red / burgundy
+
+Secondary:
+soft pink
+
+Cards:
+white / very light pink
+
+Accent:
+Cherry pink/red
+
+Text:
+dark burgundy or dark neutral on white cards
+white on Cherry background
+
+Do not introduce:
+- blue
+- purple
+- green as a primary UI color
+- unrelated gradients
+
+Green is allowed only where it naturally belongs in the Cherry artwork/icon.
+
+==================================================
+25. SHADOWS / CORNERS
+==================================================
+
+Use soft premium shadows.
+
+Avoid heavy black shadows.
+
+Cards should have rounded corners similar to the reference.
+
+Do not use excessive corner radius that turns every component into a pill.
+
+Use rounded rectangles for cards.
+
+Use pill shape only where the reference calls for a pill:
+- date selector
+- small badges
+- appropriate compact controls
+
+==================================================
+26. RESPONSIVE CONSTRAINT
+==================================================
+
+The reference screenshot is a design reference, not a fixed-pixel screenshot.
+
+Implement using responsive Compose layout.
+
+Do NOT hardcode screen coordinates.
+
+Use:
+- fillMaxWidth()
+- weight()
+- Box
+- Row
+- Column
+- padding
+- alignment
+- intrinsic/min/max constraints where appropriate
+
+The design must remain usable on normal Android phone widths.
+
+==================================================
+27. IMPORTANT — DO NOT FAKE DATA
+==================================================
+
+The Reference Screenshot contains example values such as:
+
+Agent 5
+Customer 28
+12
+45
+08
+79
+etc.
+
+DO NOT copy those values into the application.
+
+Use the real existing application data.
+
+The screenshot is ONLY a visual reference.
+
+==================================================
+28. IMPORTANT — DO NOT CHANGE FUNCTIONALITY
+==================================================
+
+All existing Home actions must continue to use their existing callbacks.
+
+Do not create placeholder navigation.
+
+Do not create fake routes.
+
+Do not modify:
+- navigation graph
+- domain layer
+- repository
+- database
+- business logic
+
+Only improve the visual presentation and layout.
+
+==================================================
+29. IMPLEMENTATION APPROACH
+==================================================
+
+Before editing:
+
+1. Inspect the current Home implementation.
+2. Identify the current components:
+   - HomeHeader
+   - HomeLiveEntry
+   - HomeSummary
+   - HomeWeeklyResults
+   - HomeWeeklyPage
+   - HomeAction
+   - HomeFutureAction
+   - HomeBottomBar
+3. Preserve their existing callbacks and data sources.
+
+Then modify the UI implementation.
+
+Do NOT rewrite unrelated architecture.
+
+Prefer small focused composable changes.
+
+Do not add unnecessary libraries.
+
+Do not download external resources.
+
+Use the already supplied local Header background asset.
+
+==================================================
+30. FINAL VISUAL ACCEPTANCE TEST
+==================================================
+
+Before declaring the task complete, compare the resulting APK screenshot
+against the supplied Reference Screenshot.
+
+Check ALL of the following:
+
+HEADER
+[ ] Header is not excessively tall
+[ ] Header does not contain huge empty space
+[ ] Background asset fills the Hero
+[ ] Header looks like one integrated Hero surface
+[ ] Cherry logo is compact and correctly positioned
+[ ] Cherry 2D is correctly positioned
+[ ] Subtitle is correctly positioned
+[ ] Notification is not fake
+[ ] Settings is correctly positioned
+[ ] Date selector is correctly positioned
+[ ] Date selector is compact
+[ ] Header does not look like a separate banner
+
+FIRST ROW
+[ ] 2D LIVE is dominant
+[ ] Agent summary is compact
+[ ] Customer summary is compact
+[ ] Burmese labels are not clipped
+
+WEEKLY
+[ ] 5 columns
+[ ] Monday-Friday
+[ ] Morning row
+[ ] Evening row
+[ ] grid is aligned
+[ ] result circles stay inside cells
+[ ] arrows work
+[ ] swipe/week navigation remains functional
+
+MAIN ACTIONS
+[ ] New Agent is horizontal
+[ ] New Customer is horizontal
+[ ] icons are correctly positioned
+[ ] arrows are correctly positioned
+[ ] Burmese labels are not clipped
+
+SECONDARY
+[ ] 2D Analysis is one line
+[ ] Better Data is one line
+[ ] badges do not break titles
+[ ] arrows are correctly positioned
+
+BOTTOM NAV
+[ ] exactly 5 items
+[ ] Agent
+[ ] Customer
+[ ] Center Cherry Quick Entry
+[ ] ပိတ်
+[ ] ရလဒ်
+[ ] center Cherry button is elevated/floating
+[ ] existing navigation callbacks are preserved
+
+OVERALL
+[ ] no excessive blank space
+[ ] no text clipping
+[ ] no overlapping elements
+[ ] no fake data
+[ ] no broken Burmese rendering
+[ ] no unrelated UI changes
+
+==================================================
+31. BUILD / GIT WORKFLOW
+==================================================
+
+After implementation:
+
+1. Run relevant unit tests.
+2. Run lint/checks.
+3. Build Debug APK.
+4. Build Release APK.
+5. Commit directly to main.
+6. Push directly to main.
+7. Verify GitHub Actions.
+8. Ensure Actions succeeds.
+9. Ensure APK artifacts are available.
+
+DO NOT:
+- create branch
+- create PR
+- ask me to merge anything
+
+==================================================
+32. FINAL REPORT
+==================================================
+
+When finished, report only:
+
+- files changed
+- concise summary of UI changes
+- tests/checks result
+- commit SHA
+- GitHub Actions run
+- APK artifact status
+
+Do not claim visual perfection unless you actually verified the built APK screenshot.
+
+This is the FINAL HOME SCREEN VISUAL CORRECTION PASS.
+Do not stop after fixing only the Header.
+Fix all listed Home visual/layout problems in this task.
