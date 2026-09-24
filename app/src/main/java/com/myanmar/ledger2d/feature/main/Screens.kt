@@ -165,7 +165,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=12.dp,vertical=0.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
             item { HomeHeader(today,onSettings) }
-            item { HomeLiveAndSummary(agents.size,customerCount) }
+            item { Box(Modifier.offset(y=(-10).dp)) { HomeLiveAndSummary(agents.size,customerCount) } }
             item { HomeWeeklyResults(vm) }
             item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.text("ဒိုင်အသစ်","New Agent"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.text("ထိုးသားအသစ်","New Customer"),onAddCustomer,Modifier.weight(1f))} }
             item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))} }
@@ -177,13 +177,14 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit){
     val configuration=LocalConfiguration.current
     val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH))
-    Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(276.dp).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
-        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.FillBounds)
-        Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.23f).dp,end=12.dp,top=22.dp,bottom=18.dp)){
+    val headerHeight=(configuration.screenWidthDp*.62f).dp.coerceIn(214.dp,244.dp)
+    Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(headerHeight).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
+        Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.23f).dp,end=12.dp,top=18.dp,bottom=14.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Top){
-                Column(Modifier.weight(1f).padding(top=8.dp)){
-                    Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
-                    Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=16.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+                Column(Modifier.weight(1f).padding(top=6.dp)){
+                    Text("Cherry 2D",color=Color.White,fontSize=29.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
+                    Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
                 }
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(42.dp),contentAlignment=Alignment.TopEnd){
@@ -193,8 +194,8 @@ fun transactionDisplayText(format: String, raw: String): String {
                     IconButton(onClick=onSettings,modifier=Modifier.size(46.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(30.dp))}
                 }
             }
-            Spacer(Modifier.height(17.dp))
-            Surface(Modifier.fillMaxWidth(.77f).height(56.dp),shape=RoundedCornerShape(30.dp),color=Color.Transparent,border=BorderStroke(1.5.dp,Color.White.copy(alpha=.72f))){
+            Spacer(Modifier.height(12.dp))
+            Surface(Modifier.fillMaxWidth(.80f).height(50.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
                 Row(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(25.dp))
                     Text(dateText,Modifier.weight(1f).padding(start=12.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
