@@ -162,36 +162,37 @@ fun transactionDisplayText(format: String, raw: String): String {
     val revision by vm.revision.collectAsStateWithLifecycle()
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
+    val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
+    val sheetOverlap=24.dp
     Scaffold(containerColor=Color(0xFFFFF5F8),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
         Box(Modifier.fillMaxSize().padding(p)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                Box(Modifier.fillMaxWidth().height(370.dp)) {
-                    HomeHeader(today,onSettings,Modifier.align(Alignment.TopCenter))
+                Box(Modifier.fillMaxWidth()) {
+                    HomeHeader(today,onSettings,Modifier.align(Alignment.TopCenter),heroHeight)
                     Column(
-                        Modifier.align(Alignment.TopCenter).offset(y=326.dp).fillMaxWidth()
+                        Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                             .background(Color(0xFFFFF9FB))
                             .shadow(8.dp,RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
-                            .padding(start=12.dp,end=12.dp,top=20.dp,bottom=12.dp),
+                            .padding(start=12.dp,end=12.dp,top=20.dp,bottom=20.dp),
                         verticalArrangement=Arrangement.spacedBy(10.dp)
-                    ) { HomeLiveAndSummary(agents.size,customerCount) }
-                }
-                Column(Modifier.fillMaxWidth().padding(horizontal=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    ) {
+                        HomeLiveAndSummary(agents.size,customerCount)
                     HomeWeeklyResults(vm)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"New Agent",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"New Customer",onAddCustomer,Modifier.weight(1f))}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))}
-                    Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(12.dp))
+                    }
                 }
             }
         }
     }
 }
 
-@Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit,modifier:Modifier=Modifier){
+@Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit,modifier:Modifier=Modifier,height:androidx.compose.ui.unit.Dp=188.dp){
     val configuration=LocalConfiguration.current
     val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH))
-    val headerHeight=(configuration.screenWidthDp*.50f).dp.coerceIn(188.dp,210.dp)
-    Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(headerHeight).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
+    Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(height).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
         Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.27f).dp,end=12.dp,top=18.dp,bottom=12.dp)){
             Column(Modifier.fillMaxWidth().padding(top=6.dp,end=92.dp)){
