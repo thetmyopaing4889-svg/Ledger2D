@@ -166,12 +166,13 @@ fun transactionDisplayText(format: String, raw: String): String {
     val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
     val sheetOverlap=24.dp
     Scaffold(containerColor=Color(0xFFFFF5F8),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
-        Box(Modifier.fillMaxSize().padding(p)) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(p)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Box(Modifier.fillMaxWidth()) {
                     HomeHeader(today,onSettings,Modifier.align(Alignment.TopCenter),heroHeight)
                     Column(
                         Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
+                            .heightIn(min = maxHeight - (heroHeight - sheetOverlap))
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                             .background(Color(0xFFFFF9FB))
                             .shadow(8.dp,RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
@@ -182,7 +183,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     HomeWeeklyResults(vm)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",l.translate("လာမည်"),Modifier.weight(1f))}
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(20.dp))
                     }
                 }
             }
