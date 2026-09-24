@@ -309,7 +309,15 @@ fun transactionDisplayText(format: String, raw: String): String {
     NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=4.dp){
         NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ဒိုင်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ထိုးသား"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(72.dp).offset(y=(-12).dp),contentAlignment=Alignment.Center){Surface(color=Color.White,shape=CircleShape,shadowElevation=9.dp,modifier=Modifier.size(72.dp)){Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFE23A64),Color(0xFF8D123A))),CircleShape).border(2.dp,Color.White.copy(alpha=.9f),CircleShape),contentAlignment=Alignment.Center){CherryBrandMark(Modifier.size(34.dp))}}}},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
+        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(78.dp).offset(y=(-14).dp),contentAlignment=Alignment.Center){
+            Box(Modifier.size(62.dp).offset(y=10.dp).background(Brush.radialGradient(listOf(Color(0x59B0124A),Color.Transparent)),CircleShape))
+            Surface(color=Color.White,shape=CircleShape,shadowElevation=12.dp,modifier=Modifier.size(72.dp)){
+                Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF8FB0),Color(0xFFE23A64),Color(0xFF6E0B2C))),CircleShape).border(2.dp,Color.White.copy(alpha=.85f),CircleShape)){
+                    Box(Modifier.align(Alignment.TopStart).padding(start=8.dp,top=6.dp).size(30.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha=.55f),Color.Transparent)),CircleShape))
+                    CherryBrandMark(Modifier.align(Alignment.Center).size(36.dp))
+                }
+            }
+        }},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
         NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ပိတ်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
         NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ရလဒ်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
     }
