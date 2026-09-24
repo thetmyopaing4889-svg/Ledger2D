@@ -34,11 +34,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
@@ -46,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
@@ -187,10 +186,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
                 }
                 Row(verticalAlignment=Alignment.CenterVertically){
-                    Box(Modifier.size(42.dp),contentAlignment=Alignment.TopEnd){
-                        IconButton(onClick={},modifier=Modifier.size(42.dp)){Icon(Icons.Default.Notifications,null,tint=Color.White,modifier=Modifier.size(29.dp))}
-                        Surface(Modifier.size(18.dp),shape=CircleShape,color=AppColors.Primary,contentColor=Color.White){Box(contentAlignment=Alignment.Center){Text("3",style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black)}}
-                    }
+                    Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){Icon(Icons.Default.Notifications,"Notifications",tint=Color.White,modifier=Modifier.size(29.dp))}
                     IconButton(onClick=onSettings,modifier=Modifier.size(46.dp)){Icon(Icons.Default.Settings,"Settings",tint=Color.White,modifier=Modifier.size(30.dp))}
                 }
             }
@@ -207,14 +203,8 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 
 @Composable private fun CherryBrandMark(modifier:Modifier){
-    Canvas(modifier){
-        val w=size.width;val h=size.height;val stemColor=Color(0xFF5B321F)
-        drawLine(stemColor,Offset(w*.46f,h*.43f),Offset(w*.51f,h*.12f),strokeWidth=3.2.dp.toPx());drawLine(stemColor,Offset(w*.51f,h*.14f),Offset(w*.70f,h*.08f),strokeWidth=3.dp.toPx())
-        val leafPath=Path().apply{moveTo(w*.49f,h*.14f);cubicTo(w*.58f,h*.00f,w*.82f,h*.02f,w*.76f,h*.15f);cubicTo(w*.68f,h*.23f,w*.56f,h*.20f,w*.49f,h*.14f);close()}
-        drawPath(leafPath,brush=Brush.linearGradient(colors=listOf(Color(0xFF83D665),Color(0xFF3E8F35)),start=Offset(w*.45f,0f),end=Offset(w*.80f,h*.25f)))
-        val leftCherry=Brush.radialGradient(listOf(Color(0xFFFF6B91),Color(0xFFD00045),Color(0xFF82002D)),center=Offset(w*.27f,h*.50f),radius=w*.34f);val rightCherry=Brush.radialGradient(listOf(Color(0xFFFF7699),Color(0xFFD00045),Color(0xFF82002D)),center=Offset(w*.68f,h*.50f),radius=w*.34f)
-        drawCircle(leftCherry,w*.28f,Offset(w*.32f,h*.60f));drawCircle(rightCherry,w*.28f,Offset(w*.68f,h*.60f))
-        drawCircle(Color.White.copy(alpha=.72f),w*.045f,Offset(w*.22f,h*.49f));drawCircle(Color.White.copy(alpha=.68f),w*.045f,Offset(w*.59f,h*.49f))
+    Box(modifier.clip(CircleShape).background(AppColors.PrimaryDeep),contentAlignment=Alignment.Center){
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),"Cherry",Modifier.fillMaxSize(),contentScale=ContentScale.Crop,alignment=Alignment.TopStart)
     }
 }
 
@@ -277,8 +267,8 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier)=Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}
-@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier.height(82.dp),shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){Surface(color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).size(25.dp))};Text(title,style=MaterialTheme.typography.labelLarge,textAlign=TextAlign.Center,maxLines=1,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(25.dp))}}}
-@Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,modifier:Modifier=Modifier){ElevatedCard(onClick={},modifier=modifier.height(76.dp),shape=RoundedCornerShape(18.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color(0xFFFFF0F5)),elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)){Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){Surface(color=Color(0xFFFFE0EA),shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp).size(24.dp))};Text(title,style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f));Surface(color=Color(0xFFFFE0EA),shape=RoundedCornerShape(12.dp)){Text("ကြည့်",Modifier.padding(horizontal=7.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(24.dp))}}}
+@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier.height(82.dp),shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){Surface(Modifier.size(46.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelLarge,textAlign=TextAlign.Center,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(25.dp))}}}
+@Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,modifier:Modifier=Modifier){ElevatedCard(onClick={},modifier=modifier.height(76.dp),shape=RoundedCornerShape(18.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color(0xFFFFF0F5)),elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)){Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){Surface(Modifier.size(44.dp),color=Color(0xFFFFE0EA),shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.SemiBold,maxLines=1,softWrap=false,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Surface(color=Color(0xFFFFE0EA),shape=RoundedCornerShape(12.dp)){Text("မကြာမီ",Modifier.padding(horizontal=5.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)};Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(24.dp))}}}
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
     val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); var agentId by rememberSaveable{mutableStateOf(l.defaultAgentId)}; var customerId by rememberSaveable{mutableStateOf(l.defaultCustomerId)}; val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue=emptyList())
     LaunchedEffect(agents, l.defaultAgentId) {
