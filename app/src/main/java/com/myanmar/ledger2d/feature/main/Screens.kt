@@ -204,7 +204,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Surface(Modifier.fillMaxWidth().padding(horizontal=16.dp).height(54.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
+            Surface(Modifier.padding(start=20.dp).fillMaxWidth(.64f).height(54.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
                 Row(Modifier.fillMaxSize().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(25.dp))
                     Text(dateText,Modifier.weight(1f).padding(horizontal=8.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
@@ -213,9 +213,9 @@ fun transactionDisplayText(format: String, raw: String): String {
             }
         }
         Row(Modifier.align(Alignment.TopEnd).padding(top=18.dp,end=12.dp),verticalAlignment=Alignment.CenterVertically){
-            Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){
+            Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){
                 Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(29.dp))
-                Box(Modifier.align(Alignment.TopEnd).size(11.dp).background(Color(0xFFFF3158),CircleShape).border(1.5.dp,Color.White,CircleShape))
+                Box(Modifier.align(Alignment.TopEnd).offset(y=(-2).dp).size(14.dp).background(Color(0xFFFF3158),CircleShape).border(2.dp,Color.White,CircleShape))
             }
             IconButton(onClick=onSettings,modifier=Modifier.size(46.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(30.dp))}
         }
@@ -230,24 +230,24 @@ fun transactionDisplayText(format: String, raw: String): String {
     val l=LocalLanguage.current
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-        ElevatedCard(onClick={},modifier=Modifier.weight(1.52f).height(88.dp),shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
+        ElevatedCard(onClick={},modifier=Modifier.weight(1.35f).height(88.dp),shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
             Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
                 Text("2D LIVE",Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
                 Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(30.dp))
             }
         }
-        HomeCountCard(Icons.Default.Person,l.translate("ဒိုင်"),agentCount,AppColors.PrimaryDeep,Modifier.weight(.78f))
-        HomeCountCard(Icons.Default.People,l.translate("ထိုးသား"),customerCount,AppColors.Success,Modifier.weight(.78f))
+        HomeCountCard(Icons.Default.Person,l.translate("ဒိုင်"),agentCount,AppColors.PrimaryDeep,Modifier.weight(.95f))
+        HomeCountCard(Icons.Default.People,l.translate("ထိုးသား"),customerCount,AppColors.Success,Modifier.weight(.95f))
     }
 }
 
 @Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,iconTint:Color,modifier:Modifier){
     Surface(modifier.height(88.dp),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
-        Row(Modifier.fillMaxSize().padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){
-            Surface(Modifier.size(38.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=iconTint,modifier=Modifier.padding(8.dp).fillMaxSize())}
+        Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            Surface(Modifier.size(34.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=iconTint,modifier=Modifier.padding(7.dp).fillMaxSize())}
             Column(verticalArrangement=Arrangement.spacedBy(0.dp)){
-                Text(label,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+                Text(label,style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
                 Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
             }
         }
