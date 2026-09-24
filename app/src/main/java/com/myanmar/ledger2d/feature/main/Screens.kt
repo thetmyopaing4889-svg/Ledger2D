@@ -166,7 +166,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             item { HomeHeader(today,onSettings) }
             item { Box(Modifier.offset(y=(-10).dp)) { HomeLiveAndSummary(agents.size,customerCount) } }
             item { HomeWeeklyResults(vm) }
-            item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.text("ဒိုင်အသစ်","New Agent"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.text("ထိုးသားအသစ်","New Customer"),onAddCustomer,Modifier.weight(1f))} }
+            item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,"New Agent",onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,"New Customer",onAddCustomer,Modifier.weight(1f))} }
             item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",Modifier.weight(1f))} }
             item { Spacer(Modifier.height(4.dp)) }
         }
@@ -179,11 +179,14 @@ fun transactionDisplayText(format: String, raw: String): String {
     val headerHeight=(configuration.screenWidthDp*.57f).dp.coerceIn(218.dp,238.dp)
     Box(Modifier.fillMaxWidth().requiredWidth(configuration.screenWidthDp.dp).offset(x=(-12).dp).height(headerHeight).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
-        Column(Modifier.fillMaxSize().padding(start=(configuration.screenWidthDp*.27f).dp,end=12.dp,top=18.dp,bottom=12.dp)){
+        Column(Modifier.fillMaxSize().padding(start=14.dp,end=14.dp,top=12.dp,bottom=12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Top){
-                Column(Modifier.weight(1f).padding(top=6.dp)){
-                    Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
-                    Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+                Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically){
+                    Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon),"Cherry 2D logo",Modifier.size(68.dp),contentScale=ContentScale.Fit)
+                    Column(Modifier.padding(start=8.dp).padding(top=2.dp)){
+                        Text("Cherry 2D",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,maxLines=1,softWrap=false)
+                        Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+                    }
                 }
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(42.dp),contentAlignment=Alignment.Center){Icon(Icons.Default.Notifications,"Notifications",tint=Color.White,modifier=Modifier.size(29.dp))}
@@ -191,7 +194,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Surface(Modifier.fillMaxWidth(.84f).height(50.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
+            Surface(Modifier.fillMaxWidth().height(50.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
                 Row(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(25.dp))
                     Text(dateText,Modifier.weight(1f).padding(start=12.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
@@ -227,8 +230,8 @@ fun transactionDisplayText(format: String, raw: String): String {
     Surface(modifier.height(96.dp),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
         Column(Modifier.fillMaxSize().padding(vertical=8.dp,horizontal=3.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(1.dp)){
             Surface(Modifier.size(34.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(7.dp).fillMaxSize())}
-            Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep)
-            Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+            Text(label,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+            Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
         }
     }
 }
@@ -246,7 +249,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
         }
     }
-    selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text("Close")}},title={Text("${item.date.displayDate()} • ${item.session.label}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("Winning digit",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total stake");Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total commission");Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
+    selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text("Close")}},title={Text("${item.date.displayDate()} • ${if(item.session == DrawSession.MORNING) "AM" else "PM"}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("Winning digit",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total stake");Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Total commission");Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
 }
 
 @Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(Modifier.size(42.dp).clickable(onClick=onClick),shape=CircleShape,color=AppColors.Blush){Box(contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(25.dp))}}}
