@@ -176,14 +176,15 @@ fun transactionDisplayText(format: String, raw: String): String {
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                             .background(Color(0xFFFFF9FB))
                             .shadow(8.dp,RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
-                            .padding(start=12.dp,end=12.dp,top=20.dp,bottom=20.dp),
+                            .padding(start=12.dp,end=12.dp,top=18.dp,bottom=28.dp),
                         verticalArrangement=Arrangement.spacedBy(10.dp)
                     ) {
-                        HomeLiveAndSummary(agents.size,customerCount)
-                    HomeWeeklyResults(vm)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,"2D Analysis",l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,"Better Data",l.translate("လာမည်"),Modifier.weight(1f))}
-                        Spacer(Modifier.height(20.dp))
+                        HomeLiveAndSummary(agents.size,customerCount,onWinning)
+                        HomeWeeklyResults(vm)
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,l.translate("2D သုံးသပ်ချက်"),l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,l.translate("ဒေတာအသစ်"),l.translate("လာမည်"),Modifier.weight(1f))}
+                        if(agents.isEmpty()) HomeStartCta(onAddAgent)
+                        HomeFooter()
                     }
                 }
             }
@@ -204,12 +205,14 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=2.dp),maxLines=1,softWrap=false)
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            Surface(Modifier.padding(start=20.dp).fillMaxWidth(.64f).height(54.dp),shape=RoundedCornerShape(28.dp),color=Color(0x22000000),border=BorderStroke(1.5.dp,Color.White.copy(alpha=.78f))){
-                Row(Modifier.fillMaxSize().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically){
-                    Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(25.dp))
-                    Text(dateText,Modifier.weight(1f).padding(horizontal=8.dp),color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
-                    Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(28.dp))
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){
+                Surface(Modifier.fillMaxWidth(.64f).height(50.dp),shape=RoundedCornerShape(26.dp),color=Color.White.copy(alpha=.15f),border=BorderStroke(1.dp,Color.White.copy(alpha=.6f))){
+                    Row(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
+                        Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(22.dp))
+                        Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=16.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
+                        Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(21.dp))
+                    }
                 }
             }
         }
@@ -227,11 +230,12 @@ fun transactionDisplayText(format: String, raw: String): String {
     Image(painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),"Cherry 2D",modifier,contentScale=ContentScale.Fit)
 }
 
-@Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int){
+@Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int,onResults:()->Unit){
     val l=LocalLanguage.current
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
+    val (liveInteraction,liveScale)=rememberPressScale("liveCard")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-        ElevatedCard(onClick={},modifier=Modifier.weight(1.35f).height(88.dp),shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
+        ElevatedCard(onClick=onResults,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
             Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
                 Text("2D LIVE",Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
@@ -239,7 +243,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             }
         }
         HomeCountCard(Icons.Default.Person,l.translate("ဒိုင်"),agentCount,AppColors.PrimaryDeep,Modifier.weight(.95f))
-        HomeCountCard(Icons.Default.People,l.translate("ထိုးသား"),customerCount,AppColors.Success,Modifier.weight(.95f))
+        HomeCountCard(Icons.Default.People,l.translate("ထိုးသား"),customerCount,AppColors.Secondary,Modifier.weight(.95f))
     }
 }
 
@@ -265,24 +269,27 @@ fun transactionDisplayText(format: String, raw: String): String {
     val weekEnd=monday.plusDays(4); val weekLabel="${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
     Card(Modifier.fillMaxWidth().pointerInput(Unit){var distance=0f;detectDragGestures(onDragStart={distance=0f},onDrag={change,amount->change.consume();distance+=amount.x},onDragEnd={if(kotlin.math.abs(distance)>72f)weekOffset+=if(distance<0)1 else -1})},colors=CardDefaults.cardColors(containerColor=Color.White),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.8f)),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
         Column(Modifier.padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrow(Icons.Default.ChevronLeft){weekOffset--};HomeWeekArrow(Icons.Default.ChevronRight){weekOffset++}}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
         }
     }
     selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text(l.translate("ပိတ်မည်"))}},title={Text("${item.date.displayDate()} • ${l.translate(if(item.session == DrawSession.MORNING) "မနက်" else "ညနေ")}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(l.translate("ပေါက်ဂဏန်း"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ထိုးကြေး"));Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ကော်မရှင်"));Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
 }
 
-@Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(Modifier.size(38.dp).clickable(onClick=onClick),shape=CircleShape,color=AppColors.Blush){Box(contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(25.dp))}}}
+@Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.7f))){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
+@Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(38.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
 
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,WinningNumberEntity>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
     val l=LocalLanguage.current
+    val today=DeviceCalendar.today()
     val dates=(0L..4L).map(monday::plusDays); val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().height(38.dp),verticalAlignment=Alignment.CenterVertically){
             Spacer(Modifier.width(48.dp))
             dates.forEach { date ->
-                Column(Modifier.weight(1f).fillMaxHeight().border(1.dp,AppColors.Stone.copy(alpha=.35f)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                    Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                Column(Modifier.weight(1f).fillMaxHeight().background(if(date==today) AppColors.Blush else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+                    Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black,color=if(date==today) AppColors.PrimaryDeep else AppColors.Ink);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)}
+                    Box(Modifier.padding(top=1.dp).size(4.dp).background(if(date==today) AppColors.Primary else Color.Transparent,CircleShape))
                 }
             }
         }
@@ -294,8 +301,9 @@ fun transactionDisplayText(format: String, raw: String): String {
                     val morning=session == DrawSession.MORNING
                     val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> if(morning) Color(0xFFFDF2F5) else Color(0xFFF0F1F4); morning -> AppColors.Blush; else -> Color.White }
                     val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
-                    val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else null
-                    Box(Modifier.weight(1f).fillMaxHeight().border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
+                    val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
+                    val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
+                    Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
                         Surface(Modifier.size(40.dp),shape=CircleShape,color=circleColor,border=eveningStroke){Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
                     }
                 }
@@ -306,34 +314,66 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeBottomBar(onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onQuickEntry:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit){
     val l=LocalLanguage.current
-    NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=4.dp){
-        NavigationBarItem(false,onAgentDashboard,icon={Icon(Icons.Default.Store,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ဒိုင်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onCustomerDashboard,icon={Icon(Icons.Default.People,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ထိုးသား"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onQuickEntry,icon={Box(Modifier.size(78.dp).offset(y=(-14).dp),contentAlignment=Alignment.Center){
-            Box(Modifier.size(62.dp).offset(y=10.dp).background(Brush.radialGradient(listOf(Color(0x59B0124A),Color.Transparent)),CircleShape))
-            Surface(color=Color.White,shape=CircleShape,shadowElevation=12.dp,modifier=Modifier.size(72.dp)){
-                Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF8FB0),Color(0xFFE23A64),Color(0xFF6E0B2C))),CircleShape).border(2.dp,Color.White.copy(alpha=.85f),CircleShape)){
-                    Box(Modifier.align(Alignment.TopStart).padding(start=8.dp,top=6.dp).size(30.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha=.55f),Color.Transparent)),CircleShape))
-                    CherryBrandMark(Modifier.align(Alignment.Center).size(36.dp))
-                }
+    Box(Modifier.fillMaxWidth()){
+        NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=6.dp){
+            HomeNavItem(l.translate("ဒိုင်"),Icons.Default.Store,onAgentDashboard)
+            HomeNavItem(l.translate("ထိုးသား"),Icons.Default.People,onCustomerDashboard)
+            NavigationBarItem(false,onQuickEntry,icon={Spacer(Modifier.height(22.dp))},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)})
+            HomeNavItem(l.translate("ပိတ်"),Icons.Default.EventBusy,onClosedDays)
+            HomeNavItem(l.translate("ရလဒ်"),Icons.Default.EmojiEvents,onWinning)
+        }
+        QuickCenterFab(onQuickEntry,Modifier.align(Alignment.TopCenter))
+    }
+}
+@Composable private fun HomeNavItem(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){
+    NavigationBarItem(false,onClick,icon={Icon(icon,null,modifier=Modifier.size(25.dp),tint=AppColors.PrimaryDeep)},label={Text(label,maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)})
+}
+@Composable private fun QuickCenterFab(onClick:()->Unit,modifier:Modifier=Modifier){
+    val (interaction,pressScale)=rememberPressScale("quickFab")
+    Box(modifier.offset(y=(-22).dp),contentAlignment=Alignment.Center){
+        Box(Modifier.size(78.dp).offset(y=8.dp).background(Brush.radialGradient(listOf(Color(0x59B0124A),Color.Transparent)),CircleShape))
+        Surface(onClick=onClick,interactionSource=interaction,shape=CircleShape,color=Color.White,shadowElevation=10.dp,modifier=Modifier.size(64.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale}){
+            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF8FB0),Color(0xFFE23A64),Color(0xFF6E0B2C))),CircleShape).border(2.dp,Color.White.copy(alpha=.85f),CircleShape)){
+                Box(Modifier.align(Alignment.TopStart).padding(start=7.dp,top=5.dp).size(26.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha=.55f),Color.Transparent)),CircleShape))
+                CherryBrandMark(Modifier.align(Alignment.Center).size(32.dp))
             }
-        }},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)})
-        NavigationBarItem(false,onClosedDays,icon={Icon(Icons.Default.EventBusy,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ပိတ်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
-        NavigationBarItem(false,onWinning,icon={Icon(Icons.Default.EmojiEvents,null,modifier=Modifier.size(27.dp))},label={Text(l.translate("ရလဒ်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall)})
+        }
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier)=Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}
-@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){ElevatedCard(onClick=onClick,modifier=modifier.height(76.dp),shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
+@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){val (interaction,pressScale)=rememberPressScale("homeAction");ElevatedCard(onClick=onClick,interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
 @Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,badge:String,modifier:Modifier=Modifier){
-    ElevatedCard(onClick={},modifier=modifier.height(88.dp),shape=RoundedCornerShape(18.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color(0xFFFFF0F5)),elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)){
+    val (interaction,pressScale)=rememberPressScale("futureAction")
+    ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(88.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp),border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.8f))){
         Box(Modifier.fillMaxSize()){
-            Surface(color=Color(0xFFFFE0EA),shape=RoundedCornerShape(10.dp),modifier=Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=10.dp)){Text(badge,Modifier.padding(horizontal=7.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=11.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
+            Surface(color=Color.Transparent,shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f)),modifier=Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=10.dp)){Text(badge,Modifier.padding(horizontal=8.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=11.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
             Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                Surface(Modifier.size(44.dp),color=Color(0xFFFFE0EA),shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())}
+                Surface(Modifier.size(44.dp),color=AppColors.Blush,shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())}
                 Text(title,style=MaterialTheme.typography.titleMedium,fontSize=15.sp,fontWeight=FontWeight.Bold,maxLines=2,modifier=Modifier.weight(1f))
                 Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))
             }
         }
+    }
+}
+@Composable private fun rememberPressScale(label:String):Pair<MutableInteractionSource,Float>{val interaction=remember{MutableInteractionSource()};val pressed by interaction.collectIsPressedAsState();val scale by animateFloatAsState(if(pressed).965f else 1f,tween(AppMotion.Short),label=label);return interaction to scale}
+@Composable private fun HomeStartCta(onAdd:()->Unit){
+    val l=LocalLanguage.current
+    val (interaction,pressScale)=rememberPressScale("startCta")
+    Surface(onClick=onAdd,interactionSource=interaction,shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().graphicsLayer{scaleX=pressScale;scaleY=pressScale}){
+        Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
+            Surface(Modifier.size(42.dp),shape=CircleShape,color=Color.White.copy(alpha=.18f)){Icon(Icons.Default.Store,null,tint=Color.White,modifier=Modifier.padding(10.dp).fillMaxSize())}
+            Column(Modifier.weight(1f).padding(start=12.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){
+                Text(l.translate("ပထမဆုံး ဒိုင်ကိုထည့်ပြီး စတင်ပါ"),style=MaterialTheme.typography.titleMedium,fontSize=15.sp,fontWeight=FontWeight.Bold,color=Color.White,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
+                Text(l.translate("ဒိုင်ထည့်ပြီးမှ စာရင်းစတင်နိုင်ပါမည်"),style=MaterialTheme.typography.labelSmall,color=Color.White.copy(alpha=.85f))
+            }
+            Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(22.dp))
+        }
+    }
+}
+@Composable private fun HomeFooter(){
+    Row(Modifier.fillMaxWidth().padding(top=2.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+        CherryBrandMark(Modifier.size(15.dp))
+        Text("Cherry 2D • For Myanmar 2D Agents",Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
     }
 }
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
