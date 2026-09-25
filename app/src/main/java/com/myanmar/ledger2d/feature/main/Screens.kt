@@ -325,7 +325,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         QuickCenterFab(onQuickEntry,Modifier.align(Alignment.TopCenter))
     }
 }
-@Composable private fun HomeNavItem(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){
+@Composable private fun RowScope.HomeNavItem(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){
     NavigationBarItem(false,onClick,icon={Icon(icon,null,modifier=Modifier.size(25.dp),tint=AppColors.PrimaryDeep)},label={Text(label,maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)})
 }
 @Composable private fun QuickCenterFab(onClick:()->Unit,modifier:Modifier=Modifier){
@@ -344,8 +344,8 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){val (interaction,pressScale)=rememberPressScale("homeAction");ElevatedCard(onClick=onClick,interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
 @Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,badge:String,modifier:Modifier=Modifier){
     val (interaction,pressScale)=rememberPressScale("futureAction")
-    ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(88.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp),border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.8f))){
-        Box(Modifier.fillMaxSize()){
+    ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(88.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
+        Box(Modifier.fillMaxSize().border(1.dp,AppColors.Stone.copy(alpha=.8f),RoundedCornerShape(20.dp))){
             Surface(color=Color.Transparent,shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f)),modifier=Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=10.dp)){Text(badge,Modifier.padding(horizontal=8.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=11.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
             Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 Surface(Modifier.size(44.dp),color=AppColors.Blush,shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())}
