@@ -175,7 +175,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                             .heightIn(min = this@BoxWithConstraints.maxHeight - (heroHeight - sheetOverlap))
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                             .background(Color(0xFFF6F4F5))
-                            .padding(start=12.dp,end=12.dp,top=18.dp,bottom=40.dp),
+                            .padding(start=14.dp,end=14.dp,top=18.dp,bottom=40.dp),
                         verticalArrangement=Arrangement.spacedBy(10.dp)
                     ) {
                         HomeLiveAndSummary(agents.size,customerCount,onWinning)
@@ -251,7 +251,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
             Surface(Modifier.size(34.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=iconTint,modifier=Modifier.padding(7.dp).fillMaxSize())}
             Column(verticalArrangement=Arrangement.spacedBy(0.dp)){
-                Text(label,style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
+                Text(label.uppercase(Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=0.8.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
                 Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
             }
         }
@@ -298,7 +298,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                 dates.forEach { date ->
                     val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session]?.digit ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
-                    val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> if(morning) Color(0xFFFDF2F5) else Color(0xFFF0F1F4); morning -> AppColors.Blush; else -> Color.White }
+                    val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> Color(0xFFF4F0F1); morning -> AppColors.Blush; else -> Color.White }
                     val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
                     val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
                     val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
