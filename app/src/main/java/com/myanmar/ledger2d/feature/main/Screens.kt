@@ -34,6 +34,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
@@ -143,20 +145,72 @@ fun transactionDisplayText(format: String, raw: String): String {
     )
 }
 @Composable fun WelcomeScreen(onContinue:()->Unit){
-    Box(Modifier.fillMaxSize()) {
-        Image(painterResource(com.myanmar.ledger2d.R.drawable.welcome_cherry_ledger), "Cherry 2D Ledger welcome", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Button(onClick=onContinue, modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom=22.dp).fillMaxWidth(.86f).height(60.dp), colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF8D2344), contentColor=Color.White), shape=MaterialTheme.shapes.large) { Text("စတင်အသုံးပြုမည်", style=MaterialTheme.typography.titleMedium, fontWeight=FontWeight.Bold) }
-    }
-}
-
-@Composable private fun RowScope.WelcomeStat(value:String, label:String){
-    Surface(color=MaterialTheme.colorScheme.surfaceVariant, shape=MaterialTheme.shapes.medium, modifier=Modifier.weight(1f)){
-        Column(Modifier.padding(vertical=12.dp, horizontal=8.dp), horizontalAlignment=Alignment.CenterHorizontally){
-            Text(value, style=MaterialTheme.typography.labelLarge, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary)
-            Text(label, style=MaterialTheme.typography.labelMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
+    val l=LocalLanguage.current
+    val glow by rememberInfiniteTransition(label="welcome-ambient").animateFloat(initialValue=.5f,targetValue=.9f,animationSpec=infiniteRepeatable(tween(2600),RepeatMode.Reverse),label="welcome-glow")
+    Box(Modifier.fillMaxSize().background(Color(0xFF1E050D))){
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.welcome_cherry_ledger), "Cherry 2D Ledger welcome", Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.Center)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0xFF22050D).copy(alpha=.62f), 0.45f to Color(0xFF2A0712).copy(alpha=.42f), 0.78f to Color(0xFF3B0A1A).copy(alpha=.88f), 1f to Color(0xFF1E050D))))
+        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.Transparent, Color(0x59000000)), radius=1100f)))
+        WelcomeFloatingDigits()
+        Column(Modifier.align(Alignment.Center).padding(horizontal=28.dp), horizontalAlignment=Alignment.CenterHorizontally){
+            Box(contentAlignment=Alignment.Center){
+                Box(Modifier.size(196.dp).graphicsLayer{alpha=glow}.background(Brush.radialGradient(listOf(Color(0xFFFF5C8A).copy(alpha=.30f), Color.Transparent)), CircleShape))
+                Surface(shape=CircleShape, color=Color.Transparent, border=BorderStroke(1.dp, Color.White.copy(alpha=.20f)), modifier=Modifier.size(148.dp)){
+                    Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.White.copy(alpha=.10f), Color.Transparent)), CircleShape))
+                }
+                Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon), "Cherry 2D", Modifier.size(104.dp), contentScale=ContentScale.Fit)
+            }
+            Text(l.translate("ကြိုဆိုပါသည်"), color=Color.White.copy(alpha=.78f), style=MaterialTheme.typography.labelLarge, letterSpacing=4.sp, modifier=Modifier.padding(top=26.dp))
+            Text("Cherry 2D", color=Color.White, fontSize=44.sp, fontWeight=FontWeight.Black, fontStyle=FontStyle.Italic, lineHeight=50.sp, modifier=Modifier.padding(top=6.dp))
+            Text(l.translate("မြန်မာ 2D ဒိုင်များအတွက် ပရော်ဖက်ရှင်နယ် စာရင်းစနစ်"), color=Color.White.copy(alpha=.85f), style=MaterialTheme.typography.bodyMedium, textAlign=TextAlign.Center, modifier=Modifier.padding(top=10.dp).padding(horizontal=6.dp))
+            Row(Modifier.padding(top=22.dp), horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                WelcomeCapability(Icons.Default.GridView, l.translate("အကွက်စာရင်း"))
+                WelcomeCapability(Icons.Default.Lock, l.translate("ပိတ်ဂဏန်း"))
+                WelcomeCapability(Icons.Default.Assessment, l.translate("အစီရင်ခံစာ"))
+            }
+        }
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal=24.dp), horizontalAlignment=Alignment.CenterHorizontally){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                CherryBrandMark(Modifier.size(16.dp))
+                Text("Cherry 2D • For Myanmar 2D Agents", Modifier.padding(start=6.dp), style=MaterialTheme.typography.labelSmall, color=Color.White.copy(alpha=.55f), maxLines=1, softWrap=false)
+            }
+            Button(onClick=onContinue, modifier=Modifier.fillMaxWidth().padding(top=12.dp).navigationBarsPadding().padding(bottom=22.dp).height(58.dp), colors=ButtonDefaults.buttonColors(containerColor=Color(0xFFFF2D55), contentColor=Color.White), shape=RoundedCornerShape(28.dp), elevation=ButtonDefaults.buttonElevation(defaultElevation=8.dp, pressedElevation=4.dp)) {
+                Text(l.translate("စတင်အသုံးပြုမည်"), style=MaterialTheme.typography.titleMedium, fontWeight=FontWeight.Bold)
+            }
         }
     }
 }
+
+@Composable private fun RowScope.WelcomeCapability(icon:androidx.compose.ui.graphics.vector.ImageVector, label:String){
+    Surface(shape=RoundedCornerShape(14.dp), color=Color.White.copy(alpha=.10f), border=BorderStroke(1.dp, Color.White.copy(alpha=.16f))){
+        Row(Modifier.padding(horizontal=10.dp, vertical=6.dp), verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            Icon(icon, null, tint=Color(0xFFFFB3C6), modifier=Modifier.size(15.dp))
+            Text(label, color=Color.White.copy(alpha=.88f), style=MaterialTheme.typography.labelSmall, fontSize=11.sp, fontWeight=FontWeight.SemiBold, maxLines=1, softWrap=false)
+        }
+    }
+}
+
+@Composable private fun WelcomeFloatingDigits(){
+    Canvas(Modifier.fillMaxSize()){
+        val paint=android.graphics.Paint().apply{
+            isAntiAlias=true
+            textAlign=android.graphics.Paint.Align.CENTER
+            typeface=android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+        }
+        WelcomeDigits.forEach{item->
+            paint.textSize=item.size.toPx()
+            paint.color=Color.White.copy(alpha=item.alpha).toArgb()
+            drawContext.canvas.nativeCanvas.drawText(item.value, item.x*center.x, item.y*center.y, paint)
+        }
+    }
+}
+
+private data class WelcomeDigit(val value:String, val x:Float, val y:Float, val size:androidx.compose.ui.unit.TextUnit, val alpha:Float)
+private val WelcomeDigits=listOf(
+    WelcomeDigit("12", -0.40f, -0.36f, 15.sp, .16f), WelcomeDigit("87", -0.15f, -0.42f, 11.sp, .12f), WelcomeDigit("05", 0.12f, -0.40f, 16.sp, .17f), WelcomeDigit("44", 0.38f, -0.33f, 12.sp, .13f),
+    WelcomeDigit("73", -0.46f, -0.14f, 11.sp, .11f), WelcomeDigit("31", 0.46f, -0.12f, 14.sp, .15f), WelcomeDigit("68", -0.34f, 0.10f, 13.sp, .14f), WelcomeDigit("19", 0.36f, 0.14f, 11.sp, .12f),
+    WelcomeDigit("96", -0.18f, 0.26f, 12.sp, .10f), WelcomeDigit("52", 0.20f, 0.28f, 14.sp, .12f), WelcomeDigit("00", -0.44f, 0.34f, 11.sp, .09f), WelcomeDigit("27", 0.44f, 0.36f, 11.sp, .10f)
+)
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
@@ -175,7 +229,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                             .heightIn(min = this@BoxWithConstraints.maxHeight - (heroHeight - sheetOverlap))
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                             .background(Color(0xFFF6F4F5))
-                            .padding(start=14.dp,end=14.dp,top=18.dp,bottom=40.dp),
+                            .padding(start=14.dp,end=14.dp,top=18.dp,bottom=88.dp),
                         verticalArrangement=Arrangement.spacedBy(10.dp)
                     ) {
                         HomeLiveAndSummary(agents.size,customerCount,onWinning)
@@ -196,31 +250,29 @@ fun transactionDisplayText(format: String, raw: String): String {
     val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH))
     Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(height).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
-        Column(Modifier.fillMaxSize().padding(top=18.dp,bottom=12.dp)){
-            Row(Modifier.fillMaxWidth().padding(end=110.dp),verticalAlignment=Alignment.CenterVertically){
-                Spacer(Modifier.width((configuration.screenWidthDp*.26f).dp))
-                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text("Cherry 2D",color=Color.White,fontSize=30.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,maxLines=1,softWrap=false)
-                    Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=2.dp),maxLines=1,softWrap=false)
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){
-                Surface(Modifier.fillMaxWidth(.64f).height(50.dp),shape=RoundedCornerShape(26.dp),color=Color.White.copy(alpha=.15f),border=BorderStroke(1.dp,Color.White.copy(alpha=.6f))){
-                    Row(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
-                        Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(22.dp))
-                        Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=16.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
-                        Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(21.dp))
-                    }
-                }
-            }
-        }
-        Row(Modifier.align(Alignment.TopEnd).padding(top=18.dp,end=12.dp),verticalAlignment=Alignment.CenterVertically){
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0xFF1E050D).copy(alpha=.30f),Color.Transparent,Color(0xFF1E050D).copy(alpha=.28f)))))
+        Row(Modifier.fillMaxWidth().padding(start=12.dp,end=6.dp).statusBarsPadding(),verticalAlignment=Alignment.CenterVertically){
             Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){
-                Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(29.dp))
-                Box(Modifier.align(Alignment.TopEnd).offset(y=(-2).dp).size(14.dp).background(Color(0xFFFF3158),CircleShape).border(2.dp,Color.White,CircleShape))
+                Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(23.dp))
+                Box(Modifier.align(Alignment.TopEnd).offset(x=(-2).dp,y=2.dp).size(9.dp).background(Color(0xFFFF3158),CircleShape).border(1.dp,Color.White,CircleShape))
             }
-            IconButton(onClick=onSettings,modifier=Modifier.size(46.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(30.dp))}
+            Spacer(Modifier.weight(1f))
+            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
+                Text("Cherry 2D",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,lineHeight=29.sp,maxLines=1,softWrap=false)
+                Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.92f),fontSize=12.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick=onSettings,modifier=Modifier.size(44.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(23.dp))}
+        }
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally){
+            Surface(Modifier.height(40.dp).fillMaxWidth(.52f),shape=RoundedCornerShape(20.dp),color=Color.White.copy(alpha=.14f),border=BorderStroke(1.dp,Color.White.copy(alpha=.55f))){
+                Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
+                    Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(17.dp))
+                    Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=13.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
+                    Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(17.dp))
+                }
+            }
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
@@ -248,11 +300,11 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,iconTint:Color,modifier:Modifier){
     Surface(modifier.height(88.dp),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
-        Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
-            Surface(Modifier.size(34.dp),shape=CircleShape,color=AppColors.Blush){Icon(icon,null,tint=iconTint,modifier=Modifier.padding(7.dp).fillMaxSize())}
-            Column(verticalArrangement=Arrangement.spacedBy(0.dp)){
-                Text(label.uppercase(Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=0.8.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
-                Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
+        Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+            Text(label.uppercase(Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=0.8.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
+            Row(Modifier.padding(top=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                Surface(Modifier.size(26.dp),shape=CircleShape,color=AppColors.Blush){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=iconTint,modifier=Modifier.size(14.dp))}}
+                Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontSize=24.sp,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
             }
         }
     }
@@ -342,14 +394,18 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier)=Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}
 @Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){val (interaction,pressScale)=rememberPressScale("homeAction");ElevatedCard(onClick=onClick,interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
 @Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,badge:String,modifier:Modifier=Modifier){
+    val l=LocalLanguage.current
     val (interaction,pressScale)=rememberPressScale("futureAction")
-    ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(88.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
+    ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
         Box(Modifier.fillMaxSize().border(1.dp,AppColors.Stone.copy(alpha=.8f),RoundedCornerShape(20.dp))){
-            Surface(color=Color.Transparent,shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f)),modifier=Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=10.dp)){Text(badge,Modifier.padding(horizontal=8.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=11.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
-            Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                Surface(Modifier.size(44.dp),color=AppColors.Blush,shape=CircleShape){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())}
-                Text(title,style=MaterialTheme.typography.titleMedium,fontSize=15.sp,fontWeight=FontWeight.Bold,maxLines=2,modifier=Modifier.weight(1f))
-                Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))
+            Surface(color=Color.Transparent,shape=RoundedCornerShape(9.dp),border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f)),modifier=Modifier.align(Alignment.TopEnd).padding(top=6.dp,end=8.dp)){Text(badge,Modifier.padding(horizontal=7.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
+            Row(Modifier.fillMaxSize().padding(start=11.dp,end=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                Surface(Modifier.size(38.dp),color=AppColors.Blush,shape=CircleShape){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(19.dp))}}
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)){
+                    Text(title,color=AppColors.Ink,style=MaterialTheme.typography.titleSmall,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
+                    Text(l.translate("လာမာလုပ်ဆောင်ချက်"),style=MaterialTheme.typography.labelSmall,fontSize=9.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+                }
+                Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep.copy(alpha=.75f),modifier=Modifier.size(18.dp))
             }
         }
     }

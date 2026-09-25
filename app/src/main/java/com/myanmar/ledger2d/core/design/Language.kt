@@ -59,6 +59,7 @@ class LanguageState(context: Context, private val workingContext: WorkingContext
         "ပိတ်မည်" to "Close", "ဖျက်မည်" to "Delete", "ရွေးမည်" to "Select", "ရှင်းမည်" to "Clear", "ထပ်ထည့်မည်" to "Add another",
         "မရှိသေးပါ" to "None yet", "ထိုးသားမရှိသေးပါ" to "No customers yet", "ရလဒ်" to "Results", "ယနေ့" to "Today", "အပတ်စဉ် ရလဒ်အချက်အလက်" to "Weekly results", "ဒိုင်အသစ်" to "New agent", "ထိုးသားအသစ်" to "New customer",        "လာမည်" to "Soon", "အသိပေးချက်" to "Notifications", "အမြန်" to "Quick",
         "2D သုံးသပ်ချက်" to "2D Analysis", "ဒေတာအသစ်" to "Better Data", "ဒိုင်ထည့်ပြီးမှ စာရင်းစတင်နိုင်ပါမည်" to "Add an agent to start your ledger",
+        "မြန်မာ 2D ဒိုင်များအတွက် ပရော်ဖက်ရှင်နယ် စာရင်းစနစ်" to "The professional ledger system for Myanmar 2D agents", "လာမာလုပ်ဆောင်ချက်" to "Coming soon",
         "ထိုးသား" to "Customer", "ဒိုင်" to "Agent", "အဆင်ပြေ" to "OK", "အတည်ပြုနေသည်…" to "Confirming…", "သိမ်းပြီးပါပြီ" to "Saved",
         "Agent Dashboard" to "Agent Dashboard", "Customer Dashboard" to "Customer Dashboard", "Agent feature များ" to "Agent features", "Customer feature များ" to "Customer features",
         "လုပ်ဆောင်ချက်တစ်ခုကို ရွေးပြီးမှ Agent ရွေးပါ" to "Choose a feature, then select an agent", "Agent ကိုအရင်ရွေးပြီးမှ Customer feature ကို အသုံးပြုပါ" to "Select an agent before using customer features",
