@@ -165,7 +165,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
     val sheetOverlap=24.dp
-    Scaffold(containerColor=Color(0xFFFFF5F8),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
+    Scaffold(containerColor=Color(0xFFF6F4F5),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
         BoxWithConstraints(Modifier.fillMaxSize().padding(p)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Box(Modifier.fillMaxWidth()) {
@@ -174,9 +174,8 @@ fun transactionDisplayText(format: String, raw: String): String {
                         Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
                             .heightIn(min = this@BoxWithConstraints.maxHeight - (heroHeight - sheetOverlap))
                             .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
-                            .background(Color(0xFFFFF9FB))
-                            .shadow(8.dp,RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
-                            .padding(start=12.dp,end=12.dp,top=18.dp,bottom=28.dp),
+                            .background(Color(0xFFF6F4F5))
+                            .padding(start=12.dp,end=12.dp,top=18.dp,bottom=40.dp),
                         verticalArrangement=Arrangement.spacedBy(10.dp)
                     ) {
                         HomeLiveAndSummary(agents.size,customerCount,onWinning)
@@ -201,7 +200,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             Row(Modifier.fillMaxWidth().padding(end=110.dp),verticalAlignment=Alignment.CenterVertically){
                 Spacer(Modifier.width((configuration.screenWidthDp*.26f).dp))
                 Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text("Cherry 2D",color=Color.White,fontSize=33.sp,fontWeight=FontWeight.Black,fontStyle=FontStyle.Italic,maxLines=1,softWrap=false)
+                    Text("Cherry 2D",color=Color.White,fontSize=30.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,maxLines=1,softWrap=false)
                     Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.96f),fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=2.dp),maxLines=1,softWrap=false)
                 }
             }
@@ -235,7 +234,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
     val (liveInteraction,liveScale)=rememberPressScale("liveCard")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-        ElevatedCard(onClick=onResults,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
+        ElevatedCard(onClick=onResults,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
             Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
                 Text("2D LIVE",Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
@@ -332,10 +331,10 @@ fun transactionDisplayText(format: String, raw: String): String {
     val (interaction,pressScale)=rememberPressScale("quickFab")
     Box(modifier.offset(y=(-22).dp),contentAlignment=Alignment.Center){
         Box(Modifier.size(78.dp).offset(y=8.dp).background(Brush.radialGradient(listOf(Color(0x59B0124A),Color.Transparent)),CircleShape))
-        Surface(onClick=onClick,interactionSource=interaction,shape=CircleShape,color=Color.White,shadowElevation=10.dp,modifier=Modifier.size(64.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale}){
+        Surface(onClick=onClick,interactionSource=interaction,shape=CircleShape,color=Color.White,shadowElevation=10.dp,modifier=Modifier.size(68.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale}){
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF8FB0),Color(0xFFE23A64),Color(0xFF6E0B2C))),CircleShape).border(2.dp,Color.White.copy(alpha=.85f),CircleShape)){
                 Box(Modifier.align(Alignment.TopStart).padding(start=7.dp,top=5.dp).size(26.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha=.55f),Color.Transparent)),CircleShape))
-                CherryBrandMark(Modifier.align(Alignment.Center).size(32.dp))
+                CherryBrandMark(Modifier.align(Alignment.Center).size(34.dp))
             }
         }
     }
@@ -371,7 +370,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable private fun HomeFooter(){
-    Row(Modifier.fillMaxWidth().padding(top=2.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+    Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
         Text("Cherry 2D • For Myanmar 2D Agents",Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
     }
