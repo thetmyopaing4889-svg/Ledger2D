@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -147,9 +146,6 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     val l = LocalLanguage.current
     val view = LocalView.current
     WelcomeDarkBars()
-    // Read during composition, BEFORE any effect mutates it, so a re-entry into
-    // this screen skips the entrance while a first launch still plays it.
-    val resumedEntrance = transitioningIn
 
     // --- State machine: entrance -> idle loops -> outro (cherry zoom) -> navigate ---
     var transitioningIn by rememberSaveable { mutableStateOf(false) }
@@ -165,6 +161,9 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     var idlePhase by remember { mutableFloatStateOf(0f) }
     // Unbounded frame clock (seconds) driving all continuous Canvas motion.
     val clock = remember { mutableFloatStateOf(0f) }
+    // Read during composition, BEFORE any effect mutates it, so a re-entry into
+    // this screen skips the entrance while a first launch still plays it.
+    val resumedEntrance = transitioningIn
 
     LaunchedEffect(Unit) {
         if (!transitioningIn) {
