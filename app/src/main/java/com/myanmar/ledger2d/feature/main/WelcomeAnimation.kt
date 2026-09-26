@@ -325,8 +325,8 @@ fun WelcomeScreen(onContinue: () -> Unit) {
                     spotShadowColor = Color(0xFF7A0F2E)
                 }
         ) {
-            WelcomeCherryHero(
-                modifier = Modifier.size(152.dp),
+                WelcomeCherryHero(
+                modifier = Modifier.size(188.dp),
                 glow = heroGlow,
                 shadowRise = heroEntrance,
                 sheen = sheen.value
@@ -497,47 +497,20 @@ private fun WelcomeCherryHero(modifier: Modifier = Modifier, glow: Float, shadow
                 )
             }
         )
-        // Glossy cherry sphere
-        Surface(
-            shape = CircleShape,
-            color = Color.Transparent,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.34f)),
-            modifier = Modifier.size(152.dp)
-        ) {
-            Box(Modifier.fillMaxSize().clip(CircleShape)
-                .background(Brush.radialGradient(
-                    0.0f to Color(0xFFFF7C9C), 0.45f to Color(0xFFE11D48), 0.8f to Color(0xFF8D123A), 1f to Color(0xFF4A0A20)))) {
-                Image(
-                    painterResource(R.drawable.ic_cherry_mark), "Cherry 2D",
-                    Modifier.size(94.dp).align(Alignment.Center).graphicsLayer { alpha = 0.96f },
-                    contentScale = ContentScale.Fit
-                )
-                // Specular highlight + inner rim shade
-                Box(Modifier.matchParentSize().drawBehind {
-                    drawArc(
-                        brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.05f))),
-                        startAngle = -160f, sweepAngle = 70f, useCenter = false,
-                        style = Stroke(width = size.minDimension * 0.10f, cap = StrokeCap.Round),
-                        topLeft = Offset(size.width * 0.14f, size.height * 0.14f),
-                        size = Size(size.width * 0.72f, size.height * 0.72f)
-                    )
-                    drawCircle(brush = Brush.radialGradient(0.68f to Color.Transparent, 1f to Color(0x59000000)))
-                })
-                // Rotating sheen sweep — premium glossy finish
-                Box(Modifier.matchParentSize().drawBehind {
-                    val x = size.width * (sheen * 2.2f - 0.6f)
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            0f to Color.Transparent,
-                            0.5f to Color.White.copy(alpha = 0.30f),
-                            1f to Color.Transparent,
-                            start = Offset(x, 0f),
-                            end = Offset(x + size.width * 0.45f, size.height)
-                        ),
-                        blendMode = BlendMode.Screen
-                    )
-                })
-            }
+        // Dimensional pair: individual cherries, stems and leaves instead of a flat logo inside a glass ball.
+        Box(Modifier.size(174.dp).drawBehind {
+            val cx = size.width / 2f
+            val cy = size.height * 0.18f
+            val left = Offset(size.width * 0.39f, size.height * 0.57f)
+            val right = Offset(size.width * 0.62f, size.height * 0.57f)
+            val stemPaint = android.graphics.Paint().apply { color = Color(0xFFB98235).toArgb(); strokeWidth = 5.dp.toPx(); style = android.graphics.Paint.Style.STROKE; strokeCap = android.graphics.Paint.Cap.ROUND; isAntiAlias = true }
+            drawContext.canvas.nativeCanvas.drawLine(left.x, left.y - 22.dp.toPx(), cx - 12.dp.toPx(), cy, stemPaint)
+            drawContext.canvas.nativeCanvas.drawLine(right.x, right.y - 20.dp.toPx(), cx + 6.dp.toPx(), cy + 3.dp.toPx(), stemPaint)
+            drawOval(Brush.linearGradient(listOf(Color(0xFFB9F28B), Color(0xFF2E925A))), topLeft = Offset(cx - 45.dp.toPx(), cy - 5.dp.toPx()), size = Size(48.dp.toPx(), 20.dp.toPx()))
+            drawOval(Brush.linearGradient(listOf(Color(0xFF8FDF78), Color(0xFF24744C))), topLeft = Offset(cx + 2.dp.toPx(), cy - 3.dp.toPx()), size = Size(42.dp.toPx(), 18.dp.toPx()))
+        }) {
+            WelcomeCherryFruit(Modifier.size(82.dp).offset(x = (-25).dp, y = 25.dp), sheen, 0.96f)
+            WelcomeCherryFruit(Modifier.size(82.dp).offset(x = 24.dp, y = 28.dp), sheen + 0.18f, 1f)
         }
         // Absorption pulse ring
         if (glow > 0.02f) {
@@ -546,6 +519,40 @@ private fun WelcomeCherryHero(modifier: Modifier = Modifier, glow: Float, shadow
             })
         }
     }
+}
+
+@Composable
+private fun WelcomeCherryFruit(modifier: Modifier, sheen: Float, brightness: Float) {
+    Box(
+        modifier
+            .graphicsLayer { alpha = brightness }
+            .clip(CircleShape)
+            .background(Brush.radialGradient(
+                0f to Color(0xFFFFA2B4),
+                0.18f to Color(0xFFE9345B),
+                0.58f to Color(0xFFB40F3D),
+                0.86f to Color(0xFF650A29),
+                1f to Color(0xFF2B0617)
+            ))
+            .drawBehind {
+                val sweepX = size.width * (sheen - sheen.toInt())
+                drawOval(
+                    Brush.radialGradient(listOf(Color.White.copy(alpha = 0.54f), Color.Transparent)),
+                    topLeft = Offset(size.width * 0.18f + sweepX * 0.12f, size.height * 0.13f),
+                    size = Size(size.width * 0.34f, size.height * 0.24f)
+                )
+                drawArc(
+                    brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.44f), Color.Transparent)),
+                    startAngle = -150f,
+                    sweepAngle = 58f,
+                    useCenter = false,
+                    topLeft = Offset(size.width * 0.13f, size.height * 0.11f),
+                    size = Size(size.width * 0.72f, size.height * 0.72f),
+                    style = Stroke(width = size.minDimension * 0.075f, cap = StrokeCap.Round)
+                )
+                drawCircle(Brush.radialGradient(0.62f to Color.Transparent, 1f to Color(0x70000000)))
+            }
+    )
 }
 
 @Composable
