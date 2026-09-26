@@ -71,7 +71,9 @@ private class WelcomeGlRenderer : GLSurfaceView.Renderer {
     private var startNanos = 0L
     private var program = 0
     private var digitProgram = 0
-    private lateinit var sphere: Mesh
+    private lateinit var cherryBody: Mesh
+    private lateinit var stem: Mesh
+    private lateinit var leaf: Mesh
     private lateinit var quad: Mesh
     private var surfaceAspect = 1f
     private val digitValues = arrayOf("27", "12", "53", "84", "42", "19", "61", "35", "96", "70", "00", "07")
@@ -89,7 +91,9 @@ private class WelcomeGlRenderer : GLSurfaceView.Renderer {
         GLES20.glClearColor(0.055f, 0.008f, 0.025f, 1f)
         program = linkProgram(VERTEX, FRAGMENT)
         digitProgram = linkProgram(DIGIT_VERTEX, DIGIT_FRAGMENT)
-        sphere = Mesh.sphere(0.58f, 28, 20)
+        cherryBody = Mesh.cherry(0.58f, 32, 24)
+        stem = Mesh.cylinder(0.045f, 0.72f, 12)
+        leaf = Mesh.leaf()
         quad = Mesh.quad()
         startNanos = System.nanoTime()
         for (i in digitValues.indices) digitTextures[i] = makeDigitTexture(digitValues[i])
@@ -115,13 +119,20 @@ private class WelcomeGlRenderer : GLSurfaceView.Renderer {
     private fun drawCherry(vp: FloatArray, time: Float, x: Float, y: Float, z: Float) {
         val breathing = 1f + sin(time * 1.35f) * 0.018f
         val model = multiply(translate(x, y + sin(time * 1.1f) * 0.025f, z), scale(breathing, breathing, breathing))
-        val mvp = multiply(vp, model)
         GLES20.glUseProgram(program)
-        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uMvp"), 1, false, mvp, 0)
-        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uModel"), 1, false, model, 0)
-        GLES20.glUniform4f(GLES20.glGetUniformLocation(program, "uColor"), 0.82f, 0.025f, 0.16f, 1f)
         GLES20.glUniform3f(GLES20.glGetUniformLocation(program, "uLight"), -2.4f, 3.3f, 4.6f)
-        sphere.draw(program)
+        drawLitMesh(vp, model, cherryBody, 0.80f, 0.018f, 0.14f)
+        val stemModel = multiply(model, multiply(translate(0f, 0.53f, 0.02f), rotateZ(if (x < 0f) -12f else 12f)))
+        drawLitMesh(vp, stemModel, stem, 0.54f, 0.25f, 0.06f)
+        val leafModel = multiply(model, multiply(translate(if (x < 0f) 0.18f else -0.12f, 0.82f, 0.02f), rotateZ(if (x < 0f) -18f else 24f)))
+        drawLitMesh(vp, leafModel, leaf, 0.12f, 0.62f, 0.25f)
+    }
+
+    private fun drawLitMesh(vp: FloatArray, model: FloatArray, mesh: Mesh, r: Float, g: Float, b: Float) {
+        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uMvp"), 1, false, multiply(vp, model), 0)
+        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uModel"), 1, false, model, 0)
+        GLES20.glUniform4f(GLES20.glGetUniformLocation(program, "uColor"), r, g, b, 1f)
+        mesh.draw(program)
     }
 
     private fun drawDigits(vp: FloatArray, time: Float) {
@@ -186,6 +197,41 @@ private class Mesh(private val vertices: FloatBuffer, private val normals: Float
             for (stack in 0 until stacks) for (slice in 0 until slices) { val a = (stack*(slices+1)+slice).toShort(); val b = (a+1).toShort(); val c = (a+slices+1).toShort(); val d = (c+1).toShort(); idx += a; idx += c; idx += b; idx += b; idx += c; idx += d }
             return Mesh(floatBuffer(v.toFloatArray()), floatBuffer(n.toFloatArray()), shortBuffer(idx.toShortArray()), count = idx.size)
         }
+        fun cherry(r: Float, slices: Int, stacks: Int): Mesh {
+            val v = ArrayList<Float>(); val n = ArrayList<Float>(); val idx = ArrayList<Short>()
+            for (stack in 0..stacks) {
+                val phi = Math.PI * stack / stacks
+                val y = cos(phi).toFloat()
+                val rr = sin(phi).toFloat()
+                val dimple = 1f - 0.13f * kotlin.math.exp(-((y - 0.82f) * (y - 0.82f)) / 0.018f).toFloat()
+                for (slice in 0..slices) {
+                    val th = 2 * Math.PI * slice / slices
+                    val x = (rr * cos(th)).toFloat(); val z = (rr * sin(th)).toFloat()
+                    v += x * r * dimple; v += y * r; v += z * r * dimple
+                    n += x; n += y; n += z
+                }
+            }
+            for (stack in 0 until stacks) for (slice in 0 until slices) {
+                val a = (stack * (slices + 1) + slice).toShort(); val b = (a + 1).toShort(); val c = (a + slices + 1).toShort(); val d = (c + 1).toShort()
+                idx += a; idx += c; idx += b; idx += b; idx += c; idx += d
+            }
+            return Mesh(floatBuffer(v.toFloatArray()), floatBuffer(n.toFloatArray()), shortBuffer(idx.toShortArray()), count = idx.size)
+        }
+        fun cylinder(radius: Float, height: Float, slices: Int): Mesh {
+            val v = ArrayList<Float>(); val n = ArrayList<Float>(); val idx = ArrayList<Short>()
+            for (y in 0..1) for (i in 0..slices) {
+                val a = 2.0 * Math.PI * i / slices; val x = cos(a).toFloat(); val z = sin(a).toFloat()
+                v += x * radius; v += y * height; v += z * radius; n += x; n += 0f; n += z
+            }
+            for (i in 0 until slices) { val a = i.toShort(); val b = (i + 1).toShort(); val c = (i + slices + 1).toShort(); val d = (c + 1).toShort(); idx += a; idx += c; idx += b; idx += b; idx += c; idx += d }
+            return Mesh(floatBuffer(v.toFloatArray()), floatBuffer(n.toFloatArray()), shortBuffer(idx.toShortArray()), count = idx.size)
+        }
+        fun leaf(): Mesh {
+            val v = floatArrayOf(-0.42f,0f,0f, 0f,0.13f,0.035f, 0.46f,0f,0f, 0f,-0.13f,-0.015f)
+            val n = FloatArray(12) { if (it % 3 == 2) 1f else 0f }
+            val idx = shortArrayOf(0,1,3, 1,2,3)
+            return Mesh(floatBuffer(v), floatBuffer(n), shortBuffer(idx), count = idx.size)
+        }
         fun quad(): Mesh = Mesh(floatBuffer(floatArrayOf(-1f,-1f,0f, 1f,-1f,0f, 1f,1f,0f, -1f,-1f,0f, 1f,1f,0f, -1f,1f,0f)), uvs=floatBuffer(floatArrayOf(0f,1f, 1f,1f, 1f,0f, 0f,1f, 1f,0f, 0f,0f)), count=6)
     }
 }
@@ -198,12 +244,13 @@ private fun translate(x: Float,y: Float,z: Float)=floatArrayOf(1f,0f,0f,0f, 0f,1
 private fun scale(x: Float,y: Float,z: Float)=floatArrayOf(x,0f,0f,0f, 0f,y,0f,0f, 0f,0f,z,0f, 0f,0f,0f,1f)
 private fun rotateX(a: Float): FloatArray { val r=Math.toRadians(a.toDouble()).toFloat(); val c=cos(r); val s=sin(r); return floatArrayOf(1f,0f,0f,0f,0f,c,s,0f,0f,-s,c,0f,0f,0f,0f,1f) }
 private fun rotateY(a: Float): FloatArray { val r=Math.toRadians(a.toDouble()).toFloat(); val c=cos(r); val s=sin(r); return floatArrayOf(c,0f,-s,0f,0f,1f,0f,0f,s,0f,c,0f,0f,0f,0f,1f) }
+private fun rotateZ(a: Float): FloatArray { val r=Math.toRadians(a.toDouble()).toFloat(); val c=cos(r); val s=sin(r); return floatArrayOf(c,s,0f,0f,-s,c,0f,0f,0f,0f,1f,0f,0f,0f,0f,1f) }
 // OpenGL ES matrices are column-major: r = a * b with column/row indexing.
 private fun multiply(a: FloatArray,b: FloatArray): FloatArray { val r=FloatArray(16); for (col in 0..3) for (row in 0..3) for (k in 0..3) r[col * 4 + row] += a[k * 4 + row] * b[col * 4 + k]; return r }
 private fun perspective(fov: Float, aspect: Float, near: Float, far: Float): FloatArray { val f=1f/ kotlin.math.tan(Math.toRadians((fov/2).toDouble())).toFloat(); return floatArrayOf(f/aspect,0f,0f,0f,0f,f,0f,0f,0f,0f,(far+near)/(near-far),-1f,0f,0f,(2f*far*near)/(near-far),0f) }
 private fun lookAt(ex:Float,ey:Float,ez:Float,cx:Float,cy:Float,cz:Float,ux:Float,uy:Float,uz:Float):FloatArray = translate(-ex,-ey,-ez)
 
 private const val VERTEX = "attribute vec3 aPosition; attribute vec3 aNormal; uniform mat4 uMvp; uniform mat4 uModel; varying vec3 vNormal; varying vec3 vPosition; void main(){vNormal=mat3(uModel)*aNormal;vPosition=(uModel*vec4(aPosition,1.0)).xyz;gl_Position=uMvp*vec4(aPosition,1.0);}"
-private const val FRAGMENT = "precision mediump float; uniform vec4 uColor; uniform vec3 uLight; varying vec3 vNormal; varying vec3 vPosition; void main(){vec3 n=normalize(vNormal);vec3 l=normalize(uLight-vPosition);float d=max(dot(n,l),0.0);float rim=pow(1.0-max(dot(n,normalize(-vPosition)),0.0),2.0);vec3 c=uColor.rgb*(0.20+0.78*d)+vec3(1.0,0.16,0.32)*rim*0.34;gl_FragColor=vec4(c,uColor.a);}"
+private const val FRAGMENT = "precision mediump float; uniform vec4 uColor; uniform vec3 uLight; varying vec3 vNormal; varying vec3 vPosition; void main(){vec3 n=normalize(vNormal);vec3 l=normalize(uLight-vPosition);vec3 v=normalize(-vPosition);vec3 h=normalize(l+v);float d=max(dot(n,l),0.0);float spec=pow(max(dot(n,h),0.0),56.0);float rim=pow(1.0-max(dot(n,v),0.0),2.0);vec3 c=uColor.rgb*(0.16+0.82*d)+vec3(1.0,0.30,0.40)*spec*0.70+vec3(1.0,0.08,0.20)*rim*0.22;gl_FragColor=vec4(c,uColor.a);}"
 private const val DIGIT_VERTEX = "attribute vec3 aPosition; attribute vec2 aUv; uniform mat4 uMvp; varying vec2 vUv; void main(){vUv=aUv;gl_Position=uMvp*vec4(aPosition,1.0);}"
-private const val DIGIT_FRAGMENT = "precision mediump float; uniform sampler2D uTexture; uniform float uAlpha; varying vec2 vUv; void main(){vec4 c=texture2D(uTexture,vUv);gl_FragColor=vec4(c.rgb,c.a*uAlpha);}"
+private const val DIGIT_FRAGMENT = "precision mediump float; uniform sampler2D uTexture; uniform float uAlpha; varying vec2 vUv; void main(){vec4 c=texture2D(uTexture,vUv);if(c.a<0.35||max(max(c.r,c.g),c.b)<0.12)discard;gl_FragColor=vec4(vec3(1.0),c.a*uAlpha);}"
