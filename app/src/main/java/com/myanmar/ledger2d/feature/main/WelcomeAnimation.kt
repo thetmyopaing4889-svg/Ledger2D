@@ -283,55 +283,11 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             drawCircle(brush = Brush.radialGradient(listOf(Color(0x17FF9BB8), Color.Transparent)), radius = size.width * 0.45f, center = Offset(size.width * 0.90f, size.height * 0.86f))
         })
 
-        // Layers 3 + 4 — depth-projected digits, bokeh, twinkle, absorption orbits
-        WelcomeDigitsLayer(
-            entrance = entranceTime.value,
-            parallax = Offset(smoothX, smoothY),
-            cherryCenter = cherryCenter,
-            voidRadius = voidRadius,
-            attract = attract.value,
-            absorbGlow = absorbGlow.value,
-            idlePhase = idlePhase,
-            converge = convergeAll.value,
-            clock = clock.floatValue,
-            outro = transitioningOut
+        // Layers 3–5 — actual OpenGL ES scene: lit 3D cherries plus textured 3D digits.
+        Welcome3DScene(
+            modifier = Modifier.fillMaxSize(),
+            transitioningOut = transitioningOut
         )
-
-        // Layer 5 — living Cherry hero with a real perspective camera.
-        // Drag horizontally/vertically and the whole hero rotates in 3D.
-        val heroGlow = maxOf(absorbGlow.value * 0.9f, outroGlow.value)
-        val heroEntrance = heroIn.value
-        val heroAlpha = if (transitioningOut) 1f else (heroEntrance * 1.4f).coerceIn(0f, 1f)
-        val heroScale = (0.62f + 0.38f * heroEntrance) * (1f + 0.05f * heroGlow)
-        val heroLift = 120f * (1f - heroEntrance)
-        Box(
-            Modifier.align(Alignment.TopCenter)
-                .offset { IntOffset(0, (h * 0.40f - 76.dp.toPx()).roundToInt()) }
-                .graphicsLayer {
-                    // Perspective camera: closer lens = stronger parallax on rotation.
-                    cameraDistance = 8f * density
-                    transformOrigin = TransformOrigin(0.5f, 0.46f)
-                    scaleX = heroScale * breathe.value * outroScale.value
-                    scaleY = heroScale * breathe.value * outroScale.value
-                    translationY = floatY.value + smoothY * 9f + heroLift
-                    translationX = smoothX * 11f
-                    rotationZ = tilt.value
-                    rotationY = tilt.value * 0.55f + smoothX * 7f
-                    rotationX = -smoothY * 6f + sin(clock.floatValue * 0.28f) * 1.2f
-                    alpha = heroAlpha
-                    shadowElevation = (22f + 26f * heroGlow) * heroEntrance
-                    shape = CircleShape
-                    ambientShadowColor = Color(0xFFFF2D55)
-                    spotShadowColor = Color(0xFF7A0F2E)
-                }
-        ) {
-                WelcomeCherryHero(
-                modifier = Modifier.size(188.dp),
-                glow = heroGlow,
-                shadowRise = heroEntrance,
-                sheen = sheen.value
-            )
-        }
 
         // Layer 6 — glass control panel (greeting / title / subtitle / chips / CTA)
         val panelIn = if (transitioningOut) outroContentAlpha.value else enterFade(1.15f, 0.55f)
