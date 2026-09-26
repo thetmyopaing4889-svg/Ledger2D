@@ -58,6 +58,7 @@ import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.flow.first
 import android.content.Context
@@ -144,12 +145,22 @@ fun transactionDisplayText(format: String, raw: String): String {
         content={padding->AnimatedVisibility(visible=true,enter=fadeIn(tween(AppMotion.Medium))+slideInVertically(tween(AppMotion.Medium)){it/12}){content(padding)}}
     )
 }
+@Composable private fun DarkStatusBarsEffect(){
+    val view=LocalView.current
+    DisposableEffect(view){
+        val window=(view.context as? android.app.Activity)?.window
+        val controller=window?.let{androidx.core.view.WindowCompat.getInsetsController(it,it.decorView)}
+        controller?.isAppearanceLightStatusBars=false
+        onDispose{controller?.isAppearanceLightStatusBars=true}
+    }
+}
 @Composable fun WelcomeScreen(onContinue:()->Unit){
     val l=LocalLanguage.current
+    DarkStatusBarsEffect()
     val glow by rememberInfiniteTransition(label="welcome-ambient").animateFloat(initialValue=.5f,targetValue=.9f,animationSpec=infiniteRepeatable(tween(2600),RepeatMode.Reverse),label="welcome-glow")
     Box(Modifier.fillMaxSize().background(Color(0xFF1E050D))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.welcome_cherry_ledger), "Cherry 2D Ledger welcome", Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.Center)
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0xFF22050D).copy(alpha=.62f), 0.45f to Color(0xFF2A0712).copy(alpha=.42f), 0.78f to Color(0xFF3B0A1A).copy(alpha=.88f), 1f to Color(0xFF1E050D))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0xFF22050D).copy(alpha=.68f), 0.40f to Color(0xFF2A0712).copy(alpha=.58f), 0.72f to Color(0xFF3B0A1A).copy(alpha=.93f), 1f to Color(0xFF1E050D))))
         Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.Transparent, Color(0x59000000)), radius=1100f)))
         WelcomeFloatingDigits()
         Column(Modifier.align(Alignment.Center).padding(horizontal=28.dp), horizontalAlignment=Alignment.CenterHorizontally){
@@ -158,7 +169,9 @@ fun transactionDisplayText(format: String, raw: String): String {
                 Surface(shape=CircleShape, color=Color.Transparent, border=BorderStroke(1.dp, Color.White.copy(alpha=.20f)), modifier=Modifier.size(148.dp)){
                     Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.White.copy(alpha=.10f), Color.Transparent)), CircleShape))
                 }
-                Image(painterResource(com.myanmar.ledger2d.R.drawable.ledger_app_icon), "Cherry 2D", Modifier.size(104.dp), contentScale=ContentScale.Fit)
+                Surface(shape=CircleShape,color=Color.White.copy(alpha=.14f),border=BorderStroke(1.dp,Color.White.copy(alpha=.30f)),modifier=Modifier.size(104.dp).shadow(12.dp,CircleShape)){
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=.18f),Color.White.copy(alpha=.04f))),CircleShape),contentAlignment=Alignment.Center){CherryBrandMark(Modifier.size(62.dp))}
+                }
             }
             Text(l.translate("ကြိုဆိုပါသည်"), color=Color.White.copy(alpha=.78f), style=MaterialTheme.typography.labelLarge, letterSpacing=4.sp, modifier=Modifier.padding(top=26.dp))
             Text("Cherry 2D", color=Color.White, fontSize=44.sp, fontWeight=FontWeight.Black, fontStyle=FontStyle.Italic, lineHeight=50.sp, modifier=Modifier.padding(top=6.dp))
@@ -214,6 +227,7 @@ private val WelcomeDigits=listOf(
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
+    DarkStatusBarsEffect()
     val revision by vm.revision.collectAsStateWithLifecycle()
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
@@ -247,21 +261,21 @@ private val WelcomeDigits=listOf(
 
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit,modifier:Modifier=Modifier,height:androidx.compose.ui.unit.Dp=188.dp){
     val configuration=LocalConfiguration.current
-    val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy (EEE)",Locale.ENGLISH))
+    val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH))
     Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(height).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
         Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0xFF1E050D).copy(alpha=.30f),Color.Transparent,Color(0xFF1E050D).copy(alpha=.28f)))))
-        Row(Modifier.fillMaxWidth().padding(start=12.dp,end=6.dp).statusBarsPadding(),verticalAlignment=Alignment.CenterVertically){
+        Row(Modifier.fillMaxWidth().padding(start=24.dp,end=24.dp).statusBarsPadding(),verticalAlignment=Alignment.CenterVertically){
             Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){
                 Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(23.dp))
                 Box(Modifier.align(Alignment.TopEnd).offset(x=(-2).dp,y=2.dp).size(9.dp).background(Color(0xFFFF3158),CircleShape).border(1.dp,Color.White,CircleShape))
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(44.dp))
             Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
-                Text("Cherry 2D",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,lineHeight=29.sp,maxLines=1,softWrap=false)
+                Text("Cherry 2D",color=Color.White,fontSize=24.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,lineHeight=28.sp,maxLines=1,softWrap=false)
                 Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.92f),fontSize=12.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(44.dp))
             IconButton(onClick=onSettings,modifier=Modifier.size(44.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(23.dp))}
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally){
@@ -272,7 +286,7 @@ private val WelcomeDigits=listOf(
                     Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(17.dp))
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(34.dp))
         }
     }
 }
@@ -381,8 +395,8 @@ private val WelcomeDigits=listOf(
 }
 @Composable private fun QuickCenterFab(onClick:()->Unit,modifier:Modifier=Modifier){
     val (interaction,pressScale)=rememberPressScale("quickFab")
-    Box(modifier.offset(y=(-22).dp),contentAlignment=Alignment.Center){
-        Box(Modifier.size(78.dp).offset(y=8.dp).background(Brush.radialGradient(listOf(Color(0x59B0124A),Color.Transparent)),CircleShape))
+    Box(modifier.offset(y=(-30).dp),contentAlignment=Alignment.Center){
+        Box(Modifier.size(64.dp).background(Brush.radialGradient(listOf(Color(0x40B0124A),Color.Transparent)),CircleShape))
         Surface(onClick=onClick,interactionSource=interaction,shape=CircleShape,color=Color.White,shadowElevation=10.dp,modifier=Modifier.size(68.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale}){
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF8FB0),Color(0xFFE23A64),Color(0xFF6E0B2C))),CircleShape).border(2.dp,Color.White.copy(alpha=.85f),CircleShape)){
                 Box(Modifier.align(Alignment.TopStart).padding(start=7.dp,top=5.dp).size(26.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha=.55f),Color.Transparent)),CircleShape))
@@ -398,13 +412,13 @@ private val WelcomeDigits=listOf(
     val (interaction,pressScale)=rememberPressScale("futureAction")
     ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
         Box(Modifier.fillMaxSize().border(1.dp,AppColors.Stone.copy(alpha=.8f),RoundedCornerShape(20.dp))){
-            Surface(color=Color.Transparent,shape=RoundedCornerShape(9.dp),border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f)),modifier=Modifier.align(Alignment.TopEnd).padding(top=6.dp,end=8.dp)){Text(badge,Modifier.padding(horizontal=7.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
-            Row(Modifier.fillMaxSize().padding(start=11.dp,end=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            Row(Modifier.fillMaxSize().padding(start=11.dp,end=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 Surface(Modifier.size(38.dp),color=AppColors.Blush,shape=CircleShape){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(19.dp))}}
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)){
                     Text(title,color=AppColors.Ink,style=MaterialTheme.typography.titleSmall,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
                     Text(l.translate("လာမာလုပ်ဆောင်ချက်"),style=MaterialTheme.typography.labelSmall,fontSize=9.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
                 }
+                Surface(shape=RoundedCornerShape(9.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f))){Text(badge,Modifier.padding(horizontal=7.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
                 Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep.copy(alpha=.75f),modifier=Modifier.size(18.dp))
             }
         }
