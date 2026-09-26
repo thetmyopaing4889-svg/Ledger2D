@@ -73,6 +73,7 @@ private class WelcomeGlRenderer : GLSurfaceView.Renderer {
     private var digitProgram = 0
     private lateinit var sphere: Mesh
     private lateinit var quad: Mesh
+    private var surfaceAspect = 1f
     private val digitValues = arrayOf("27", "12", "53", "84", "42", "19", "61", "35", "96", "70", "00", "07")
     private val digitTextures = IntArray(12)
     private val digitBase = arrayOf(
@@ -96,13 +97,13 @@ private class WelcomeGlRenderer : GLSurfaceView.Renderer {
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, max(1, height))
+        surfaceAspect = width.toFloat() / max(1, height).toFloat()
     }
 
     override fun onDrawFrame(gl: GL10?) {
         val t = (System.nanoTime() - startNanos) / 1_000_000_000f
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        val aspect = 1f
-        val projection = perspective(48f, aspect, 0.1f, 20f)
+        val projection = perspective(48f, surfaceAspect, 0.1f, 20f)
         val view = lookAt(0f, 0f, 6.4f, 0f, 0f, 0f, 0f, 1f, 0f)
         val camera = multiply(rotateX(cameraPitch), rotateY(cameraYaw))
         val vp = multiply(projection, multiply(view, camera))
@@ -197,7 +198,8 @@ private fun translate(x: Float,y: Float,z: Float)=floatArrayOf(1f,0f,0f,0f, 0f,1
 private fun scale(x: Float,y: Float,z: Float)=floatArrayOf(x,0f,0f,0f, 0f,y,0f,0f, 0f,0f,z,0f, 0f,0f,0f,1f)
 private fun rotateX(a: Float): FloatArray { val r=Math.toRadians(a.toDouble()).toFloat(); val c=cos(r); val s=sin(r); return floatArrayOf(1f,0f,0f,0f,0f,c,s,0f,0f,-s,c,0f,0f,0f,0f,1f) }
 private fun rotateY(a: Float): FloatArray { val r=Math.toRadians(a.toDouble()).toFloat(); val c=cos(r); val s=sin(r); return floatArrayOf(c,0f,-s,0f,0f,1f,0f,0f,s,0f,c,0f,0f,0f,0f,1f) }
-private fun multiply(a: FloatArray,b: FloatArray): FloatArray { val r=FloatArray(16); for(i in 0..3) for(j in 0..3) for(k in 0..3) r[i*4+j]+=a[i*4+k]*b[k*4+j]; return r }
+// OpenGL ES matrices are column-major: r = a * b with column/row indexing.
+private fun multiply(a: FloatArray,b: FloatArray): FloatArray { val r=FloatArray(16); for (col in 0..3) for (row in 0..3) for (k in 0..3) r[col * 4 + row] += a[k * 4 + row] * b[col * 4 + k]; return r }
 private fun perspective(fov: Float, aspect: Float, near: Float, far: Float): FloatArray { val f=1f/ kotlin.math.tan(Math.toRadians((fov/2).toDouble())).toFloat(); return floatArrayOf(f/aspect,0f,0f,0f,0f,f,0f,0f,0f,0f,(far+near)/(near-far),-1f,0f,0f,(2f*far*near)/(near-far),0f) }
 private fun lookAt(ex:Float,ey:Float,ez:Float,cx:Float,cy:Float,cz:Float,ux:Float,uy:Float,uz:Float):FloatArray = translate(-ex,-ey,-ez)
 
