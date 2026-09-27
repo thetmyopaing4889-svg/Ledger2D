@@ -150,18 +150,18 @@ private fun welcomeQuadBezier(a: Offset, c: Offset, b: Offset, t: Float): Offset
 // Fractional placement around the cherry, echoing the poster: bubbles crowd
 // the upper field, a few sit low beside the logo. depth 0 = far, 1 = near.
 private data class WelcomeDigitSpec(val value: String, val dx: Float, val dy: Float, val depth: Float, val phase: Float)
+// Matches the poster art's baked bubbles (84 61 3 42 70) so the animated
+// swarm mirrors the static ones; dx/dy are fractions of screen w/h.
 private val WelcomeDigitSpecs = listOf(
-    WelcomeDigitSpec("53", -0.36f, -0.40f, 0.35f, 0.0f),
-    WelcomeDigitSpec("12", -0.13f, -0.44f, 0.55f, 1.1f),
-    WelcomeDigitSpec("07", 0.14f, -0.41f, 0.45f, 2.3f),
-    WelcomeDigitSpec("96", 0.40f, -0.33f, 0.25f, 3.4f),
-    WelcomeDigitSpec("27", -0.40f, -0.16f, 0.50f, 4.6f),
-    WelcomeDigitSpec("35", 0.40f, -0.10f, 0.40f, 5.5f),
-    WelcomeDigitSpec("19", 0.44f, 0.08f, 0.30f, 0.7f),
-    WelcomeDigitSpec("61", -0.43f, 0.05f, 0.60f, 1.9f),
-    WelcomeDigitSpec("42", 0.36f, 0.10f, 0.55f, 3.1f),
-    WelcomeDigitSpec("84", -0.36f, 0.12f, 0.45f, 4.2f),
-    WelcomeDigitSpec("70", 0.28f, 0.16f, 0.35f, 5.0f)
+    WelcomeDigitSpec("84", -0.39f, -0.33f, 0.45f, 0.0f),
+    WelcomeDigitSpec("61", -0.41f, -0.10f, 0.50f, 1.1f),
+    WelcomeDigitSpec("3", 0.39f, -0.33f, 0.30f, 2.3f),
+    WelcomeDigitSpec("42", 0.36f, -0.09f, 0.42f, 3.4f),
+    WelcomeDigitSpec("70", 0.34f, 0.07f, 0.36f, 4.6f),
+    WelcomeDigitSpec("12", -0.13f, -0.40f, 0.35f, 1.7f),
+    WelcomeDigitSpec("27", -0.05f, 0.16f, 0.30f, 2.9f),
+    WelcomeDigitSpec("35", 0.15f, -0.20f, 0.28f, 4.1f),
+    WelcomeDigitSpec("19", 0.22f, 0.20f, 0.24f, 5.2f)
 )
 
 @Composable
@@ -339,14 +339,14 @@ fun WelcomeScreen(onContinue: () -> Unit) {
                 }
         )
 
-        // Layer 2 — center pink light rising from darkness (story beat)
+        // Layer 2 — gentle center glow pulse over the poster's baked dome (story beat)
         Box(
             Modifier.align(Alignment.TopCenter)
                 .offset { IntOffset(0, (cherryCenter.y - 170.dp.toPx()).roundToInt()) }
                 .size(340.dp)
-                .graphicsLayer { alpha = glowIn * (0.75f + 0.25f * sin(clock.floatValue * 0.8f)) }
+                .graphicsLayer { alpha = glowIn * 0.35f * (0.75f + 0.25f * sin(clock.floatValue * 0.8f)) }
                 .drawBehind {
-                    drawCircle(brush = Brush.radialGradient(listOf(Color(0x59FF4D79), Color(0x24FF7BA3), Color.Transparent)))
+                    drawCircle(brush = Brush.radialGradient(listOf(Color(0x33FF4D79), Color(0x1AFF7BA3), Color.Transparent)))
                 }
         )
 
