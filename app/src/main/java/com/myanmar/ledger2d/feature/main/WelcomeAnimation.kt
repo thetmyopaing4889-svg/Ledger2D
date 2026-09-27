@@ -76,7 +76,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -110,8 +109,12 @@ import kotlinx.coroutines.launch
 // trails -> metallic "Cherry 2D" logo light-sweep reveal -> LEDGER -> four
 // feature tiles -> glossy CTA. Pressing Start replays the absorption, zooms
 // the cherry into the camera and covers the screen in light before Home.
-// Hybrid: Canvas environment + one generated photoreal hero-art asset. No 3D
-// engine, no bundled audio, no business-logic
+// The full-bleed backdrop is one generated poster art (welcome_poster_bg.png):
+// burgundy gradient, glow pool, halftone grain, hanging vines + blossoms,
+// gold comet swirls, halo ring, glass digit bubbles, sparks, bokeh, petals
+// and floor glow — matching the reference poster pixel-for-pixel. The living
+// cherry (cherry_hero_art.png) sits on top. No 3D engine, no bundled audio,
+// no business-logic
 // changes; the public API stays WelcomeScreen(onContinue: () -> Unit).
 // ============================================================================
 
@@ -281,13 +284,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     val smoothX by animateFloatAsState(parallaxX, tween(180, easing = LinearEasing), label = "welcomePx")
     val smoothY by animateFloatAsState(parallaxY, tween(180, easing = LinearEasing), label = "welcomePy")
 
-    // --- Ambient loops (amplitudes are scaled by "alive" once the story starts) ---
-    val floatY = rememberInfiniteTransition(label = "cherry-float").animateFloat(
-        initialValue = -4.5f, targetValue = 4.5f,
-        animationSpec = infiniteRepeatable(tween(3800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "floatY")
-    val breathe = rememberInfiniteTransition(label = "cherry-breathe").animateFloat(
-        initialValue = 0.978f, targetValue = 1.022f,
-        animationSpec = infiniteRepeatable(tween(4600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathe")
+    // --- Ambient loops ---
     val ctaSweep = rememberInfiniteTransition(label = "cta-sweep").animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(3800, easing = LinearEasing)), label = "ctaSweep")
@@ -313,32 +310,36 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     ) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
-        val cherryCenter = Offset(w / 2f, h * 0.40f)
+        // The poster's fruit seat (swirls + halo) sits at 712/2340 of the art;
+        // with top-aligned Crop that lands at ~0.66 * screen width on phones.
+        val cherryCenter = Offset(w / 2f, min(w * 0.66f, h * 0.42f))
         val bgIn = enterFade(0.05f, 0.85f)
         val glowIn = enterFade(0.15f, 0.75f)
         val heroIn = welcomeBackOut(enterFade(0.45f, 0.9f).coerceIn(0f, 1f))
         val alive = enterFade(2.0f, 0.9f)
 
-        // Layer 1 — burgundy depth backdrop
-        Box(Modifier.fillMaxSize().graphicsLayer {
-            translationX = smoothX * 4f; translationY = smoothY * 3f
-            alpha = bgIn
-        }.background(Brush.verticalGradient(
-            0f to Color(0xFF1A050D), 0.38f to Color(0xFF2E0816), 0.72f to Color(0xFF3D0B1E), 1f to Color(0xFF1C060F))))
+        // Layer 1 — generated poster backdrop (every ref element baked in):
+        // vines + blossoms, glow pool, halftone grain, gold comet swirls,
+        // halo ring, glass bubbles, sparks, bokeh, petals, floor glow.
+        Image(
+            painter = painterResource(R.drawable.welcome_poster_bg),
+            contentDescription = null,
+            alignment = Alignment.TopCenter,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Gentle counter-parallax; slight zoom keeps edges covered
+                    translationX = smoothX * 5f
+                    translationY = smoothY * 4f
+                    val zoom = 1f + smoothX * smoothX * 0.012f + smoothY * smoothY * 0.009f
+                    scaleX = zoom
+                    scaleY = zoom
+                    alpha = bgIn
+                }
+        )
 
-        // Layer 2 — blossom branches (slow sway) + soft blurred corner blossoms
-        Box(Modifier.fillMaxSize().graphicsLayer {
-            translationX = smoothX * 8f; translationY = smoothY * 5f
-            alpha = bgIn
-        }.drawBehind {
-            drawWelcomeBlossomBranches(clock.floatValue, size)
-            // Blurred foreground flower silhouettes, bottom corners (poster bokeh)
-            drawWelcomeBlossom(Offset(size.width * 0.06f, size.height * 0.86f), 52.dp.toPx(), 0.06f)
-            drawWelcomeBlossom(Offset(size.width * 0.94f, size.height * 0.80f), 44.dp.toPx(), 0.05f)
-            drawWelcomeBlossom(Offset(size.width * 0.88f, size.height * 0.94f), 60.dp.toPx(), 0.06f)
-        })
-
-        // Layer 3 — center pink light rising from darkness
+        // Layer 2 — center pink light rising from darkness (story beat)
         Box(
             Modifier.align(Alignment.TopCenter)
                 .offset { IntOffset(0, (cherryCenter.y - 170.dp.toPx()).roundToInt()) }
@@ -349,14 +350,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
                 }
         )
 
-        // Layer 4 — environment: twinkle, bokeh, drifting petals, gold swirls
-        WelcomeEnvironmentLayer(
-            clock = clock.floatValue,
-            parallax = Offset(smoothX, smoothY),
-            envAlpha = enterFade(0.3f, 0.8f)
-        )
-
-        // Layer 5 — glass digit bubbles with curved absorption into the cherry
+        // Layer 3 — glass digit bubbles with curved absorption into the cherry
         WelcomeDigitBubblesLayer(
             entranceSec = entranceTime.value,
             parallax = Offset(smoothX, smoothY),
@@ -369,21 +363,22 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             outro = transitioningOut
         )
 
-        // Layer 6 — the living Cherry hero: photoreal generated sprite with
-        // volumetric shading, speculars and gold swirls baked into the art.
+        // Layer 4 — the living Cherry hero seated on the poster's swirls.
         val heroGlow = maxOf(absorbGlow.value * 0.9f, outroGlow.value)
         val heroAlpha = if (transitioningOut) 1f else heroIn.coerceIn(0f, 1f)
         Box(
             Modifier.align(Alignment.TopCenter)
-                .offset { IntOffset(0, (cherryCenter.y - 164.dp.toPx()).roundToInt()) }
+                .offset { IntOffset(0, (cherryCenter.y - 174.dp.toPx()).roundToInt()) }
                 .size(280.dp, 280.dp)
                 .graphicsLayer {
                     cameraDistance = 8f * density
                     transformOrigin = TransformOrigin(0.5f, 0.55f)
                     val zoom = outroZoom.value
-                    scaleX = heroIn * breathe.value * zoom
-                    scaleY = heroIn * breathe.value * zoom
-                    translationY = floatY.value * alive + smoothY * 9f
+                    // Breathe + float are baked into the hero composable's clock math
+                    val breathe = 1f + 0.012f * sin(clock.floatValue * 0.9f) * alive
+                    scaleX = heroIn * breathe * zoom
+                    scaleY = heroIn * breathe * zoom
+                    translationY = (sin(clock.floatValue * 0.9f) * 4.5f) * alive + smoothY * 9f
                     translationX = smoothX * 11f
                     rotationZ = sin(clock.floatValue * 0.42f) * 2.4f * alive + smoothX * 2f
                     rotationY = sin(clock.floatValue * 0.31f) * 2.0f * alive + smoothX * 7f
@@ -398,7 +393,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             )
         }
 
-        // Layer 7 — content: logo, tiles, CTA, footer
+        // Layer 5 — content: logo, tiles, CTA, footer
         val contentAlpha = outroContentAlpha.value
         if (contentAlpha > 0.01f) {
             Column(
@@ -459,14 +454,14 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             }
         }
 
-        // Layer 8 — darkness veil lifting at the very start
+        // Layer 6 — darkness veil lifting at the very start
         Box(
             Modifier.fillMaxSize().graphicsLayer {
                 alpha = (1f - enterFade(0.05f, 0.9f)).coerceIn(0f, 1f)
             }.background(Color(0xFF0B0206))
         )
 
-        // Layer 9 — outro light burst expanding from the cherry core
+        // Layer 7 — outro light burst expanding from the cherry core
         if (transitioningOut && burst.value > 0.001f) {
             Canvas(Modifier.fillMaxSize()) {
                 val t = burst.value
@@ -882,72 +877,6 @@ private fun WelcomeCherryHero(clock: Float, glow: Float, alive: Float) {
 }
 
 // ============================================================================
-// Environment: twinkle stars, blurred bokeh, drifting petal layers (some
-// crossing close to the camera near the cherry) with layered parallax.
-// ============================================================================
-private data class WelcomePetalSpec(
-    val x0: Float, val y0: Float, val sizeDp: Float, val speed: Float,
-    val swayFreq: Float, val phase: Float, val spin: Float, val depth: Float, val alpha: Float
-)
-private val WelcomePetals = listOf(
-    WelcomePetalSpec(0.08f, 0.00f, 13f, 0.055f, 0.35f, 0.0f, 22f, 0.35f, 0.55f),
-    WelcomePetalSpec(0.22f, 0.15f, 10f, 0.040f, 0.28f, 1.4f, 16f, 0.25f, 0.45f),
-    WelcomePetalSpec(0.40f, 0.05f, 15f, 0.065f, 0.40f, 2.6f, 28f, 0.45f, 0.60f),
-    WelcomePetalSpec(0.63f, 0.10f, 11f, 0.048f, 0.33f, 3.7f, 19f, 0.30f, 0.50f),
-    WelcomePetalSpec(0.86f, 0.00f, 14f, 0.060f, 0.37f, 4.8f, 24f, 0.40f, 0.55f),
-    WelcomePetalSpec(0.74f, 0.28f, 9f, 0.036f, 0.26f, 5.9f, 14f, 0.22f, 0.42f),
-    WelcomePetalSpec(0.30f, 0.32f, 17f, 0.090f, 0.44f, 1.1f, 34f, 0.75f, 0.75f),
-    WelcomePetalSpec(0.68f, 0.35f, 20f, 0.110f, 0.50f, 3.3f, 40f, 0.90f, 0.85f),
-    WelcomePetalSpec(0.48f, 0.42f, 24f, 0.140f, 0.55f, 5.2f, 48f, 1.00f, 0.90f)
-)
-
-@Composable
-private fun WelcomeEnvironmentLayer(
-    clock: Float,
-    parallax: Offset,
-    envAlpha: Float
-) {
-    Canvas(Modifier.fillMaxSize().graphicsLayer {
-        translationX = parallax.x * 10f; translationY = parallax.y * 7f
-    }) {
-        if (envAlpha <= 0f) return@Canvas
-
-        // Twinkle starfield (far plane)
-        repeat(26) { i ->
-            val sx = ((i * 73) % 100) / 100f * size.width
-            val sy = ((i * 37) % 100) / 100f * size.height * 0.60f
-            val tw = 0.5f + 0.5f * sin(clock * (0.7f + (i % 5) * 0.13f) * 2f * PI.toFloat() + i * 2.1f)
-            val a = (0.05f + (i % 4) * 0.035f) * tw * envAlpha
-            if (a > 0.004f) drawCircle(color = Color.White.copy(alpha = a), radius = 1.0f + (i % 3) * 0.7f, center = Offset(sx, sy))
-        }
-
-        // Bokeh glow dots (mid plane, slow orbit)
-        repeat(14) { i ->
-            val speed = 0.02f + (i % 5) * 0.012f
-            val bx = (0.5f + 0.46f * sin(clock * speed * 2f * PI.toFloat() + i * 1.7f)) * size.width
-            val by = (0.5f + 0.44f * cos(clock * speed * 1.6f * 2f * PI.toFloat() + i * 2.3f)) * size.height
-            val a = 0.10f * envAlpha
-            drawCircle(brush = Brush.radialGradient(listOf(Color(0x59FFB3C6), Color.Transparent)), radius = (6f + (i % 4) * 4f), center = Offset(bx, by), alpha = a)
-        }
-
-        // Drifting petals (looping fall, layered depth, camera-cross foreground)
-        WelcomePetals.forEach { spec ->
-            val cycle = 1.2f
-            val ny = ((spec.y0 + clock * spec.speed) % cycle + cycle) % cycle - 0.1f
-            val px = (spec.x0 + sin(clock * spec.swayFreq + spec.phase) * 0.030f) * size.width + parallax.x * (4f + 18f * spec.depth)
-            val py = ny * size.height + parallax.y * (3f + 14f * spec.depth)
-            val rot = clock * spec.spin + spec.phase * 60f
-            drawPetal(
-                center = Offset(px, py),
-                sizePx = spec.sizeDp.dp.toPx(),
-                rotationDeg = rot,
-                alpha = spec.alpha * envAlpha
-            )
-        }
-    }
-}
-
-// ============================================================================
 // Glass digit bubbles: nativeCanvas text inside code-drawn glass circles with
 // specular arcs, pink glow, per-bubble float/pulse, curved absorption with an
 // orbit tail + spark flash, and the outro convergence into the cherry.
@@ -1001,7 +930,9 @@ private fun WelcomeDigitBubblesLayer(
             if (popT <= 0f && !outro) return@forEachIndexed
 
             val basePx = size.width * 0.5f + spec.dx * size.width
-            val basePy = size.height * 0.42f + spec.dy * size.height
+            // Anchored to the poster's fruit seat so the swarm surrounds the cherry
+            // (0.85 keeps the original spread; top bubbles graze the top edge like the ref)
+            val basePy = cherryCenter.y + (0.02f + spec.dy) * size.height * 0.85f
             val amp = 5f + 9f * depth
             val driftX = sin(clock * (0.06f + 0.022f * depth) * 2f * PI.toFloat() + spec.phase) * amp
             val driftY = cos(clock * (0.05f + 0.017f * depth) * 2f * PI.toFloat() + spec.phase * 1.3f) * amp * 0.85f
@@ -1164,60 +1095,4 @@ private fun DrawScope.drawWelcomeBlossom(center: Offset, radius: Float, alpha: F
     drawCircle(color = Color(0xFFFFF1F5).copy(alpha = 0.9f * alpha), radius = radius * 0.15f, center = center)
 }
 
-// Blossom branches in the top corners: dark arms, blossom clusters, slow sway.
-private fun DrawScope.drawWelcomeBlossomBranches(clock: Float, size: Size) {
-    val sway = sin(clock * 0.5f) * 1.8f
-    val branchStyle = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-    rotate(sway, pivot = Offset(0f, 0f)) {
-        // Top-left main branch
-        drawPath(
-            Path().apply {
-                moveTo(-20f, -10f)
-                quadraticBezierTo(size.width * 0.14f, size.height * 0.09f, size.width * 0.34f, size.height * 0.15f)
-            },
-            color = Color(0xFF55202F), style = branchStyle
-        )
-        drawPath(
-            Path().apply {
-                moveTo(size.width * 0.10f, size.height * 0.055f)
-                quadraticBezierTo(size.width * 0.12f, size.height * 0.14f, size.width * 0.06f, size.height * 0.20f)
-            },
-            color = Color(0xFF4A1B29), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-        )
-        drawWelcomeBlossom(Offset(size.width * 0.10f, size.height * 0.055f), 13.dp.toPx(), 0.92f)
-        drawWelcomeBlossom(Offset(size.width * 0.20f, size.height * 0.10f), 16.dp.toPx(), 0.95f)
-        drawWelcomeBlossom(Offset(size.width * 0.30f, size.height * 0.135f), 12.dp.toPx(), 0.90f)
-        drawWelcomeBlossom(Offset(size.width * 0.06f, size.height * 0.155f), 11.dp.toPx(), 0.85f)
-        drawWelcomeBlossom(Offset(size.width * 0.16f, size.height * 0.195f), 13.dp.toPx(), 0.88f)
-        drawWelcomeBlossom(Offset(size.width * 0.345f, size.height * 0.155f), 9.dp.toPx(), 0.80f)
-    }
-    rotate(-sway * 0.8f, pivot = Offset(size.width, 0f)) {
-        // Small top-right cluster
-        drawPath(
-            Path().apply {
-                moveTo(size.width + 20f, -10f)
-                quadraticBezierTo(size.width * 0.90f, size.height * 0.05f, size.width * 0.80f, size.height * 0.08f)
-            },
-            color = Color(0xFF4A1B29), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-        )
-        drawWelcomeBlossom(Offset(size.width * 0.90f, size.height * 0.045f), 12.dp.toPx(), 0.85f)
-        drawWelcomeBlossom(Offset(size.width * 0.81f, size.height * 0.075f), 10.dp.toPx(), 0.80f)
-    }
-}
 
-// Single petal: rotated soft pink oval.
-private fun DrawScope.drawPetal(center: Offset, sizePx: Float, rotationDeg: Float, alpha: Float) {
-    if (alpha <= 0.004f) return
-    rotate(rotationDeg, center) {
-        drawOval(
-            brush = Brush.verticalGradient(
-                listOf(Color(0xFFFFC9D9), Color(0xFFFF7BA3)),
-                startY = center.y - sizePx / 2f,
-                endY = center.y + sizePx / 2f
-            ),
-            topLeft = Offset(center.x - sizePx * 0.32f, center.y - sizePx / 2f),
-            size = Size(sizePx * 0.64f, sizePx),
-            alpha = alpha.coerceIn(0f, 1f)
-        )
-    }
-}
