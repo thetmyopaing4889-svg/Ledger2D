@@ -17,6 +17,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -61,10 +62,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
@@ -78,6 +81,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -106,7 +110,8 @@ import kotlinx.coroutines.launch
 // trails -> metallic "Cherry 2D" logo light-sweep reveal -> LEDGER -> four
 // feature tiles -> glossy CTA. Pressing Start replays the absorption, zooms
 // the cherry into the camera and covers the screen in light before Home.
-// Pure Compose + Canvas. No 3D engine, no bundled audio, no business-logic
+// Hybrid: Canvas environment + one generated photoreal hero-art asset. No 3D
+// engine, no bundled audio, no business-logic
 // changes; the public API stays WelcomeScreen(onContinue: () -> Unit).
 // ============================================================================
 
@@ -139,13 +144,6 @@ private fun welcomeQuadBezier(a: Offset, c: Offset, b: Offset, t: Float): Offset
     return a * (mt * mt) + c * (2f * mt * t) + b * (t * t)
 }
 
-private fun welcomeRotateVec(v: Offset, degrees: Float): Offset {
-    val r = degrees * PI.toFloat() / 180f
-    val c = cos(r)
-    val s = sin(r)
-    return Offset(v.x * c - v.y * s, v.x * s + v.y * c)
-}
-
 // Fractional placement around the cherry, echoing the poster: bubbles crowd
 // the upper field, a few sit low beside the logo. depth 0 = far, 1 = near.
 private data class WelcomeDigitSpec(val value: String, val dx: Float, val dy: Float, val depth: Float, val phase: Float)
@@ -158,9 +156,9 @@ private val WelcomeDigitSpecs = listOf(
     WelcomeDigitSpec("35", 0.40f, -0.10f, 0.40f, 5.5f),
     WelcomeDigitSpec("19", 0.44f, 0.08f, 0.30f, 0.7f),
     WelcomeDigitSpec("61", -0.43f, 0.05f, 0.60f, 1.9f),
-    WelcomeDigitSpec("42", 0.36f, 0.22f, 0.55f, 3.1f),
-    WelcomeDigitSpec("84", -0.36f, 0.24f, 0.45f, 4.2f),
-    WelcomeDigitSpec("70", 0.28f, 0.30f, 0.35f, 5.0f)
+    WelcomeDigitSpec("42", 0.36f, 0.10f, 0.55f, 3.1f),
+    WelcomeDigitSpec("84", -0.36f, 0.12f, 0.45f, 4.2f),
+    WelcomeDigitSpec("70", 0.28f, 0.16f, 0.35f, 5.0f)
 )
 
 @Composable
@@ -290,9 +288,6 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     val breathe = rememberInfiniteTransition(label = "cherry-breathe").animateFloat(
         initialValue = 0.978f, targetValue = 1.022f,
         animationSpec = infiniteRepeatable(tween(4600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathe")
-    val sheen = rememberInfiniteTransition(label = "cherry-sheen").animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(4600, easing = LinearEasing)), label = "sheen")
     val ctaSweep = rememberInfiniteTransition(label = "cta-sweep").animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(3800, easing = LinearEasing)), label = "ctaSweep")
@@ -374,13 +369,14 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             outro = transitioningOut
         )
 
-        // Layer 6 — the living Cherry hero with a real perspective camera.
+        // Layer 6 — the living Cherry hero: photoreal generated sprite with
+        // volumetric shading, speculars and gold swirls baked into the art.
         val heroGlow = maxOf(absorbGlow.value * 0.9f, outroGlow.value)
         val heroAlpha = if (transitioningOut) 1f else heroIn.coerceIn(0f, 1f)
         Box(
             Modifier.align(Alignment.TopCenter)
-                .offset { IntOffset(0, (cherryCenter.y - 108.dp.toPx()).roundToInt()) }
-                .size(216.dp, 216.dp)
+                .offset { IntOffset(0, (cherryCenter.y - 164.dp.toPx()).roundToInt()) }
+                .size(280.dp, 280.dp)
                 .graphicsLayer {
                     cameraDistance = 8f * density
                     transformOrigin = TransformOrigin(0.5f, 0.55f)
@@ -398,7 +394,6 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             WelcomeCherryHero(
                 clock = clock.floatValue,
                 glow = heroGlow,
-                sheen = sheen.value,
                 alive = alive
             )
         }
@@ -514,7 +509,29 @@ private fun WelcomeLogo(reveal: Float, flourish: Float, ledgerIn: Float) {
         animationSpec = infiniteRepeatable(tween(4200, easing = LinearEasing)), label = "logoSweep")
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    // Offscreen buffer so the sweep only meets the glyph pixels
+                    .graphicsLayer {
+                        compositingStrategy = CompositingStrategy.Offscreen
+                        alpha = reveal.coerceIn(0f, 1f)
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        val x = size.width * (sweep.value * 1.7f - 0.35f)
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                0f to Color.Transparent,
+                                0.5f to Color.White.copy(alpha = 0.55f),
+                                1f to Color.Transparent,
+                                start = Offset(x, 0f),
+                                end = Offset(x + size.width * 0.30f, size.height)
+                            ),
+                            blendMode = BlendMode.SrcAtop
+                        )
+                    }
+            ) {
                 Text(
                     "Cherry",
                     style = TextStyle(
@@ -545,25 +562,6 @@ private fun WelcomeLogo(reveal: Float, flourish: Float, ledgerIn: Float) {
                     .size(26.dp)
                     .graphicsLayer { alpha = reveal.coerceIn(0f, 1f) }
             ) { drawWelcomeBlossom(Offset(size.width / 2f, size.height / 2f), size.width * 0.46f, 0.95f) }
-            // Continuous metallic light sweep, clipped to the wordmark row
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { alpha = reveal.coerceIn(0f, 1f) }
-                    .drawBehind {
-                        val x = size.width * (sweep.value * 1.7f - 0.35f)
-                        drawRect(
-                            brush = Brush.linearGradient(
-                                0f to Color.Transparent,
-                                0.5f to Color.White.copy(alpha = 0.32f),
-                                1f to Color.Transparent,
-                                start = Offset(x, 0f),
-                                end = Offset(x + size.width * 0.30f, size.height)
-                            ),
-                            blendMode = BlendMode.Screen
-                        )
-                    }
-            )
         }
         // Underline flourish drawing itself left -> right
         Canvas(
@@ -812,163 +810,74 @@ private fun WelcomeFooter(appear: Float, clock: Float) {
 }
 
 // ============================================================================
-// The living cherry: two glossy spheres with offset radial lighting, moving
-// specular reflection band, stems + swaying leaf, gold spark swirls orbiting
-// on tilted ellipses, absorption glow halo, pulse ring and a grounding shadow.
+// The living cherry: the generated photoreal hero sprite (volumetric shading,
+// dual speculars, stems, veined leaf, gold comet swirls, sparks and bokeh are
+// baked into cherry_hero_art.png) wrapped in story-reactive light — absorption
+// halo, a breathing highlight veil and a pulse ring driven by the clock.
 // ============================================================================
 @Composable
-private fun WelcomeCherryHero(clock: Float, glow: Float, sheen: Float, alive: Float) {
-    Canvas(Modifier.size(216.dp)) {
-        val cx = size.width / 2f
-        val r = 46.dp.toPx()
-        val cyl = size.height * 0.60f
-        val cyr = size.height * 0.52f
-        val cxl = cx - 27.dp.toPx()
-        val cxr = cx + 24.dp.toPx()
-        val junction = Offset(cx + 4.dp.toPx(), size.height * 0.16f)
-
-        // Grounding shadow — breathes against the float
-        val lift = (sin(clock * 0.9f) + 1f) / 2f
-        drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x78000000), Color.Transparent)),
-            radius = 58.dp.toPx() * (1f - 0.06f * lift),
-            center = Offset(cx, size.height - 20.dp.toPx() + lift * 4.dp.toPx())
-        )
-
-        // Absorption glow halo
+private fun WelcomeCherryHero(clock: Float, glow: Float, alive: Float) {
+    Box(
+        Modifier.fillMaxSize().graphicsLayer {
+            // Offscreen buffer so the veil's SrcAtop only meets art pixels
+            compositingStrategy = CompositingStrategy.Offscreen
+        }
+    ) {
+        // Absorption glow halo behind the sprite
         if (glow > 0.01f) {
-            drawCircle(
-                brush = Brush.radialGradient(listOf(Color(0x80FF2D55), Color(0x33FF7BA3), Color.Transparent)),
-                radius = r * (2.2f + 0.9f * glow),
-                center = Offset(cx, (cyl + cyr) / 2f)
-            )
-        }
-
-        // Stems: two curves meeting at the junction knot
-        val stemBrush = Brush.verticalGradient(listOf(Color(0xFF8A5A3C), Color(0xFF5C3A24)), startY = junction.y, endY = cyl)
-        val stemStyle = Stroke(width = 4.2.dp.toPx(), cap = StrokeCap.Round)
-        drawPath(
-            Path().apply {
-                moveTo(cxl, cyl - r * 0.88f)
-                quadraticBezierTo(cxl - 10.dp.toPx(), cyl - r * 1.5f, junction.x - 3.dp.toPx(), junction.y)
-            },
-            brush = stemBrush, style = stemStyle
-        )
-        drawPath(
-            Path().apply {
-                moveTo(cxr, cyr - r * 0.88f)
-                quadraticBezierTo(cxr + 12.dp.toPx(), cyr - r * 1.55f, junction.x + 3.dp.toPx(), junction.y)
-            },
-            brush = stemBrush, style = stemStyle
-        )
-        drawCircle(color = Color(0xFF9C6B46), radius = 3.2.dp.toPx(), center = junction)
-
-        // Leaf — sways slowly around the junction
-        val leafSway = sin(clock * 0.5f) * 5f * alive
-        rotate(-24f + leafSway, junction) {
-            drawOval(
-                brush = Brush.linearGradient(listOf(Color(0xFF7FBE58), Color(0xFF2F6B2C))),
-                topLeft = Offset(junction.x + 2.dp.toPx(), junction.y - 8.dp.toPx()),
-                size = Size(32.dp.toPx(), 14.dp.toPx())
-            )
-            drawLine(
-                color = Color(0x992F5B24),
-                start = Offset(junction.x + 4.dp.toPx(), junction.y - 1.dp.toPx()),
-                end = Offset(junction.x + 30.dp.toPx(), junction.y - 4.dp.toPx()),
-                strokeWidth = 1.2.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
-
-        // Two glossy spheres
-        listOf(Offset(cxl, cyl), Offset(cxr, cyr)).forEachIndexed { i, c ->
-            // Body with top-left lit radial gradient
-            drawCircle(
-                brush = Brush.radialGradient(
-                    0f to Color(0xFFFF9DB4), 0.30f to Color(0xFFF5204E), 0.62f to Color(0xFFB40E37),
-                    0.85f to Color(0xFF6B0621), 1f to Color(0xFF430418),
-                    center = Offset(c.x - r * 0.35f, c.y - r * 0.45f), radius = r * 1.7f
-                ),
-                radius = r, center = c
-            )
-            // Rim shade
-            drawCircle(
-                brush = Brush.radialGradient(0.60f to Color.Transparent, 1f to Color(0x66280009)),
-                radius = r, center = c
-            )
-            // Stem dimple
-            drawOval(
-                color = Color(0x88300212),
-                topLeft = Offset(c.x - 6.dp.toPx() + (if (i == 0) -2.dp.toPx() else 3.dp.toPx()), c.y - r - 1.dp.toPx()),
-                size = Size(11.dp.toPx(), 4.5.dp.toPx())
-            )
-            // Main specular (rotated glossy blob)
-            rotate(-32f, c) {
-                drawOval(
-                    brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.80f), Color.White.copy(alpha = 0.08f))),
-                    topLeft = Offset(c.x - r * 0.55f, c.y - r * 0.80f),
-                    size = Size(r * 0.46f, r * 0.64f),
-                    alpha = 0.92f
+            Canvas(Modifier.matchParentSize()) {
+                val c = Offset(size.width / 2f, size.height * 0.58f)
+                drawCircle(
+                    brush = Brush.radialGradient(listOf(Color(0x80FF2D55), Color(0x33FF7BA3), Color.Transparent)),
+                    radius = size.minDimension * (0.46f + 0.18f * glow),
+                    center = c
                 )
             }
-            drawCircle(color = Color.White.copy(alpha = 0.75f), radius = r * 0.06f, center = Offset(c.x - r * 0.46f, c.y - r * 0.50f))
-            // Moving glossy reflection band, clipped to the sphere
-            val band = r * 2.6f * (sheen * 1.6f - 0.3f)
-            clipRect(left = c.x - r, top = c.y - r, right = c.x + r, bottom = c.y + r) {
+        }
+        // Photoreal cherry art — baked volumetric lighting and gold swirls
+        Image(
+            painter = painterResource(R.drawable.cherry_hero_art),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    rotationZ = sin(clock * 0.45f) * 1.6f * alive
+                    val breathe = 1f + 0.014f * sin(clock * 1.4f) * alive
+                    scaleX = breathe
+                    scaleY = breathe
+                }
+        )
+        // Living light veil: a soft diagonal sheen gliding across the artwork
+        Canvas(Modifier.matchParentSize()) {
+            val t = (clock * 0.35f) % 1f
+            val x = size.width * (t * 1.6f - 0.3f)
+            clipRect(left = 0f, top = 0f, right = size.width, bottom = size.height) {
                 drawRect(
                     brush = Brush.linearGradient(
                         0f to Color.Transparent,
-                        0.5f to Color.White.copy(alpha = 0.20f),
+                        0.5f to Color.White.copy(alpha = 0.10f + 0.10f * alive),
                         1f to Color.Transparent,
-                        start = Offset(c.x - r + band, c.y - r),
-                        end = Offset(c.x - r + band + r * 0.85f, c.y + r)
+                        start = Offset(x, 0f),
+                        end = Offset(x + size.width * 0.45f, size.height)
                     ),
-                    blendMode = BlendMode.Screen
+                    blendMode = BlendMode.SrcAtop
+                )
+            }
+        }
+        // Absorption pulse ring
+        if (glow > 0.02f) {
+            Canvas(Modifier.matchParentSize()) {
+                val c = Offset(size.width / 2f, size.height * 0.58f)
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.50f * glow),
+                    radius = size.minDimension * 0.34f,
+                    center = c,
+                    style = Stroke(width = 1.4.dp.toPx() + 2.2f * glow.dp.toPx(), cap = StrokeCap.Round)
                 )
             }
         }
 
-        // Absorption pulse ring
-        if (glow > 0.02f) {
-            drawCircle(
-                color = Color.White.copy(alpha = 0.50f * glow),
-                radius = r * 1.18f,
-                center = Offset(cx, (cyl + cyr) / 2f),
-                style = Stroke(width = 1.6.dp.toPx() + 2.4f * glow.dp.toPx(), cap = StrokeCap.Round)
-            )
-        }
-
-        // Gold spark swirls — the poster's light trails, two tilted comet rings
-        if (alive > 0.02f) {
-            repeat(2) { k ->
-                val ringTilt = -16f + 38f * k
-                val rx = r * (1.62f + 0.32f * k)
-                val ry = rx * 0.40f
-                val dir = if (k == 0) 1f else -1f
-                val head = clock * (0.55f + 0.16f * k) * 2f * PI.toFloat() * dir + k * 2.4f
-                val trail = 40
-                val ringCenter = Offset(cx, (cyl + cyr) / 2f)
-                for (j in 0 until trail) {
-                    val a = head - j * 0.05f * dir
-                    val rel = 1f - j.toFloat() / trail
-                    val local = welcomeRotateVec(Offset(cos(a) * rx, sin(a) * ry), ringTilt)
-                    val p = ringCenter + local
-                    val alpha = (rel * rel * 0.55f * alive).coerceIn(0f, 1f)
-                    if (alpha > 0.01f) {
-                        drawCircle(
-                            color = Color(0xFFFFD98A).copy(alpha = alpha),
-                            radius = (1.2f + 1.5f * rel).dp.toPx(),
-                            center = p
-                        )
-                    }
-                }
-                // Bright comet head with a soft gold bloom
-                val headLocal = welcomeRotateVec(Offset(cos(head) * rx, sin(head) * ry), ringTilt)
-                val hp = ringCenter + headLocal
-                drawCircle(color = Color(0x59FFD98A), radius = 5.dp.toPx(), center = hp)
-                drawCircle(color = Color.White.copy(alpha = 0.85f * alive), radius = 1.8f.dp.toPx(), center = hp)
-            }
-        }
     }
 }
 
