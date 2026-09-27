@@ -16,6 +16,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
+import java.io.InputStream
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
@@ -33,7 +34,7 @@ fun Welcome3DScene(modifier: Modifier = Modifier, transitioningOut: Boolean) {
 }
 
 private class WelcomeGlSurface(context: Context) : GLSurfaceView(context) {
-    private val renderer = WelcomeGlRenderer()
+    private val renderer = WelcomeGlRenderer(context)
     init {
         setEGLContextClientVersion(2)
         setZOrderOnTop(false)
@@ -62,7 +63,7 @@ private class WelcomeGlSurface(context: Context) : GLSurfaceView(context) {
     }
 }
 
-private class WelcomeGlRenderer : GLSurfaceView.Renderer {
+private class WelcomeGlRenderer(private val context: Context) : GLSurfaceView.Renderer {
     var transitioningOut = false
     var lastX = 0f
     var lastY = 0f
@@ -91,7 +92,7 @@ private class WelcomeGlRenderer : GLSurfaceView.Renderer {
         GLES20.glClearColor(0.055f, 0.008f, 0.025f, 1f)
         program = linkProgram(VERTEX, FRAGMENT)
         digitProgram = linkProgram(DIGIT_VERTEX, DIGIT_FRAGMENT)
-        cherryBody = Mesh.cherry(0.58f, 32, 24)
+        cherryBody = Mesh.fromBinaryStl(context.resources.openRawResource(com.myanmar.ledger2d.R.raw.cherry2))
         stem = Mesh.cylinder(0.045f, 0.72f, 12)
         leaf = Mesh.leaf()
         quad = Mesh.quad()
@@ -191,6 +192,33 @@ private class Mesh(private val vertices: FloatBuffer, private val normals: Float
         GLES20.glDisableVertexAttribArray(pos)
     }
     companion object {
+        fun fromBinaryStl(input: InputStream): Mesh {
+            val bytes = input.use { it.readBytes() }
+            require(bytes.size >= 84) { "Invalid Cherry STL" }
+            val triangles = ByteBuffer.wrap(bytes, 80, 4).order(ByteOrder.LITTLE_ENDIAN).int
+            require(triangles > 0 && 84L + triangles.toLong() * 50L <= bytes.size) { "Invalid Cherry STL triangle table" }
+            val positions = FloatArray(triangles * 9)
+            val normals = FloatArray(triangles * 9)
+            var offset = 84
+            var vertex = 0
+            repeat(triangles) {
+                val n = ByteBuffer.wrap(bytes, offset, 12).order(ByteOrder.LITTLE_ENDIAN)
+                val nx = n.float; val ny = n.float; val nz = n.float
+                offset += 12
+                repeat(3) {
+                    val p = ByteBuffer.wrap(bytes, offset, 12).order(ByteOrder.LITTLE_ENDIAN)
+                    val px = p.float; val py = p.float; val pz = p.float
+                    val unit = 0.052f
+                    positions[vertex] = px * unit
+                    positions[vertex + 1] = pz * unit - 0.58f
+                    positions[vertex + 2] = -py * unit
+                    normals[vertex] = nx; normals[vertex + 1] = nz; normals[vertex + 2] = -ny
+                    vertex += 3; offset += 12
+                }
+                offset += 2
+            }
+            return Mesh(floatBuffer(positions), floatBuffer(normals), count = triangles * 3)
+        }
         fun sphere(r: Float, slices: Int, stacks: Int): Mesh {
             val v = ArrayList<Float>(); val n = ArrayList<Float>(); val idx = ArrayList<Short>()
             for (stack in 0..stacks) { val phi = Math.PI * stack / stacks; val y = cos(phi).toFloat(); val rr = sin(phi).toFloat(); for (slice in 0..slices) { val th = 2 * Math.PI * slice / slices; val x = (rr * cos(th)).toFloat(); val z = (rr * sin(th)).toFloat(); v += x*r; v += y*r; v += z*r; n += x; n += y; n += z } }
