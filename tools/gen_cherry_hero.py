@@ -231,10 +231,10 @@ def paint_stems():
 
 
 def paint_leaf():
-    """Big glossy leaf pointing upper-right from the junction."""
+    """Big glossy leaf pointing upper-right from the junction (ref: hero leaf)."""
     cx, cy = 742.0, 236.0
-    ln, wd = 168.0, 62.0
-    rot = -26.0
+    ln, wd = 205.0, 80.0
+    rot = -24.0
     t = math.radians(rot)
     ct, st = math.cos(t), math.sin(t)
 
@@ -288,10 +288,10 @@ def half_gloss(t):
 
 
 def paint_swirls():
-    """Organic gold light swirls: two tilted elliptical comet rings + spray."""
+    """Bright gold light swirls: two tilted elliptical comet rings + spray."""
     rings = [
-        dict(cx=516, cy=646, rx=345, ry=118, rot=-16, speed=1.0, head=0.8, w=1.0),
-        dict(cx=516, cy=640, rx=418, ry=142, rot=21, speed=-0.72, head=2.9, w=0.8),
+        dict(cx=516, cy=646, rx=345, ry=118, rot=-16, speed=1.0, head=0.8, w=1.25),
+        dict(cx=516, cy=640, rx=418, ry=142, rot=21, speed=-0.72, head=2.9, w=1.0),
     ]
     for ring in rings:
         t = math.radians(ring["rot"])
@@ -313,18 +313,36 @@ def paint_swirls():
             # wobble for organic feel
             wob = 1.0 + 0.05 * math.sin(a * 5.0 + ring["rot"])
             core = (255, 244, 214) if rel > 0.75 else ((255, 214, 130) if rel > 0.35 else (255, 158, 84))
-            alpha = 0.30 * rel * ring["w"]
+            alpha = 0.42 * rel * ring["w"]
             if alpha > 0.01:
-                stamp(x, y, (7.0 + 13.0 * rel) * wob, core, alpha, soft=1.8, salt=50 + i % 9)
+                stamp(x, y, (8.0 + 15.0 * rel) * wob, core, alpha, soft=1.8, salt=50 + i % 9)
         # Bright comet head + bloom
         hx, hy = pt(head)
-        stamp(hx, hy, 26, (255, 236, 190), 0.5, salt=60)
-        stamp(hx, hy, 10, (255, 250, 235), 0.95, salt=61)
-        stamp(hx, hy, 4, (255, 255, 255), 1.0, salt=62)
+        stamp(hx, hy, 30, (255, 236, 190), 0.6, salt=60)
+        stamp(hx, hy, 12, (255, 250, 235), 0.95, salt=61)
+        stamp(hx, hy, 5, (255, 255, 255), 1.0, salt=62)
         # Star cross sparkle on the head
         for k in range(-2, 3):
-            stamp(hx + k * 9, hy, 2.2, (255, 255, 240), 0.5, salt=63)
-            stamp(hx, hy + k * 9, 2.2, (255, 255, 240), 0.5, salt=64)
+            stamp(hx + k * 11, hy, 2.6, (255, 255, 240), 0.6, salt=63)
+            stamp(hx, hy + k * 11, 2.6, (255, 255, 240), 0.6, salt=64)
+
+
+def paint_flares():
+    """Four-point star flares hugging the fruit (ref: lens glints on the cherries)."""
+    flares = [
+        (286, 588, 20.0, 0.85),   # left cherry upper-left rim
+        (700, 690, 16.0, 0.75),   # right cherry lower-right rim
+        (438, 806, 13.0, 0.65),   # between/below the pair
+        (612, 470, 12.0, 0.60),   # above the pair, near stems
+    ]
+    for (fx, fy, fr, fa) in flares:
+        stamp(fx, fy, fr * 2.6, (255, 226, 180), 0.30 * fa, soft=2.2, salt=70)
+        # 4-point cross
+        for k in range(-4, 5):
+            t = 1.0 - abs(k) / 5.0
+            stamp(fx + k * fr * 0.55, fy, fr * 0.14 * t + 1.0, (255, 250, 235), fa * t, soft=1.4, salt=71)
+            stamp(fx, fy + k * fr * 0.55, fr * 0.14 * t + 1.0, (255, 250, 235), fa * t, soft=1.4, salt=72)
+        stamp(fx, fy, fr * 0.30, (255, 255, 255), fa, soft=1.6, salt=73)
 
 
 def paint_sparks():
@@ -378,6 +396,8 @@ def main():
     paint_cherry(LCX, LCY, LR, salt=8)
     paint_speculars(LCX, LCY, LR)
     paint_speculars(RCX, RCY, RR)
+    print("painting star flares...")
+    paint_flares()
     print("encoding PNG...")
     out = "app/src/main/res/drawable-nodpi/cherry_hero_art.png"
     encode_png(out)

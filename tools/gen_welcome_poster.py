@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 """Generate the full-bleed Welcome poster backdrop (drawable-nodpi/welcome_poster_bg.png).
 
-Pure-stdlib painter that bakes every signature element of the reference
-poster into one 1080x2340 RGBA image:
+Pure-stdlib painter matching the LATEST reference poster:
 
-  * deep burgundy vertical gradient with a huge soft center glow pool
-  * hanging vine branches with blossoms from the top corners + two big
-    blurred foreground blossoms
-  * halftone grain dots inside the glow (the ref's dotted texture)
-  * TWO tilted organic gold comet swirls around the cherry seat
-    (solid ribbons with bright comet heads -- NOT dotted circles)
-  * a thin silver-white halo ring around the fruit seat
-  * dark glass digit bubbles (61 / 3 / 42 + blanks) with rings
-  * gold sparks, bokeh discs, floating petals
-  * floor glow beneath the fruit
-
-Blossom/leaf-free center: the photoreal cherry (cherry_hero_art.png) is
-drawn on top at runtime, so the backdrop leaves the fruit seat clean.
+  * near-black maroon vertical gradient with a magenta core glow
+  * photoreal-ish blossom canopy hanging from the top edge (clusters of
+    5-petal blossoms, blurred depth layers, buds) + scattered petals
+  * big blurred bokeh discs in the lower half (ref's out-of-focus flowers)
+  * glass digit bubbles: 53 12 07 96 / 27 35 19 / 61 42 / 84 70
+  * gold sparks + light streaks radiating around the fruit seat
+  * floor: concentric gold swirl arcs under the CTA area
+  * (cherry + its bright comet swirls live in cherry_hero_art.png)
 
 Re-run from repo root:  python3 tools/gen_welcome_poster.py
 """
@@ -140,178 +134,67 @@ def petal(cx, cy, r, rot_deg, c1, c2, alpha):
                 blend(px, py, int(col[0]), int(col[1]), int(col[2]), a)
 
 
-def blossom(cx, cy, r, phase, alpha):
+def blossom(cx, cy, r, phase, alpha, dark=False):
+    """5-petal blossom; dark=True gives the silhouetted canopy look."""
+    if dark:
+        c1, c2, core = (214, 106, 132), (150, 48, 76), (230, 150, 168)
+    else:
+        c1, c2, core = (255, 200, 216), (248, 138, 168), (255, 236, 240)
     for k in range(5):
         ang = phase + k * (2.0 * math.pi / 5.0)
         px = cx + math.cos(ang) * r * 0.62
         py = cy + math.sin(ang) * r * 0.62
-        petal(px, py, r * 0.46, math.degrees(ang), (255, 200, 216), (248, 138, 168), alpha)
-    stamp(cx, cy, r * 0.22, (255, 236, 240), 0.9 * alpha, soft=1.6, salt=5)
+        petal(px, py, r * 0.46, math.degrees(ang), c1, c2, alpha)
+    stamp(cx, cy, r * 0.22, core, 0.9 * alpha, soft=1.6, salt=5)
     stamp(cx, cy, r * 1.5, (255, 150, 180), 0.14 * alpha, soft=2.4, salt=6)
 
 
-def arc(cx, cy, radius, a0_deg, a1_deg, width, color, alpha, salt=0):
+def arc(cx, cy, radius, a0_deg, a1_deg, width, color, alpha, salt=0, wobble=0.0):
     steps = max(24, int(radius * abs(math.radians(a1_deg - a0_deg)) * 1.3))
     for i in range(steps + 1):
         t = i / steps
         a = math.radians(a0_deg + (a1_deg - a0_deg) * t)
-        stamp(cx + math.cos(a) * radius, cy + math.sin(a) * radius,
+        rr = radius * (1.0 + wobble * math.sin(a * 3.0 + salt))
+        stamp(cx + math.cos(a) * rr, cy + math.sin(a) * rr,
               width, color, alpha, soft=1.6, salt=salt + i % 8)
 
 
-def halftone_dot(px, py, radius, salt):
-    if (px + py) % 2 != 0:
-        return
-    if salt > 0:
-        off = (1.0 / 7.0 if (px + py + 2 * salt) % 2 == 0 else 3.4 / 7.0) * radius + 0.30 * radius
-    else:
-        off = 0.30 * radius
-    stamp(px, py, off * 0.75, (255, 110, 135), 0.07, soft=2.2)
-
-
-# ------------------------------------------------------------------ paint --
-def paint_gradient():
-    print("painting gradient...")
-    rows = {}
-    for y in range(H):
-        t = y / (H - 1)
-        if t < 0.5:
-            f = t / 0.5
-            col = (int(26 + (52 - 26) * f), int(5 + (10 - 5) * f), int(13 + (24 - 13) * f))
-        else:
-            f = (t - 0.5) / 0.5
-            col = (int(52 + (30 - 52) * f), int(10 + (7 - 10) * f), int(24 + (16 - 24) * f))
-        rows[y] = col
-    for y in range(H):
-        r, g, b = rows[y]
-        row = y * W
-        for x in range(W):
-            i = (row + x) * 4
-            buf[i], buf[i + 1], buf[i + 2], buf[i + 3] = r, g, b, 255
-
-
-def paint_glow_pool():
-    print("painting center glow pool...")
-    stamp(540, 700, 700, (255, 150, 175), 0.10, soft=2.6, salt=300)
-    stamp(540, 700, 470, (255, 190, 205), 0.10, soft=2.4, salt=301)
-    stamp(540, 700, 300, (255, 224, 230), 0.10, soft=2.2, salt=302)
-
-
-def paint_grain():
-    print("painting halftone grain...")
-    for gy in range(430, 1000, 4):
-        span = int(210 * math.sqrt(max(0.0, 1.0 - ((gy - 700) / 300.0) ** 2)))
-        for gx in range(540 - span, 540 + span + 1, 4):
-            salt = (gx // 7) % 3
-            halftone_dot(gx, gy, 10.0, salt)
-
-
-def paint_vines(wind_t):
-    print("painting vine branches...")
-    branches = [
-        ([-30, 120], [230, 260], [500, 430], 1.00),
-        ([1010, 120], [880, 300], [690, 470], 0.85),
-        ([-20, 560], [70, 680], [190, 750], 0.75),
-        ([1090, 520], [990, 660], [870, 730], 0.70),
-        ([1060, 60], [990, 150], [920, 260], 0.90),
-    ]
-    for bi, (p0, p1, p2, scale) in enumerate(branches):
-        steps = max(60, int(240 * scale))
-        for i in range(steps):
-            t = i / (steps - 1)
-            x, y = quad_bezier(p0, p1, p2, t)
-            fade = smoothstep(0.0, 0.06, t) * smoothstep(1.0, 0.94, t)
-            alpha = 0.8 * fade
-            if alpha > 0.01:
-                stamp(x, y, 6.5, (58, 16, 24), alpha, salt=200 + i % 16)
-        for t, s in [(0.16, 12), (0.38, 22), (0.64, 17), (0.86, 26)]:
-            bx, by = quad_bezier(p0, p1, p2, t)
-            phase = wind_t * (0.25 + 0.05 * bi) + bi * 1.3 + t * 3.0
-            blossom(bx, by, s * scale, phase, random.uniform(0.55, 0.8))
-        blossom(p2[0], p2[1], (30 if scale > 0.9 else 22) * scale,
-                wind_t * 0.3 + bi * 2.1, 0.75)
-
-
-def paint_big_blossoms():
-    print("painting big foreground blossoms...")
-    blossom(95, 190, 56, 0.4, 0.85)
-    blossom(700, 225, 36, 1.2, 0.8)
-    blossom(115, 585, 34, 2.1, 0.75)
-    blossom(1000, 570, 30, 2.8, 0.7)
-    blossom(925, 125, 30, 0.9, 0.75)
-
-
-def paint_swirls(with_head):
-    print("painting gold comet swirls...")
-    n = 170
-    for i in range(n):
-        f = i / (n - 1)
-        a = 0.0 - f * 3.9
-        wob = 1.0 + 0.045 * math.sin(3.0 * a + 0.8)
-        scale = 1.0 - 0.07 * f
-        x = 540 + math.cos(a) * 318 * scale * wob
-        y = 712 + math.sin(a) * 262 * scale * wob
-        rel = (1.0 - f) ** 1.8
-        if rel > 0.72:
-            core = (255, 248, 225)
-        elif rel > 0.35:
-            core = (255, 216, 140)
-        else:
-            core = (255, 164, 96)
-        alpha = 0.30 * rel
-        if alpha > 0.01:
-            stamp(x, y, (6.5 + 15.0 * rel) * wob, core, alpha, soft=1.7, salt=80 + i % 9)
-    if with_head:
-        hx, hy = 540 + math.cos(0.0) * 318, 712 + math.sin(0.0) * 262
-        stamp(hx, hy, 30, (255, 240, 200), 0.5, salt=90)
-        stamp(hx, hy, 12, (255, 250, 235), 0.95, salt=91)
-        stamp(hx, hy, 5, (255, 255, 255), 1.0, salt=92)
-        for k in range(-2, 3):
-            stamp(hx + k * 18, hy, 2.4, (255, 255, 240), 0.55, salt=93)
-            stamp(hx, hy + k * 18, 2.4, (255, 255, 240), 0.55, salt=94)
-
-
-def paint_halo_ring():
-    print("painting halo ring...")
-    arc(540, 700, 335, 0, 360, 3.2, (255, 205, 215), 0.50, salt=400)
-    arc(540, 700, 335, 0, 360, 1.6, (255, 255, 255), 0.25, salt=410)
-
-
-# Real seven-segment topology drawn as rounded bars: a=top, b=top-right,
-# c=bottom-right, d=bottom, e=bottom-left, f=top-left, g=middle.
-SEG_LINES = {
-    "a": (-0.60, -1.00, 0.60, -1.00),
-    "b": (0.60, -0.95, 0.60, -0.05),
-    "c": (0.60, 0.05, 0.60, 0.95),
-    "d": (-0.60, 1.00, 0.60, 1.00),
-    "e": (-0.60, 0.05, -0.60, 0.95),
-    "f": (-0.60, -0.95, -0.60, -0.05),
-    "g": (-0.55, 0.00, 0.55, 0.00),
+CHAR_SEGS = {
+    "0": [("AB"), ("BC"), ("CD"), ("DA")],
+    "1": [("BE"), ("EF")],
+    "2": [("AB"), ("BE"), ("EF"), ("DF"), ("CD")],
+    "3": [("AB"), ("BE"), ("EF"), ("CF"), ("CD")],
+    "4": [("AE"), ("BE"), ("EF"), ("CF")],
+    "5": [("AB"), ("AE"), ("EF"), ("CF"), ("CD")],
+    "6": [("AB"), ("AE"), ("EF"), ("DF"), ("CF"), ("CD")],
+    "7": [("AB"), ("BE"), ("CF")],
+    "8": [("AB"), ("BC"), ("CD"), ("DA"), ("EF")],
+    "9": [("AB"), ("AE"), ("EF"), ("CF"), ("CD")],
 }
-DIGIT_SEGS = {
-    "0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc",
-    "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcfgd",
+SEG_PTS = {
+    "A": (-0.62, -1.0), "B": (0.62, -1.0), "C": (0.62, 1.0),
+    "D": (-0.62, 1.0), "E": (0.0, 0.0), "F": (0.0, 0.0),
 }
 
 
 def draw_char(ch, x, y, scale, alpha, halftone=False):
-    w = 0.34 * scale   # half-width of the glyph box
-    h = 0.52 * scale   # half-height
-    dot = 0.19 * scale
-    for seg in DIGIT_SEGS.get(ch, ""):
-        x0, y0, x1, y1 = SEG_LINES[seg]
-        px0, py0 = x + x0 * w, y + y0 * h
-        px1, py1 = x + x1 * w, y + y1 * h
-        dist = math.hypot(px1 - px0, py1 - py0)
-        n = max(2, int(dist / (dot * 0.9)) + 1)
+    w = 0.34 * scale
+    h = 0.52 * scale
+    for seg in CHAR_SEGS.get(ch, []):
+        p0 = SEG_PTS[seg[0]]
+        p1 = SEG_PTS[seg[1]]
+        x0, y0 = x + p0[0] * w, y + p0[1] * h
+        x1, y1 = x + p1[0] * w, y + p1[1] * h
+        dist = math.hypot(x1 - x0, y1 - y0)
+        n = max(2, int(dist / 2.6) + 1)
         for i in range(n):
             t = i / (n - 1)
-            sx, sy = lerp(px0, px1, t), lerp(py0, py1, t)
+            px, py = lerp(x0, x1, t), lerp(y0, y1, t)
             if halftone:
-                stamp(sx, sy, dot * 0.8, (255, 110, 135), alpha)
+                stamp(px, py, 0.30 * scale, (255, 110, 135), alpha)
             else:
-                stamp(sx, sy, dot, (255, 150, 168), alpha * 0.85)
-                stamp(sx, sy, dot * 2.6, (255, 80, 110), alpha * 0.16)
+                stamp(px, py, 0.42 * scale, (255, 140, 160), alpha * 0.8)
+                stamp(px, py, 1.5 * scale, (255, 80, 110), alpha * 0.15)
 
 
 def draw_glass_bubble(cx, cy, r, fill_a, ring_a, text="", halftone=False):
@@ -324,67 +207,171 @@ def draw_glass_bubble(cx, cy, r, fill_a, ring_a, text="", halftone=False):
             draw_char(ch, cx - total_w / 2 + 0.95 * r * (idx + 0.5), cy, r * 0.95, ring_a * 1.3, halftone)
 
 
+# ------------------------------------------------------------------ paint --
+def paint_gradient():
+    print("painting gradient...")
+    rows = {}
+    for y in range(H):
+        t = y / (H - 1)
+        if t < 0.18:
+            f = t / 0.18
+            col = (int(22 + (46 - 22) * f), int(4 + (9 - 4) * f), int(11 + (20 - 11) * f))
+        elif t < 0.55:
+            f = (t - 0.18) / 0.37
+            col = (int(46 + (58 - 46) * f), int(9 + (12 - 9) * f), int(20 + (26 - 20) * f))
+        else:
+            f = (t - 0.55) / 0.45
+            col = (int(58 + (24 - 58) * f), int(12 + (6 - 12) * f), int(26 + (14 - 26) * f))
+        rows[y] = col
+    for y in range(H):
+        r, g, b = rows[y]
+        row = y * W
+        for x in range(W):
+            i = (row + x) * 4
+            buf[i], buf[i + 1], buf[i + 2], buf[i + 3] = r, g, b, 255
+
+
+def paint_glow_pool():
+    print("painting magenta core glow...")
+    stamp(540, 660, 660, (255, 70, 130), 0.14, soft=2.6, salt=300)
+    stamp(540, 660, 430, (255, 140, 180), 0.12, soft=2.4, salt=301)
+    stamp(540, 660, 270, (255, 200, 220), 0.10, soft=2.2, salt=302)
+    # Warm haze behind the logo band
+    stamp(540, 1500, 480, (255, 90, 140), 0.06, soft=2.6, salt=303)
+
+
+def paint_canopy():
+    print("painting blossom canopy (top)...")
+    # Hanging branch arms
+    branches = [
+        ([-30, 60], [200, 170], [430, 250], 1.00),
+        ([520, -20], [640, 120], [760, 190], 0.85),
+        ([1110, 50], [950, 160], [830, 260], 0.90),
+        ([1100, 260], [990, 330], [900, 420], 0.70),
+        ([-20, 220], [60, 300], [170, 360], 0.75),
+    ]
+    for bi, (p0, p1, p2, scale) in enumerate(branches):
+        steps = max(50, int(220 * scale))
+        for i in range(steps):
+            t = i / (steps - 1)
+            x, y = quad_bezier(p0, p1, p2, t)
+            fade = smoothstep(0.0, 0.08, t) * smoothstep(1.0, 0.9, t)
+            alpha = 0.85 * fade
+            if alpha > 0.01:
+                stamp(x, y, 5.5, (44, 12, 22), alpha, salt=200 + i % 16)
+        # Dense blossom clusters along each branch
+        for t in [0.12, 0.3, 0.48, 0.66, 0.84, 1.0]:
+            bx, by = quad_bezier(p0, p1, p2, t)
+            phase = bi * 1.7 + t * 4.0
+            blossom(bx, by, (26 + 10 * ((bi + t) % 2)) * scale, phase, random.uniform(0.6, 0.95), dark=True)
+            # small bud nearby
+            blossom(bx + 18 * scale, by + 14 * scale, 9 * scale, phase + 0.7, 0.55, dark=True)
+    # Big photoreal-feel blossoms at the very top edge (blurred depth)
+    for (cx, cy, r, ph) in [(60, 40, 44, 0.3), (200, 25, 38, 1.1), (340, 60, 30, 2.0),
+                            (620, 30, 40, 0.8), (900, 45, 42, 1.6), (1030, 90, 34, 2.4),
+                            (760, 70, 26, 0.4), (470, 35, 28, 1.9)]:
+        blossom(cx, cy, r, ph, 0.85, dark=True)
+        stamp(cx, cy, r * 2.2, (255, 120, 160), 0.10, soft=2.6, salt=310)
+
+
+def paint_scatter():
+    print("painting scattered petals + bokeh...")
+    # Petals scattered mid-air (upper 2/3)
+    for _ in range(30):
+        x = random.uniform(30, W - 30)
+        y = random.uniform(80, 1250)
+        if 300 < x < 820 and 380 < y < 950:      # keep fruit seat clean
+            continue
+        s = random.uniform(9, 24)
+        c1 = random.choice([(255, 190, 210), (255, 205, 220), (250, 160, 190)])
+        c2 = random.choice([(252, 120, 158), (248, 100, 145)])
+        petal(x, y, s, random.uniform(-50, 50), c1, c2, random.uniform(0.35, 0.75))
+    # Big blurred bokeh blossoms in the lower half (ref's out-of-focus flowers)
+    for (cx, cy, r) in [(90, 1560, 60), (980, 1620, 66), (60, 1900, 48),
+                        (1010, 1980, 52), (150, 2150, 56), (930, 2200, 60),
+                        (500, 2280, 44), (260, 1720, 34), (830, 1800, 36)]:
+        stamp(cx, cy, r * 1.8, (255, 130, 170), 0.10, soft=2.2, salt=320)
+        blossom(cx, cy, r, random.uniform(0, 6), 0.30, dark=True)
+        stamp(cx, cy, r * 2.6, (255, 120, 165), 0.08, soft=2.8, salt=321)
+    # Tiny petals drifting near the bottom too
+    for _ in range(14):
+        x = random.uniform(20, W - 20)
+        y = random.uniform(1500, 2300)
+        s = random.uniform(8, 18)
+        petal(x, y, s, random.uniform(-60, 60),
+              (255, 195, 215), (250, 110, 150), random.uniform(0.25, 0.55))
+
+
 def paint_bubbles():
     print("painting glass digit bubbles...")
     specs = [
-        (120, 90, 42, 0.20, 0.42, "61", False),
-        (1010, 105, 32, 0.10, 0.25, "3", False),
-        (760, 250, 27, 0.08, 0.18, "", False),
-        (90, 430, 26, 0.12, 0.30, "", False),
-        (950, 600, 24, 0.10, 0.22, "", False),
-        (55, 790, 38, 0.30, 0.55, "42", True),
-        (1030, 850, 27, 0.10, 0.20, "", False),
-        (85, 1080, 24, 0.08, 0.16, "", False),
-        (995, 1130, 22, 0.06, 0.12, "", False),
-        (150, 1420, 26, 0.10, 0.20, "", False),
-        (960, 1450, 25, 0.08, 0.15, "", False),
-        (70, 1680, 22, 0.06, 0.12, "", False),
-        (1010, 1700, 28, 0.08, 0.15, "", False),
-        (135, 1980, 24, 0.08, 0.15, "", False),
-        (940, 2000, 26, 0.08, 0.14, "", False),
+        (150, 195, 62, 0.16, 0.55, "53", False),
+        (395, 200, 44, 0.10, 0.38, "12", False),
+        (665, 185, 44, 0.10, 0.42, "07", False),
+        (925, 205, 60, 0.12, 0.50, "96", False),
+        (185, 380, 48, 0.12, 0.45, "27", False),
+        (855, 405, 44, 0.10, 0.42, "35", False),
+        (1000, 510, 40, 0.08, 0.35, "19", False),
+        (95, 540, 52, 0.14, 0.50, "61", False),
+        (950, 625, 48, 0.12, 0.48, "42", False),
+        (85, 700, 54, 0.16, 0.55, "84", False),
+        (935, 815, 42, 0.10, 0.40, "70", False),
     ]
     for (cx, cy, r, fa, ra, text, ht) in specs:
         draw_glass_bubble(cx, cy, r, fa, ra, text, ht)
 
 
-def paint_sparks():
-    print("painting sparks, bokeh, petals...")
-    for _ in range(105):
+def paint_light_streaks():
+    print("painting radiating light streaks...")
+    # Gold/pink streaks radiating outward from the fruit seat (ref's light rays)
+    for i in range(26):
         ang = random.uniform(0, math.tau)
-        rad = random.uniform(140, 500)
-        x = 540 + math.cos(ang) * rad * random.uniform(0.72, 1.12)
-        y = 700 + math.sin(ang) * rad * random.uniform(0.58, 0.92)
-        if not (0 < x < W and 0 < y < 1150):
-            continue
-        warm = random.random() < 0.7
-        col = (255, 232, 170) if warm else (255, 178, 198)
-        stamp(x, y, random.uniform(1.6, 4.6), col, random.uniform(0.25, 0.9),
-              salt=random.randint(0, 9999))
-        if random.random() < 0.22:
-            stamp(x, y, random.uniform(6, 12), col, 0.12, salt=random.randint(0, 9999))
-    for _ in range(13):
-        x = random.uniform(60, W - 60)
-        y = random.uniform(120, 1120)
-        if abs(x - 540) < 250 and abs(y - 700) < 250:
-            continue
-        r = random.uniform(16, 44)
-        col = random.choice([(255, 170, 190), (255, 205, 215), (255, 190, 160)])
-        stamp(x, y, r, col, random.uniform(0.05, 0.12), soft=1.4,
-              salt=random.randint(0, 9999))
-    for _ in range(12):
-        x = random.choice([random.uniform(30, 210), random.uniform(W - 210, W - 30)])
-        y = random.uniform(200, 1100)
-        s = random.uniform(10, 22)
-        c1 = random.choice([(255, 190, 210), (255, 210, 222)])
-        c2 = random.choice([(252, 130, 165), (250, 110, 150)])
-        petal(x, y, s, random.uniform(-40, 40), c1, c2, random.uniform(0.35, 0.7))
+        x0 = 540 + math.cos(ang) * 90
+        y0 = 660 + math.sin(ang) * 70
+        length = random.uniform(120, 320)
+        x1 = 540 + math.cos(ang) * (90 + length)
+        y1 = 660 + math.sin(ang) * (70 + length * 0.8)
+        warm = random.random() < 0.55
+        col = (255, 225, 170) if warm else (255, 170, 195)
+        steps = int(length / 5)
+        for k in range(steps):
+            t = k / max(1, steps - 1)
+            px, py = lerp(x0, x1, t), lerp(y0, y1, t)
+            stamp(px, py, 2.2 - 1.4 * t, col, 0.30 * (1 - t * 0.6), soft=1.6,
+                  salt=400 + i % 12)
 
 
-def paint_ground():
-    print("painting floor glow...")
-    ellipse_stamp(540, 1235, 330, 52, 0, (120, 8, 32), 0.20, soft=2.4, salt=320)
-    ellipse_stamp(540, 1235, 200, 32, 0, (255, 130, 155), 0.10, soft=2.2, salt=321)
-    stamp(540, 1500, 620, (70, 14, 26), 0.20, soft=2.6, salt=322)
+def paint_floor():
+    print("painting gold floor swirls...")
+    # Concentric tilted elliptical arcs under the CTA (ref's circular light rings)
+    rings = [
+        dict(cx=540, cy=2050, rx=430, ry=64, rot=-4, w=5.0, a=0.34),
+        dict(cx=540, cy=2075, rx=520, ry=84, rot=-3, w=3.5, a=0.24),
+        dict(cx=540, cy=2035, rx=330, ry=44, rot=-5, w=3.0, a=0.30),
+        dict(cx=540, cy=2100, rx=600, ry=105, rot=-2, w=2.5, a=0.16),
+    ]
+    for ri, ring in enumerate(rings):
+        t = math.radians(ring["rot"])
+        ct, st = math.cos(t), math.sin(t)
+        n = 210
+        for i in range(n):
+            f = i / (n - 1)
+            a = math.tau * f
+            x0 = math.cos(a) * ring["rx"]
+            y0 = math.sin(a) * ring["ry"]
+            px = ring["cx"] + x0 * ct - y0 * st
+            py = ring["cy"] + x0 * st + y0 * ct
+            # Brighter on the front (lower) half — light catching the floor
+            boost = 1.0 + 0.7 * max(0.0, math.sin(a))
+            gold = (255, 214 - int(40 * (1 - boost)) , 140)
+            stamp(px, py, ring["w"] * boost, gold, ring["a"] * boost, soft=1.7,
+                  salt=500 + i % 10)
+        # Comet head on the outermost visible ring
+        if ri == 0:
+            hx = ring["cx"] + math.cos(0.6) * ring["rx"]
+            hy = ring["cy"] + math.sin(0.6) * ring["ry"]
+            stamp(hx, hy, 9, (255, 244, 214), 0.85, salt=510)
+            stamp(hx, hy, 4, (255, 255, 255), 0.95, salt=511)
 
 
 def encode_png(path):
@@ -413,12 +400,9 @@ def encode_png(path):
 if __name__ == "__main__":
     paint_gradient()
     paint_glow_pool()
-    paint_grain()
-    paint_vines(wind_t=0.0)
-    paint_big_blossoms()
-    paint_swirls(with_head=True)
-    paint_halo_ring()
+    paint_canopy()
+    paint_scatter()
     paint_bubbles()
-    paint_sparks()
-    paint_ground()
+    paint_light_streaks()
+    paint_floor()
     encode_png("app/src/main/res/drawable-nodpi/welcome_poster_bg.png")

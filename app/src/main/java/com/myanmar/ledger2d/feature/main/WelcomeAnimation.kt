@@ -368,8 +368,8 @@ fun WelcomeScreen(onContinue: () -> Unit) {
         val heroAlpha = if (transitioningOut) 1f else heroIn.coerceIn(0f, 1f)
         Box(
             Modifier.align(Alignment.TopCenter)
-                .offset { IntOffset(0, (cherryCenter.y - 174.dp.toPx()).roundToInt()) }
-                .size(280.dp, 280.dp)
+                .offset { IntOffset(0, (cherryCenter.y - 186.dp.toPx()).roundToInt()) }
+                .size(300.dp, 300.dp)
                 .graphicsLayer {
                     cameraDistance = 8f * density
                     transformOrigin = TransformOrigin(0.5f, 0.55f)
@@ -696,8 +696,13 @@ private fun WelcomeCtaButton(
                     translationY = (1f - visibleCoerced) * 16.dp.toPx()
                 }
                 .clip(ctaShape)
-                .background(Brush.horizontalGradient(0f to Color(0xFFFF4D79), 0.55f to Color(0xFFEF2860), 1f to Color(0xFFC40E4A)))
-                .border(1.dp, Brush.horizontalGradient(listOf(Color(0x80FFD9E4), Color(0x40FF87AB), Color(0x80FFD9E4))), ctaShape)
+                .background(Brush.horizontalGradient(0f to Color(0xFFFF4D8F), 0.55f to Color(0xFFEF2860), 1f to Color(0xFFC40E4A)))
+                // Gold ring — the ref CTA's metallic rim
+                .border(
+                    2.dp,
+                    Brush.horizontalGradient(listOf(Color(0xFFFFE9A8), Color(0xFFC9962E), Color(0xFFFFD98A), Color(0xFFB87F2C))),
+                    ctaShape
+                )
         ) {
             // Glass top highlight
             Box(
@@ -754,7 +759,7 @@ private fun WelcomeCtaButton(
                     painter = painterResource(R.drawable.ic_cherry_mark),
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.size(8.dp))
                 Text(label, style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -764,7 +769,8 @@ private fun WelcomeCtaButton(
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(Color(0x998F0E2E))
-                        .border(1.dp, Color.White.copy(alpha = 0.30f), CircleShape),
+                        // Gold-ringed arrow chip (ref)
+                        .border(1.6.dp, Brush.linearGradient(listOf(Color(0xFFFFE9A8), Color(0xFFC9962E))), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
