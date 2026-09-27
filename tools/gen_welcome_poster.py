@@ -166,7 +166,7 @@ def halftone_dot(px, py, radius, salt):
         off = (1.0 / 7.0 if (px + py + 2 * salt) % 2 == 0 else 3.4 / 7.0) * radius + 0.30 * radius
     else:
         off = 0.30 * radius
-    stamp(px, py, off, (255, 110, 135), 0.16, soft=2.2)
+    stamp(px, py, off * 0.75, (255, 110, 135), 0.07, soft=2.2)
 
 
 # ------------------------------------------------------------------ paint --
@@ -277,42 +277,41 @@ def paint_halo_ring():
     arc(540, 700, 335, 0, 360, 1.6, (255, 255, 255), 0.25, salt=410)
 
 
-CHAR_SEGS = {
-    "0": [("AB"), ("BC"), ("CD"), ("DA")],
-    "1": [("BE"), ("EF")],
-    "2": [("AB"), ("BE"), ("EF"), ("DF"), ("CD")],
-    "3": [("AB"), ("BE"), ("EF"), ("CF"), ("CD")],
-    "4": [("AE"), ("BE"), ("EF"), ("CF")],
-    "5": [("AB"), ("AE"), ("EF"), ("CF"), ("CD")],
-    "6": [("AB"), ("AE"), ("EF"), ("DF"), ("CF"), ("CD")],
-    "7": [("AB"), ("BE"), ("CF")],
-    "8": [("AB"), ("BC"), ("CD"), ("DA"), ("EF")],
-    "9": [("AB"), ("AE"), ("EF"), ("CF"), ("CD")],
+# Real seven-segment topology drawn as rounded bars: a=top, b=top-right,
+# c=bottom-right, d=bottom, e=bottom-left, f=top-left, g=middle.
+SEG_LINES = {
+    "a": (-0.60, -1.00, 0.60, -1.00),
+    "b": (0.60, -0.95, 0.60, -0.05),
+    "c": (0.60, 0.05, 0.60, 0.95),
+    "d": (-0.60, 1.00, 0.60, 1.00),
+    "e": (-0.60, 0.05, -0.60, 0.95),
+    "f": (-0.60, -0.95, -0.60, -0.05),
+    "g": (-0.55, 0.00, 0.55, 0.00),
 }
-SEG_PTS = {
-    "A": (-0.62, -1.0), "B": (0.62, -1.0), "C": (0.62, 1.0),
-    "D": (-0.62, 1.0), "E": (0.0, 0.0), "F": (0.0, 0.0),
+DIGIT_SEGS = {
+    "0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc",
+    "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcfgd",
 }
 
 
 def draw_char(ch, x, y, scale, alpha, halftone=False):
-    w = 0.34 * scale
-    h = 0.52 * scale
-    for seg in CHAR_SEGS.get(ch, []):
-        p0 = SEG_PTS[seg[0]]
-        p1 = SEG_PTS[seg[1]]
-        x0, y0 = x + p0[0] * w, y + p0[1] * h
-        x1, y1 = x + p1[0] * w, y + p1[1] * h
-        dist = math.hypot(x1 - x0, y1 - y0)
-        n = max(2, int(dist / 2.6) + 1)
+    w = 0.34 * scale   # half-width of the glyph box
+    h = 0.52 * scale   # half-height
+    dot = 0.19 * scale
+    for seg in DIGIT_SEGS.get(ch, ""):
+        x0, y0, x1, y1 = SEG_LINES[seg]
+        px0, py0 = x + x0 * w, y + y0 * h
+        px1, py1 = x + x1 * w, y + y1 * h
+        dist = math.hypot(px1 - px0, py1 - py0)
+        n = max(2, int(dist / (dot * 0.9)) + 1)
         for i in range(n):
             t = i / (n - 1)
-            px, py = lerp(x0, x1, t), lerp(y0, y1, t)
+            sx, sy = lerp(px0, px1, t), lerp(py0, py1, t)
             if halftone:
-                stamp(px, py, 0.30 * scale, (255, 110, 135), alpha)
+                stamp(sx, sy, dot * 0.8, (255, 110, 135), alpha)
             else:
-                stamp(px, py, 0.42 * scale, (255, 140, 160), alpha * 0.8)
-                stamp(px, py, 1.5 * scale, (255, 80, 110), alpha * 0.15)
+                stamp(sx, sy, dot, (255, 150, 168), alpha * 0.85)
+                stamp(sx, sy, dot * 2.6, (255, 80, 110), alpha * 0.16)
 
 
 def draw_glass_bubble(cx, cy, r, fill_a, ring_a, text="", halftone=False):
