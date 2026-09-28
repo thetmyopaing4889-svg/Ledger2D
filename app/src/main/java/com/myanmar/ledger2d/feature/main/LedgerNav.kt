@@ -39,10 +39,10 @@ import java.time.LocalDateTime
         nav,
         if (startAtWelcome || !language.onboardingComplete) "welcome" else "home",
         modifier,
-        enterTransition = { androidx.compose.animation.core.tween<Float>(0) },
-        exitTransition = { androidx.compose.animation.core.tween<Float>(0) },
-        popEnterTransition = { androidx.compose.animation.core.tween<Float>(0) },
-        popExitTransition = { androidx.compose.animation.core.tween<Float>(0) }
+        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(0)) },
+        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(0)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(0)) },
+        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(0)) }
     ){
         composable("welcome"){WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
         composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onSettlement={goTab("settlement")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}})}
