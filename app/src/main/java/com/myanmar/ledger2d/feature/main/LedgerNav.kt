@@ -35,7 +35,15 @@ import java.time.LocalDateTime
     val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
     CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
-    NavHost(nav, if (startAtWelcome || !language.onboardingComplete) "welcome" else "home", modifier){
+    NavHost(
+        nav,
+        if (startAtWelcome || !language.onboardingComplete) "welcome" else "home",
+        modifier,
+        enterTransition = { androidx.compose.animation.core.tween<Float>(0) },
+        exitTransition = { androidx.compose.animation.core.tween<Float>(0) },
+        popEnterTransition = { androidx.compose.animation.core.tween<Float>(0) },
+        popExitTransition = { androidx.compose.animation.core.tween<Float>(0) }
+    ){
         composable("welcome"){WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
         composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onSettlement={goTab("settlement")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}})}
         composable("todayLedger"){TodayLedgerScreen(vm,{nav.popBackStack()},{route->when(route){"home"->goTab("home");"ledger"->goTab("todayLedger");"settlement"->goTab("settlement");"manage"->goTab("agents");"quick"->nav.navigate("quickEntry")}})}
