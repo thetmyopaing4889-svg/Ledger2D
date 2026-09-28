@@ -12,6 +12,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +20,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,11 +31,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,11 +48,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -61,35 +62,18 @@ import com.myanmar.ledger2d.R
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
-// ============================================================================
-// Cherry 2D — Welcome
-// The screen IS the uploaded poster (welcome_poster_full.png), full-bleed.
-// On top of it, ONLY:
-//   * gentle "blink blink" light pulses (sparkle shimmer + warm halo)
-//   * a slow rose-gold color wave drifting across the poster (screen blend)
-//   * a bottom aurora ribbon breathing with the poster's pink floor light
-//   * a soft press flash on the way to Home
-// The CTA is a real button styled to live inside the poster (glossy pink
-// pill, gold ring, cherry mark, Burmese label, gold-ringed arrow chip).
-// It is anchored to a poster FRACTION (CTA_FY), not a fixed dp offset, so
-// it always sits on the poster's baked floor-ring light. ContentScale.Crop
-// fits the poster height on portrait phones, so vertical poster fractions
-// map linearly to the screen height. When the poster ships a baked-in
-// CTA, set CTA_FY to the pill center measured by tools/measure_cta.py and
-// the real button covers it exactly. Press -> flash -> onContinue().
-// Public API stays WelcomeScreen(onContinue: () -> Unit).
-// ============================================================================
-
-// Vertical center of the CTA as a fraction of the poster height.
-// Measured on the current poster's pink floor-ring center (tools/measure_cta.py).
-private const val CTA_FY = 0.79f
-// Horizontal insets as fractions of screen width (poster pill width ≈ 84%).
-private const val CTA_HFRACTION = 0.055f
+private const val CTA_CENTER_Y = 0.785f
+private const val CTA_SIDE_FRACTION = 0.085f
 
 private fun playWelcomeClick(view: android.view.View) {
     val audio = view.context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-    if (audio?.ringerMode == AudioManager.RINGER_MODE_NORMAL) view.playSoundEffect(SoundEffectConstants.CLICK)
+    if (audio?.ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+        view.playSoundEffect(SoundEffectConstants.CLICK)
+    }
 }
 
 @Composable
@@ -97,7 +81,9 @@ private fun WelcomeDarkBars() {
     val view = LocalView.current
     DisposableEffect(view) {
         val window = (view.context as? android.app.Activity)?.window
-        val controller = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, it.decorView) }
+        val controller = window?.let {
+            androidx.core.view.WindowCompat.getInsetsController(it, it.decorView)
+        }
         controller?.isAppearanceLightStatusBars = false
         onDispose { controller?.isAppearanceLightStatusBars = true }
     }
@@ -105,36 +91,36 @@ private fun WelcomeDarkBars() {
 
 @Composable
 fun WelcomeScreen(onContinue: () -> Unit) {
-    val l = LocalLanguage.current
+    val language = LocalLanguage.current
     val view = LocalView.current
     WelcomeDarkBars()
 
-    // ---- shared blink clock ------------------------------------------------
-    val blink = rememberInfiniteTransition(label = "welcome-blink")
-    val sparkBlink = blink.animateFloat(
-        initialValue = 0.30f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Reverse),
-        label = "spark")
-    val haloBlink = blink.animateFloat(
-        initialValue = 0.55f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Reverse),
-        label = "halo")
-    val auroraBlink = blink.animateFloat(
-        initialValue = 0.45f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(3200, easing = LinearEasing), RepeatMode.Reverse),
-        label = "aurora")
-    val wavePhase = blink.animateFloat(
-        initialValue = 0f, targetValue = 1f,
+    val motion = rememberInfiniteTransition(label = "welcome-premium-motion")
+    val phase by motion.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing)),
-        label = "wavePhase")
+        label = "light-wave"
+    )
+    val pulse by motion.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Reverse),
+        label = "cherry-glow"
+    )
+    val twinkle by motion.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1350, easing = LinearEasing), RepeatMode.Reverse),
+        label = "sparkle"
+    )
 
     var pressedOut by remember { mutableStateOf(false) }
     val exitFlash = remember { Animatable(0f) }
-
     LaunchedEffect(pressedOut) {
         if (pressedOut) {
-            launch { exitFlash.animateTo(1f, tween(360, easing = LinearEasing)) }
-            delay(340)
+            launch { exitFlash.animateTo(1f, tween(380, easing = LinearEasing)) }
+            delay(350)
             onContinue()
         }
     }
@@ -142,108 +128,52 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0xFF150309))
+            .background(Color(0xFF08020B))
     ) {
-        // Layer 0 — the poster itself, full-bleed, edge to edge.
         Image(
-            painter = painterResource(R.drawable.welcome_poster_full),
-            contentDescription = null,
+            painter = painterResource(R.drawable.welcome_premium_poster),
+            contentDescription = "Cherry 2D Ledger",
             contentScale = ContentScale.Crop,
             alignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxSize()
                 .drawWithContent {
                     drawContent()
-                    // Warm rose color-wave drifting across the poster.
-                    // Two soft bands ride the wave; pure additive light,
-                    // never covering the art (screen-ish via moderate alpha).
-                    val t = wavePhase.value
-                    val w = size.width
-                    val hgt = size.height
-                    val band = w * 0.55f
-                    val x1 = w * 1.25f - (w * 1.25f + band) * t
+                    val band = size.width * 0.42f
+                    val x = size.width * 1.35f - (size.width * 1.75f) * phase
                     drawRect(
                         brush = Brush.linearGradient(
                             0f to Color.Transparent,
-                            0.5f to Color(0x24FFB27A),   // rose-gold breath
+                            0.5f to Color(0x20FF77B5),
                             1f to Color.Transparent,
-                            start = Offset(x1, 0f),
-                            end = Offset(x1 + band, hgt * 0.9f)
-                        )
-                    )
-                    val x2 = w * 1.45f - (w * 1.45f + band) * ((t + 0.5f) % 1f)
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            0f to Color.Transparent,
-                            0.5f to Color(0x1EFF6E9C),   // pink breath
-                            1f to Color.Transparent,
-                            start = Offset(x2, 0f),
-                            end = Offset(x2 + band, hgt)
+                            start = Offset(x, size.height * 0.08f),
+                            end = Offset(x + band, size.height * 0.92f)
                         )
                     )
                 }
         )
 
-        // Layer 1 — gentle blink veil: a faint warm light that breathes.
+        // A restrained cinematic bloom over the cherry hero; it never hides the poster.
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = 0.16f * haloBlink.value }
+                .graphicsLayer { alpha = 0.12f * pulse }
                 .background(
                     Brush.radialGradient(
-                        0f to Color(0x40FFC9A8),
-                        0.55f to Color(0x20FF8FB4),
-                        1f to Color.Transparent
+                        0f to Color(0x66FF9DC8),
+                        0.32f to Color(0x25FF3E86),
+                        0.72f to Color.Transparent,
+                        radius = 560f
                     )
                 )
         )
 
-        // Layer 2 — bottom aurora ribbons echoing the poster's pink floor
-        // light (color-wave bands that slowly sway side to side).
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(240.dp)
-                .graphicsLayer { alpha = auroraBlink.value }
-                .drawBehind {
-                    val hgt = size.height
-                    val w = size.width
-                    val sway = kotlin.math.sin(wavePhase.value * 2f * Math.PI.toFloat()) * w * 0.06f
-                    // wide soft ribbon
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.55f to Color(0x2EFF4D79),
-                            1f to Color(0x00FFD1E0)
-                        ),
-                        topLeft = Offset(sway, 0f),
-                        size = androidx.compose.ui.geometry.Size(w - sway, hgt)
-                    )
-                    // bright core ribbon
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.45f to Color(0x26FFB27A),
-                            1f to Color.Transparent
-                        ),
-                        topLeft = Offset(-sway * 1.4f, hgt * 0.18f),
-                        size = androidx.compose.ui.geometry.Size(w + sway * 1.4f, hgt * 0.82f)
-                    )
-                }
-        )
+        WelcomeLightEffects(phase = phase, pulse = pulse, twinkle = twinkle)
 
-        // Layer 3 — sparkle dust: tiny glints twinkling over the upper poster.
-        WelcomeSparkles(alpha = sparkBlink.value)
-
-        // Layer 4 — CTA (real button) anchored to the poster fraction so it
-        // sits on the poster's baked floor-ring light at any screen height.
-        BoxWithConstraints(Modifier.matchParentSize()) {
-            // Under Crop with height fitting exactly, screen fy == poster fy.
-            val centerY = maxHeight * CTA_FY
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             WelcomeCtaButton(
-                label = l.translate("စတင်အသုံးပြုမည်"),
-                glow = ctaGlowValue(),
+                label = language.translate("စတင်အသုံးပြုမည်"),
+                glow = pulse,
                 enabled = !pressedOut,
                 onPress = {
                     playWelcomeClick(view)
@@ -251,24 +181,19 @@ fun WelcomeScreen(onContinue: () -> Unit) {
                 },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = centerY)
-                    .offset(y = (-31).dp) // own height/2 to center on the anchor
+                    .offset(y = maxHeight * CTA_CENTER_Y - 31.dp)
+                    .fillMaxWidth(1f - CTA_SIDE_FRACTION * 2f)
             )
         }
 
-        // Exit flash — soft pink/white light that carries the screen to Home.
         if (pressedOut) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = exitFlash.value.coerceIn(0f, 1f) }
+                    .graphicsLayer { alpha = exitFlash.value }
                     .background(
                         Brush.radialGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.96f),
-                                Color(0xFFFFC9D9).copy(alpha = 0.85f),
-                                Color.Transparent
-                            )
+                            listOf(Color.White.copy(alpha = 0.92f), Color(0xFFFF7CB4).copy(alpha = 0.65f), Color.Transparent)
                         )
                     )
             )
@@ -276,59 +201,50 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     }
 }
 
-// Small helper so the CTA glow shares the main blink clock without
-// threading another parameter through composition.
 @Composable
-private fun ctaGlowValue(): Float = rememberInfiniteTransition(label = "cta-blink").animateFloat(
-    initialValue = 0.45f, targetValue = 1f,
-    animationSpec = infiniteRepeatable(tween(2000, easing = LinearEasing), RepeatMode.Reverse),
-    label = "ctaGlow").value
-
-// Twinkling glints (tiny 4-point stars) drifting over the poster's upper half.
-@Composable
-private fun WelcomeSparkles(alpha: Float) {
-    val glints = remember {
+private fun WelcomeLightEffects(phase: Float, pulse: Float, twinkle: Float) {
+    val sparks = remember {
         listOf(
-            Glint(0.10f, 0.10f, 22f, 0f), Glint(0.26f, 0.16f, 15f, 1.3f),
-            Glint(0.46f, 0.08f, 18f, 2.1f), Glint(0.66f, 0.13f, 22f, 0.7f),
-            Glint(0.86f, 0.09f, 15f, 1.9f), Glint(0.94f, 0.22f, 20f, 2.6f),
-            Glint(0.06f, 0.30f, 15f, 3.4f), Glint(0.74f, 0.27f, 13f, 4.1f),
-            Glint(0.18f, 0.44f, 13f, 5.0f), Glint(0.58f, 0.36f, 15f, 5.6f),
-            Glint(0.90f, 0.40f, 13f, 0.4f), Glint(0.38f, 0.52f, 13f, 1.1f)
+            Spark(0.12f, 0.10f, 11f, 0.0f), Spark(0.28f, 0.17f, 8f, 1.2f),
+            Spark(0.54f, 0.08f, 10f, 2.0f), Spark(0.76f, 0.15f, 9f, 0.8f),
+            Spark(0.91f, 0.28f, 8f, 2.8f), Spark(0.16f, 0.36f, 7f, 3.4f),
+            Spark(0.68f, 0.33f, 8f, 4.1f), Spark(0.84f, 0.52f, 7f, 5.0f),
+            Spark(0.35f, 0.61f, 6f, 5.7f)
         )
     }
-    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+    Canvas(Modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
-        glints.forEach { g ->
-            // each glint twinkles on its own phase of the shared 1500ms clock
-            val tw = (kotlin.math.sin((alpha * 2f + g.phase) * Math.PI.toFloat()) + 1f) / 2f
-            val a = alpha * (0.25f + 0.75f * tw)
-            val cx = g.xf * w
-            val cy = g.yf * h
-            val r = g.pxSize * (0.7f + 0.5f * tw)
-            drawGlint(cx, cy, r, a)
+
+        // Slow concentric light ripples echo the artwork's glowing floor.
+        val ripple = (phase * 2f * PI.toFloat())
+        repeat(3) { index ->
+            val travel = ((phase + index * 0.23f) % 1f)
+            val radius = w * (0.16f + travel * 0.42f)
+            val alpha = (0.16f * (1f - travel) * pulse).coerceAtLeast(0f)
+            drawOval(
+                color = Color(0xFFFF6DAA).copy(alpha = alpha),
+                topLeft = Offset(w * 0.5f - radius, h * 0.685f - radius * 0.22f),
+                size = Size(radius * 2f, radius * 0.44f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f)
+            )
+        }
+
+        sparks.forEach { spark ->
+            val shimmer = ((sin((twinkle * 2f + spark.phase) * PI.toFloat()) + 1f) / 2f)
+            val alpha = 0.18f + shimmer * 0.72f
+            val x = spark.x * w + sin((phase + spark.phase) * 2f * PI.toFloat()) * 5f
+            val y = spark.y * h + cos((phase + spark.phase) * 2f * PI.toFloat()) * 4f
+            val r = spark.radius * (0.72f + shimmer * 0.50f)
+            drawLine(Color(0xFFFFD9E8).copy(alpha = alpha), Offset(x - r, y), Offset(x + r, y), strokeWidth = 1.3f)
+            drawLine(Color.White.copy(alpha = alpha * 0.72f), Offset(x, y - r), Offset(x, y + r), strokeWidth = 1.3f)
+            drawCircle(Color.White.copy(alpha = alpha), radius = r * 0.18f, center = Offset(x, y))
         }
     }
 }
 
-private data class Glint(val xf: Float, val yf: Float, val pxSize: Float, val phase: Float)
+private data class Spark(val x: Float, val y: Float, val radius: Float, val phase: Float)
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGlint(x: Float, y: Float, r: Float, a: Float) {
-    if (a <= 0.02f) return
-    val col = Color(0xFFFFF3DA)
-    // 4-point star: two slim crossed rays + bright core
-    drawLine(col.copy(alpha = 0.75f * a), Offset(x - r, y), Offset(x + r, y), strokeWidth = r * 0.10f)
-    drawLine(col.copy(alpha = 0.75f * a), Offset(x, y - r), Offset(x, y + r), strokeWidth = r * 0.10f)
-    drawCircle(col.copy(alpha = 0.9f * a), radius = r * 0.22f, center = Offset(x, y))
-    drawCircle(Color.White.copy(alpha = a), radius = r * 0.10f, center = Offset(x, y))
-}
-
-// ============================================================================
-// The CTA — glossy pink pill with gold rim + cherry mark + Burmese label +
-// gold-ringed arrow chip, floating over the poster's floor-ring light.
-// Only motion: gentle outer glow pulse + travelling highlight sweep + press.
-// ============================================================================
 @Composable
 private fun WelcomeCtaButton(
     label: String,
@@ -341,140 +257,87 @@ private fun WelcomeCtaButton(
     val pressed by interaction.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
         targetValue = if (pressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-        ),
-        label = "welcomeCtaPress"
+        animationSpec = spring(),
+        label = "cta-press-scale"
     )
-    val ctaShape = RoundedCornerShape(31.dp)
-    val sweep = rememberInfiniteTransition(label = "cta-sweep").animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(3800, easing = LinearEasing)),
-        label = "ctaSweep")
+    val sweep by rememberInfiniteTransition(label = "cta-shimmer").animateFloat(
+        initialValue = -0.3f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(tween(3200, easing = LinearEasing)),
+        label = "cta-shimmer-position"
+    )
+    val shape = RoundedCornerShape(30.dp)
 
     Box(
         modifier
-            // Fraction-based width keeps the pill's side margins proportional
-            // to the poster's margins at any screen width; still centered.
-            .fillMaxWidth(1f - 2 * CTA_HFRACTION)
             .height(62.dp)
+            .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+            .drawBehind {
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(listOf(Color(0x66FF2D8A), Color(0x66FFB34D), Color(0x55FF2D8A))),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
+                )
+            }
+            .padding(2.dp)
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    0f to Color(0xFFB80E58),
+                    0.48f to Color(0xFFFF2D82),
+                    1f to Color(0xFF7F104E)
+                )
+            )
+            .border(
+                1.6.dp,
+                Brush.horizontalGradient(listOf(Color(0xFFFFD98C), Color(0xFFFFF0C1), Color(0xFFC88A32))),
+                shape
+            )
+            .drawBehind {
+                val x = size.width * sweep
+                drawRect(
+                    brush = Brush.linearGradient(
+                        0f to Color.Transparent,
+                        0.5f to Color.White.copy(alpha = 0.26f * glow),
+                        1f to Color.Transparent,
+                        start = Offset(x, 0f),
+                        end = Offset(x + size.width * 0.22f, size.height)
+                    )
+                )
+            }
     ) {
-        // Outer glow pulse (behind the pill, echoing the floor light)
-        Box(
-            Modifier
-                .matchParentSize()
-                .graphicsLayer {
-                    alpha = 0.42f * glow
-                    scaleX = 1.05f + 0.02f * glow
-                    scaleY = 1.22f + 0.06f * glow
-                }
-                .drawBehind {
-                    drawRoundRect(
-                        brush = Brush.horizontalGradient(
-                            listOf(Color(0x66FF4D79), Color(0x40FFB27A))
-                        ),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                            size.height / 2f, size.height / 2f)
-                    )
-                }
-        )
-        // Pill body
-        Box(
-            Modifier
-                .matchParentSize()
-                .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
-                .clip(ctaShape)
-                .background(
-                    Brush.horizontalGradient(
-                        0f to Color(0xFFFF4D8F), 0.55f to Color(0xFFEF2860), 1f to Color(0xFFC40E4A)
-                    )
-                )
-                .border(
-                    2.dp,
-                    Brush.horizontalGradient(
-                        listOf(Color(0xFFFFE9A8), Color(0xFFC9962E), Color(0xFFFFD98A), Color(0xFFB87F2C))
-                    ),
-                    ctaShape
-                )
+        Button(
+            onClick = onPress,
+            enabled = enabled,
+            interactionSource = interaction,
+            modifier = Modifier.fillMaxSize(),
+            shape = shape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                contentColor = Color.White,
+                disabledContainerColor = Color.Transparent,
+                disabledContentColor = Color.White
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
         ) {
-            // Glass top highlight
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .drawBehind {
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                0f to Color.White.copy(alpha = 0.38f),
-                                0.42f to Color.Transparent
-                            ),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                                size.height / 2f, size.height / 2f)
-                        )
-                    }
-            )
-            // Travelling highlight sweep (gentle blink)
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .drawBehind {
-                        val x = size.width * (sweep.value * 1.5f - 0.25f)
-                        drawRect(
-                            brush = Brush.linearGradient(
-                                0f to Color.Transparent,
-                                0.5f to Color.White.copy(alpha = 0.30f),
-                                1f to Color.Transparent,
-                                start = Offset(x, 0f),
-                                end = Offset(x + size.width * 0.32f, size.height)
-                            ),
-                            blendMode = BlendMode.Screen
-                        )
-                    }
-            )
-            Button(
-                onClick = onPress,
-                enabled = enabled,
-                interactionSource = interaction,
-                modifier = Modifier.matchParentSize(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White,
-                    disabledContainerColor = Color.Transparent,
-                    disabledContentColor = Color.White
-                ),
-                shape = ctaShape,
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(R.drawable.ic_cherry_mark),
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(21.dp)
                 )
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.size(10.dp))
+                Spacer(Modifier.size(9.dp))
+                Text(label, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.size(12.dp))
                 Box(
                     Modifier
-                        .size(36.dp)
+                        .size(37.dp)
                         .clip(CircleShape)
-                        .background(Color(0x998F0E2E))
-                        .border(
-                            1.6.dp,
-                            Brush.linearGradient(listOf(Color(0xFFFFE9A8), Color(0xFFC9962E))),
-                            CircleShape
-                        ),
+                        .background(Color(0x665E0A3D))
+                        .border(1.5.dp, Color(0xFFFFE8A5), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.ArrowForward, null,
-                        tint = Color.White,
-                        modifier = Modifier.size(17.dp)
-                    )
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(18.dp))
                 }
             }
         }
