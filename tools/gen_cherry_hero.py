@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Generate the photoreal Cherry hero sprite (drawable-nodpi/cherry_hero_art.png).
 
-Pure-stdlib painter matching the reference poster:
+Pure-stdlib painter matching the NEW reference poster (deep-red glossy pair):
 
-  * two glossy spheres with a soft pink-to-red gradient (ref's lighter,
-    rosier look) — light from upper-left, gentle rim shade
-  * tiny sparkle particles floating inside/around the fruit
-  * tapered brown-green stems meeting at a junction knot
-  * BIG soft leaf with fine jitter texture (the ref's fuzzy look)
-  * faint thin halo ring around the pair
-  * two subtle gold comet swirls peeking from behind the fruit
-  * small star glints
+  * two glossy DEEP-RED spheres — small hot lit spot -> cherry red #E01B3D
+    -> deep maroon, strong white dual speculars, transmitted-light glow at
+    the lower edge (ref's glowing pass-through light)
+  * CRISP smooth hero leaf (NO fuzz/dots): analytic per-pixel shape, smooth
+    green gradient, central + side veins, glossy sheen streak
+  * tapered olive-brown stems meeting at a junction knot with a tiny red-brown
+    bud on top (ref)
+  * BOLD gold comet swirl ribbons wrapping the pair (two behind, one bright
+    streak crossing IN FRONT of the fruit) with white-gold comet heads
+  * 4-point star flares on the comet heads, floating sparkles + gold dust
 
 Output: RGBA with transparency, 1024x1024.
 Re-run from repo root:  python3 tools/gen_cherry_hero.py
@@ -25,12 +27,6 @@ W = H = 1024
 random.seed(20260927)
 
 buf = bytearray(W * H * 4)  # straight RGBA, starts fully transparent
-
-
-def sample_jitter(x, y, salt=0):
-    h1 = ((x * 374761393 + y * 668265263 + salt * 2246822519) & 0xFFFFFFFF)
-    h2 = ((x * 2654435761 + y * 2246822519 + salt * 3266489917) & 0xFFFFFFFF)
-    return ((h1 >> 16) / 65535.0 - 0.5, (h2 >> 16) / 65535.0 - 0.5)
 
 
 def blend(px, py, r, g, b, a):
@@ -48,8 +44,9 @@ def blend(px, py, r, g, b, a):
     buf[i + 3] = int(oa * 255)
 
 
-def stamp(cx, cy, radius, color, alpha, soft=2.2, salt=0):
-    if radius < 0.7:
+def stamp(cx, cy, radius, color, alpha, soft=2.2):
+    """Smooth round airbrush stamp (no jitter — jitter caused the halftone look)."""
+    if radius < 0.7 or alpha <= 0:
         return
     r = int(radius) + 2
     cx -= 0.5
@@ -62,8 +59,7 @@ def stamp(cx, cy, radius, color, alpha, soft=2.2, salt=0):
         for px in range(int(cx) - span, int(cx) + span + 1):
             if px < 0 or px >= W:
                 continue
-            jx, jy = sample_jitter(px, py, salt)
-            d = math.sqrt((px - cx + jx) ** 2 + (py - cy + jy) ** 2) / radius
+            d = math.sqrt((px - cx) ** 2 + (py - cy) ** 2) / radius
             if d >= 1.0:
                 continue
             a = alpha * math.exp(-(d * d) * soft * 1.35)
@@ -71,8 +67,8 @@ def stamp(cx, cy, radius, color, alpha, soft=2.2, salt=0):
                 blend(px, py, color[0], color[1], color[2], a)
 
 
-def ellipse_stamp(cx, cy, rx, ry, rot_deg, color, alpha, soft=2.0, salt=1):
-    if rx < 1 or ry < 1:
+def ellipse_stamp(cx, cy, rx, ry, rot_deg, color, alpha, soft=2.0):
+    if rx < 1 or ry < 1 or alpha <= 0:
         return
     t = math.radians(rot_deg)
     ct, st = math.cos(t), math.sin(t)
@@ -83,8 +79,7 @@ def ellipse_stamp(cx, cy, rx, ry, rot_deg, color, alpha, soft=2.0, salt=1):
         for px in range(int(cx - r), int(cx + r + 1)):
             if px < 0 or px >= W:
                 continue
-            jx, jy = sample_jitter(px, py, salt)
-            dx, dy = px - cx + jx, py - cy + jy
+            dx, dy = px - cx, py - cy
             ux = dx * ct + dy * st
             uy = -dx * st + dy * ct
             d = math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2)
@@ -96,18 +91,19 @@ def ellipse_stamp(cx, cy, rx, ry, rot_deg, color, alpha, soft=2.0, salt=1):
 
 
 # ------------------------------------------------------------- cherry rig --
-LCX, LCY, LR = 392.0, 648.0, 208.0     # left cherry
+LCX, LCY, LR = 392.0, 648.0, 208.0     # left cherry (front)
 RCX, RCY, RR = 648.0, 582.0, 184.0     # right cherry
 JX, JY = 566.0, 158.0                  # stem junction knot
 
-# Ref ramp: rosier/lighter than the old one (ref's cherries read soft pink-red)
+# Ref ramp: DEEP vibrant red — small hot spot, most of the sphere is #E01B3D
+# down to dark maroon. (The old soft-pink ramp made the fruit read washed out.)
 RAMP = [
-    (0.00, (255, 170, 185)),
-    (0.18, (250, 105, 130)),
-    (0.38, (238, 52, 88)),
-    (0.58, (196, 22, 62)),
-    (0.78, (140, 10, 44)),
-    (1.00, (86, 4, 28)),
+    (0.00, (255, 92, 114)),
+    (0.10, (248, 40, 74)),
+    (0.30, (226, 22, 61)),
+    (0.55, (176, 12, 46)),
+    (0.80, (124, 7, 34)),
+    (1.00, (76, 3, 22)),
 ]
 
 
@@ -128,41 +124,43 @@ def smoothstep(a, b, x):
 
 
 def paint_cherry(cx, cy, r, salt):
-    """Per-pixel volumetric sphere: offset light gradient, gentle rim."""
+    """Per-pixel volumetric sphere: deep red ramp, tiny hot spot, gentle rim."""
     for py in range(int(cy - r) - 2, int(cy + r) + 3):
         if py < 0 or py >= H:
             continue
         for px in range(int(cx - r) - 2, int(cx + r) + 3):
             if px < 0 or px >= W:
                 continue
-            jx, jy = sample_jitter(px, py, salt)
-            dx, dy = px - cx + jx, py - cy + jy
+            dx, dy = px - cx, py - cy
             nd = math.sqrt(dx * dx + dy * dy)
             if nd > r:
                 continue
             edge = nd / r
-            cover = min(1.0, (r - nd) / 2.0 + (1.0 if r - nd > 2 else 0.0))
+            cover = min(1.0, (r - nd) / 1.5 + (1.0 if r - nd > 1.5 else 0.0))
             if cover <= 0:
                 continue
 
             lx, ly = cx - r * 0.36, cy - r * 0.42
-            ldist = math.sqrt((px - lx) ** 2 + (py - ly) ** 2) / (r * 1.66)
+            ldist = math.sqrt((px - lx) ** 2 + (py - ly) ** 2) / (r * 1.55)
             c = ramp_color(ldist)
 
-            # Soft glow bleeding near the lit lower edge
-            sub = math.exp(-((edge - 0.74) ** 2) / 0.03) * 0.36
-            c = tuple(c[k] + (255 - c[k]) * sub * (0.85 if dy > 0 else 0.4) for k in range(3))
-
-            # Rim shade
-            rim = smoothstep(0.80, 1.0, edge)
-            c = tuple(c[k] * (1.0 - 0.26 * rim) for k in range(3))
-
-            # Fresnel rim light (lower-right)
+            # Transmitted-light glow band near the lower-left edge (ref's
+            # light shining through the fruit)
             ang = math.atan2(dy, dx)
+            glow_ang = math.cos(ang - math.radians(125.0))
+            if glow_ang > 0:
+                band = math.exp(-((edge - 0.80) ** 2) / 0.022) * glow_ang
+                c = tuple(min(255, c[k] + (255, 66, 92)[k] * band * 0.55) for k in range(3))
+
+            # Slight rim shade so the silhouette stays crisp on dark bg
+            rim = smoothstep(0.86, 1.0, edge)
+            c = tuple(c[k] * (1.0 - 0.18 * rim) for k in range(3))
+
+            # Soft pink fresnel at the lower-right rim
             light_ang = math.atan2(ly - cy, lx - cx)
             diff = abs((ang - light_ang + math.pi) % (2 * math.pi) - math.pi)
-            fres = smoothstep(2.15, 2.95, diff) * smoothstep(0.64, 0.96, edge)
-            c = tuple(c[k] + (255, 140, 158)[k] * fres * 0.30 for k in range(3))
+            fres = smoothstep(2.20, 2.95, diff) * smoothstep(0.70, 0.97, edge)
+            c = tuple(min(255, c[k] + (255, 120, 140)[k] * fres * 0.22) for k in range(3))
 
             blend(px, py, int(c[0]), int(c[1]), int(c[2]), cover)
 
@@ -175,154 +173,211 @@ def quad_bezier(p0, p1, p2, t):
 
 
 def paint_stems():
-    """Tapered brown-green stems from each cherry to the junction knot."""
+    """Tapered olive-brown stems to the junction knot, knot + tiny bud on top."""
     for (sx, sy, r, bend) in [(LCX, LCY, LR, -46), (RCX, RCY, RR, 52)]:
         p0 = (sx + (bend * 0.12), sy - r * 0.94)
         p1 = (sx + bend, sy - r * 1.55)
         p2 = (JX + (3 if bend > 0 else -3), JY + 6)
-        steps = 90
+        steps = 100
         for i in range(steps):
             t = i / (steps - 1)
             x, y = quad_bezier(p0, p1, p2, t)
-            wdt = 7.5 * (1.0 - 0.45 * t) + 1.5
-            stamp(x, y, wdt, (92, 62, 40), 0.95, soft=1.2, salt=30)
-            stamp(x - wdt * 0.28, y - wdt * 0.2, wdt * 0.42, (172, 128, 88),
-                  0.55, soft=1.4, salt=31)
-    stamp(JX, JY, 8.5, (120, 84, 52), 0.95, salt=32)
-    stamp(JX - 2, JY - 2, 4.2, (196, 150, 102), 0.8, salt=33)
+            wdt = 8.0 * (1.0 - 0.45 * t) + 1.6
+            stamp(x, y, wdt, (100, 68, 36), 0.96, soft=1.3)
+            stamp(x - wdt * 0.26, y - wdt * 0.22, wdt * 0.40, (168, 126, 74),
+                  0.50, soft=1.5)
+            stamp(x + wdt * 0.30, y + wdt * 0.18, wdt * 0.34, (62, 40, 24),
+                  0.45, soft=1.5)
+        # dark cleft dimple where the stem enters the fruit
+        stamp(p0[0], p0[1], r * 0.085, (94, 8, 28), 0.55, soft=1.6)
+        stamp(p0[0], p0[1], r * 0.045, (58, 3, 18), 0.65, soft=1.5)
+    # junction knot
+    stamp(JX, JY, 9.5, (118, 76, 42), 0.96, soft=1.5)
+    stamp(JX - 2, JY - 2, 4.6, (188, 140, 86), 0.75, soft=1.5)
+    # tiny red-brown bud perched on top of the knot (ref detail)
+    ellipse_stamp(JX + 1, JY - 11, 6.5, 11.0, 8, (148, 52, 38), 0.95, soft=1.5)
+    stamp(JX - 2, JY - 15, 2.6, (198, 98, 62), 0.85, soft=1.4)
+    stamp(JX + 1, JY - 19, 2.2, (96, 28, 22), 0.85, soft=1.4)
 
 
 def paint_leaf():
-    """BIG soft leaf with fine jitter texture (ref's fuzzy hero leaf)."""
-    cx, cy = 742.0, 236.0
-    ln, wd = 205.0, 80.0
-    rot = -24.0
+    """CRISP smooth hero leaf — analytic per-pixel, no fuzz (ref is glossy)."""
+    cx, cy = 755.0, 205.0
+    ln, wd = 168.0, 76.0
+    rot = -32.0
     t = math.radians(rot)
     ct, st = math.cos(t), math.sin(t)
 
-    def leaf_pt(u, v):
-        return (cx + u * ct - v * st, cy + u * st + v * ct)
+    # petiole: junction knot -> leaf base
+    base = (cx - ln * ct, cy - ln * st)
+    for i in range(40):
+        tt = i / 39.0
+        x, y = quad_bezier((JX + 4, JY + 8),
+                           ((JX + base[0]) / 2 + 6, (JY + base[1]) / 2),
+                           base, tt)
+        stamp(x, y, 4.6 - 1.0 * tt, (104, 82, 44), 0.95, soft=1.4)
 
-    for iu in range(-160, 161, 2):
-        u = iu / 160.0 * ln
-        half = wd * math.sqrt(max(0.0, 1.0 - (u / ln) ** 2)) * (1.0 if u < ln * 0.2 else 0.96)
-        for iv in range(-70, 71, 2):
-            v = iv / 70.0 * half
-            if v * v > (half * 1.02) ** 2:
+    R = int(ln + wd)
+    for py in range(max(0, int(cy) - R), min(H, int(cy) + R + 1)):
+        for px in range(max(0, int(cx) - R), min(W, int(cx) + R + 1)):
+            dx, dy = px - cx, py - cy
+            u = dx * ct + dy * st
+            v = -dx * st + dy * ct
+            au = u / ln
+            if abs(au) > 1.0:
                 continue
-            px, py = leaf_pt(u, v)
-            jx, jy = sample_jitter(int(px), int(py), 40)
-            g = 0.5 + 0.5 * (u / ln)
-            r = int(52 + 66 * g)
-            gg = int(128 + 84 * g)
-            b = int(38 + 42 * g)
-            edge = abs(v) / max(1.0, half)
-            r = int(r * (1 - 0.32 * edge)); gg = int(gg * (1 - 0.28 * edge)); b = int(b * (1 - 0.28 * edge))
-            a = min(1.0, (1.0 - edge) * 6.0)
-            if a > 0.01:
-                blend(int(px), int(py), r, gg, b, a)
-    # central vein + side veins
-    steps = 40
-    for i in range(steps):
-        t2 = i / (steps - 1)
-        u = (t2 - 0.5) * 2 * ln * 0.96
-        px, py = leaf_pt(u, 0)
-        stamp(px, py, 2.6 - 1.0 * t2, (28, 70, 30), 0.7, soft=1.3, salt=41)
-        if i % 4 == 0 and 0.1 < t2 < 0.9:
-            side = 1 if i % 8 == 0 else -1
-            for k in range(1, 5):
-                uu = u + k * 6
-                vv = side * (10 + k * 7) * math.sin(math.pi * t2)
-                px2, py2 = leaf_pt(uu, vv)
-                stamp(px2, py2, 1.3, (32, 82, 34), 0.35, soft=1.4, salt=42)
-    # glossy sheen
-    def half_gloss(t3):
-        return 14 + 10 * math.sin(t3 * 3.0)
-    for i in range(26):
-        t2 = i / 25.0
-        u = (t2 - 0.42) * ln * 1.3
-        px, py = leaf_pt(u, -half_gloss(t2))
-        stamp(px, py, 7 - 4 * t2, (215, 255, 205), 0.16, soft=1.8, salt=43)
+            half = wd * (1.0 - au * au) ** 0.68
+            if half < 0.5:
+                continue
+            d = abs(v) / half
+            if d > 1.0:
+                continue
+            aa = min(1.0, (1.0 - d) * max(2.0, half * 0.45))
+
+            # smooth green gradient: darker at base, brighter toward tip
+            g = 0.5 + 0.5 * au
+            r = 42 + 78 * g
+            gr = 120 + 98 * g
+            b = 36 + 50 * g
+
+            # darker margins (crisp edge definition)
+            edge_dark = 1.0 - 0.40 * smoothstep(0.70, 1.0, d)
+            r *= edge_dark; gr *= edge_dark; b *= edge_dark
+
+            # glossy diagonal sheen streak above the centerline
+            sheen = (math.exp(-(((au + 0.12) / 0.52) ** 2)) *
+                     math.exp(-(((v + half * 0.34) / (half * 0.42)) ** 2)))
+            r = min(255, r + 118 * sheen)
+            gr = min(255, gr + 122 * sheen)
+            b = min(255, b + 96 * sheen)
+
+            blend(px, py, int(r), int(gr), int(b), aa * 0.98)
+
+    # central vein — tapered, smooth
+    for i in range(56):
+        tt = i / 55.0
+        u = (-0.92 + 1.86 * tt) * ln
+        x, y = cx + u * ct, cy + u * st
+        stamp(x, y, 2.8 - 1.5 * tt, (26, 66, 28), 0.72, soft=1.4)
+    # side veins — smooth angled lines toward the tip
+    for k in range(9):
+        uu = (-0.66 + 0.17 * k)
+        for side in (1, -1):
+            u0, v0 = uu * ln, 0.0
+            half = wd * (1.0 - uu * uu) ** 0.68
+            u1, v1 = (uu + 0.13) * ln, side * half * 0.68
+            steps = 12
+            for i in range(steps):
+                tt = i / (steps - 1)
+                x = cx + (u0 + (u1 - u0) * tt) * ct - (v0 + (v1 - v0) * tt) * st
+                y = cy + (u0 + (u1 - u0) * tt) * st + (v0 + (v1 - v0) * tt) * ct
+                stamp(x, y, 1.15, (34, 80, 34), 0.48, soft=1.5)
+    # bright specular dot on the sheen
+    sxp, syp = cx + (-0.02 * ln) * ct - (-0.30 * wd) * st, cy + (-0.02 * ln) * st + (-0.30 * wd) * ct
+    stamp(sxp, syp, 9.0, (232, 255, 226), 0.30, soft=2.0)
 
 
-def paint_swirls():
-    """Subtle gold comet swirls peeking from behind the fruit (ref: faint)."""
-    rings = [
-        dict(cx=516, cy=646, rx=345, ry=118, rot=-16, speed=1.0, head=0.8, w=0.7),
-        dict(cx=516, cy=640, rx=418, ry=142, rot=21, speed=-0.72, head=2.9, w=0.55),
-    ]
-    for ring in rings:
-        t = math.radians(ring["rot"])
-        ct, st = math.cos(t), math.sin(t)
+def paint_swirl(bcx, bcy, rx, ry, rot_deg, head_deg, trail_deg, width, alpha,
+                head_glow=True):
+    """Bold gold comet ribbon along an elliptical path, bright white-gold head."""
+    t = math.radians(rot_deg)
+    ct, st = math.cos(t), math.sin(t)
 
-        def pt(a):
-            x = math.cos(a) * ring["rx"]
-            y = math.sin(a) * ring["ry"]
-            return (ring["cx"] + x * ct - y * st, ring["cx"] * 0 + ring["cy"] + x * st + y * ct)
+    def pt(a):
+        x = math.cos(a) * rx
+        y = math.sin(a) * ry
+        return (bcx + x * ct - y * st, bcy + x * st + y * ct)
 
-        head = ring["head"]
-        trail = 3.4
-        n = 150
-        for i in range(n):
-            f = i / (n - 1)
-            a = head - f * trail * (1 if ring["speed"] > 0 else -1)
-            x, y = pt(a)
-            rel = (1.0 - f) ** 1.6
-            wob = 1.0 + 0.05 * math.sin(a * 5.0 + ring["rot"])
-            core = (255, 244, 214) if rel > 0.75 else ((255, 214, 130) if rel > 0.35 else (255, 158, 84))
-            alpha = 0.22 * rel * ring["w"]
-            if alpha > 0.01:
-                stamp(x, y, (7.0 + 13.0 * rel) * wob, core, alpha, soft=1.8, salt=50 + i % 9)
-        hx, hy = pt(head)
-        stamp(hx, hy, 20, (255, 236, 190), 0.4, salt=60)
-        stamp(hx, hy, 8, (255, 250, 235), 0.8, salt=61)
-        stamp(hx, hy, 3.5, (255, 255, 255), 0.95, salt=62)
-
-
-def paint_halo_ring():
-    """Faint thin halo ring around the fruit (ref's white circle)."""
-    n = 260
+    head = math.radians(head_deg)
+    n = max(40, int(trail_deg * 2.2))
     for i in range(n):
         f = i / (n - 1)
-        a = math.tau * f
-        x = 512 + math.cos(a) * 348
-        y = 640 + math.sin(a) * 330
-        stamp(x, y, 2.0, (255, 225, 232), 0.32, soft=1.5, salt=90 + i % 8)
+        a = head - math.radians(trail_deg) * f
+        x, y = pt(a)
+        rel = (1.0 - f) ** 1.45
+        wob = 1.0 + 0.06 * math.sin(a * 5.0)
+        col = (255, 248, 228) if rel > 0.8 else ((255, 222, 150) if rel > 0.45 else (250, 172, 92))
+        al = alpha * rel
+        if al > 0.012:
+            stamp(x, y, (4.0 + 15.0 * rel) * width * wob, col, al, soft=1.9)
+        if i % 7 == 3 and rel > 0.25:
+            stamp(x + 6, y - 5, 1.6, (255, 232, 178), al * 0.7, soft=1.5)
+    if head_glow:
+        hx, hy = pt(head)
+        stamp(hx, hy, 26 * width, (255, 226, 168), 0.42, soft=2.2)
+        stamp(hx, hy, 12 * width, (255, 244, 214), 0.80, soft=1.8)
+        stamp(hx, hy, 5 * width, (255, 255, 252), 0.95, soft=1.5)
+    return pt(head)
 
 
-def paint_sparkles():
-    """Tiny 4-point sparkles floating inside/around the fruit (ref detail)."""
-    spots = [
-        (355, 590, 7.0, 0.85), (442, 660, 5.0, 0.7), (540, 560, 4.5, 0.6),
-        (620, 610, 6.0, 0.75), (700, 545, 5.0, 0.65), (588, 700, 4.0, 0.55),
-        (470, 540, 3.5, 0.5), (505, 745, 5.5, 0.6), (655, 480, 4.0, 0.5),
-    ]
-    for (fx, fy, fr, fa) in spots:
-        for k in range(-3, 4):
-            t = 1.0 - abs(k) / 4.0
-            stamp(fx + k * fr * 0.6, fy, fr * 0.16 * t + 0.8, (255, 250, 240), fa * t, soft=1.4, salt=95)
-            stamp(fx, fy + k * fr * 0.6, fr * 0.16 * t + 0.8, (255, 250, 240), fa * t, soft=1.4, salt=96)
-        stamp(fx, fy, fr * 0.32, (255, 255, 255), fa, soft=1.6, salt=97)
-    # dust sparkles
-    for _ in range(40):
-        ang = random.uniform(0, math.tau)
-        rad = random.uniform(100, 380)
-        x = 512 + math.cos(ang) * rad
-        y = 620 + math.sin(ang) * rad * 0.8
-        if 0 < x < W and 0 < y < H:
-            stamp(x, y, random.uniform(1.2, 2.6), (255, 240, 230),
-                  random.uniform(0.2, 0.6), salt=random.randint(0, 9999))
+def paint_flare(x, y, ln, alpha, rot=0.0):
+    """4-point star flare."""
+    t = math.radians(rot)
+    ct, st = math.cos(t), math.sin(t)
+    for sx, sy in ((ct, st), (-ct, -st)):
+        for i in range(26):
+            f = i / 25.0
+            d = f * ln
+            fall = (1.0 - f) ** 1.7
+            stamp(x + sx * d, y + sy * d, 1.2 + 5.5 * fall, (255, 244, 220),
+                  alpha * fall * 0.8, soft=1.7)
+    for sx, sy in ((-st, ct), (st, -ct)):
+        for i in range(14):
+            f = i / 13.0
+            d = f * ln * 0.42
+            fall = (1.0 - f) ** 1.8
+            stamp(x + sx * d, y + sy * d, 1.0 + 3.6 * fall, (255, 240, 214),
+                  alpha * fall * 0.6, soft=1.7)
+    stamp(x, y, 7.0, (255, 250, 240), alpha * 0.9, soft=1.6)
+    stamp(x, y, 3.0, (255, 255, 255), alpha, soft=1.4)
 
 
 def paint_speculars(cx, cy, r):
-    """Glossy dual speculars: streak + dot."""
-    ellipse_stamp(cx - r * 0.30, cy - r * 0.52, r * 0.34, r * 0.115, -34,
-                  (255, 250, 250), 0.88, soft=1.5, salt=11)
-    ellipse_stamp(cx - r * 0.24, cy - r * 0.60, r * 0.16, r * 0.055, -34,
-                  (255, 255, 255), 0.92, soft=1.3, salt=12)
-    stamp(cx - r * 0.47, cy - r * 0.47, r * 0.062, (255, 255, 255), 0.92, salt=13)
-    ellipse_stamp(cx + r * 0.40, cy + r * 0.44, r * 0.22, r * 0.09, -40,
-                  (255, 195, 210), 0.18, soft=2.4, salt=14)
+    """Glossy dual speculars + top rim light + bottom reflected light."""
+    # main crisp streak
+    ellipse_stamp(cx - r * 0.30, cy - r * 0.50, r * 0.36, r * 0.115, -36,
+                  (255, 250, 250), 0.92, soft=1.5)
+    ellipse_stamp(cx - r * 0.26, cy - r * 0.56, r * 0.16, r * 0.052, -36,
+                  (255, 255, 255), 0.96, soft=1.3)
+    stamp(cx - r * 0.48, cy - r * 0.44, r * 0.058, (255, 255, 255), 0.95, soft=1.4)
+    # small secondary bounce on the upper-right
+    ellipse_stamp(cx + r * 0.36, cy - r * 0.42, r * 0.13, r * 0.048, 40,
+                  (255, 200, 210), 0.45, soft=1.8)
+    # top rim light arc
+    for i in range(24):
+        a = math.radians(-150 + i * 5.0)
+        stamp(cx + math.cos(a) * r * 0.94, cy + math.sin(a) * r * 0.94,
+              r * 0.05, (255, 92, 118), 0.20, soft=1.8)
+    # bottom reflected light arc
+    for i in range(16):
+        a = math.radians(55 + i * 4.5)
+        stamp(cx + math.cos(a) * r * 0.88, cy + math.sin(a) * r * 0.88,
+              r * 0.055, (255, 120, 142), 0.30, soft=1.8)
+
+
+def paint_sparkles():
+    """Small 4-point sparkles floating around the fruit + gold dust."""
+    spots = [
+        (355, 590, 7.0, 0.85), (442, 662, 5.0, 0.7), (540, 556, 4.5, 0.6),
+        (622, 612, 6.0, 0.75), (706, 545, 5.0, 0.65), (588, 706, 4.0, 0.55),
+        (470, 538, 3.5, 0.5), (505, 748, 5.5, 0.6),
+    ]
+    for (fx, fy, fr, fa) in spots:
+        for k in range(-3, 4):
+            tt = 1.0 - abs(k) / 4.0
+            stamp(fx + k * fr * 0.6, fy, fr * 0.16 * tt + 0.8, (255, 250, 240), fa * tt, soft=1.4)
+            stamp(fx, fy + k * fr * 0.6, fr * 0.16 * tt + 0.8, (255, 250, 240), fa * tt, soft=1.4)
+        stamp(fx, fy, fr * 0.32, (255, 255, 255), fa, soft=1.6)
+    for _ in range(44):
+        ang = random.uniform(0, math.tau)
+        rad = random.uniform(110, 390)
+        x = 512 + math.cos(ang) * rad
+        y = 630 + math.sin(ang) * rad * 0.8
+        if 0 < x < W and 0 < y < H:
+            gold = random.random() < 0.5
+            col = (255, 224, 160) if gold else (255, 238, 228)
+            stamp(x, y, random.uniform(1.1, 2.4), col,
+                  random.uniform(0.2, 0.6), soft=1.6)
 
 
 def encode_png(path):
@@ -349,19 +404,34 @@ def encode_png(path):
 
 
 def main():
-    print("painting halo ring (behind)...")
-    paint_halo_ring()
-    print("painting swirls (behind fruit)...")
-    paint_swirls()
-    print("painting stems + leaf...")
+    print("back glow behind fruit...")
+    stamp(515, 640, 400, (255, 70, 110), 0.15, soft=2.8)
+    stamp(515, 640, 262, (255, 112, 150), 0.11, soft=2.6)
+    print("back gold swirls (behind fruit)...")
+    paint_swirl(515, 640, 445, 158, 15, -30, 150, 0.75, 0.32)
+    paint_swirl(515, 648, 355, 126, -14, 200, 120, 0.80, 0.30)
+    paint_swirl(518, 646, 252, 88, 6, 45, 90, 0.60, 0.20, head_glow=False)
+    print("stems + knot + bud, leaf...")
     paint_stems()
     paint_leaf()
-    print("painting cherries (per-pixel)...")
+    print("cherries (per-pixel, deep red)...")
     paint_cherry(RCX, RCY, RR, salt=7)   # right first, left overlaps in front
     paint_cherry(LCX, LCY, LR, salt=8)
+    # transmitted-light inner glow at the lower edge of each fruit
+    ellipse_stamp(LCX - LR * 0.34, LCY + LR * 0.28, LR * 0.40, LR * 0.24, 18,
+                  (255, 104, 126), 0.34, soft=2.6)
+    ellipse_stamp(RCX - RR * 0.30, RCY + RR * 0.24, RR * 0.36, RR * 0.21, 18,
+                  (255, 104, 126), 0.30, soft=2.6)
     paint_speculars(LCX, LCY, LR)
     paint_speculars(RCX, RCY, RR)
-    print("painting sparkles...")
+    print("front light streak crossing the fruit...")
+    h = paint_swirl(515, 655, 335, 118, -20, 118, 92, 0.85, 0.50)
+    paint_flare(h[0], h[1], 95, 0.95, 18)
+    print("flares at comet heads + sparkles...")
+    paint_flare(907, 663, 80, 0.90, -12)
+    paint_flare(182, 687, 55, 0.75, 40)
+    paint_flare(566, 150, 42, 0.70, 84)
+    paint_flare(688, 470, 45, 0.55, -30)
     paint_sparkles()
     out = "app/src/main/res/drawable-nodpi/cherry_hero_art.png"
     encode_png(out)
