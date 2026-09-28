@@ -18,11 +18,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -70,10 +71,21 @@ import kotlinx.coroutines.launch
 //   * a bottom aurora ribbon breathing with the poster's pink floor light
 //   * a soft press flash on the way to Home
 // The CTA is a real button styled to live inside the poster (glossy pink
-// pill, gold ring, cherry mark, Burmese label, gold-ringed arrow chip)
-// floating over the baked floor-ring light. Press -> flash -> onContinue().
+// pill, gold ring, cherry mark, Burmese label, gold-ringed arrow chip).
+// It is anchored to a poster FRACTION (CTA_FY), not a fixed dp offset, so
+// it always sits on the poster's baked floor-ring light. ContentScale.Crop
+// fits the poster height on portrait phones, so vertical poster fractions
+// map linearly to the screen height. When the poster ships a baked-in
+// CTA, set CTA_FY to the pill center measured by tools/measure_cta.py and
+// the real button covers it exactly. Press -> flash -> onContinue().
 // Public API stays WelcomeScreen(onContinue: () -> Unit).
 // ============================================================================
+
+// Vertical center of the CTA as a fraction of the poster height.
+// Measured on the current poster's pink floor-ring center (tools/measure_cta.py).
+private const val CTA_FY = 0.79f
+// Horizontal insets as fractions of screen width (poster pill width ≈ 84%).
+private const val CTA_HFRACTION = 0.055f
 
 private fun playWelcomeClick(view: android.view.View) {
     val audio = view.context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
@@ -224,20 +236,25 @@ fun WelcomeScreen(onContinue: () -> Unit) {
         // Layer 3 — sparkle dust: tiny glints twinkling over the upper poster.
         WelcomeSparkles(alpha = sparkBlink.value)
 
-        // Layer 4 — CTA (real button) sitting on the poster's baked floor rings.
-        WelcomeCtaButton(
-            label = l.translate("စတင်အသုံးပြုမည်"),
-            glow = ctaGlowValue(),
-            enabled = !pressedOut,
-            onPress = {
-                playWelcomeClick(view)
-                if (!pressedOut) pressedOut = true
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 108.dp)
-        )
+        // Layer 4 — CTA (real button) anchored to the poster fraction so it
+        // sits on the poster's baked floor-ring light at any screen height.
+        BoxWithConstraints(Modifier.matchParentSize()) {
+            // Under Crop with height fitting exactly, screen fy == poster fy.
+            val centerY = maxHeight * CTA_FY
+            WelcomeCtaButton(
+                label = l.translate("စတင်အသုံးပြုမည်"),
+                glow = ctaGlowValue(),
+                enabled = !pressedOut,
+                onPress = {
+                    playWelcomeClick(view)
+                    if (!pressedOut) pressedOut = true
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = centerY)
+                    .offset(y = (-31).dp) // own height/2 to center on the anchor
+            )
+        }
 
         // Exit flash — soft pink/white light that carries the screen to Home.
         if (pressedOut) {
@@ -338,8 +355,9 @@ private fun WelcomeCtaButton(
 
     Box(
         modifier
-            .fillMaxWidth()
-            .padding(horizontal = 26.dp)
+            // Fraction-based width keeps the pill's side margins proportional
+            // to the poster's margins at any screen width; still centered.
+            .fillMaxWidth(1f - 2 * CTA_HFRACTION)
             .height(62.dp)
     ) {
         // Outer glow pulse (behind the pill, echoing the floor light)
