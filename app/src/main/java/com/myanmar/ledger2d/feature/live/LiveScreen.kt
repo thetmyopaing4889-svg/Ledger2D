@@ -45,9 +45,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
@@ -112,40 +114,42 @@ class LiveViewModel : ViewModel() {
 
 private object LiveApi {
     /** Returns the latest-day payload, or null on any network/parse failure (never throws). */
-    fun fetch(): LiveDayData? = try {
-        val connection = URL(ENDPOINT).openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/json")
-            if (connection.responseCode !in 200..299) return null
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val data = JSONObject(body).optJSONArray("data") ?: return null
-            if (data.length() == 0) return null
-            val entry = data.getJSONObject(0)
-            LiveDayData(
-                date = entry.optString("date", ""),
-                morning = LiveSessionData(
-                    modern = entry.optString("modern_930", "--"),
-                    internet = entry.optString("internet_930", "--"),
-                    set = entry.optString("set_1200", "--"),
-                    value = entry.optString("val_1200", "--"),
-                    result = entry.optString("result_1200", "--"),
-                ),
-                evening = LiveSessionData(
-                    modern = entry.optString("modern_200", "--"),
-                    internet = entry.optString("internet_200", "--"),
-                    set = entry.optString("set_430", "--"),
-                    value = entry.optString("val_430", "--"),
-                    result = entry.optString("result_430", "--"),
-                ),
-            )
-        } finally {
-            connection.disconnect()
+    fun fetch(): LiveDayData? {
+        return try {
+            val connection = URL(ENDPOINT).openConnection() as HttpURLConnection
+            try {
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 10_000
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Accept", "application/json")
+                if (connection.responseCode !in 200..299) return null
+                val body = connection.inputStream.bufferedReader().use { it.readText() }
+                val data = JSONObject(body).optJSONArray("data") ?: return null
+                if (data.length() == 0) return null
+                val entry = data.getJSONObject(0)
+                LiveDayData(
+                    date = entry.optString("date", ""),
+                    morning = LiveSessionData(
+                        modern = entry.optString("modern_930", "--"),
+                        internet = entry.optString("internet_930", "--"),
+                        set = entry.optString("set_1200", "--"),
+                        value = entry.optString("val_1200", "--"),
+                        result = entry.optString("result_1200", "--"),
+                    ),
+                    evening = LiveSessionData(
+                        modern = entry.optString("modern_200", "--"),
+                        internet = entry.optString("internet_200", "--"),
+                        set = entry.optString("set_430", "--"),
+                        value = entry.optString("val_430", "--"),
+                        result = entry.optString("result_430", "--"),
+                    ),
+                )
+            } finally {
+                connection.disconnect()
+            }
+        } catch (_: Exception) {
+            null
         }
-    } catch (_: Exception) {
-        null
     }
 }
 
