@@ -1,7 +1,9 @@
 package com.myanmar.ledger2d.feature.live
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -68,7 +70,7 @@ class LiveCollectorTest {
     @Test fun `failed fetch retains previous data and marks stale`() = runTest {
         val feed1 = sampleFeed(live = "35")
         val responses = listOf(feed1, null, null).iterator()
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { responses.next() })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { responses.next() })
 
         collector.fetchCycle(); advanceUntilIdle()
         val fresh = collector.state.value as LiveUiState.Data
@@ -89,7 +91,7 @@ class LiveCollectorTest {
         val feed1 = sampleFeed(live = "35")
         val feed2 = sampleFeed(live = "36")
         val responses = listOf(feed1, null, feed2).iterator()
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { responses.next() })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { responses.next() })
 
         collector.fetchCycle(); advanceUntilIdle()
         collector.fetchCycle(); advanceUntilIdle() // failure -> stale retained
@@ -102,7 +104,7 @@ class LiveCollectorTest {
     }
 
     @Test fun `first fetch failure with no previous data surfaces error state`() = runTest {
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { null })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { null })
         collector.fetchCycle(); advanceUntilIdle()
         assertTrue(collector.state.value is LiveUiState.Error)
     }
@@ -110,7 +112,7 @@ class LiveCollectorTest {
     @Test fun `overlapping fetch requests are prevented`() = runTest {
         val gate = CompletableDeferred<Unit>()
         var started = 0
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { started++; gate.await(); sampleFeed() })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { started++; gate.await(); sampleFeed() })
 
         collector.fetchCycle() // cycle 1 queued, suspended on the gate
         collector.fetchCycle() // must be ignored while cycle 1 is active
@@ -124,7 +126,7 @@ class LiveCollectorTest {
 
     @Test fun `screen is never needed - collector keeps polling inside a window`() = runTest {
         var fetchCount = 0
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { fetchCount++; sampleFeed() }, clock = { LocalTime.of(16, 5) })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { fetchCount++; sampleFeed() }, clock = { LocalTime.of(16, 5) })
         // No screen/composable is involved anywhere in this test.
         collector.start()
         advanceTimeBy(11_000) // > two 5s ticks
@@ -134,7 +136,7 @@ class LiveCollectorTest {
     @Test fun `loop polls only during live windows and idles outside`() = runTest {
         var clock = LocalTime.of(13, 0) // outside all windows
         var fetchCount = 0
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { fetchCount++; sampleFeed() }, clock = { clock })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { fetchCount++; sampleFeed() }, clock = { clock })
         collector.start()
 
         advanceTimeBy(11_000) // two ticks outside the window
@@ -150,7 +152,7 @@ class LiveCollectorTest {
     }
 
     @Test fun `reopening the screen surfaces the latest cached state immediately`() = runTest {
-        val collector = LiveCollector(scope = backgroundScope, fetcher = { sampleFeed(live = "37") })
+        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { sampleFeed(live = "37") })
         collector.fetchCycle(); advanceUntilIdle()
         // Re-entering the screen collects the shared StateFlow, whose current
         // value is the latest cache — no new fetch is required to display it.
