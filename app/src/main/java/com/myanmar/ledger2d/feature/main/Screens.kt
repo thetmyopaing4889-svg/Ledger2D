@@ -154,7 +154,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         onDispose{controller?.isAppearanceLightStatusBars=true}
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
     DarkStatusBarsEffect()
@@ -176,7 +176,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                             .padding(start=14.dp,end=14.dp,top=18.dp,bottom=88.dp),
                         verticalArrangement=Arrangement.spacedBy(10.dp)
                     ) {
-                        HomeLiveAndSummary(agents.size,customerCount,onWinning)
+                        HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
                         HomeWeeklyResults(vm)
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,l.translate("2D သုံးသပ်ချက်"),l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,l.translate("ဒေတာအသစ်"),l.translate("လာမည်"),Modifier.weight(1f))}
@@ -225,12 +225,12 @@ fun transactionDisplayText(format: String, raw: String): String {
     Image(painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),"Cherry 2D",modifier,contentScale=ContentScale.Fit)
 }
 
-@Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int,onResults:()->Unit){
+@Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int,onLive:()->Unit,onResults:()->Unit){
     val l=LocalLanguage.current
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
     val (liveInteraction,liveScale)=rememberPressScale("liveCard")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-        ElevatedCard(onClick=onResults,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
+        ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
             Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
                 Text("2D LIVE",Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
