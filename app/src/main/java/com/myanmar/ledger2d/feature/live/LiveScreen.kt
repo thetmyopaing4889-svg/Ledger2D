@@ -167,17 +167,15 @@ class LiveViewModel : ViewModel() {
     fun fetchCycle() {
         if (fetchJob?.isActive == true) return
         fetchJob = viewModelScope.launch {
-            if (_state.value is LiveUiState.Data) {
-                _state.update { s -> (s as LiveUiState.Data).copy(stale = true) }
-            }
             val cycle = ++latestCycle
             val next = withContext(Dispatchers.IO) { LiveApi.fetch() }
-            // Apply only the newest cycle's outcome.
+            // State is untouched while the request is in flight. Apply only
+            // the newest cycle's outcome.
             if (cycle == latestCycle) {
                 _state.update { s ->
                     when {
                         next != null -> LiveUiState.Data(next, stale = false)
-                        s is LiveUiState.Data -> s // keep last valid data; refresh will retry next tick
+                        s is LiveUiState.Data -> s.copy(stale = true) // keep last valid data; retry next tick
                         else -> LiveUiState.Error(retrying = false)
                     }
                 }
