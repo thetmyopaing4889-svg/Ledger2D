@@ -4,12 +4,16 @@ import android.app.Application
 import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
+import com.myanmar.ledger2d.feature.live.LiveCollector
 
 class LedgerApplication : Application() {
     lateinit var container: AppContainer
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(LedgerDatabase.create(this))
+        // App-scoped 2D LIVE collector: window-gated polling that continues
+        // during the scheduled LIVE windows even when the screen is closed.
+        LiveCollector.startOnce()
     }
 }
 

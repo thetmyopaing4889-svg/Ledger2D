@@ -50,26 +50,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.feature.main.AppScaffold
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -82,8 +66,8 @@ import java.time.LocalTime
 /** Live API endpoint (verified Shwe Myanmar 2D live feed). */
 private const val LIVE_ENDPOINT = "https://luke.2dboss.com/api/luke/twod-result-live"
 
-/** How often the LIVE screen re-fetches the live feed while visible. Tune here. */
-private const val LIVE_POLL_INTERVAL_MS = 5_000L
+// The polling interval (LIVE_POLL_INTERVAL_MS) lives in LiveCollector.kt so the
+// app-scoped background collector and this screen share one tunable constant.
 
 /** HTTP timeouts in ms. */
 private const val LIVE_CONNECT_TIMEOUT_MS = 8_000
@@ -149,44 +133,10 @@ sealed interface LiveUiState {
 }
 
 // ============================================================================
-// ViewModel — polling is data-only; the blink is UI-layer and never gates data
+// API client (used by the app-scoped LiveCollector)
 // ============================================================================
 
-class LiveViewModel : ViewModel() {
-    private val _state = MutableStateFlow<LiveUiState>(LiveUiState.Loading)
-    val state: StateFlow<LiveUiState> = _state.asStateFlow()
-
-    private var fetchJob: Job? = null
-    private var latestCycle = 0L
-
-    /**
-     * One fetch cycle. Called on every poll tick; a still-running request is
-     * not duplicated. Responses are parsed off the main thread and applied to
-     * state immediately — nothing here waits for any animation.
-     */
-    fun fetchCycle() {
-        if (fetchJob?.isActive == true) return
-        fetchJob = viewModelScope.launch {
-            val cycle = ++latestCycle
-            val next = withContext(Dispatchers.IO) { LiveApi.fetch() }
-            // State is untouched while the request is in flight. Apply only
-            // the newest cycle's outcome.
-            if (cycle == latestCycle) {
-                _state.update { s ->
-                    when {
-                        next != null -> LiveUiState.Data(next, stale = false)
-                        s is LiveUiState.Data -> s.copy(stale = true) // keep last valid data; retry next tick
-                        else -> LiveUiState.Error(retrying = false)
-                    }
-                }
-            }
-        }
-    }
-
-    fun retryNow() = fetchCycle()
-}
-
-private object LiveApi {
+internal object LiveApi {
     /** Returns the parsed feed, or null on any network/parse failure (never throws). */
     fun fetch(): LiveFeedData? {
         return try {
@@ -244,18 +194,16 @@ private object LiveApi {
 
 @Composable
 fun LiveScreen(onBack: () -> Unit) {
-    val vm: LiveViewModel = viewModel()
-    val state by vm.state.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
+    // The collector is app-scoped: this screen renders the latest cached state
+    // immediately and keeps observing it; closing the screen never stops the
+    // scheduled background collection.
+    val collector = LiveCollector.instance
+    val state by collector.state.collectAsStateWithLifecycle()
 
-    // Lifecycle-aware polling: runs only while this screen is visible and
-    // stops automatically when the user leaves it.
-    LaunchedEffect(lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (isActive) {
-                vm.fetchCycle()
-                delay(LIVE_POLL_INTERVAL_MS)
-            }
+    // One window-gated freshness check when the screen opens.
+    LaunchedEffect(Unit) {
+        if (liveWindowAction(LocalTime.now()) != LiveWindowAction.NONE) {
+            collector.fetchCycle()
         }
     }
 
@@ -264,7 +212,7 @@ fun LiveScreen(onBack: () -> Unit) {
             LiveUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = AppColors.PrimaryDeep)
             }
-            is LiveUiState.Error -> LiveErrorState(onRetry = { vm.retryNow() }, modifier = Modifier.padding(padding))
+            is LiveUiState.Error -> LiveErrorState(onRetry = { collector.fetchCycle() }, modifier = Modifier.padding(padding))
             is LiveUiState.Data -> LiveContent(s.feed, s.stale, Modifier.padding(padding))
         }
     }
