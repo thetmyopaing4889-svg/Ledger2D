@@ -137,9 +137,10 @@ internal class LiveCollector(
             if (shared != null) return
             synchronized(this) {
                 if (shared == null) {
-                    val collector = LiveCollector(CoroutineScope(SupervisorJob() + Dispatchers.Default)) {
-                        withContext(Dispatchers.IO) { LiveApi.fetch() }
-                    }
+                    val collector = LiveCollector(
+                        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+                        fetcher = { withContext(Dispatchers.IO) { LiveApi.fetch() } },
+                    )
                     collector.start()
                     shared = collector
                 }
