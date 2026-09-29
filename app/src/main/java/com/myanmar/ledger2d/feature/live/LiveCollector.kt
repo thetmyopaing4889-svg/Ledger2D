@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.live
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.time.LocalTime
 
 // ============================================================================
@@ -36,6 +38,12 @@ private val EVENING_REFERENCE_START: LocalTime = LocalTime.of(14, 0)   // 14:00 
 private val EVENING_LIVE_START: LocalTime = LocalTime.of(16, 0)        // 16:00 LIVE SET/VALUE/2D
 private val EVENING_FINAL_AT: LocalTime = LocalTime.of(16, 30)         // 16:30 final (inclusive)
 
+/** API sentinel for "not available yet". */
+internal const val LIVE_PENDING = "--"
+
+internal const val LIVE_SESSION_MORNING_LABEL = "12:01 PM"
+internal const val LIVE_SESSION_EVENING_LABEL = "4:30 PM"
+
 /** What the collector should do at a given moment. */
 internal enum class LiveWindowAction { NONE, REFERENCE_ONLY, LIVE_POLLING }
 
@@ -55,6 +63,53 @@ internal fun liveWindowAction(time: LocalTime): LiveWindowAction = when {
 }
 
 /**
+ * Persistent hero snapshot. Only FINAL results are ever stored here (and in
+ * the display cache) — intermediate LIVE values are never persisted.
+ */
+data class LiveHeroSnapshot(
+    val result: String,
+    val set: String,
+    val value: String,
+    /** "12:01 PM" / "4:30 PM" for finals, or the source time while LIVE. */
+    val sessionLabel: String,
+    /** Feed date the snapshot was captured on (e.g. "29/09/2026"). */
+    val date: String,
+)
+
+/** Hero derivation outcome (pure, unit-tested). */
+internal data class HeroDerivation(val hero: LiveHeroSnapshot?, val isLive: Boolean)
+
+/**
+ * Hero state machine (pure):
+ *  - During an active LIVE window: that session's final wins as soon as it
+ *    exists; otherwise the streaming live value; otherwise the latest known
+ *    final (today's earlier session or the persisted previous final).
+ *  - Outside LIVE windows: the latest known final — today's finalized session
+ *    if any, else the persisted previous final. Never blank once something
+ *    is known.
+ */
+internal fun deriveHero(feed: LiveFeedData, now: LocalTime, cachedFinal: LiveHeroSnapshot?): HeroDerivation {
+    if (liveWindowAction(now) == LiveWindowAction.LIVE_POLLING) {
+        val eveningWindow = !now.isBefore(EVENING_LIVE_START)
+        val session = if (eveningWindow) feed.evening else feed.morning
+        val label = if (eveningWindow) LIVE_SESSION_EVENING_LABEL else LIVE_SESSION_MORNING_LABEL
+        if (session.finalized) {
+            return HeroDerivation(LiveHeroSnapshot(session.result, session.set, session.value, label, feed.date), isLive = false)
+        }
+        if (feed.live.isNotBlank() && feed.live != LIVE_PENDING) {
+            return HeroDerivation(LiveHeroSnapshot(feed.live, feed.liveSet, feed.liveVal, feed.currentTime, feed.date), isLive = true)
+        }
+    }
+    return HeroDerivation(latestKnownFinal(feed, cachedFinal), isLive = false)
+}
+
+private fun latestKnownFinal(feed: LiveFeedData, cachedFinal: LiveHeroSnapshot?): LiveHeroSnapshot? = when {
+    feed.evening.finalized -> LiveHeroSnapshot(feed.evening.result, feed.evening.set, feed.evening.value, LIVE_SESSION_EVENING_LABEL, feed.date)
+    feed.morning.finalized -> LiveHeroSnapshot(feed.morning.result, feed.morning.set, feed.morning.value, LIVE_SESSION_MORNING_LABEL, feed.date)
+    else -> cachedFinal
+}
+
+/**
  * Process-wide LIVE collector.
  *
  * Owned by the Application (not the screen): it keeps observing/refreshing the
@@ -63,12 +118,15 @@ internal fun liveWindowAction(time: LocalTime): LiveWindowAction = when {
  * Outside the windows the loop idles without any network activity.
  *
  * The cache is the single source the LIVE screen renders; re-entering the
- * screen shows the latest cached state immediately (StateFlow semantics).
+ * screen shows the latest cached state immediately (StateFlow semantics), and
+ * the persisted final hero survives app restart.
  */
 internal class LiveCollector(
     private val scope: CoroutineScope,
     private val fetcher: suspend () -> LiveFeedData?,
     private val clock: () -> LocalTime = { LocalTime.now() },
+    cacheLoader: () -> LiveHeroSnapshot? = { null },
+    private val cacheSaver: (LiveHeroSnapshot) -> Unit = {},
 ) {
     private val _state = MutableStateFlow<LiveUiState>(LiveUiState.Loading)
     val state: StateFlow<LiveUiState> = _state.asStateFlow()
@@ -76,13 +134,25 @@ internal class LiveCollector(
     private var fetchJob: Job? = null
     private var latestCycle = 0L
     private var lastReferenceFetchMs = 0L
+    private var lastSavedFinal: LiveHeroSnapshot? = null
+
+    init {
+        // Surface the persisted final hero immediately (app restart / screen
+        // re-entry): the display never starts from a blank state when a cache
+        // exists. Today's feed stays null until the first successful fetch.
+        val cached = cacheLoader()
+        if (cached != null) {
+            lastSavedFinal = cached
+            _state.value = LiveUiState.Data(feed = null, hero = cached, heroLive = false, stale = false)
+        }
+    }
 
     /**
      * One fetch cycle. A still-running request is never duplicated (overlap
      * prevention). State is untouched while a request is in flight; on success
      * the newest response replaces the cache immediately (stale cleared); on
-     * failure the last valid data is retained and marked stale. UI animation
-     * is presentation-only and can never delay these updates.
+     * failure the last valid data and hero are retained and marked stale. UI
+     * animation is presentation-only and can never delay these updates.
      */
     fun fetchCycle() {
         if (fetchJob?.isActive == true) return
@@ -93,15 +163,34 @@ internal class LiveCollector(
             } catch (_: Exception) {
                 null
             }
-            if (cycle == latestCycle) {
-                _state.update { s ->
-                    when {
-                        next != null -> LiveUiState.Data(next, stale = false)
-                        s is LiveUiState.Data -> s.copy(stale = true) // retain last valid data
-                        else -> LiveUiState.Error(retrying = false)
-                    }
+            if (cycle == latestCycle) applyFetchResult(next)
+        }
+    }
+
+    private fun applyFetchResult(next: LiveFeedData?) {
+        if (next == null) {
+            _state.update { s ->
+                when (s) {
+                    is LiveUiState.Data -> s.copy(stale = true) // retain feed + hero
+                    else -> LiveUiState.Error(retrying = false)
                 }
             }
+            return
+        }
+        val derived = deriveHero(next, clock(), lastSavedFinal)
+        if (!derived.isLive) derived.hero?.let { saveFinalIfNew(it) } // finals only, never live values
+        _state.update { s ->
+            when (s) {
+                is LiveUiState.Data -> s.copy(feed = next, hero = derived.hero ?: s.hero, heroLive = derived.isLive, stale = false)
+                else -> LiveUiState.Data(feed = next, hero = derived.hero, heroLive = derived.isLive, stale = false)
+            }
+        }
+    }
+
+    private fun saveFinalIfNew(snapshot: LiveHeroSnapshot) {
+        if (snapshot != lastSavedFinal) {
+            lastSavedFinal = snapshot
+            cacheSaver(snapshot)
         }
     }
 
@@ -133,18 +222,59 @@ internal class LiveCollector(
             get() = shared ?: error("LiveCollector not started")
 
         /** Called once from LedgerApplication.onCreate. Survives screen changes. */
-        fun startOnce() {
+        fun startOnce(context: Context) {
             if (shared != null) return
             synchronized(this) {
                 if (shared == null) {
                     val collector = LiveCollector(
                         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
                         fetcher = { withContext(Dispatchers.IO) { LiveApi.fetch() } },
+                        cacheLoader = { LiveCacheStore.load(context) },
+                        cacheSaver = { LiveCacheStore.save(context, it) },
                     )
                     collector.start()
                     shared = collector
                 }
             }
+        }
+    }
+}
+
+/**
+ * Dedicated lightweight display-cache persistence (SharedPreferences + the
+ * already-used org.json). Kept strictly separate from the ledger/business Room
+ * database: only the latest known FINAL hero snapshot is stored.
+ */
+internal object LiveCacheStore {
+    private const val PREFS_NAME = "live_display_cache"
+    private const val KEY_LATEST_FINAL = "latest_final"
+
+    fun load(context: Context): LiveHeroSnapshot? = try {
+        val raw = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(KEY_LATEST_FINAL, null) ?: return null
+        val obj = JSONObject(raw)
+        LiveHeroSnapshot(
+            result = obj.getString("result"),
+            set = obj.getString("set"),
+            value = obj.getString("value"),
+            sessionLabel = obj.getString("sessionLabel"),
+            date = obj.getString("date"),
+        )
+    } catch (_: Exception) {
+        null
+    }
+
+    fun save(context: Context, snapshot: LiveHeroSnapshot) {
+        try {
+            val obj = JSONObject()
+                .put("result", snapshot.result)
+                .put("set", snapshot.set)
+                .put("value", snapshot.value)
+                .put("sessionLabel", snapshot.sessionLabel)
+                .put("date", snapshot.date)
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putString(KEY_LATEST_FINAL, obj.toString()).apply()
+        } catch (_: Exception) {
+            // Display cache is best-effort; never crash the collector on it.
         }
     }
 }

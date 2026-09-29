@@ -13,7 +13,7 @@ class LedgerApplication : Application() {
         container = AppContainer(LedgerDatabase.create(this))
         // App-scoped 2D LIVE collector: window-gated polling that continues
         // during the scheduled LIVE windows even when the screen is closed.
-        LiveCollector.startOnce()
+        LiveCollector.startOnce(this)
     }
 }
 
