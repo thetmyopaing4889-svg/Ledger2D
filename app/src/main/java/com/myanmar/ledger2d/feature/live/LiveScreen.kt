@@ -1,6 +1,11 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.myanmar.ledger2d.feature.live
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +61,7 @@ import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.feature.main.AppScaffold
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,83 +73,156 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalTime
 
-/** Raw values exactly as the API returns them (strings, commas kept, no reformatting). */
+// ============================================================================
+// Configuration — isolated so the polling/animation behavior can be tuned later
+// ============================================================================
+
+/** Live API endpoint (verified Shwe Myanmar 2D live feed). */
+private const val LIVE_ENDPOINT = "https://luke.2dboss.com/api/luke/twod-result-live"
+
+/** How often the LIVE screen re-fetches the live feed while visible. Tune here. */
+private const val LIVE_POLL_INTERVAL_MS = 5_000L
+
+/** HTTP timeouts in ms. */
+private const val LIVE_CONNECT_TIMEOUT_MS = 8_000
+private const val LIVE_READ_TIMEOUT_MS = 8_000
+
+/** Presentation-only blink half-cycle for the LIVE number (never blocks data). */
+private const val LIVE_BLINK_DURATION_MS = 700
+
+/** Local time from which the evening (4:30 PM) session is the relevant one. */
+private val EVENING_PERIOD_START: LocalTime = LocalTime.of(14, 0)
+
+/** Sentinel the API uses for "not available yet". */
+private const val PENDING = "--"
+
+// ============================================================================
+// Data model (in-memory only — never persisted to Room)
+// ============================================================================
+
+/** Full live feed snapshot. */
+data class LiveFeedData(
+    val date: String,
+    val currentTime: String,
+    /** LIVE 2D value currently streaming. */
+    val live: String,
+    /** LIVE SET / VALUE accompanying the streaming 2D. */
+    val liveSet: String,
+    val liveVal: String,
+    /** Finalized-or-pending 12:01 morning session. */
+    val morning: LiveSessionData,
+    /** Finalized-or-pending 4:30 evening session. */
+    val evening: LiveSessionData,
+    /** 09:30 reference values. */
+    val modern930: String,
+    val internet930: String,
+    /** 02:00 reference values. */
+    val modern200: String,
+    val internet200: String,
+)
+
+/** One result session (12:01 morning / 4:30 evening). */
 data class LiveSessionData(
-    val modern: String,
-    val internet: String,
+    val result: String,
     val set: String,
     val value: String,
-    val result: String,
+    /** True only when the verified result field is no longer "--". */
+    val finalized: Boolean,
 )
 
-data class LiveDayData(
-    val date: String,
-    val morning: LiveSessionData,
-    val evening: LiveSessionData,
-)
-
-/** In-memory only — never persisted to Room. */
+/** Explicit UI states for the LIVE screen. */
 sealed interface LiveUiState {
+    /** First fetch has not completed yet. */
     data object Loading : LiveUiState
-    data class Data(val data: LiveDayData, val refreshing: Boolean, val stale: Boolean) : LiveUiState
+
+    /** Data available (fresh or retained). */
+    data class Data(
+        val feed: LiveFeedData,
+        /** True when the last fetch failed and this snapshot is from an earlier cycle. */
+        val stale: Boolean,
+    ) : LiveUiState
+
+    /** No data yet and the latest fetch failed. */
     data class Error(val retrying: Boolean) : LiveUiState
 }
 
-private const val ENDPOINT = "https://backend.shwemyanmar2d.com/api/lv/twod-result"
-private const val POLL_INTERVAL_MS = 10_000L
+// ============================================================================
+// ViewModel — polling is data-only; the blink is UI-layer and never gates data
+// ============================================================================
 
 class LiveViewModel : ViewModel() {
     private val _state = MutableStateFlow<LiveUiState>(LiveUiState.Loading)
     val state: StateFlow<LiveUiState> = _state.asStateFlow()
 
-    private suspend fun fetchOnce() {
-        val hadData = _state.value is LiveUiState.Data
-        if (hadData) _state.update { s -> (s as LiveUiState.Data).copy(refreshing = true) }
-        val next = withContext(Dispatchers.IO) { LiveApi.fetch() }
-        _state.update { s ->
-            when {
-                next != null -> LiveUiState.Data(next, refreshing = false, stale = false)
-                s is LiveUiState.Data -> s.copy(refreshing = false, stale = true) // keep last valid data
-                else -> LiveUiState.Error(retrying = false)
+    private var fetchJob: Job? = null
+    private var latestCycle = 0L
+
+    /**
+     * One fetch cycle. Called on every poll tick; a still-running request is
+     * not duplicated. Responses are parsed off the main thread and applied to
+     * state immediately — nothing here waits for any animation.
+     */
+    fun fetchCycle() {
+        if (fetchJob?.isActive == true) return
+        fetchJob = viewModelScope.launch {
+            if (_state.value is LiveUiState.Data) {
+                _state.update { s -> (s as LiveUiState.Data).copy(stale = true) }
+            }
+            val cycle = ++latestCycle
+            val next = withContext(Dispatchers.IO) { LiveApi.fetch() }
+            // Apply only the newest cycle's outcome.
+            if (cycle == latestCycle) {
+                _state.update { s ->
+                    when {
+                        next != null -> LiveUiState.Data(next, stale = false)
+                        s is LiveUiState.Data -> s // keep last valid data; refresh will retry next tick
+                        else -> LiveUiState.Error(retrying = false)
+                    }
+                }
             }
         }
     }
 
-    fun retryNow() = viewModelScope.launch { fetchOnce() }
+    fun retryNow() = fetchCycle()
 }
 
 private object LiveApi {
-    /** Returns the latest-day payload, or null on any network/parse failure (never throws). */
-    fun fetch(): LiveDayData? {
+    /** Returns the parsed feed, or null on any network/parse failure (never throws). */
+    fun fetch(): LiveFeedData? {
         return try {
-            val connection = URL(ENDPOINT).openConnection() as HttpURLConnection
+            val connection = URL(LIVE_ENDPOINT).openConnection() as HttpURLConnection
             try {
-                connection.connectTimeout = 10_000
-                connection.readTimeout = 10_000
+                connection.connectTimeout = LIVE_CONNECT_TIMEOUT_MS
+                connection.readTimeout = LIVE_READ_TIMEOUT_MS
                 connection.requestMethod = "GET"
                 connection.setRequestProperty("Accept", "application/json")
                 if (connection.responseCode !in 200..299) return null
                 val body = connection.inputStream.bufferedReader().use { it.readText() }
-                val data = JSONObject(body).optJSONArray("data") ?: return null
-                if (data.length() == 0) return null
-                val entry = data.getJSONObject(0)
-                LiveDayData(
-                    date = entry.optString("date", ""),
+                val data = JSONObject(body).optJSONObject("data") ?: return null
+                LiveFeedData(
+                    date = data.nonBlankString("date", fallback = ""),
+                    currentTime = data.nonBlankString("current_time", fallback = ""),
+                    live = data.nonBlankString("live"),
+                    liveSet = data.nonBlankString("live_set"),
+                    liveVal = data.nonBlankString("live_val"),
                     morning = LiveSessionData(
-                        modern = entry.optString("modern_930", "--"),
-                        internet = entry.optString("internet_930", "--"),
-                        set = entry.optString("set_1200", "--"),
-                        value = entry.optString("val_1200", "--"),
-                        result = entry.optString("result_1200", "--"),
+                        result = data.nonBlankString("result_1200"),
+                        set = data.nonBlankString("set_1200"),
+                        value = data.nonBlankString("val_1200"),
+                        finalized = data.nonBlankString("result_1200") != PENDING,
                     ),
                     evening = LiveSessionData(
-                        modern = entry.optString("modern_200", "--"),
-                        internet = entry.optString("internet_200", "--"),
-                        set = entry.optString("set_430", "--"),
-                        value = entry.optString("val_430", "--"),
-                        result = entry.optString("result_430", "--"),
+                        result = data.nonBlankString("result_430"),
+                        set = data.nonBlankString("set_430"),
+                        value = data.nonBlankString("val_430"),
+                        finalized = data.nonBlankString("result_430") != PENDING,
                     ),
+                    modern930 = data.nonBlankString("modern_930"),
+                    internet930 = data.nonBlankString("internet_930"),
+                    modern200 = data.nonBlankString("modern_200"),
+                    internet200 = data.nonBlankString("internet_200"),
                 )
             } finally {
                 connection.disconnect()
@@ -151,129 +231,255 @@ private object LiveApi {
             null
         }
     }
+
+    /** Reads a string field, normalizing JSON null / blank / "null" to "--" (or a fallback). */
+    private fun JSONObject.nonBlankString(name: String, fallback: String = PENDING): String {
+        if (!has(name) || isNull(name)) return fallback
+        val value = optString(name, "").trim()
+        return if (value.isEmpty() || value == "null") fallback else value
+    }
 }
+
+// ============================================================================
+// Screen
+// ============================================================================
 
 @Composable
 fun LiveScreen(onBack: () -> Unit) {
     val vm: LiveViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
-    // Poll only while the screen is visible; re-fetch immediately on return to the screen.
+
+    // Lifecycle-aware polling: runs only while this screen is visible and
+    // stops automatically when the user leaves it.
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (isActive) {
-                vm.retryNow()
-                delay(POLL_INTERVAL_MS)
+                vm.fetchCycle()
+                delay(LIVE_POLL_INTERVAL_MS)
             }
         }
     }
+
     AppScaffold(title = "2D LIVE", onBack = onBack) { padding ->
         when (val s = state) {
             LiveUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = AppColors.PrimaryDeep)
             }
             is LiveUiState.Error -> LiveErrorState(onRetry = { vm.retryNow() }, modifier = Modifier.padding(padding))
-            is LiveUiState.Data -> LiveContent(s.data, s.stale, s.refreshing, Modifier.padding(padding))
+            is LiveUiState.Data -> LiveContent(s.feed, s.stale, Modifier.padding(padding))
         }
     }
 }
 
-// ---- UI ----
-
 @Composable
-private fun LiveContent(data: LiveDayData, stale: Boolean, refreshing: Boolean, modifier: Modifier = Modifier) {
+private fun LiveContent(feed: LiveFeedData, stale: Boolean, modifier: Modifier = Modifier) {
     val l = LocalLanguage.current
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        LiveStatusHeader(data.date, stale, refreshing)
-        LiveSessionCard(l.text("မနက်", "Morning"), "09:30", "12:01", data.morning)
-        LiveSessionCard(l.text("ညနေ", "Evening"), "14:00", "16:30", data.evening)
+        LiveHero(feed, stale)
+        LiveResultCard(l.text("မနက်", "Morning"), "12:01 PM", feed.morning)
+        LiveResultCard(l.text("ညနေ", "Evening"), "4:30 PM", feed.evening)
+        LiveReferenceSection(feed)
         Spacer(Modifier.height(4.dp))
     }
 }
 
+// ---- Hero: 🔴 LIVE ↔ 🟢 ✓ Updated ---------------------------------------
+
+/**
+ * Hero session selection: while the morning 12:01 result is pending the hero
+ * represents the morning LIVE period; after 2:00 PM local time it represents
+ * the evening 4:30 period. The hero turns green only when the relevant
+ * session's verified result field is no longer "--".
+ */
+private fun relevantHeroSession(feed: LiveFeedData): LiveSessionData =
+    if (!LocalTime.now().isBefore(EVENING_PERIOD_START)) feed.evening else feed.morning
+
 @Composable
-private fun LiveStatusHeader(date: String, stale: Boolean, refreshing: Boolean) {
+private fun LiveHero(feed: LiveFeedData, stale: Boolean) {
     val l = LocalLanguage.current
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.elevatedCardColors(containerColor = AppColors.PrimaryDeep), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)) {
-        Row(
-            Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFFD41452), Color(0xFF8D123A)))).padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    val heroSession = relevantHeroSession(feed)
+    val heroFinalized = heroSession.finalized
+    val heroTime = if (heroSession === feed.evening) "4:30 PM" else "12:01 PM"
+
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.elevatedCardColors(containerColor = AppColors.PrimaryDeep), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)) {
+        Column(
+            Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFFD41452), Color(0xFF8D123A)))).padding(horizontal = 18.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(Modifier.size(34.dp).background(Color(0xFFFF3158).copy(alpha = .35f), CircleShape), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(21.dp).background(Color(0xFFFF173D), CircleShape), contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(8.dp).background(Color.White, CircleShape))
+            // Status row: red LIVE vs green Updated, plus an offline chip when stale.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (heroFinalized) {
+                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
+                    Text("✓ " + l.text("အသစ်ဖြစ်ပြီး", "Updated"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                } else {
+                    LiveBlinkDot()
+                    Text("LIVE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                }
+                if (stale) {
+                    Surface(shape = RoundedCornerShape(999.dp), color = Color.White.copy(alpha = .18f)) {
+                        Row(Modifier.padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.CloudOff, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                            Text(l.text("နောက်ဆုံးရ", "Last data"), style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text("2D LIVE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White, maxLines = 1, softWrap = false)
+            // Hero number: subtle blink in LIVE mode; visually stable once finalized.
+            BlinkingBox(enabled = !heroFinalized) {
                 Text(
-                    when {
-                        stale -> l.text("ချိတ်ဆက်မှုပြတ် — နောက်ဆုံးရ ဒေတာပြသနေသည်", "Connection lost — showing last valid data")
-                        refreshing -> l.text("ပြန်ရယူနေသည်…", "Refreshing…")
-                        else -> l.text("တိုက်ရိုက် နောက်ဆုံးရ", "Live") + (if (date.isNotBlank()) " • $date" else "")
-                    },
-                    style = MaterialTheme.typography.labelSmall, fontSize = 11.sp, color = Color.White.copy(alpha = .85f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    if (heroFinalized) heroSession.result else feed.live,
+                    style = MaterialTheme.typography.displaySmall,
+                    fontSize = 64.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
                 )
             }
-            if (stale) {
-                Icon(Icons.Default.CloudOff, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(20.dp))
-            } else {
-                Icon(Icons.Default.Wifi, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(20.dp))
+            Text(
+                if (heroFinalized) l.text("နောက်ဆုံးရလဒ်", "Final result") + " • " + heroTime
+                else listOf(feed.date, feed.currentTime).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "LIVE" },
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = .85f),
+            )
+            val chipSet = if (heroFinalized) heroSession.set else feed.liveSet
+            val chipVal = if (heroFinalized) heroSession.value else feed.liveVal
+            if (chipSet.isNotBlank() && chipSet != PENDING) {
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HeroChip("SET", chipSet)
+                    HeroChip(l.text("တန်ဖိုး", "VALUE"), chipVal)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun LiveSessionCard(sessionLabel: String, modernTime: String, setTime: String, session: LiveSessionData) {
-    val l = LocalLanguage.current
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.width(5.dp).height(20.dp), shape = RoundedCornerShape(3.dp), color = AppColors.Primary) {}
-            Text(sessionLabel, Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink)
+private fun HeroChip(label: String, value: String) {
+    Surface(shape = RoundedCornerShape(14.dp), color = Color.White.copy(alpha = .16f)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f))
+            Text(value, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
         }
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                LiveTimeLabel(modernTime)
-                LiveValueRow(l.text("မော်ဒန်", "Modern"), session.modern)
-                LiveValueRow(l.text("အင်တာနက်", "Internet"), session.internet)
-                HorizontalDivider()
-                LiveTimeLabel(setTime)
+    }
+}
+
+@Composable
+private fun LiveBlinkDot() {
+    BlinkingBox(enabled = true) {
+        Box(Modifier.size(12.dp).background(Color(0xFFFF3158), CircleShape))
+    }
+}
+
+/**
+ * Presentation-only blink. The infinite alpha fade never observes or gates
+ * data — a new API value renders through this wrapper immediately, and the
+ * wrapper simply stops animating (stable) when `enabled` is false.
+ */
+@Composable
+private fun BlinkingBox(enabled: Boolean, content: @Composable () -> Unit) {
+    if (!enabled) {
+        content()
+        return
+    }
+    val alpha by rememberInfiniteTransition(label = "live-blink").animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(tween(LIVE_BLINK_DURATION_MS), RepeatMode.Reverse),
+        label = "live-blink-alpha",
+    )
+    Box(Modifier.graphicsLayer { this.alpha = alpha }) { content() }
+}
+
+// ============================================================================
+// Result cards (12:01 / 4:30)
+// ============================================================================
+
+@Composable
+private fun LiveResultCard(sessionLabel: String, time: String, session: LiveSessionData) {
+    val l = LocalLanguage.current
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Surface(Modifier.width(5.dp).height(20.dp), shape = RoundedCornerShape(3.dp), color = AppColors.Primary) {}
+                Text("$sessionLabel • $time", Modifier.padding(start = 8.dp).weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink)
+                if (session.finalized) {
+                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(18.dp))
+                    Text(l.text("ရပြီး", "Updated"), Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Success)
+                } else {
+                    LiveBlinkDot()
+                    Text(l.text("စောင့်နေ", "Waiting"), Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (session.finalized) {
+                LiveValueRow("2D", session.result, highlight = true)
                 LiveValueRow("SET", session.set)
                 LiveValueRow(l.text("တန်ဖိုး", "VALUE"), session.value)
-                LiveResultRow("2D", session.result)
+            } else {
+                Text(
+                    l.text("ရလဒ် မထွက်သေးပါ", "Result not announced yet"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun LiveTimeLabel(time: String) {
-    Text(time, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-}
-
-@Composable
-private fun LiveValueRow(label: String, value: String) {
+private fun LiveValueRow(label: String, value: String, highlight: Boolean = false) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AppColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep, maxLines = 1, softWrap = false)
+        Text(
+            value,
+            style = if (highlight) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Black,
+            color = if (highlight) AppColors.PrimaryDeep else AppColors.Ink,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+// ============================================================================
+// Reference section (Modern / Internet) — secondary information
+// ============================================================================
+
+@Composable
+private fun LiveReferenceSection(feed: LiveFeedData) {
+    val l = LocalLanguage.current
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone.copy(alpha = .8f)), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(Modifier.width(5.dp).height(20.dp), shape = RoundedCornerShape(3.dp), color = AppColors.Gold) {}
+                Text(l.text("အကြည့်စာရင်း", "Reference"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink)
+                Spacer(Modifier.weight(1f))
+                Text(feed.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            LiveRefTime("9:30 AM", feed.modern930, feed.internet930)
+            HorizontalDivider()
+            LiveRefTime("2:00 PM", feed.modern200, feed.internet200)
+        }
     }
 }
 
 @Composable
-private fun LiveResultRow(label: String, value: String) {
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = AppColors.Blush, border = BorderStroke(1.dp, AppColors.Stone.copy(alpha = .7f))) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-            Surface(shape = CircleShape, color = AppColors.PrimaryDeep) {
-                Text(value, Modifier.padding(horizontal = 16.dp, vertical = 6.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
-            }
-        }
+private fun LiveRefTime(time: String, modern: String, internet: String) {
+    val l = LocalLanguage.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(time, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+        LiveValueRow(l.text("မော်ဒန်", "Modern"), modern)
+        LiveValueRow(l.text("အင်တာနက်", "Internet"), internet)
     }
 }
+
+// ============================================================================
+// Error state (no data yet + fetch failed)
+// ============================================================================
 
 @Composable
 private fun LiveErrorState(onRetry: () -> Unit, modifier: Modifier = Modifier) {
@@ -285,7 +491,7 @@ private fun LiveErrorState(onRetry: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
         Text(l.text("ချိတ်ဆက်မှု မရှိပါ", "No connection"), Modifier.padding(top = 14.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink)
-        Text(l.text("စာရင်းအသစ်ရယူ၍ မရပါ။ ကြိုးစားကြည့်ပါ။", "Could not fetch live data. Try again."), Modifier.padding(top = 4.dp).padding(horizontal = 24.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(l.text("လိုင်းဒေတာ ရယူ၍ မရပါ။ ပြန်စမ်းကြည့်ပါ။", "Could not fetch live data. Try again."), Modifier.padding(top = 4.dp).padding(horizontal = 24.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Button(
             onClick = onRetry,
             Modifier.padding(top = 16.dp).width(160.dp).height(44.dp),
