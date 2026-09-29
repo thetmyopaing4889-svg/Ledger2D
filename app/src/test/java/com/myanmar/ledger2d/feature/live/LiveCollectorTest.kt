@@ -348,8 +348,13 @@ class LiveCollectorTest {
         val collector = LiveCollector(scope = scope, fetcher = { fetchCount++; sampleFeed() }, clock = { clock })
         collector.start() // the window-gated loop only
 
-        // One manual one-time sync (as app start / screen open would do)…
-        collector.fetchCycle(); advanceUntilIdle()
+        // One manual one-time sync (as app start / screen open would do).
+        // Bounded time advances only: advanceUntilIdle must NEVER be used while
+        // the infinite polling loop is alive — the loop keeps rescheduling
+        // delay() tasks and would spin forever (the reason the existing loop
+        // tests use advanceTimeBy + scope.cancel()).
+        collector.fetchCycle()
+        advanceTimeBy(1_000)
         assertEquals(1, fetchCount)
 
         // …then time passes well beyond several 5-second loop ticks: the loop
@@ -358,7 +363,8 @@ class LiveCollectorTest {
         assertEquals(1, fetchCount)
 
         // Reopening the screen performs exactly one more sync fetch — not a poll.
-        collector.fetchCycle(); advanceUntilIdle()
+        collector.fetchCycle()
+        advanceTimeBy(1_000)
         assertEquals(2, fetchCount)
 
         advanceTimeBy(30_000)
