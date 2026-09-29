@@ -4,7 +4,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.test.TestScheduler
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -20,7 +20,7 @@ import java.time.LocalTime
 class LiveCollectorTest {
 
     /** Eager dispatch; pass runTest's scheduler to share virtual time. */
-    private fun testScope(scheduler: TestScheduler? = null): CoroutineScope =
+    private fun testScope(scheduler: TestCoroutineScheduler? = null): CoroutineScope =
         if (scheduler == null) CoroutineScope(UnconfinedTestDispatcher()) else CoroutineScope(UnconfinedTestDispatcher(scheduler))
 
     // ------------------------------------------------------------------
