@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.feature.live
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -126,17 +127,20 @@ class LiveCollectorTest {
 
     @Test fun `screen is never needed - collector keeps polling inside a window`() = runTest {
         var fetchCount = 0
-        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { fetchCount++; sampleFeed() }, clock = { LocalTime.of(16, 5) })
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(scope = scope, fetcher = { fetchCount++; sampleFeed() }, clock = { LocalTime.of(16, 5) })
         // No screen/composable is involved anywhere in this test.
         collector.start()
         advanceTimeBy(11_000) // > two 5s ticks
+        scope.cancel() // bound the infinite loop so runTest can finish
         assertTrue(fetchCount >= 2)
     }
 
     @Test fun `loop polls only during live windows and idles outside`() = runTest {
         var clock = LocalTime.of(13, 0) // outside all windows
         var fetchCount = 0
-        val collector = LiveCollector(scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), fetcher = { fetchCount++; sampleFeed() }, clock = { clock })
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(scope = scope, fetcher = { fetchCount++; sampleFeed() }, clock = { clock })
         collector.start()
 
         advanceTimeBy(11_000) // two ticks outside the window
@@ -149,6 +153,7 @@ class LiveCollectorTest {
         clock = LocalTime.of(16, 31) // window over again
         advanceTimeBy(11_000)
         assertEquals(1, fetchCount)
+        scope.cancel() // bound the infinite loop so runTest can finish
     }
 
     @Test fun `reopening the screen surfaces the latest cached state immediately`() = runTest {
