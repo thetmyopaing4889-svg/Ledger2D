@@ -233,6 +233,12 @@ internal class LiveCollector(
                         cacheSaver = { LiveCacheStore.save(context, it) },
                     )
                     collector.start()
+                    // One-time synchronization fetch at app start: today's
+                    // finals, reference values, and hero surface immediately
+                    // even when the process starts outside a collection
+                    // window. A single request — continuous polling stays
+                    // exclusively with the window-gated loop started above.
+                    collector.fetchCycle()
                     shared = collector
                 }
             }

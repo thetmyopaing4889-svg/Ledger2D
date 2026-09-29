@@ -201,11 +201,14 @@ fun LiveScreen(onBack: () -> Unit) {
     val collector = LiveCollector.instance
     val state by collector.state.collectAsStateWithLifecycle()
 
-    // One window-gated freshness check when the screen opens.
+    // One-time synchronization fetch whenever the screen opens: today's
+    // finals, reference values, and hero are refreshed even when the screen
+    // opens outside a collection window. This is a single request — it never
+    // becomes continuous polling (the app-scoped collector's window-gated
+    // loop stays the only source of repeated fetches) and fetchCycle() still
+    // prevents overlapping requests.
     LaunchedEffect(Unit) {
-        if (liveWindowAction(java.time.LocalTime.now()) != LiveWindowAction.NONE) {
-            collector.fetchCycle()
-        }
+        collector.fetchCycle()
     }
 
     AppScaffold(title = "2D LIVE", onBack = onBack) { padding ->
@@ -230,11 +233,14 @@ private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: 
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         LiveHero(hero, heroLive, stale)
-        // Result cards render pending "--" rows when today's feed is not yet
-        // available; they never turn into blank/error placeholders.
-        LiveResultCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning)
-        LiveResultCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening)
-        LiveReferenceSection(feed)
+        // Session cards render pending "--" rows when today's feed is not yet
+        // available; they never turn into blank/error placeholders. Both final
+        // sessions share one row so the whole day is visible at a glance.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
+            LiveSessionCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening, Modifier.weight(1f))
+        }
+        LiveReferenceTable(feed)
         Spacer(Modifier.height(4.dp))
     }
 }
@@ -339,34 +345,42 @@ private fun BlinkingBox(enabled: Boolean, content: @Composable () -> Unit) {
 }
 
 // ============================================================================
-// Result cards (12:01 / 4:30) — pending shows "--" rows, never blank/error
+// Session cards (12:01 / 4:30) — two compact cards side by side; pending shows
+// "--" rows, never blank/error. Data and session meaning are unchanged.
 // ============================================================================
 
 @Composable
-private fun LiveResultCard(sessionLabel: String, time: String, session: LiveSessionData?) {
+private fun LiveSessionCard(sessionLabel: String, time: String, session: LiveSessionData?, modifier: Modifier = Modifier) {
     val l = LocalLanguage.current
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Surface(Modifier.width(5.dp).height(20.dp), shape = RoundedCornerShape(3.dp), color = AppColors.Primary) {}
-                Text("$sessionLabel • $time", Modifier.padding(start = 8.dp).weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink)
-                if (session?.finalized == true) {
-                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(18.dp))
-                    Text(l.text("ရပြီး", "Updated"), Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Success)
+    val finalized = session?.finalized == true
+    Card(modifier, shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Header: session name + exact final time, with Updated/Pending.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(sessionLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Ink)
+                    Text(time, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+                }
+                if (finalized) {
+                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(16.dp))
+                    Text(l.text("ရပြီး", "Updated"), Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Success)
                 } else {
-                    Text(l.text("စောင့်နေ", "Pending"), Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(l.text("စောင့်နေ", "Pending"), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (session?.finalized == true) {
-                LiveValueRow("2D", session.result, highlight = true)
-                LiveValueRow("SET", session.set)
-                LiveValueRow(l.text("တန်ဖိုး", "VALUE"), session.value)
-            } else {
-                // Pending presentation: explicit "--" rows (not an error state).
-                LiveValueRow("2D", PENDING, highlight = true, pending = true)
-                LiveValueRow("SET", PENDING, pending = true)
-                LiveValueRow(l.text("တန်ဖိုး", "VALUE"), PENDING, pending = true)
-            }
+            // Prominent 2D number (or "--" while pending) — the card's focal value.
+            Text(
+                if (finalized) session?.result ?: PENDING else PENDING,
+                Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.displaySmall,
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+                color = if (finalized) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            // SET / VALUE stay readable on half-width cards; "--" while pending.
+            LiveValueRow("SET", if (finalized) session?.set ?: PENDING else PENDING)
+            LiveValueRow(l.text("တန်ဖိုး", "VALUE"), if (finalized) session?.value ?: PENDING else PENDING)
         }
     }
 }
@@ -395,30 +409,36 @@ private fun LiveValueRow(label: String, value: String, highlight: Boolean = fals
 // ============================================================================
 
 @Composable
-private fun LiveReferenceSection(feed: LiveFeedData?) {
+private fun LiveReferenceTable(feed: LiveFeedData?) {
     val l = LocalLanguage.current
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone.copy(alpha = .8f)), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Gold-accented header with the feed date kept visible.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(Modifier.width(5.dp).height(20.dp), shape = RoundedCornerShape(3.dp), color = AppColors.Gold) {}
-                Text(l.text("အကြည့်စာရင်း", "Reference"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink)
+                Surface(Modifier.width(4.dp).height(16.dp), shape = RoundedCornerShape(2.dp), color = AppColors.Gold) {}
+                Text(l.text("အကြည့်စာရင်း", "Reference"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Ink)
                 Spacer(Modifier.weight(1f))
-                Text(feed?.date ?: PENDING, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(feed?.date ?: PENDING, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold)
             }
-            LiveRefTime("9:30 AM", feed?.modern930 ?: PENDING, feed?.internet930 ?: PENDING)
+            // Compact grid: one row per reference time, one column per source.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("", Modifier.weight(1f))
+                Text(l.text("မော်ဒန်", "Modern"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                Text(l.text("အင်တာနက်", "Internet"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+            }
+            LiveRefRow("9:30 AM", feed?.modern930 ?: PENDING, feed?.internet930 ?: PENDING)
             HorizontalDivider()
-            LiveRefTime("2:00 PM", feed?.modern200 ?: PENDING, feed?.internet200 ?: PENDING)
+            LiveRefRow("2:00 PM", feed?.modern200 ?: PENDING, feed?.internet200 ?: PENDING)
         }
     }
 }
 
 @Composable
-private fun LiveRefTime(time: String, modern: String, internet: String) {
-    val l = LocalLanguage.current
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(time, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-        LiveValueRow(l.text("မော်ဒန်", "Modern"), modern)
-        LiveValueRow(l.text("အင်တာနက်", "Internet"), internet)
+private fun LiveRefRow(time: String, modern: String, internet: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(time, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+        Text(modern, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
+        Text(internet, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
     }
 }
 

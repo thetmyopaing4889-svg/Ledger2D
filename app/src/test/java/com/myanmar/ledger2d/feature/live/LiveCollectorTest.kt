@@ -310,6 +310,62 @@ class LiveCollectorTest {
         assertTrue(latest.heroLive)
     }
 
+    // ------------------------------------------------------------------
+    // One-time synchronization fetch (app start / screen open outside windows)
+    // ------------------------------------------------------------------
+
+    @Test fun `outside-window one-time sync fetches the latest feed`() = runTest {
+        // 12:30 PM: morning finalized, evening pending, no polling window.
+        val outsideFeed = sampleFeed(live = "--").copy(
+            morning = LiveSessionData("08", "1,596.27", "42,222.36", finalized = true),
+            modern200 = "09",
+            internet200 = "99",
+        )
+        val collector = LiveCollector(
+            scope = testScope(testScheduler),
+            fetcher = { outsideFeed },
+            clock = { LocalTime.of(12, 30) },
+        )
+        assertEquals(LiveWindowAction.NONE, liveWindowAction(LocalTime.of(12, 30)))
+        assertTrue(collector.state.value is LiveUiState.Loading)
+
+        // The one-time sync (same code path as app start / screen open).
+        collector.fetchCycle(); advanceUntilIdle()
+
+        val s = collector.state.value as LiveUiState.Data
+        assertEquals(outsideFeed, s.feed)
+        assertFalse(s.stale)
+        // Hero derives from today's 12:01 final via the existing deriveHero().
+        assertFalse(s.heroLive)
+        assertEquals("08", s.hero?.result)
+        assertEquals(LIVE_SESSION_MORNING_LABEL, s.hero?.sessionLabel)
+    }
+
+    @Test fun `one-time sync outside windows does not become continuous polling`() = runTest {
+        var fetchCount = 0
+        var clock = LocalTime.of(13, 0) // outside all windows
+        val scope = testScope(testScheduler)
+        val collector = LiveCollector(scope = scope, fetcher = { fetchCount++; sampleFeed() }, clock = { clock })
+        collector.start() // the window-gated loop only
+
+        // One manual one-time sync (as app start / screen open would do)…
+        collector.fetchCycle(); advanceUntilIdle()
+        assertEquals(1, fetchCount)
+
+        // …then time passes well beyond several 5-second loop ticks: the loop
+        // must stay idle outside the windows and never re-fetch on its own.
+        advanceTimeBy(60_000)
+        assertEquals(1, fetchCount)
+
+        // Reopening the screen performs exactly one more sync fetch — not a poll.
+        collector.fetchCycle(); advanceUntilIdle()
+        assertEquals(2, fetchCount)
+
+        advanceTimeBy(30_000)
+        assertEquals(2, fetchCount)
+        scope.cancel() // bound the infinite loop so runTest can finish
+    }
+
     private fun yesterdayFinal() = LiveHeroSnapshot("77", "1,602.37", "49,707.75", LIVE_SESSION_EVENING_LABEL, "28/09/2026")
 
     private fun sampleFeed(
