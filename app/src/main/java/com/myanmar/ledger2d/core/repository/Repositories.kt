@@ -104,9 +104,12 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
             if (previous.isBefore(end)) previous.plusDays(1) else null
         }.filter { it.dayOfWeek.value <= 5 && it !in existingDates }.toList()
 
-        if (missingDates.isNotEmpty()) {
+        if (missingDates.isEmpty()) {
             sourceSucceeded = true
-            HistorySync.fetchThaiStockDates(missingDates, 6).forEach { row ->
+        } else {
+            val fetched = HistorySync.fetchThaiStockDates(missingDates, 6)
+            if (fetched.isNotEmpty()) sourceSucceeded = true
+            fetched.forEach { row ->
                 updated += upsertIfChanged(row)
             }
         }
