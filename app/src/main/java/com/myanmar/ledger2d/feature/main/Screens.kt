@@ -589,6 +589,7 @@ private fun previewError(message:String):String = when{
 
 @Composable fun WinningNumberScreen(vm: LedgerViewModel, mode: String = "input", onBack: () -> Unit) {
     val winners by vm.winners.collectAsStateWithLifecycle()
+    val historyResults by vm.historyResults.collectAsStateWithLifecycle()
     val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var date by rememberSaveable { mutableStateOf(language.selectedDate) }
@@ -600,6 +601,15 @@ private fun previewError(message:String):String = when{
     var pendingDelete by remember { mutableStateOf<WinningNumberEntity?>(null) }
     var notice by rememberSaveable { mutableStateOf("") }
     val existing = winners.firstOrNull { it.date.toString() == date && it.session == session }
+    val displayWinners = remember(winners, historyResults) {
+        buildMap<Pair<LocalDate, DrawSession>, WinningNumberEntity> {
+            historyResults.forEach { h ->
+                if (BetParser.validDigit(h.morning2d)) put(h.date to DrawSession.MORNING, WinningNumberEntity(-h.date.toEpochDay() * 10, h.date, DrawSession.MORNING, h.morning2d, 0L, 0L))
+                if (BetParser.validDigit(h.evening2d)) put(h.date to DrawSession.EVENING, WinningNumberEntity(-h.date.toEpochDay() * 10 - 1, h.date, DrawSession.EVENING, h.evening2d, 0L, 0L))
+            }
+            winners.forEach { put(it.date to it.session, it) }
+        }.values.toList()
+    }
 
     pendingDelete?.let { winner ->
         AlertDialog(
@@ -667,22 +677,22 @@ private fun previewError(message:String):String = when{
                 item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(when(resultView) { "daily" -> "ရက်အလိုက်ရလဒ်"; "weekly" -> "အပတ်စဉ်ရလဒ်"; else -> "လစဉ်ရလဒ်" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); TextButton({ resultView = ""; showForm = true }) { Text("ပြန်ထည့်ရန်") } } }
                 item {
                     when (resultView) {
-                        "daily" -> WinningDayCard(selected, winners.filter { it.date == selected }, closedDays.any { it.date == selected })
+                        "daily" -> WinningDayCard(selected, displayWinners.filter { it.date == selected }, closedDays.any { it.date == selected })
                         "weekly" -> {
                             val monday = selected.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-                            WinningWeekGrid(monday, winners, closedDays)
+                            WinningWeekGrid(monday, displayWinners, closedDays)
                         }
                         else -> {
                             val first = selected.withDayOfMonth(1)
                             val last = selected.withDayOfMonth(selected.lengthOfMonth())
-                            WinningMonthGrid(first, last, winners, closedDays)
+                            WinningMonthGrid(first, last, displayWinners, closedDays)
                         }
                     }
                 }
-            } else if (mode == "view" && winners.isEmpty()) {
+            } else if (mode == "view" && displayWinners.isEmpty()) {
                 item { EmptyState("မှတ်တမ်းမရှိသေးပါ", "အသစ်ထည့်ရန်မှ ပေါက်ဂဏန်းကို ထည့်ပါ") }
             } else if (mode == "view") {
-                winners.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) ->
+                displayWinners.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) ->
                     item {
                         ElevatedCard {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
