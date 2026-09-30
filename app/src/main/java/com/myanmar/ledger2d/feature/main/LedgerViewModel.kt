@@ -32,7 +32,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     private val _historyUpdate=MutableStateFlow<HistoryUpdateState>(HistoryUpdateState.Idle)
     val historyUpdate:StateFlow<HistoryUpdateState> = _historyUpdate.asStateFlow()
     private fun changed(){ _revision.update { it + 1 } }
-    fun updateHistory(){if(_historyUpdate.value is HistoryUpdateState.Working)return;_historyUpdate.value=HistoryUpdateState.Working;viewModelScope.launch{runCatching{container.history.sync(com.myanmar.ledger2d.LedgerApplicationContextHolder.context)}.onSuccess{_historyUpdate.value=HistoryUpdateState.Success("History "+it.startDate+" → "+it.endDate+" ("+it.updatedRows+" updates)");changed()}.onFailure{_historyUpdate.value=HistoryUpdateState.Error(it.message?:"History update မအောင်မြင်ပါ")}}}
+    fun updateHistory(){if(_historyUpdate.value is HistoryUpdateState.Working)return;_historyUpdate.value=HistoryUpdateState.Working;viewModelScope.launch{runCatching{container.history.sync()}.onSuccess{_historyUpdate.value=HistoryUpdateState.Success("History "+it.startDate+" → "+it.endDate+" ("+it.updatedRows+" updates)");changed()}.onFailure{_historyUpdate.value=HistoryUpdateState.Error(it.message?:"History update မအောင်မြင်ပါ")}}}
     private fun expandInput(raw: String, format: QuickFormat): ParseResult {
         val smart = engine.smartExpand(raw, format)
         val error = smart.lines.mapNotNull { it.result as? ParseResult.Error }.firstOrNull()
