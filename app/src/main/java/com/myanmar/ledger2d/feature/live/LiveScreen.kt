@@ -264,6 +264,27 @@ fun LiveScreen(
 }
 
 @Composable
+private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: Boolean, stale: Boolean, modifier: Modifier = Modifier) {
+    val l = LocalLanguage.current
+    Column(
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        LiveHero(hero, heroLive, stale)
+        // Session cards render pending "--" rows when today's feed is not yet
+        // available; they never turn into blank/error placeholders. Both final
+        // sessions share one row so the whole day is visible at a glance.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
+            LiveSessionCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening, Modifier.weight(1f))
+        }
+        LiveReferenceTable(feed)
+        Spacer(Modifier.height(4.dp))
+    }
+}
+
+
+@Composable
 private fun LiveBottomBar(selected: String, onSelect: (String) -> Unit) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
         NavigationBarItem(
