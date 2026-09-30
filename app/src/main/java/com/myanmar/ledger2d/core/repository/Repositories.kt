@@ -102,8 +102,15 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
         if (dao.count()==0) importSeed(context,start,end)
         var updated=0
         HistorySync.fetchShweLatest().filter{!it.date.isBefore(start)&&!it.date.isAfter(end)}.forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
-        var cursor=dao.maxDate()?.plusDays(1)?:start; if(cursor.isBefore(start)) cursor=start
-        if(!cursor.isAfter(end)) HistorySync.fetchThaiStockRange(cursor,end,6).forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
+        val minDate=dao.minDate()
+        if(minDate==null){
+            HistorySync.fetchThaiStockRange(start,end,6).forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
+        }else{
+            val headEnd=minDate.minusDays(1)
+            if(!headEnd.isBefore(start)) HistorySync.fetchThaiStockRange(start,headEnd,6).forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
+            var cursor=dao.maxDate()?.plusDays(1)?:start; if(cursor.isBefore(start)) cursor=start
+            if(!cursor.isAfter(end)) HistorySync.fetchThaiStockRange(cursor,end,6).forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
+        }
         dao.deleteBefore(start); return HistorySyncSummary(start,end,updated)
     }
 }
