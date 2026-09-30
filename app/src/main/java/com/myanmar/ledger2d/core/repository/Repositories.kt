@@ -10,6 +10,7 @@ import com.myanmar.ledger2d.core.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun observe(id: Long): Flow<AgentEntity?>; suspend fun get(id: Long): AgentEntity?; suspend fun save(value: AgentEntity): Long }
 interface CustomerRepository { fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>; fun observe(id: Long): Flow<CustomerEntity?>; suspend fun get(id: Long): CustomerEntity?; suspend fun getForAgent(agentId: Long): List<CustomerEntity>; suspend fun save(value: CustomerEntity): Long }
@@ -83,7 +84,7 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
         for (i in 0 until array.length()) {
             val o = array.getJSONObject(i)
             rows += HistoryResultEntity(
-                date = LocalDate.parse(o.getString("date")),
+                date = LocalDate.parse(o.getString("date"), DateTimeFormatter.ofPattern("dd-MM-yyyy")),
                 morning2d = o.optString("morning2d", "-"),
                 morningSet = o.optString("morningSet", "-"),
                 morningValue = o.optString("morningValue", "-"),
