@@ -5,17 +5,11 @@ import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 object LedgerApplicationContextHolder { lateinit var context: Application }
 
 class LedgerApplication : Application() {
     lateinit var container: AppContainer
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun onCreate() {
         super.onCreate()
         LedgerApplicationContextHolder.context = this
