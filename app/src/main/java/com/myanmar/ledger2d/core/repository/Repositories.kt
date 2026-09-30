@@ -112,7 +112,6 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
     override suspend fun sync(context: android.content.Context): HistorySyncSummary {
         val today=LocalDate.now(); val start=LocalDate.of(today.year-3,1,1); val end=today.minusDays(1)
         if (end.isBefore(start)) return HistorySyncSummary(start,end,0)
-        if (dao.count()==0) importSeed(context,start,end)
         var updated=0
         HistorySync.fetchShweLatest().filter{!it.date.isBefore(start)&&!it.date.isAfter(end)}.forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
         val minDate=dao.minDate()
