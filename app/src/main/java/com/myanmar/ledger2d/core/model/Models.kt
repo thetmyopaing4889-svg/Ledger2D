@@ -9,4 +9,4 @@ data class Customer(val id: Long = 0, val agentId: Long, val name: String, val a
 data class ExpandedBet(val digit: String, val amount: Long)
 data class DrawIdentity(val date: LocalDate, val session: DrawSession)
 data class DigitTotal(val digit: String, val amount: Long)
-data class EffectiveLimits(val allLimit: Long?, val specialLimits: Map<String, Long>) { fun forDigit(digit: String): Long? = specialLimits[digit] ?: allLimit }
+data class EffectiveLimits(val allLimit: Long?, val specialLimits: Map<String, Long>) { fun forDigit(digit: String): Long? = specialLimits[digit] ?: allLimit }\ndata class HistorySyncSummary(val startDate: LocalDate, val endDate: LocalDate, val updatedRows: Int)
