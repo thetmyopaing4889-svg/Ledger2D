@@ -147,9 +147,20 @@ object HistorySync {
                 internet200 = o.optString("internet_200", "-")
             )};out
     }
-    suspend fun fetchThaiStockRange(start:LocalDate,end:LocalDate,parallelism:Int):List<HistoryResultEntity>=kotlinx.coroutines.coroutineScope{
-        if(start.isAfter(end))return@coroutineScope emptyList()
-        generateSequence(start){p->if(p.isBefore(end))p.plusDays(1)else null}.toList().chunked(parallelism).flatMap { batch -> kotlinx.coroutines.coroutineScope { batch.map { d -> async(kotlinx.coroutines.Dispatchers.IO) { fetchThaiStockDate(d) } }.awaitAll() }.filterNotNull() }
+    suspend fun fetchThaiStockRange(start:LocalDate,end:LocalDate,parallelism:Int):List<HistoryResultEntity> = kotlinx.coroutines.coroutineScope {
+        if (start.isAfter(end)) return@coroutineScope emptyList()
+        val dates = generateSequence(start) { p ->
+            if (p.isBefore(end)) p.plusDays(1) else null
+        }.toList()
+        val result = ArrayList<HistoryResultEntity>()
+        for (batch in dates.chunked(parallelism.coerceAtLeast(1))) {
+            result += batch.map { d ->
+                async(kotlinx.coroutines.Dispatchers.IO) {
+                    fetchThaiStockDate(d)
+                }
+            }.awaitAll().filterNotNull()
+        }
+        result
     }
     private suspend fun fetchThaiStockDate(date:LocalDate):HistoryResultEntity?=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){
         val arr=runCatching{org.json.JSONArray(httpGet("https://api.thaistock2d.com/2d_result?date="+date.format(fmt)))}.getOrNull()?:return@withContext null
