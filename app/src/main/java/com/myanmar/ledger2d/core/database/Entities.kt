@@ -19,6 +19,22 @@ data class BetLineEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val 
 @Entity(tableName = "winning_numbers", indices = [Index(value = ["date", "session"], unique = true)])
 data class WinningNumberEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val date: LocalDate, val session: DrawSession, val digit: String, val createdAt: Long, val updatedAt: Long)
 
+@Entity(tableName = "history_results", indices = [Index(value = ["date"], unique = true)])
+data class HistoryResultEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val date: LocalDate,
+    val morning2d: String,
+    val morningSet: String,
+    val morningValue: String,
+    val evening2d: String,
+    val eveningSet: String,
+    val eveningValue: String,
+    val modern930: String,
+    val internet930: String,
+    val modern200: String,
+    val internet200: String
+)
+
 @Entity(tableName = "closed_days", indices = [Index(value = ["date"], unique = true)])
 data class ClosedDayEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val date: LocalDate, val createdAt: Long, val updatedAt: Long)
 
