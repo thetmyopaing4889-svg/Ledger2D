@@ -6,13 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [AgentEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class], version = 5, exportSchema = true)
+@Database(entities = [AgentEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class], version = 6, exportSchema = true)
 @TypeConverters(DatabaseConverters::class)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun agentDao(): AgentDao
     abstract fun customerDao(): CustomerDao
     abstract fun betDao(): BetDao
     abstract fun winningNumberDao(): WinningNumberDao
+    abstract fun historyResultDao(): HistoryResultDao
     abstract fun closedDayDao(): ClosedDayDao
     abstract fun closedNumberDao(): ClosedNumberDao
     abstract fun limitDao(): LimitDao
@@ -48,6 +49,12 @@ abstract class LedgerDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE bet_entries ADD COLUMN commissionAmount INTEGER NOT NULL DEFAULT 0")
             }
         }
-        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+        private val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS history_results (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, date TEXT NOT NULL, morning2d TEXT NOT NULL, morningSet TEXT NOT NULL, morningValue TEXT NOT NULL, evening2d TEXT NOT NULL, eveningSet TEXT NOT NULL, eveningValue TEXT NOT NULL, modern930 TEXT NOT NULL, internet930 TEXT NOT NULL, modern200 TEXT NOT NULL, internet200 TEXT NOT NULL)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_history_results_date ON history_results(date)")
+            }
+        }
+        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
     }
 }
