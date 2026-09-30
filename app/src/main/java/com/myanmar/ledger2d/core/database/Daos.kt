@@ -56,6 +56,7 @@ import java.time.LocalDate
     @Query("SELECT COUNT(*) FROM history_results") suspend fun count(): Int
     @Query("SELECT MIN(date) FROM history_results") suspend fun minDate(): LocalDate?
     @Query("SELECT MAX(date) FROM history_results") suspend fun maxDate(): LocalDate?
+    @Query("SELECT date FROM history_results WHERE date BETWEEN :start AND :end") suspend fun getDates(start: LocalDate, end: LocalDate): List<LocalDate>
     @Query("DELETE FROM history_results WHERE date < :date") suspend fun deleteBefore(date: LocalDate)
 }
 
