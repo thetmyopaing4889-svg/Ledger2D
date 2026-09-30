@@ -7,6 +7,7 @@ import com.myanmar.ledger2d.core.domain.BetParser
 import com.myanmar.ledger2d.core.domain.CommissionCalculator
 import com.myanmar.ledger2d.core.domain.QuickFormat
 import com.myanmar.ledger2d.core.model.*
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -110,8 +111,10 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
 object HistorySync {
     private val fmt=DateTimeFormatter.ofPattern("dd-MM-yyyy")
     suspend fun fetchShweLatest():List<HistoryResultEntity>=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){
-        val root=org.json.JSONArray(httpGet("https://backend.shwemyanmar2d.com/api/lv/twod-result")); val out=ArrayList<HistoryResultEntity>()
-        for(i in 0 until root.length()){val data=root.optJSONObject(i)?.optJSONArray("data")?:continue;for(j in 0 until data.length()){val o=data.getJSONObject(j);out+=HistoryResultEntity(LocalDate.parse(o.getString("date")),o.optString("result_1200","-"),o.optString("set_1200","-"),o.optString("val_1200","-"),o.optString("result_430","-"),o.optString("set_430","-"),o.optString("val_430","-"),o.optString("modern_930","-"),o.optString("internet_930","-"),o.optString("modern_200","-"),o.optString("internet_200","-"))}};out
+        val body=httpGet("https://backend.shwemyanmar2d.com/api/lv/twod-result").trim()
+        val data=if(body.startsWith("{")) org.json.JSONObject(body).optJSONArray("data") else org.json.JSONArray(body)
+        val out=ArrayList<HistoryResultEntity>()
+        for(j in 0 until data.length()){val o=data.getJSONObject(j);out+=HistoryResultEntity(LocalDate.parse(o.getString("date")),o.optString("result_1200","-"),o.optString("set_1200","-"),o.optString("val_1200","-"),o.optString("result_430","-"),o.optString("set_430","-"),o.optString("val_430","-"),o.optString("modern_930","-"),o.optString("internet_930","-"),o.optString("modern_200","-"),o.optString("internet_200","-"))};out
     }
     suspend fun fetchThaiStockRange(start:LocalDate,end:LocalDate,parallelism:Int):List<HistoryResultEntity>=kotlinx.coroutines.coroutineScope{
         if(start.isAfter(end))return@coroutineScope emptyList()
