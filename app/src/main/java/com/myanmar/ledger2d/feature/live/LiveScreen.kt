@@ -40,6 +40,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -51,12 +55,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.myanmar.ledger2d.core.database.HistoryResultEntity
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
-import com.myanmar.ledger2d.feature.main.AppScaffold
+import com.myanmar.ledger2d.feature.main.OperationalScaffold
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.flow.Flow
 
 // ============================================================================
 // Configuration — isolated so the polling/animation behavior can be tuned later
@@ -194,54 +204,317 @@ internal object LiveApi {
 // ============================================================================
 
 @Composable
-fun LiveScreen(onBack: () -> Unit) {
-    // The collector is app-scoped: this screen renders the latest cached state
-    // immediately and keeps observing it; closing the screen never stops the
-    // scheduled background collection.
+fun LiveScreen(
+    historyFlow: Flow<List<HistoryResultEntity>>,
+    onBack: () -> Unit,
+) {
     val collector = LiveCollector.instance
     val state by collector.state.collectAsStateWithLifecycle()
+    val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    var selectedTab by rememberSaveable { mutableStateOf("live") }
+    var selectedDateText by rememberSaveable { mutableStateOf("") }
 
-    // One-time synchronization fetch whenever the screen opens: today's
-    // finals, reference values, and hero are refreshed even when the screen
-    // opens outside a collection window. This is a single request — it never
-    // becomes continuous polling (the app-scoped collector's window-gated
-    // loop stays the only source of repeated fetches) and fetchCycle() still
-    // prevents overlapping requests.
-    LaunchedEffect(Unit) {
-        collector.fetchCycle()
+    LaunchedEffect(Unit) { collector.fetchCycle() }
+
+    val selectedDate = selectedDateText.takeIf { it.isNotBlank() }?.let {
+        runCatching { LocalDate.parse(it) }.getOrNull()
     }
 
-    AppScaffold(title = "2D LIVE", onBack = onBack) { padding ->
+    OperationalScaffold(
+        title = if (selectedTab == "calendar" && selectedDate != null) "2D Calendar" else "2D LIVE",
+        onBack = onBack,
+        bottomBar = {
+            LiveBottomBar(selectedTab) {
+                selectedTab = it
+                if (it == "live") selectedDateText = ""
+            }
+        },
+    ) { padding ->
         when (val s = state) {
-            // A spinner only for a genuine first fetch with nothing cached;
-            // the collector persists the final hero, so this is rare and short.
             LiveUiState.Loading, is LiveUiState.Error -> LiveUnavailableState(
                 loading = s == LiveUiState.Loading,
                 onRetry = { collector.fetchCycle() },
                 modifier = Modifier.padding(padding),
             )
-            is LiveUiState.Data -> LiveContent(s.feed, s.hero, s.heroLive, s.stale, Modifier.padding(padding))
+            is LiveUiState.Data -> {
+                if (selectedTab == "live") {
+                    LiveContent(s.feed, s.hero, s.heroLive, s.stale, Modifier.padding(padding))
+                } else if (selectedDate != null) {
+                    LiveCalendarDetail(
+                        history = history.firstOrNull { it.date == selectedDate },
+                        date = selectedDate,
+                        onBackToCalendar = { selectedDateText = "" },
+                        modifier = Modifier.padding(padding),
+                    )
+                } else {
+                    LiveCalendar(
+                        history = history,
+                        onDateSelected = { selectedDateText = it.toString() },
+                        modifier = Modifier.padding(padding),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: Boolean, stale: Boolean, modifier: Modifier = Modifier) {
-    val l = LocalLanguage.current
+private fun LiveBottomBar(selected: String, onSelect: (String) -> Unit) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+        NavigationBarItem(
+            selected = selected == "live",
+            onClick = { onSelect("live") },
+            icon = { Icon(Icons.Default.CheckCircle, null) },
+            label = { Text("Live") },
+        )
+        NavigationBarItem(
+            selected = selected == "calendar",
+            onClick = { onSelect("calendar") },
+            icon = { Icon(Icons.Default.CalendarMonth, null) },
+            label = { Text("Calendar") },
+        )
+    }
+}
+
+@Composable
+private fun LiveCalendar(
+    history: List<HistoryResultEntity>,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val latestDate = history.maxOfOrNull { it.date } ?: LocalDate.now()
+    val earliestDate = history.minOfOrNull { it.date } ?: latestDate
+    var monthText by rememberSaveable { mutableStateOf(YearMonth.from(latestDate).toString()) }
+    val month = runCatching { YearMonth.parse(monthText) }.getOrElse { YearMonth.from(latestDate) }
+    val historyByDate = remember(history) { history.associateBy { it.date } }
+    val monthLabel = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.ENGLISH))
+    val minMonth = YearMonth.from(earliestDate)
+    val maxMonth = YearMonth.from(latestDate)
+    val canPrevious = month > minMonth
+    val canNext = month < maxMonth
+    val firstMonday = month.atDay(1).with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val lastFriday = month.atEndOfMonth().with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY))
+
+    Column(
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, AppColors.Stone),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Button(
+                    onClick = { if (canPrevious) monthText = month.minusMonths(1).toString() },
+                    enabled = canPrevious,
+                    modifier = Modifier.size(46.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryDeep),
+                ) { Text("‹", fontSize = 28.sp) }
+                Text(
+                    monthLabel,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = AppColors.Ink,
+                )
+                Button(
+                    onClick = { if (canNext) monthText = month.plusMonths(1).toString() },
+                    enabled = canNext,
+                    modifier = Modifier.size(46.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryDeep),
+                ) { Text("›", fontSize = 28.sp) }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            listOf("MON", "TUE", "WED", "THU", "FRI").forEach {
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    color = AppColors.Blush,
+                ) {
+                    Text(
+                        it,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.Ink,
+                    )
+                }
+            }
+        }
+
+        var weekStart = firstMonday
+        while (!weekStart.isAfter(lastFriday)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                for (offset in 0..4) {
+                    val date = weekStart.plusDays(offset.toLong())
+                    val inMonth = date.month == month.month && date.year == month.year
+                    val result = if (inMonth) historyByDate[date] else null
+                    if (inMonth) {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, AppColors.Stone),
+                            shadowElevation = 1.dp,
+                            onClick = { onDateSelected(date) },
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 9.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Surface(shape = CircleShape, color = AppColors.Blush) {
+                                    Text(
+                                        date.dayOfMonth.toString().padStart(2, '0'),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppColors.Ink,
+                                    )
+                                }
+                                Text(
+                                    result?.morning2d ?: PENDING,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (result != null) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    result?.evening2d ?: PENDING,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (result != null) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+            weekStart = weekStart.plusWeeks(1)
+        }
+
+        Text(
+            "တစ်ရက်ကိုနှိပ်ပါက အသေးစိတ်ကြည့်နိုင်သည်",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun LiveCalendarDetail(
+    history: HistoryResultEntity?,
+    date: LocalDate,
+    onBackToCalendar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", java.util.Locale.ENGLISH))
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        LiveHero(hero, heroLive, stale)
-        // Session cards render pending "--" rows when today's feed is not yet
-        // available; they never turn into blank/error placeholders. Both final
-        // sessions share one row so the whole day is visible at a glance.
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
-            LiveSessionCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening, Modifier.weight(1f))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Button(
+                onClick = onBackToCalendar,
+                modifier = Modifier.size(44.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryDeep),
+            ) { Text("‹", fontSize = 26.sp) }
+            Text(
+                dateLabel,
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                color = AppColors.Ink,
+            )
+            Spacer(Modifier.size(44.dp))
         }
-        LiveReferenceTable(feed)
-        Spacer(Modifier.height(4.dp))
+
+        LiveDetailResultCard("12:01 PM", history?.morningSet ?: PENDING, history?.morningValue ?: PENDING, history?.morning2d ?: PENDING)
+        LiveDetailResultCard("4:30 PM", history?.eveningSet ?: PENDING, history?.eveningValue ?: PENDING, history?.evening2d ?: PENDING)
+
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, AppColors.Stone),
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("REFERENCE", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Gold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("TIME", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Ink)
+                    Text("MODERN", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                    Text("INTERNET", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                }
+                HorizontalDivider()
+                LiveDetailReferenceRow("09:30", history?.modern930 ?: PENDING, history?.internet930 ?: PENDING)
+                LiveDetailReferenceRow("14:00", history?.modern200 ?: PENDING, history?.internet200 ?: PENDING)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveDetailResultCard(time: String, set: String, value: String, digit: String) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, AppColors.Stone),
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().background(AppColors.PrimaryDeep).padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(time, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White)
+                Text("SET", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.Center)
+                Text("VALUE", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.Center)
+                Text("2D", Modifier.weight(.7f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.End)
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("", Modifier.weight(1f))
+                Text(set, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
+                Text(value, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
+                Text(digit, Modifier.weight(.7f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = AppColors.Gold, textAlign = TextAlign.End)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveDetailReferenceRow(time: String, modern: String, internet: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(time, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+        Text(modern, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
+        Text(internet, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
     }
 }
 
