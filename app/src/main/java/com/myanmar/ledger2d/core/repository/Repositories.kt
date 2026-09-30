@@ -80,7 +80,8 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
     override suspend fun get(date: LocalDate) = dao.get(date)
 
     override suspend fun seedIfEmpty(context: android.content.Context) {
-        if (dao.count() > 0) return
+        // The bundled dataset is the offline baseline. Fill only missing dates;
+        // never replace an existing API/local row with seed data.
         importSeed(context, LocalDate.MIN, LocalDate.MAX)
     }
 
@@ -106,12 +107,23 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
                 internet200 = o.optString("internet200", "-")
             )
         }
-        if (rows.isNotEmpty()) db.withTransaction { dao.upsertAll(rows) }
+        if (rows.isNotEmpty()) {
+            db.withTransaction {
+                rows.forEach { row ->
+                    dao.upsert(HistorySync.merge(dao.get(row.date), row))
+                }
+            }
+        }
     }
 
     override suspend fun sync(context: android.content.Context): HistorySyncSummary {
         val today=LocalDate.now(); val start=LocalDate.of(today.year-3,1,1); val end=today.minusDays(1)
         if (end.isBefore(start)) return HistorySyncSummary(start,end,0)
+
+        // Repair/fill the local history baseline before contacting the APIs.
+        // Existing rows are preserved; only missing seed dates are added.
+        seedIfEmpty(context)
+
         var updated=0
         HistorySync.fetchShweLatest().filter{!it.date.isBefore(start)&&!it.date.isAfter(end)}.forEach{db.withTransaction{dao.upsert(HistorySync.merge(dao.get(it.date),it))};updated++}
         val minDate=dao.minDate()
