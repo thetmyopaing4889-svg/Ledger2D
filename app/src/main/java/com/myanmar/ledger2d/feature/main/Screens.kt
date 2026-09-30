@@ -711,8 +711,13 @@ private fun previewError(message:String):String = when{
                                             Text(if (winner == null) "မထည့်ရသေးပါ" else "ပေါက်ဂဏန်း ${winner.digit}", color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
                                         }
                                         if (winner != null) {
-                                            TextButton({ date = winner.date.toString(); session = winner.session; digit = winner.digit; showForm = true }) { Text("ပြင်မည်") }
-                                            TextButton({ pendingDelete = winner }) { Text("ဖျက်မည်") }
+                                            val isLocalWinner = winners.any { it.date == winner.date && it.session == winner.session }
+                                            if (isLocalWinner) {
+                                                TextButton({ date = winner.date.toString(); session = winner.session; digit = winner.digit; showForm = true }) { Text("ပြင်မည်") }
+                                                TextButton({ pendingDelete = winner }) { Text("ဖျက်မည်") }
+                                            } else {
+                                                Text("History Result", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
                                         }
                                     }
                                 }
