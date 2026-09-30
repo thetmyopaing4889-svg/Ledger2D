@@ -91,7 +91,19 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
             val o = array.getJSONObject(i)
             val date = LocalDate.parse(o.getString("date"), DateTimeFormatter.ofPattern("dd-MM-yyyy"))
             if (date.isBefore(start) || date.isAfter(end)) continue
-            rows += HistoryResultEntity(date, o.optString("morning2d","-"), o.optString("morningSet","-"), o.optString("morningValue","-"), o.optString("evening2d","-"), o.optString("eveningSet","-"), o.optString("eveningValue","-"), o.optString("modern930","-"), o.optString("internet930","-"), o.optString("modern200","-"), o.optString("internet200","-"))
+            rows += HistoryResultEntity(
+                date = date,
+                morning2d = o.optString("morning2d", "-"),
+                morningSet = o.optString("morningSet", "-"),
+                morningValue = o.optString("morningValue", "-"),
+                evening2d = o.optString("evening2d", "-"),
+                eveningSet = o.optString("eveningSet", "-"),
+                eveningValue = o.optString("eveningValue", "-"),
+                modern930 = o.optString("modern930", "-"),
+                internet930 = o.optString("internet930", "-"),
+                modern200 = o.optString("modern200", "-"),
+                internet200 = o.optString("internet200", "-")
+            )
         }
         if (rows.isNotEmpty()) db.withTransaction { dao.upsertAll(rows) }
     }
@@ -121,7 +133,19 @@ object HistorySync {
         val body=httpGet("https://backend.shwemyanmar2d.com/api/lv/twod-result").trim()
         val data=if(body.startsWith("{")) org.json.JSONObject(body).optJSONArray("data") else org.json.JSONArray(body)
         val out=ArrayList<HistoryResultEntity>()
-        for(j in 0 until data.length()){val o=data.getJSONObject(j);out+=HistoryResultEntity(LocalDate.parse(o.getString("date")),o.optString("result_1200","-"),o.optString("set_1200","-"),o.optString("val_1200","-"),o.optString("result_430","-"),o.optString("set_430","-"),o.optString("val_430","-"),o.optString("modern_930","-"),o.optString("internet_930","-"),o.optString("modern_200","-"),o.optString("internet_200","-"))};out
+        for(j in 0 until data.length()){val o=data.getJSONObject(j);out += HistoryResultEntity(
+                date = LocalDate.parse(o.getString("date")),
+                morning2d = o.optString("result_1200", "-"),
+                morningSet = o.optString("set_1200", "-"),
+                morningValue = o.optString("val_1200", "-"),
+                evening2d = o.optString("result_430", "-"),
+                eveningSet = o.optString("set_430", "-"),
+                eveningValue = o.optString("val_430", "-"),
+                modern930 = o.optString("modern_930", "-"),
+                internet930 = o.optString("internet_930", "-"),
+                modern200 = o.optString("modern_200", "-"),
+                internet200 = o.optString("internet_200", "-")
+            )};out
     }
     suspend fun fetchThaiStockRange(start:LocalDate,end:LocalDate,parallelism:Int):List<HistoryResultEntity>=kotlinx.coroutines.coroutineScope{
         if(start.isAfter(end))return@coroutineScope emptyList()
@@ -131,9 +155,41 @@ object HistorySync {
         val arr=runCatching{org.json.JSONArray(httpGet("https://api.thaistock2d.com/2d_result?date="+date.format(fmt)))}.getOrNull()?:return@withContext null
         val child=arr.optJSONObject(0)?.optJSONArray("child")?:return@withContext null;var m:org.json.JSONObject?=null;var e:org.json.JSONObject?=null
         for(i in 0 until child.length()){val r=child.getJSONObject(i);when(r.optString("time")){"12:01:00"->m=r;"16:30:00"->e=r}}
-        HistoryResultEntity(date,m?.optString("twod","-")?:"-",m?.optString("set","-")?:"-",m?.optString("value","-")?:"-",e?.optString("twod","-")?:"-",e?.optString("set","-")?:"-",e?.optString("value","-")?:"-","-","-","-","-")
+        HistoryResultEntity(
+            date = date,
+            morning2d = m?.optString("twod", "-") ?: "-",
+            morningSet = m?.optString("set", "-") ?: "-",
+            morningValue = m?.optString("value", "-") ?: "-",
+            evening2d = e?.optString("twod", "-") ?: "-",
+            eveningSet = e?.optString("set", "-") ?: "-",
+            eveningValue = e?.optString("value", "-") ?: "-",
+            modern930 = "-",
+            internet930 = "-",
+            modern200 = "-",
+            internet200 = "-"
+        )
     }
-    fun merge(old:HistoryResultEntity?,inc:HistoryResultEntity):HistoryResultEntity{if(old==null)return inc;fun k(n:String,o:String)=if(n.isBlank()||n=="-")o else n;return inc.copy(id=old.id,morning2d=k(inc.morning2d,old.morning2d),morningSet=k(inc.morningSet,old.morningSet),morningValue=k(inc.morningValue,old.morningValue),evening2d=k(inc.evening2d,old.evening2d),eveningSet=k(inc.eveningSet,old.eveningSet),eveningValue=k(inc.eveningValue,old.eveningValue),modern930=k(inc.modern930,old.modern930),internet930=k(inc.internet930,old.internet930),modern200=k(inc.modern200,old.modern200),internet200=k(inc.internet200,old.internet200))}
+    fun merge(old: HistoryResultEntity?, inc: HistoryResultEntity): HistoryResultEntity {
+        if (old == null) return inc
+
+        fun keepIncomingOrOld(incoming: String, existing: String): String {
+            return if (incoming.isBlank() || incoming == "-") existing else incoming
+        }
+
+        return inc.copy(
+            id = old.id,
+            morning2d = keepIncomingOrOld(inc.morning2d, old.morning2d),
+            morningSet = keepIncomingOrOld(inc.morningSet, old.morningSet),
+            morningValue = keepIncomingOrOld(inc.morningValue, old.morningValue),
+            evening2d = keepIncomingOrOld(inc.evening2d, old.evening2d),
+            eveningSet = keepIncomingOrOld(inc.eveningSet, old.eveningSet),
+            eveningValue = keepIncomingOrOld(inc.eveningValue, old.eveningValue),
+            modern930 = keepIncomingOrOld(inc.modern930, old.modern930),
+            internet930 = keepIncomingOrOld(inc.internet930, old.internet930),
+            modern200 = keepIncomingOrOld(inc.modern200, old.modern200),
+            internet200 = keepIncomingOrOld(inc.internet200, old.internet200)
+        )
+    }
     private fun httpGet(url:String):String{val c=java.net.URL(url).openConnection() as java.net.HttpURLConnection;c.connectTimeout=15_000;c.readTimeout=15_000;c.requestMethod="GET";c.setRequestProperty("Accept","application/json");return try{if(c.responseCode !in 200..299)error("HTTP "+c.responseCode);c.inputStream.bufferedReader().use{it.readText()}}finally{c.disconnect()}}
 }
 
