@@ -158,7 +158,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
     DarkStatusBarsEffect()
-    val revision by vm.revision.collectAsStateWithLifecycle()
+    val revision by vm.revision.collectAsStateWithLifecycle()\n    val history by vm.historyResults.collectAsStateWithLifecycle()\n    val localWinner by vm.winner(date ?: LocalDate.now(), session).collectAsStateWithLifecycle(initialValue = null)
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
@@ -786,7 +786,7 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
                 DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
                 Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
             }
-            item { if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (!report!!.winnerAvailable) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, report!!.winningDigit) }
+            item {\n                val historicalDigit = history.firstOrNull { it.date == date }?.let { if (session == DrawSession.MORNING) it.morning2d else it.evening2d }\n                val shownDigit = localWinner?.digit ?: historicalDigit?.takeIf { BetParser.validDigit(it) }\n                if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (shownDigit == null) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, shownDigit)\n            }
         }
     }
 }
