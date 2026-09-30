@@ -233,7 +233,7 @@ fun LiveScreen(
                 if (it == "live") selectedDateText = ""
             }
         },
-    ) { padding ->
+        content = { padding ->
         when (val s = state) {
             LiveUiState.Loading, is LiveUiState.Error -> LiveUnavailableState(
                 loading = s == LiveUiState.Loading,
