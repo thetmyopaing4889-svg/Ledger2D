@@ -256,9 +256,15 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeWeeklyResults(vm:LedgerViewModel,modifier:Modifier=Modifier){
     val l=LocalLanguage.current
-    val agents by vm.agents.collectAsStateWithLifecycle(); val winners by vm.winners.collectAsStateWithLifecycle(); val closedDays by vm.closedDays.collectAsStateWithLifecycle()
+    val agents by vm.agents.collectAsStateWithLifecycle(); val winners by vm.winners.collectAsStateWithLifecycle(); val history by vm.historyResults.collectAsStateWithLifecycle(); val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val currentMonday=DeviceCalendar.today().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)); var weekOffset by remember{mutableIntStateOf(0)}; val monday=currentMonday.plusWeeks(weekOffset.toLong())
-    val winnerMap=winners.associateBy{it.date to it.session}; val closedSet=closedDays.map{it.date}.toSet(); val revision by vm.revision.collectAsStateWithLifecycle()
+    val winnerMap = buildMap<Pair<LocalDate,DrawSession>,String> {
+        history.forEach { h ->
+            if (BetParser.validDigit(h.morning2d)) put(h.date to DrawSession.MORNING, h.morning2d)
+            if (BetParser.validDigit(h.evening2d)) put(h.date to DrawSession.EVENING, h.evening2d)
+        }
+        winners.forEach { put(it.date to it.session, it.digit) }
+    }; val closedSet=closedDays.map{it.date}.toSet(); val revision by vm.revision.collectAsStateWithLifecycle()
     data class DigitDetail(val date:LocalDate,val session:DrawSession,val digit:String,val stake:Long,val commission:Long); var selectedDigit by remember{mutableStateOf<DigitDetail?>(null)}
     val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,revision){value=(0L..4L).flatMap{offset->DrawSession.entries.map{session->val date=monday.plusDays(offset);var stake=0L;var commission=0L;agents.forEach{agent->val report=vm.agentReport(agent.id,date,session,true);stake+=report.calculation.totalBet;commission+=report.calculation.commission};(date to session) to(stake to commission)}}.toMap()}
     val weekEnd=monday.plusDays(4); val weekLabel="${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
@@ -274,7 +280,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.7f))){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
 @Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(38.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
 
-@Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,WinningNumberEntity>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
+@Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,String>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
     val l=LocalLanguage.current
     val today=DeviceCalendar.today()
     val dates=(0L..4L).map(monday::plusDays); val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
@@ -292,7 +298,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             Row(Modifier.fillMaxWidth().height(56.dp),verticalAlignment=Alignment.CenterVertically){
                 Text(l.translate(if(session == DrawSession.MORNING) "မနက်" else "ညနေ"),Modifier.width(48.dp).padding(start=2.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
                 dates.forEach { date ->
-                    val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session]?.digit ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
+                    val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session] ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
                     val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> Color(0xFFF4F0F1); morning -> AppColors.Blush; else -> Color.White }
                     val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
