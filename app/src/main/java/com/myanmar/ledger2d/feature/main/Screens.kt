@@ -1040,7 +1040,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         Text(language.text("History Result","History Result"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         OutlinedCard { Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
-            Button(onClick={vm::updateHistory},enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth()){Text(language.text("History Result Update","Update History Result"))}
+            Button(onClick=vm::updateHistory,enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth()){Text(language.text("History Result Update","Update History Result"))}
             when(val state=historyUpdate){
                 HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်မှ မနေ့အထိ History Result ကို update လုပ်ပါမည်။","Tap to update history results through yesterday."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 HistoryUpdateState.Working->Text(language.text("History Result update လုပ်နေပါသည်…","Updating history results…"),style=MaterialTheme.typography.bodySmall)
