@@ -20,6 +20,8 @@ data class ScopeSummary(val id:Long, val name:String, val totalBet:Long, val win
 class LedgerViewModel(private val container: AppContainer):ViewModel(){
     val agents=container.agents.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val winners=container.winners.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
+    val historyResults=container.history.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
+    fun historyResult(date:LocalDate)=container.history.observe(date)
     fun winner(date:LocalDate, session:DrawSession)=container.winners.observe(date,session)
     val closedDays=container.closedDays.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     private val engine=BetExpansionEngine(); private val validator=LimitValidator(); private val mutationMutex=Mutex()
