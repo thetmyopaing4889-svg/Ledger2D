@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -373,12 +374,13 @@ private fun LiveCalendar(
                     val result = if (inMonth) historyByDate[date] else null
                     if (inMonth) {
                         Surface(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onDateSelected(date) },
                             shape = RoundedCornerShape(16.dp),
                             color = Color.White,
                             border = BorderStroke(1.dp, AppColors.Stone),
                             shadowElevation = 1.dp,
-                            onClick = { onDateSelected(date) },
                         ) {
                             Column(
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 9.dp),
