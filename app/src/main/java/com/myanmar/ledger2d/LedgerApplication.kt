@@ -21,12 +21,6 @@ class LedgerApplication : Application() {
         LedgerApplicationContextHolder.context = this
         container = AppContainer(LedgerDatabase.create(this))
 
-        // History Result is a bundled local dataset, so it must be available
-        // immediately on first launch without waiting for network sync.
-        applicationScope.launch {
-            runCatching { container.history.seedIfEmpty(this@LedgerApplication) }
-        }
-
         // App-scoped 2D LIVE collector: window-gated polling that continues
         // during the scheduled LIVE windows even when the screen is closed.
         LiveCollector.startOnce(this)
