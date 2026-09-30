@@ -17,6 +17,7 @@ data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်�
 data class DrawReport(val calculation:DrawCalculation, val winningDigit:String?, val winnerAvailable:Boolean, val after:Boolean)
 data class AgentCustomerReportRow(val customer:CustomerEntity, val calculation:DrawCalculation)
 data class ScopeSummary(val id:Long, val name:String, val totalBet:Long, val winningStake:Long, val payout:Long, val profitLoss:Long, val commission:Long)
+sealed interface HistoryUpdateState { data object Idle: HistoryUpdateState; data object Working: HistoryUpdateState; data class Success(val message:String): HistoryUpdateState; data class Error(val message:String): HistoryUpdateState }
 class LedgerViewModel(private val container: AppContainer):ViewModel(){
     val agents=container.agents.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val winners=container.winners.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
@@ -28,7 +29,10 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     private val _preview=MutableStateFlow(BetPreview()); val preview:StateFlow<BetPreview> = _preview
     private val _submit=MutableStateFlow<SubmitState>(SubmitState.Idle); val submit:StateFlow<SubmitState> = _submit
     private val _revision=MutableStateFlow(0L); val revision:StateFlow<Long> = _revision.asStateFlow()
+    private val _historyUpdate=MutableStateFlow<HistoryUpdateState>(HistoryUpdateState.Idle)
+    val historyUpdate:StateFlow<HistoryUpdateState> = _historyUpdate.asStateFlow()
     private fun changed(){ _revision.update { it + 1 } }
+    fun updateHistory(){if(_historyUpdate.value is HistoryUpdateState.Working)return;_historyUpdate.value=HistoryUpdateState.Working;viewModelScope.launch{runCatching{container.history.sync(com.myanmar.ledger2d.LedgerApplicationContextHolder.context)}.onSuccess{_historyUpdate.value=HistoryUpdateState.Success("History "+it.startDate+" → "+it.endDate+" ("+it.updatedRows+" updates)");changed()}.onFailure{_historyUpdate.value=HistoryUpdateState.Error(it.message?:"History update မအောင်မြင်ပါ")}}}
     private fun expandInput(raw: String, format: QuickFormat): ParseResult {
         val smart = engine.smartExpand(raw, format)
         val error = smart.lines.mapNotNull { it.result as? ParseResult.Error }.firstOrNull()

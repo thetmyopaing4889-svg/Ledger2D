@@ -54,6 +54,8 @@ import java.time.LocalDate
     @Upsert suspend fun upsert(value: HistoryResultEntity): Long
     @Upsert suspend fun upsertAll(values: List<HistoryResultEntity>)
     @Query("SELECT COUNT(*) FROM history_results") suspend fun count(): Int
+    @Query("SELECT MAX(date) FROM history_results") suspend fun maxDate(): LocalDate?
+    @Query("DELETE FROM history_results WHERE date < :date") suspend fun deleteBefore(date: LocalDate)
 }
 
 @Dao interface ClosedDayDao {
