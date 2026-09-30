@@ -130,7 +130,7 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
 
 object HistorySync {
     private val fmt=DateTimeFormatter.ofPattern("dd-MM-yyyy")
-    suspend fun fetchShweLatest():List<HistoryResultEntity>=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){
+    suspend fun fetchShweLatest(): List<HistoryResultEntity> =kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){
         val body=httpGet("https://backend.shwemyanmar2d.com/api/lv/twod-result").trim()
         val data=if(body.startsWith("{")) org.json.JSONObject(body).optJSONArray("data") else org.json.JSONArray(body)
         val out=ArrayList<HistoryResultEntity>()
