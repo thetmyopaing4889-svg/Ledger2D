@@ -15,6 +15,12 @@ interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun obser
 interface CustomerRepository { fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>; fun observe(id: Long): Flow<CustomerEntity?>; suspend fun get(id: Long): CustomerEntity?; suspend fun getForAgent(agentId: Long): List<CustomerEntity>; suspend fun save(value: CustomerEntity): Long }
 interface BetRepository { fun observeCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotalsWithCommission(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitCommissionRow>>; fun observeEntry(id: Long): Flow<BetEntryWithLines?>; suspend fun getEntry(id: Long): BetEntryWithLines?; fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>; fun observeCustomerEntries(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; fun observeAgentEntries(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; suspend fun getCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getCustomerCommission(customerId: Long, date: LocalDate, session: DrawSession): Long; suspend fun recalculateCustomerCommission(customerId: Long, basisPoints: Int); suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long; suspend fun confirm(customerId: Long, agentId: Long, date: LocalDate, session: DrawSession, source: String, format: QuickFormat, bets: List<ExpandedBet>): Long; suspend fun edit(entry: BetEntryEntity, bets: List<ExpandedBet>, format: QuickFormat); suspend fun delete(entry: BetEntryEntity) }
 interface WinningNumberRepository { fun observeAll(): Flow<List<WinningNumberEntity>>; fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>; suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?; suspend fun save(date: LocalDate, session: DrawSession, digit: String): Long; suspend fun update(existing: WinningNumberEntity, date: LocalDate, session: DrawSession, digit: String): Long; suspend fun delete(value: WinningNumberEntity) }
+interface HistoryResultRepository {
+    fun observeAll(): Flow<List<HistoryResultEntity>>
+    fun observe(date: LocalDate): Flow<HistoryResultEntity?>
+    suspend fun get(date: LocalDate): HistoryResultEntity?
+    suspend fun seedIfEmpty(context: android.content.Context)
+}
 interface ClosedDayRepository { fun observeAll(): Flow<List<ClosedDayEntity>>; suspend fun isClosed(date: LocalDate): Boolean; suspend fun add(date: LocalDate): Long; suspend fun remove(value: ClosedDayEntity) }
 interface ClosedNumberRepository { fun observe(agentId: Long): Flow<List<ClosedNumberEntity>>; suspend fun getDigits(agentId: Long): Set<String>; suspend fun add(agentId: Long, digit: String): Long; suspend fun remove(value: ClosedNumberEntity) }
 interface LimitRepository { fun observeAllLimit(customerId: Long): Flow<AllLimitEntity?>; fun observeSpecial(customerId: Long): Flow<List<SpecialLimitEntity>>; suspend fun get(customerId: Long): EffectiveLimits; suspend fun setAll(customerId: Long, amount: Long?); suspend fun setSpecial(customerId: Long, digit: String, amount: Long); suspend fun deleteSpecial(value: SpecialLimitEntity) }
@@ -63,6 +69,37 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     override suspend fun delete(entry:BetEntryEntity) = db.withTransaction { require(db.winningNumberDao().get(entry.drawDate,entry.drawSession)==null); dao.deleteEntry(entry) }
 }
 class RoomWinningNumberRepository(private val db:LedgerDatabase):WinningNumberRepository { private val dao=db.winningNumberDao(); override fun observeAll()=dao.observeAll(); override fun observe(date:LocalDate,session:DrawSession)=dao.observe(date,session); override suspend fun get(date:LocalDate,session:DrawSession)=dao.get(date,session); override suspend fun save(date:LocalDate,session:DrawSession,digit:String):Long { require(BetParser.validDigit(digit)); require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)); val now=System.currentTimeMillis(); val old=dao.get(date,session); require(old==null || db.betDao().countEntries(date,session)==0); return dao.upsert(WinningNumberEntity(id=old?.id?:0,date=date,session=session,digit=digit,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun update(existing:WinningNumberEntity,date:LocalDate,session:DrawSession,digit:String):Long = db.withTransaction { require(BetParser.validDigit(digit)); require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)); require(db.betDao().countEntries(existing.date,existing.session)==0); require(db.betDao().countEntries(date,session)==0); val now=System.currentTimeMillis(); dao.delete(existing); dao.upsert(WinningNumberEntity(id=existing.id,date=date,session=session,digit=digit,createdAt=existing.createdAt,updatedAt=now)) }; override suspend fun delete(value:WinningNumberEntity) { require(db.betDao().countEntries(value.date,value.session)==0); dao.delete(value) } }
+class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResultRepository {
+    private val dao = db.historyResultDao()
+    override fun observeAll() = dao.observeAll()
+    override fun observe(date: LocalDate) = dao.observe(date)
+    override suspend fun get(date: LocalDate) = dao.get(date)
+
+    override suspend fun seedIfEmpty(context: android.content.Context) {
+        if (dao.count() > 0) return
+        val json = context.assets.open("history_seed.json").bufferedReader().use { it.readText() }
+        val array = org.json.JSONArray(json)
+        val rows = ArrayList<HistoryResultEntity>(array.length())
+        for (i in 0 until array.length()) {
+            val o = array.getJSONObject(i)
+            rows += HistoryResultEntity(
+                date = LocalDate.parse(o.getString("date")),
+                morning2d = o.optString("morning2d", "-"),
+                morningSet = o.optString("morningSet", "-"),
+                morningValue = o.optString("morningValue", "-"),
+                evening2d = o.optString("evening2d", "-"),
+                eveningSet = o.optString("eveningSet", "-"),
+                eveningValue = o.optString("eveningValue", "-"),
+                modern930 = o.optString("modern930", "-"),
+                internet930 = o.optString("internet930", "-"),
+                modern200 = o.optString("modern200", "-"),
+                internet200 = o.optString("internet200", "-")
+            )
+        }
+        db.withTransaction { dao.upsertAll(rows) }
+    }
+}
+
 class RoomClosedDayRepository(private val dao:ClosedDayDao):ClosedDayRepository { override fun observeAll()=dao.observeAll(); override suspend fun isClosed(date:LocalDate)=dao.isClosed(date); override suspend fun add(date:LocalDate):Long { require(!date.isBefore(LocalDate.now())); val now=System.currentTimeMillis(); val old=dao.get(date); return dao.upsert(ClosedDayEntity(id=old?.id?:0,date=date,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun remove(value:ClosedDayEntity)=dao.delete(value) }
 class RoomClosedNumberRepository(private val dao:ClosedNumberDao):ClosedNumberRepository { override fun observe(agentId:Long)=dao.observe(agentId); override suspend fun getDigits(agentId:Long)=dao.getDigits(agentId).toSet(); override suspend fun add(agentId:Long,digit:String):Long { require(com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit)); val now=System.currentTimeMillis(); val old=dao.get(agentId,digit); return dao.upsert(ClosedNumberEntity(id=old?.id?:0,agentId=agentId,digit=digit,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun remove(value:ClosedNumberEntity)=dao.delete(value) }
 class RoomLimitRepository(private val dao:LimitDao):LimitRepository { override fun observeAllLimit(customerId:Long)=dao.observeAllLimit(customerId); override fun observeSpecial(customerId:Long)=dao.observeSpecialLimits(customerId); override suspend fun get(customerId:Long)=EffectiveLimits(dao.getAllLimit(customerId)?.amount,dao.getSpecialLimits(customerId).associate { it.digit to it.amount }); override suspend fun setAll(customerId:Long,amount:Long?) { if(amount==null) dao.clearAll(customerId) else { require(amount>0); val now=System.currentTimeMillis(); val old=dao.getAllLimit(customerId); dao.upsert(AllLimitEntity(id=old?.id?:0,customerId=customerId,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now)) } }; override suspend fun setSpecial(customerId:Long,digit:String,amount:Long) { require(com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit)&&amount>0); val now=System.currentTimeMillis(); val old=dao.getSpecial(customerId,digit); dao.upsert(SpecialLimitEntity(id=old?.id?:0,customerId=customerId,digit=digit,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun deleteSpecial(value:SpecialLimitEntity)=dao.delete(value) }
