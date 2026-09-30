@@ -234,7 +234,7 @@ fun LiveScreen(
             }
         },
         content = { padding ->
-        when (val s = state) {
+            when (val s = state) {
             LiveUiState.Loading, is LiveUiState.Error -> LiveUnavailableState(
                 loading = s == LiveUiState.Loading,
                 onRetry = { collector.fetchCycle() },
@@ -259,7 +259,7 @@ fun LiveScreen(
                 }
             }
         }
-    }
+    )
 }
 
 @Composable
