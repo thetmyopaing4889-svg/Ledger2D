@@ -777,6 +777,8 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
     LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val revision by vm.revision.collectAsStateWithLifecycle()
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
+    val history by vm.historyResults.collectAsStateWithLifecycle()
+    val localWinner by vm.winner(date ?: LocalDate.now(), session).collectAsStateWithLifecycle(initialValue = null)
     val report by produceState<DrawReport?>(null, date, session, id, scope, revision) {
         value = date?.let { if (scope == "agent") vm.agentReport(id, it, session, true) else vm.customerReport(id, it, session, true) }
     }
@@ -786,7 +788,11 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
                 DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
                 Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
             }
-            item {\n                val historicalDigit = history.firstOrNull { it.date == date }?.let { if (session == DrawSession.MORNING) it.morning2d else it.evening2d }\n                val shownDigit = localWinner?.digit ?: historicalDigit?.takeIf { BetParser.validDigit(it) }\n                if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (shownDigit == null) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, shownDigit)\n            }
+            item {
+                val historicalDigit = history.firstOrNull { it.date == date }?.let { if (session == DrawSession.MORNING) it.morning2d else it.evening2d }
+                val shownDigit = localWinner?.digit ?: historicalDigit?.takeIf { BetParser.validDigit(it) }
+                if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (shownDigit == null) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, shownDigit)
+            }
         }
     }
 }
