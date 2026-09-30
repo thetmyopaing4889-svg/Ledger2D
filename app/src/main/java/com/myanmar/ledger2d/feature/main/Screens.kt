@@ -158,7 +158,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
     DarkStatusBarsEffect()
-    val revision by vm.revision.collectAsStateWithLifecycle()\n    val history by vm.historyResults.collectAsStateWithLifecycle()\n    val localWinner by vm.winner(date ?: LocalDate.now(), session).collectAsStateWithLifecycle(initialValue = null)
+    val revision by vm.revision.collectAsStateWithLifecycle()
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
