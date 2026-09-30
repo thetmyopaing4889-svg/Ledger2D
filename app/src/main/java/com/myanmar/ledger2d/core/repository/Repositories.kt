@@ -149,7 +149,7 @@ object HistorySync {
     }
     suspend fun fetchThaiStockRange(start:LocalDate,end:LocalDate,parallelism:Int):List<HistoryResultEntity>=kotlinx.coroutines.coroutineScope{
         if(start.isAfter(end))return@coroutineScope emptyList()
-        generateSequence(start){p->if(p.isBefore(end))p.plusDays(1)else null}.toList().chunked(parallelism).flatMap{batch->batch.map{d->kotlinx.coroutines.async(kotlinx.coroutines.Dispatchers.IO){fetchThaiStockDate(d)}}.awaitAll().filterNotNull()}
+        generateSequence(start){p->if(p.isBefore(end))p.plusDays(1)else null}.toList().chunked(parallelism).flatMap { batch -> kotlinx.coroutines.coroutineScope { batch.map { d -> async(kotlinx.coroutines.Dispatchers.IO) { fetchThaiStockDate(d) } }.awaitAll() }.filterNotNull() }
     }
     private suspend fun fetchThaiStockDate(date:LocalDate):HistoryResultEntity?=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){
         val arr=runCatching{org.json.JSONArray(httpGet("https://api.thaistock2d.com/2d_result?date="+date.format(fmt)))}.getOrNull()?:return@withContext null
