@@ -47,6 +47,15 @@ import java.time.LocalDate
     @Upsert suspend fun upsert(value: WinningNumberEntity): Long
     @Delete suspend fun delete(value: WinningNumberEntity)
 }
+@Dao interface HistoryResultDao {
+    @Query("SELECT * FROM history_results ORDER BY date DESC") fun observeAll(): Flow<List<HistoryResultEntity>>
+    @Query("SELECT * FROM history_results WHERE date=:date") fun observe(date: LocalDate): Flow<HistoryResultEntity?>
+    @Query("SELECT * FROM history_results WHERE date=:date") suspend fun get(date: LocalDate): HistoryResultEntity?
+    @Upsert suspend fun upsert(value: HistoryResultEntity): Long
+    @Upsert suspend fun upsertAll(values: List<HistoryResultEntity>)
+    @Query("SELECT COUNT(*) FROM history_results") suspend fun count(): Int
+}
+
 @Dao interface ClosedDayDao {
     @Query("SELECT * FROM closed_days ORDER BY date") fun observeAll(): Flow<List<ClosedDayEntity>>
     @Query("SELECT EXISTS(SELECT 1 FROM closed_days WHERE date=:date)") suspend fun isClosed(date: LocalDate): Boolean
