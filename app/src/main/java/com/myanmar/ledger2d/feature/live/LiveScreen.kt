@@ -259,7 +259,8 @@ fun LiveScreen(
                 }
             }
         }
-    )
+    }
+)
 }
 
 @Composable
