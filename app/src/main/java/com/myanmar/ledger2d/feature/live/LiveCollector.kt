@@ -5,8 +5,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -188,7 +186,7 @@ internal class LiveCollector(
         if (!derived.isLive) derived.hero?.let { saveFinalIfNew(it) } // finals only, never live values
         _state.update { s ->
             when (s) {
-                is LiveUiState.Data -> s.copy(feed = next, hero = derived.hero ?: s.hero, heroLive = derived.isLive, stale = false)
+                is LiveUiState.Data -> s.copy(feed = next, hero = derived.hero ?: s.hero, heroLive = derived.isLive, stale = false, sourceMessage = sourceAgreementMessage(next, s.secondaryFeed))
                 else -> LiveUiState.Data(feed = next, hero = derived.hero, heroLive = derived.isLive, stale = false)
             }
         }
