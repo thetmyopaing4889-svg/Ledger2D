@@ -47,9 +47,10 @@ internal fun liveWindowAction(t:LocalTime):LiveWindowAction=when{
  t.isBefore(LocalTime.of(9,31))->LiveWindowAction.REFERENCE_ONLY
  t.isBefore(MORNING_LIVE)->LiveWindowAction.NONE
  t.isBefore(MORNING_CLOSE)->LiveWindowAction.LIVE_POLLING
- t<=MORNING_FINAL->LiveWindowAction.FINALIZING
- t.isBefore(EVENING_LIVE)->LiveWindowAction.NONE
+t<=MORNING_FINAL->LiveWindowAction.FINALIZING
+ t.isBefore(LocalTime.of(14,0))->LiveWindowAction.NONE
  t.isBefore(LocalTime.of(14,1))->LiveWindowAction.REFERENCE_ONLY
+ t.isBefore(EVENING_LIVE)->LiveWindowAction.NONE
  t.isBefore(EVENING_CLOSE)->LiveWindowAction.LIVE_POLLING
  t<=EVENING_FINAL->LiveWindowAction.FINALIZING
  else->LiveWindowAction.NONE
