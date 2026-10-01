@@ -85,158 +85,94 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
         val end = today.minusDays(1)
         if (end.isBefore(start)) return HistorySyncSummary(start, end, 0)
 
+        // History Result has one source of truth: the public 2D_history dataset.
+        // WinningNumber/Bet/Settlement data are deliberately not touched here.
+        val rows = HistorySync.fetch2DHistory(start, end)
+        if (rows.isEmpty()) error("2D History source မှ data မရပါ")
+
         var updated = 0
-        var sourceSucceeded = false
+        rows.forEach { row -> updated += upsertIfChanged(row) }
 
-        // Shwe supplies the latest rows and the extra SET/value/Modern/Internet fields.
-        runCatching { HistorySync.fetchShweLatest() }
-            .onSuccess { rows ->
-                sourceSucceeded = true
-                rows.filter { !it.date.isBefore(start) && !it.date.isAfter(end) }.forEach { row ->
-                    updated += upsertIfChanged(row)
-                }
-            }
-
-        // ThaiStock supplies date-specific final 2D results for missing dates.
-        // Existing dates are not downloaded again; only dates absent from Room are requested.
-        val existingDates = dao.getDates(start, end).toHashSet()
-        val missingDates = generateSequence(start) { previous ->
-            if (previous.isBefore(end)) previous.plusDays(1) else null
-        }.filter { it.dayOfWeek.value <= 5 && it !in existingDates }.toList()
-
-        if (missingDates.isEmpty()) {
-            sourceSucceeded = true
-        } else {
-            val fetched = HistorySync.fetchThaiStockDates(missingDates, 6)
-            if (fetched.isNotEmpty()) sourceSucceeded = true
-            fetched.forEach { row ->
-                updated += upsertIfChanged(row)
-            }
-        }
-
+        // Keep Room bounded to the current rolling window only after a valid
+        // source response has been received and merged successfully.
         dao.deleteBefore(start)
 
-        if (!sourceSucceeded) error("History Result API နှစ်ခုလုံးမှ data မရပါ")
         return HistorySyncSummary(start, end, updated)
     }
 
     private suspend fun upsertIfChanged(incoming: HistoryResultEntity): Int {
         val old = dao.get(incoming.date)
-        val merged = HistorySync.merge(old, incoming)
-        if (old == merged) return 0
-        dao.upsert(merged)
+        if (old == incoming) return 0
+        dao.upsert(
+            if (old == null) incoming
+            else incoming.copy(id = old.id)
+        )
         return 1
     }
 }
 
 object HistorySync {
-    private val fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+    private const val HISTORY_URL =
+        "https://raw.githubusercontent.com/2d3dthailand/2d3dthailand/main/2D_history"
 
-    suspend fun fetchShweLatest(): List<HistoryResultEntity> =
+    private val sourceDateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+
+    suspend fun fetch2DHistory(
+        start: LocalDate,
+        end: LocalDate
+    ): List<HistoryResultEntity> =
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val body = httpGet("https://backend.shwemyanmar2d.com/api/lv/twod-result").trim()
-            val data = if (body.startsWith("{")) {
-                org.json.JSONObject(body).optJSONArray("data") ?: org.json.JSONArray()
-            } else {
-                org.json.JSONArray(body)
-            }
-            val out = ArrayList<HistoryResultEntity>()
-            for (j in 0 until data.length()) {
-                val o = data.getJSONObject(j)
-                out += HistoryResultEntity(
-                    date = LocalDate.parse(o.getString("date")),
-                    morning2d = o.optString("result_1200", "-"),
-                    morningSet = o.optString("set_1200", "-"),
-                    morningValue = o.optString("val_1200", "-"),
-                    evening2d = o.optString("result_430", "-"),
-                    eveningSet = o.optString("set_430", "-"),
-                    eveningValue = o.optString("val_430", "-"),
-                    modern930 = o.optString("modern_930", "-"),
-                    internet930 = o.optString("internet_930", "-"),
-                    modern200 = o.optString("modern_200", "-"),
-                    internet200 = o.optString("internet_200", "-")
-                )
-            }
-            out
+            val body = httpGet(HISTORY_URL)
+            parse2DHistory(body, start, end)
         }
 
-    suspend fun fetchThaiStockDates(
-        dates: List<LocalDate>,
-        parallelism: Int
-    ): List<HistoryResultEntity> = kotlinx.coroutines.coroutineScope {
-        if (dates.isEmpty()) return@coroutineScope emptyList()
-        val result = ArrayList<HistoryResultEntity>()
-        for (batch in dates.chunked(parallelism.coerceAtLeast(1))) {
-            result += batch.map { date ->
-                async(kotlinx.coroutines.Dispatchers.IO) {
-                    runCatching { fetchThaiStockDate(date) }.getOrNull()
-                }
-            }.awaitAll().filterNotNull()
-        }
-        result
-    }
+    internal fun parse2DHistory(
+        body: String,
+        start: LocalDate,
+        end: LocalDate
+    ): List<HistoryResultEntity> {
+        val data = org.json.JSONArray(body)
+        val out = ArrayList<HistoryResultEntity>(data.length())
 
-    private suspend fun fetchThaiStockDate(date: LocalDate): HistoryResultEntity? =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val arr = org.json.JSONArray(
-                httpGet("https://api.thaistock2d.com/2d_result?date=" + date.format(fmt))
+        for (i in 0 until data.length()) {
+            val o = data.getJSONObject(i)
+            val date = LocalDate.parse(
+                o.getString("date"),
+                sourceDateFormatter
             )
-            val child = arr.optJSONObject(0)?.optJSONArray("child") ?: return@withContext null
-            var morning: org.json.JSONObject? = null
-            var evening: org.json.JSONObject? = null
-            for (i in 0 until child.length()) {
-                val row = child.getJSONObject(i)
-                when (row.optString("time")) {
-                    "12:01:00" -> morning = row
-                    "16:30:00" -> evening = row
-                }
-            }
-            if (morning == null && evening == null) return@withContext null
 
-            HistoryResultEntity(
+            if (date.isBefore(start) || date.isAfter(end)) continue
+
+            out += HistoryResultEntity(
                 date = date,
-                morning2d = morning?.optString("twod", "-") ?: "-",
-                morningSet = morning?.optString("set", "-") ?: "-",
-                morningValue = morning?.optString("value", "-") ?: "-",
-                evening2d = evening?.optString("twod", "-") ?: "-",
-                eveningSet = evening?.optString("set", "-") ?: "-",
-                eveningValue = evening?.optString("value", "-") ?: "-",
-                modern930 = "-",
-                internet930 = "-",
-                modern200 = "-",
-                internet200 = "-"
+                morning2d = o.optString("result_1200", "-"),
+                morningSet = o.optString("set_1200", "-"),
+                morningValue = o.optString("val_1200", "-"),
+                evening2d = o.optString("result_430", "-"),
+                eveningSet = o.optString("set_430", "-"),
+                eveningValue = o.optString("val_430", "-"),
+                modern930 = o.optString("modern_930", "-"),
+                internet930 = o.optString("internet_930", "-"),
+                modern200 = o.optString("modern_200", "-"),
+                internet200 = o.optString("internet_200", "-")
             )
         }
 
-    fun merge(old: HistoryResultEntity?, incoming: HistoryResultEntity): HistoryResultEntity {
-        if (old == null) return incoming
-
-        fun keepIncomingOrOld(incomingValue: String, existing: String): String =
-            if (incomingValue.isBlank() || incomingValue == "-") existing else incomingValue
-
-        return incoming.copy(
-            id = old.id,
-            morning2d = keepIncomingOrOld(incoming.morning2d, old.morning2d),
-            morningSet = keepIncomingOrOld(incoming.morningSet, old.morningSet),
-            morningValue = keepIncomingOrOld(incoming.morningValue, old.morningValue),
-            evening2d = keepIncomingOrOld(incoming.evening2d, old.evening2d),
-            eveningSet = keepIncomingOrOld(incoming.eveningSet, old.eveningSet),
-            eveningValue = keepIncomingOrOld(incoming.eveningValue, old.eveningValue),
-            modern930 = keepIncomingOrOld(incoming.modern930, old.modern930),
-            internet930 = keepIncomingOrOld(incoming.internet930, old.internet930),
-            modern200 = keepIncomingOrOld(incoming.modern200, old.modern200),
-            internet200 = keepIncomingOrOld(incoming.internet200, old.internet200)
-        )
+        return out
+            .distinctBy { it.date }
+            .sortedByDescending { it.date }
     }
 
     private fun httpGet(url: String): String {
         val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
         connection.connectTimeout = 15_000
-        connection.readTimeout = 15_000
+        connection.readTimeout = 30_000
         connection.requestMethod = "GET"
         connection.setRequestProperty("Accept", "application/json")
         return try {
-            if (connection.responseCode !in 200..299) error("HTTP " + connection.responseCode)
+            if (connection.responseCode !in 200..299) {
+                error("HTTP " + connection.responseCode)
+            }
             connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
             connection.disconnect()
