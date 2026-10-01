@@ -95,7 +95,7 @@ private fun finalOf(f:LiveFeedData)=when{
 }
 
 internal fun resolveLiveState(p:SourceObservation?,s:SourceObservation?,now:Instant,lastLive:LiveHeroSnapshot?,cachedFinal:LiveHeroSnapshot?):LiveResolution{
- val pv=fresh(p); val sv=fresh(s); val count=listOf(pv,sv).count{it}; val pt=p?.let(::parseDecisionInstant)
+ val pv=fresh(p); val sv=fresh(s); val count=listOf(pv,sv).count{it}; val pt=p?.feed?.let(::parseDecisionInstant)
  val t=pt?.atZone(YANGON)?.toLocalTime()?:return LiveResolution(p?.feed?:s?.feed,lastLive?:cachedFinal,false,LiveStatus.WAITING_FOR_ALIGNMENT,"WAITING_FOR_PRIMARY • CLOCK",count,maxOf(age(p),age(s)))
  when(liveWindowAction(t)){
   LiveWindowAction.LIVE_POLLING->{
