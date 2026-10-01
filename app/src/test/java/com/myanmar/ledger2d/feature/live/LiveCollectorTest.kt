@@ -26,11 +26,11 @@ class LiveCollectorTest {
  private fun final(v:String,source:String)=feed(v,"12:01:00",source).copy(
   morning=LiveSessionData(v,"1600","20000",true,if(source=="THAISTOCK2D")"thai-1" else "luke-1","12:01:00"))
 
- @Test fun `11:00 starts live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,0)))}
- @Test fun `11:59 enters finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(11,59)))}
- @Test fun `12:01 remains finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(12,1)))}
- @Test fun `16:00 starts evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,0)))}
- @Test fun `16:29 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,29)))}
+ @Test fun `11 00 starts live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,0)))}
+ @Test fun `11 59 enters finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(11,59)))}
+ @Test fun `12 01 remains finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(12,1)))}
+ @Test fun `16 00 starts evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,0)))}
+ @Test fun `16 29 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,29)))}
 
  @Test fun `two matching live sources are confirmed`(){
   val p=obs(feed("38","11:20:00"));val s=obs(feed("38","11:20:00","THAISTOCK2D"))
