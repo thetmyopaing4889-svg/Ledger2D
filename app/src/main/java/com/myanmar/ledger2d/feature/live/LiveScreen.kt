@@ -191,6 +191,8 @@ internal object LiveApi {
                     internet930 = data.nonBlankString("internet_930"),
                     modern200 = data.nonBlankString("modern_200"),
                     internet200 = data.nonBlankString("internet_200"),
+                    sourceTag = "LUKE",
+                    serverTimeEpochMs = parseServerTimeEpoch(data.nonBlankString("current_time")),
                 )
             } finally {
                 connection.disconnect()
@@ -199,6 +201,8 @@ internal object LiveApi {
             null
         }
     }
+
+    private fun parseServerTimeEpoch(raw: String): Long? = runCatching { java.time.LocalDateTime.parse(raw.replace(' ', 'T')).atZone(java.time.ZoneId.of("Asia/Yangon")).toInstant().toEpochMilli() }.getOrNull()
 
     /** Reads a string field, normalizing JSON null / blank / "null" to "--" (or a fallback). */
     private fun JSONObject.nonBlankString(name: String, fallback: String = PENDING): String {
