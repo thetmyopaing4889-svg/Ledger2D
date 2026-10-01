@@ -18,10 +18,10 @@ internal const val SOURCE_TIME_SKEW_MS = 2_000L
 internal const val LIVE_REFERENCE_FETCH_INTERVAL_MS = 60_000L
 
 private val MORNING_LIVE = LocalTime.of(11,30)
-private val MORNING_CLOSE = LocalTime.of(11,59)
+private val MORNING_CLOSE = LocalTime.of(12,1)
 private val MORNING_FINAL = LocalTime.of(12,1)
 private val EVENING_LIVE = LocalTime.of(16,0)
-private val EVENING_CLOSE = LocalTime.of(16,29)
+private val EVENING_CLOSE = LocalTime.of(16,30)
 private val EVENING_FINAL = LocalTime.of(16,30)
 
 internal const val LIVE_PENDING = "--"
@@ -160,7 +160,7 @@ internal class LiveCollector(
  private val cacheSaver:(LiveHeroSnapshot)->Unit={}
 ){
  private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
- private var cycle:Job?=null; private var lastReferenceSlot=""
+ private var cycle:Job?=null
  private var p:SourceObservation?=null; private var s:SourceObservation?=null
  private var lastLive:LiveHeroSnapshot?=null; private var lastFinal:LiveHeroSnapshot?=null
  init{val c=cacheLoader();if(c!=null){lastFinal=c;_state.value=LiveUiState.Data(null,c,false,false,status=LiveStatus.FINAL_CONFIRMED,sourceMessage="FINAL_CONFIRMED • CACHED")}}
@@ -183,7 +183,7 @@ internal class LiveCollector(
   _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
- fun start(){scope.launch{while(isActive){val t=clock();when(liveWindowAction(t)){LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle();LiveWindowAction.REFERENCE_ONLY->{val slot=if(t.isBefore(LocalTime.of(11,30)))"${currentYangonDate()}-0930" else "${currentYangonDate()}-1400";if(slot!=lastReferenceSlot){lastReferenceSlot=slot;fetchCycle()}};LiveWindowAction.NONE->Unit};delay(if(liveWindowAction(t)==LiveWindowAction.FINALIZING)CLOSING_POLL_INTERVAL_MS else NORMAL_POLL_INTERVAL_MS)}}}
+ fun start(){scope.launch{while(isActive){val t=clock();val action=liveWindowAction(t);when(action){LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle();LiveWindowAction.REFERENCE_ONLY->fetchCycle();LiveWindowAction.NONE->Unit};delay(when(action){LiveWindowAction.FINALIZING->CLOSING_POLL_INTERVAL_MS;LiveWindowAction.REFERENCE_ONLY->LIVE_REFERENCE_FETCH_INTERVAL_MS;else->NORMAL_POLL_INTERVAL_MS})}}}
  companion object{
   @Volatile private var shared:LiveCollector?=null
   val instance:LiveCollector get()=shared?:error("LiveCollector not started")
