@@ -116,6 +116,8 @@ data class LiveFeedData(
     /** 02:00 reference values. */
     val modern200: String,
     val internet200: String,
+    val sourceTag: String = "LUKE",
+    val serverTimeEpochMs: Long? = null,
 )
 
 /** One result session (12:01 morning / 4:30 evening). */
