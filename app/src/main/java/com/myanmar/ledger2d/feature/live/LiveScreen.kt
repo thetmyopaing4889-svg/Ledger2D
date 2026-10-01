@@ -78,6 +78,7 @@ import kotlinx.coroutines.flow.Flow
 
 /** Live API endpoint (verified Shwe Myanmar 2D live feed). */
 private const val LIVE_ENDPOINT = "https://luke.2dboss.com/api/luke/twod-result-live"
+private const val THAISTOCK_LIVE_ENDPOINT = "https://api.thaistock2d.com/live"
 
 // The polling interval (LIVE_POLL_INTERVAL_MS) lives in LiveCollector.kt so the
 // app-scoped background collector and this screen share one tunable constant.
