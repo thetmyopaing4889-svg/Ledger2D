@@ -204,6 +204,55 @@ internal object LiveApi {
 
     private fun parseServerTimeEpoch(raw: String): Long? = runCatching { java.time.LocalDateTime.parse(raw.replace(' ', 'T')).atZone(java.time.ZoneId.of("Asia/Yangon")).toInstant().toEpochMilli() }.getOrNull()
 
+    /** Independent ThaiStock2D live observation. */
+    fun fetchThaiStock(): LiveFeedData? {
+        return try {
+            val connection = URL(THAISTOCK_LIVE_ENDPOINT).openConnection() as HttpURLConnection
+            try {
+                connection.connectTimeout = LIVE_CONNECT_TIMEOUT_MS
+                connection.readTimeout = LIVE_READ_TIMEOUT_MS
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Accept", "application/json")
+                if (connection.responseCode !in 200..299) return null
+                val body = connection.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(body)
+                val live = root.optJSONObject("live") ?: return null
+                var morning = LiveSessionData(PENDING, PENDING, PENDING, false)
+                var evening = LiveSessionData(PENDING, PENDING, PENDING, false)
+                val rows = root.optJSONArray("result")
+                if (rows != null) {
+                    for (i in 0 until rows.length()) {
+                        val row = rows.optJSONObject(i) ?: continue
+                        val digit = row.nonBlankString("twod")
+                        when (row.optString("open_time")) {
+                            "12:01:00" -> morning = LiveSessionData(digit, row.nonBlankString("set"), row.nonBlankString("value"), digit != PENDING)
+                            "16:30:00" -> evening = LiveSessionData(digit, row.nonBlankString("set"), row.nonBlankString("value"), digit != PENDING)
+                        }
+                    }
+                }
+                val serverTime = root.nonBlankString("server_time")
+                LiveFeedData(
+                    date = live.nonBlankString("date", serverTime.take(10)),
+                    currentTime = live.nonBlankString("time", serverTime),
+                    live = live.nonBlankString("twod"),
+                    liveSet = live.nonBlankString("set"),
+                    liveVal = live.nonBlankString("value"),
+                    morning = morning,
+                    evening = evening,
+                    modern930 = PENDING,
+                    internet930 = PENDING,
+                    modern200 = PENDING,
+                    internet200 = PENDING,
+                    sourceTag = "THAISTOCK2D",
+                    serverTimeEpochMs = parseServerTimeEpoch(serverTime),
+                )
+            } finally {
+                connection.disconnect()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
     /** Reads a string field, normalizing JSON null / blank / "null" to "--" (or a fallback). */
     private fun JSONObject.nonBlankString(name: String, fallback: String = PENDING): String {
         if (!has(name) || isNull(name)) return fallback
