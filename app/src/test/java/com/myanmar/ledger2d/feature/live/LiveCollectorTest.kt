@@ -26,9 +26,12 @@ class LiveCollectorTest {
  private fun final(v:String,source:String)=feed(v,"12:01:00",source).copy(
   morning=LiveSessionData(v,"1600","20000",true,if(source=="THAISTOCK2D")"thai-1" else "luke-1","12:01:00"))
 
- @Test fun `11 00 starts live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,0)))}
+ @Test fun `09 30 starts reference fetch`(){assertEquals(LiveWindowAction.REFERENCE_ONLY,liveWindowAction(LocalTime.of(9,30)))}
+ @Test fun `11 29 is still waiting`(){assertEquals(LiveWindowAction.NONE,liveWindowAction(LocalTime.of(11,29)))}
+ @Test fun `11 30 starts live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,30)))}
  @Test fun `11 59 enters finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(11,59)))}
  @Test fun `12 01 remains finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(12,1)))}
+ @Test fun `14 00 starts reference fetch`(){assertEquals(LiveWindowAction.REFERENCE_ONLY,liveWindowAction(LocalTime.of(14,0)))}
  @Test fun `16 00 starts evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,0)))}
  @Test fun `16 29 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,29)))}
 
@@ -54,10 +57,15 @@ class LiveCollectorTest {
   val r=resolveLiveState(obs(final("38","LUKE")),obs(final("39","THAISTOCK2D")),Instant.now(),null,null)
   assertEquals(LiveStatus.FINAL_CONFLICT,r.status);assertEquals("--",r.displayFeed?.morning?.result)
  }
- @Test fun `old cache is not loaded as current final`(){
-  val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_MORNING_LABEL,"30/09/2026")
-  val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher()),{null},cacheLoader={old})
-  assertTrue(c.state.value is LiveUiState.Loading)
+ @Test fun `previous final cache is available for next morning hero`(){
+  val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_EVENING_LABEL,"30/09/2026")
+  val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher()),{feed("--","09:30:00")},clock={LocalTime.of(9,30)},cacheLoader={old})
+  c.fetchCycle()
+  assertTrue(c.state.value is LiveUiState.Data)
+  val state=c.state.value as LiveUiState.Data
+  assertEquals("38",state.hero?.result)
+  assertEquals("--",state.feed?.morning?.result)
+  assertEquals("--",state.feed?.evening?.result)
  }
  @Test fun `both sources start in one cycle and cycle does not overlap`(){
   runTest{
