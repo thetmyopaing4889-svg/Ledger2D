@@ -5,6 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -124,6 +126,7 @@ private fun latestKnownFinal(feed: LiveFeedData, cachedFinal: LiveHeroSnapshot?)
 internal class LiveCollector(
     private val scope: CoroutineScope,
     private val fetcher: suspend () -> LiveFeedData?,
+    private val secondaryFetcher: (suspend () -> LiveFeedData?)? = null,
     private val clock: () -> LocalTime = { LocalTime.now() },
     cacheLoader: () -> LiveHeroSnapshot? = { null },
     private val cacheSaver: (LiveHeroSnapshot) -> Unit = {},
@@ -132,6 +135,7 @@ internal class LiveCollector(
     val state: StateFlow<LiveUiState> = _state.asStateFlow()
 
     private var fetchJob: Job? = null
+    private var secondaryFetchJob: Job? = null
     private var latestCycle = 0L
     private var lastReferenceFetchMs = 0L
     private var lastSavedFinal: LiveHeroSnapshot? = null
@@ -155,19 +159,22 @@ internal class LiveCollector(
      * animation is presentation-only and can never delay these updates.
      */
     fun fetchCycle() {
-        if (fetchJob?.isActive == true) return
-        fetchJob = scope.launch {
-            val cycle = ++latestCycle
-            val next = try {
-                fetcher()
-            } catch (_: Exception) {
-                null
+        if (fetchJob?.isActive != true) {
+            fetchJob = scope.launch {
+                val cycle = ++latestCycle
+                val next = try { fetcher() } catch (_: Exception) { null }
+                if (cycle == latestCycle) applyPrimaryResult(next)
             }
-            if (cycle == latestCycle) applyFetchResult(next)
+        }
+        if (secondaryFetcher != null && secondaryFetchJob?.isActive != true) {
+            secondaryFetchJob = scope.launch {
+                val next = try { secondaryFetcher.invoke() } catch (_: Exception) { null }
+                applySecondaryResult(next)
+            }
         }
     }
 
-    private fun applyFetchResult(next: LiveFeedData?) {
+    private fun applyPrimaryResult(next: LiveFeedData?) {
         if (next == null) {
             _state.update { s ->
                 when (s) {
@@ -177,7 +184,7 @@ internal class LiveCollector(
             }
             return
         }
-        val derived = deriveHero(next, clock(), lastSavedFinal)
+        val derived = deriveHero(next, serverDecisionTime(next), lastSavedFinal)
         if (!derived.isLive) derived.hero?.let { saveFinalIfNew(it) } // finals only, never live values
         _state.update { s ->
             when (s) {
@@ -185,6 +192,37 @@ internal class LiveCollector(
                 else -> LiveUiState.Data(feed = next, hero = derived.hero, heroLive = derived.isLive, stale = false)
             }
         }
+    }
+
+    private fun applySecondaryResult(next: LiveFeedData?) {
+        _state.update { current ->
+            if (current !is LiveUiState.Data) {
+                if (next == null) current else {
+                    val d = deriveHero(next, serverDecisionTime(next), null)
+                    LiveUiState.Data(feed = null, hero = d.hero, heroLive = d.isLive, stale = false, secondaryFeed = next, sourceMessage = "ThaiStock2D only")
+                }
+            } else {
+                current.copy(secondaryFeed = next, sourceMessage = sourceAgreementMessage(current.feed, next))
+            }
+        }
+    }
+
+    private fun sourceAgreementMessage(primary: LiveFeedData?, secondary: LiveFeedData?): String {
+        if (primary == null && secondary == null) return ""
+        if (primary == null) return "ThaiStock2D only"
+        if (secondary == null) return "Luke only"
+        if (primary.date != secondary.date) return "DATA MISMATCH • date"
+        val evening = !clock().isBefore(EVENING_LIVE_START)
+        val pf = if (evening) primary.evening.result else primary.morning.result
+        val sf = if (evening) secondary.evening.result else secondary.morning.result
+        if (pf != LIVE_PENDING && sf != LIVE_PENDING) return if (pf == sf) "FINAL SOURCES ALIGNED" else "FINAL MISMATCH"
+        if (primary.live != LIVE_PENDING && secondary.live != LIVE_PENDING) return if (primary.live == secondary.live) "2 SOURCES ALIGNED" else "DATA MISMATCH"
+        return "WAITING FOR SOURCE ALIGNMENT"
+    }
+
+    private fun serverDecisionTime(feed: LiveFeedData): LocalTime {
+        val raw = feed.currentTime.substringAfterLast(' ').trim()
+        return runCatching { LocalTime.parse(raw.take(8)) }.getOrElse { clock() }
     }
 
     private fun saveFinalIfNew(snapshot: LiveHeroSnapshot) {
@@ -229,6 +267,7 @@ internal class LiveCollector(
                     val collector = LiveCollector(
                         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
                         fetcher = { withContext(Dispatchers.IO) { LiveApi.fetch() } },
+                        secondaryFetcher = { withContext(Dispatchers.IO) { LiveApi.fetchThaiStock() } },
                         cacheLoader = { LiveCacheStore.load(context) },
                         cacheSaver = { LiveCacheStore.save(context, it) },
                     )
