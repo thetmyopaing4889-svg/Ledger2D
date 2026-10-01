@@ -144,6 +144,8 @@ sealed interface LiveUiState {
         val hero: LiveHeroSnapshot?,
         val heroLive: Boolean,
         val stale: Boolean,
+        val secondaryFeed: LiveFeedData? = null,
+        val sourceMessage: String = "",
     ) : LiveUiState
 
     /** No data yet and the latest fetch failed. */
