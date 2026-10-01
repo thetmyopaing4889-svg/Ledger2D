@@ -36,17 +36,17 @@ class LiveCollectorTest {
  @Test fun `16 29 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,29)))}
 
  @Test fun `two matching live sources are confirmed`(){
-  val p=obs(feed("38","11:20:00"));val s=obs(feed("38","11:20:00","THAISTOCK2D"))
-  val r=resolveLiveState(p,s,Instant.now(),null,null,LocalTime.of(11,20))
+  val p=obs(feed("38","11:40:00"));val s=obs(feed("38","11:40:00","THAISTOCK2D"))
+  val r=resolveLiveState(p,s,Instant.now(),null,null,LocalTime.of(11,40))
   assertEquals(LiveStatus.LIVE_CONFIRMED,r.status);assertTrue(r.heroLive);assertEquals("38",r.hero?.result)
  }
  @Test fun `live mismatch never selects a source`(){
   val last=LiveHeroSnapshot("37","1","2","11:19:00","01/10/2026")
-  val r=resolveLiveState(obs(feed("38","11:20:00")),obs(feed("39","11:20:00","THAISTOCK2D")),Instant.now(),last,null,LocalTime.of(11,20))
+  val r=resolveLiveState(obs(feed("38","11:40:00")),obs(feed("39","11:40:00","THAISTOCK2D")),Instant.now(),last,null,LocalTime.of(11,40))
   assertEquals(LiveStatus.LIVE_CONFLICT,r.status);assertFalse(r.heroLive);assertEquals("37",r.hero?.result)
  }
  @Test fun `single live source is degraded`(){
-  val r=resolveLiveState(obs(feed("38","11:20:00")),null,Instant.now(),null,null,LocalTime.of(11,20))
+  val r=resolveLiveState(obs(feed("38","11:40:00")),null,Instant.now(),null,null,LocalTime.of(11,40))
   assertEquals(LiveStatus.LIVE_DEGRADED,r.status);assertTrue(r.heroLive)
  }
  @Test fun `matching finals become confirmed`(){
@@ -70,17 +70,17 @@ class LiveCollectorTest {
  @Test fun `both sources start in one cycle and cycle does not overlap`(){
   runTest{
    var a=0;var b=0;val ga=CompletableDeferred<Unit>();val gb=CompletableDeferred<Unit>()
-   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{a++;ga.await();feed("38","11:20:00")},{b++;gb.await();feed("38","11:20:00","THAISTOCK2D")})
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{a++;ga.await();feed("38","11:40:00")},{b++;gb.await();feed("38","11:40:00","THAISTOCK2D")})
    c.fetchCycle();c.fetchCycle();advanceTimeBy(100);assertEquals(1,a);assertEquals(1,b)
    ga.complete(Unit);gb.complete(Unit);advanceUntilIdle();assertTrue(c.state.value is LiveUiState.Data)
   }
  }
  @Test fun `live result is not persisted`(){
-  runTest{var saved:LiveHeroSnapshot?=null;val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","11:20:00")},{feed("38","11:20:00","THAISTOCK2D")},{LocalTime.of(11,20)},{null},{saved=it})
+  runTest{var saved:LiveHeroSnapshot?=null;val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","11:40:00")},{feed("38","11:40:00","THAISTOCK2D")},{LocalTime.of(11,40)},{null},{saved=it})
    c.fetchCycle();advanceUntilIdle();assertEquals(null,saved)
   }
  }
  @Test fun `screen is not required for background polling`(){
-  runTest{var n=0;val s=CoroutineScope(UnconfinedTestDispatcher(testScheduler));val c=LiveCollector(s,{n++;feed("38","11:20:00")},clock={LocalTime.of(11,20)});c.start();advanceTimeBy(10000);s.cancel();assertTrue(n>=2)}
+  runTest{var n=0;val s=CoroutineScope(UnconfinedTestDispatcher(testScheduler));val c=LiveCollector(s,{n++;feed("38","11:40:00")},clock={LocalTime.of(11,40)});c.start();advanceTimeBy(10000);s.cancel();assertTrue(n>=2)}
  }
 }
