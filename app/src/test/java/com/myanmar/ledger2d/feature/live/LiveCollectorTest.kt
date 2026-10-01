@@ -59,13 +59,12 @@ class LiveCollectorTest {
  }
  @Test fun `previous final cache is available for next morning hero`(){
   val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_EVENING_LABEL,"30/09/2026")
-  val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher()),{feed("--","09:30:00")},clock={LocalTime.of(9,30)},cacheLoader={old})
-  runTest { c.fetchCycle(); advanceUntilIdle() }
-  assertTrue(c.state.value is LiveUiState.Data)
-  val state=c.state.value as LiveUiState.Data
-  assertEquals("38",state.hero?.result)
-  assertEquals("--",state.feed?.morning?.result)
-  assertEquals("--",state.feed?.evening?.result)
+  val current=feed("--","09:30:00")
+  val r=resolveLiveState(obs(current),null,Instant.now(),null,old,LocalTime.of(9,30))
+  assertEquals(LiveStatus.WAITING,r.status)
+  assertEquals("38",r.hero?.result)
+  assertEquals("--",r.displayFeed?.morning?.result)
+  assertEquals("--",r.displayFeed?.evening?.result)
  }
  @Test fun `both sources start in one cycle and cycle does not overlap`(){
   runTest{
