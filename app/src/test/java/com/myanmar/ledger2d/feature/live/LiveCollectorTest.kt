@@ -37,30 +37,30 @@ class LiveCollectorTest {
 
  @Test fun `two matching live sources are confirmed`(){
   val p=obs(feed("38","11:20:00"));val s=obs(feed("38","11:20:00","THAISTOCK2D"))
-  val r=resolveLiveState(p,s,Instant.now(),null,null)
+  val r=resolveLiveState(p,s,Instant.now(),null,null,LocalTime.of(11,20))
   assertEquals(LiveStatus.LIVE_CONFIRMED,r.status);assertTrue(r.heroLive);assertEquals("38",r.hero?.result)
  }
  @Test fun `live mismatch never selects a source`(){
   val last=LiveHeroSnapshot("37","1","2","11:19:00","01/10/2026")
-  val r=resolveLiveState(obs(feed("38","11:20:00")),obs(feed("39","11:20:00","THAISTOCK2D")),Instant.now(),last,null)
+  val r=resolveLiveState(obs(feed("38","11:20:00")),obs(feed("39","11:20:00","THAISTOCK2D")),Instant.now(),last,null,LocalTime.of(11,20))
   assertEquals(LiveStatus.LIVE_CONFLICT,r.status);assertFalse(r.heroLive);assertEquals("37",r.hero?.result)
  }
  @Test fun `single live source is degraded`(){
-  val r=resolveLiveState(obs(feed("38","11:20:00")),null,Instant.now(),null,null)
+  val r=resolveLiveState(obs(feed("38","11:20:00")),null,Instant.now(),null,null,LocalTime.of(11,20))
   assertEquals(LiveStatus.LIVE_DEGRADED,r.status);assertTrue(r.heroLive)
  }
  @Test fun `matching finals become confirmed`(){
-  val r=resolveLiveState(obs(final("38","LUKE")),obs(final("38","THAISTOCK2D")),Instant.now(),null,null)
+  val r=resolveLiveState(obs(final("38","LUKE")),obs(final("38","THAISTOCK2D")),Instant.now(),null,null,LocalTime.of(12,1))
   assertEquals(LiveStatus.FINAL_CONFIRMED,r.status);assertEquals("38",r.hero?.result)
  }
  @Test fun `final mismatch is conflict and disputed result is hidden`(){
-  val r=resolveLiveState(obs(final("38","LUKE")),obs(final("39","THAISTOCK2D")),Instant.now(),null,null)
+  val r=resolveLiveState(obs(final("38","LUKE")),obs(final("39","THAISTOCK2D")),Instant.now(),null,null,LocalTime.of(12,1))
   assertEquals(LiveStatus.FINAL_CONFLICT,r.status);assertEquals("--",r.displayFeed?.morning?.result)
  }
  @Test fun `previous final cache is available for next morning hero`(){
   val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_EVENING_LABEL,"30/09/2026")
   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher()),{feed("--","09:30:00")},clock={LocalTime.of(9,30)},cacheLoader={old})
-  c.fetchCycle()
+  runTest { c.fetchCycle(); advanceUntilIdle() }
   assertTrue(c.state.value is LiveUiState.Data)
   val state=c.state.value as LiveUiState.Data
   assertEquals("38",state.hero?.result)
