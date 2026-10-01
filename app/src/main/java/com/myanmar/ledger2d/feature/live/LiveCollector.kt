@@ -57,14 +57,16 @@ internal fun parseDecisionInstant(f:LiveFeedData):Instant?{
  f.serverTimeEpochMs?.let{return Instant.ofEpochMilli(it)}
  val raw=f.currentTime.trim()
  if(raw.isBlank()||raw==LIVE_PENDING)return null
- return runCatching{
-  if(raw.contains("T")) Instant.parse(raw)
-  else if(raw.contains(" ")) LocalDateTime.parse(raw.replace(' ','T')).atZone(YANGON).toInstant()
-  else {
-   val d=canonicalDate(f.date)?:return@runCatching null
-   LocalDateTime.of(d,LocalTime.parse(raw.take(8))).atZone(YANGON).toInstant()
+ return try{
+  when{
+   raw.contains("T")->Instant.parse(raw)
+   raw.contains(" ")->LocalDateTime.parse(raw.replace(' ','T')).atZone(YANGON).toInstant()
+   else->{
+    val d=canonicalDate(f.date)?:return null
+    LocalDateTime.of(d,LocalTime.parse(raw.take(8))).atZone(YANGON).toInstant()
+   }
   }
- }.getOrNull()
+ }catch(_:Exception){null}
 }
 internal fun isValidLive2d(v:String)=v.matches(Regex("^[0-9]{2}$"))
 private fun validMoney(v:String)=v.isNotBlank()&&v!=LIVE_PENDING
