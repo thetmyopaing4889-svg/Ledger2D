@@ -300,7 +300,7 @@ fun LiveScreen(
             )
             is LiveUiState.Data -> {
                 if (selectedTab == "live") {
-                    LiveContent(s.feed, s.hero, s.heroLive, s.stale, Modifier.padding(padding))
+                    LiveContent(s.feed, s.hero, s.heroLive, s.stale, s.sourceMessage, Modifier.padding(padding))
                 } else if (selectedDate != null) {
                     LiveCalendarDetail(
                         history = history.firstOrNull { it.date == selectedDate },
@@ -322,13 +322,16 @@ fun LiveScreen(
 }
 
 @Composable
-private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: Boolean, stale: Boolean, modifier: Modifier = Modifier) {
+private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: Boolean, stale: Boolean, sourceMessage: String, modifier: Modifier = Modifier) {
     val l = LocalLanguage.current
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         LiveHero(hero, heroLive, stale)
+        if (sourceMessage.isNotBlank()) {
+            Text(sourceMessage, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (sourceMessage.contains("MISMATCH")) AppColors.Gold else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
         // Session cards render pending "--" rows when today's feed is not yet
         // available; they never turn into blank/error placeholders. Both final
         // sessions share one row so the whole day is visible at a glance.
