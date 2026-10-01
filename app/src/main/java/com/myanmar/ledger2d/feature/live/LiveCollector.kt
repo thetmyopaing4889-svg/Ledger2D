@@ -103,9 +103,11 @@ private fun finalOf(f:LiveFeedData)=when{
  else->null
 }
 
-internal fun resolveLiveState(p:SourceObservation?,s:SourceObservation?,now:Instant,lastLive:LiveHeroSnapshot?,cachedFinal:LiveHeroSnapshot?):LiveResolution{
+private fun clockTimeFromObservations(p:SourceObservation?,s:SourceObservation?,now:Instant):LocalTime? = (p?.feed?.let(::parseDecisionInstant) ?: s?.feed?.let(::parseDecisionInstant))?.atZone(YANGON)?.toLocalTime()
+
+internal fun resolveLiveState(p:SourceObservation?,s:SourceObservation?,now:Instant,lastLive:LiveHeroSnapshot?,cachedFinal:LiveHeroSnapshot?,scheduleTime:LocalTime?=null):LiveResolution{
  val pv=fresh(p); val sv=fresh(s); val count=listOf(pv,sv).count{it}; val pt=p?.feed?.let(::parseDecisionInstant)
- val t=pt?.atZone(YANGON)?.toLocalTime()?:return LiveResolution(p?.feed?:s?.feed,lastLive?:cachedFinal,false,LiveStatus.WAITING_FOR_ALIGNMENT,"WAITING_FOR_PRIMARY • CLOCK",count,maxOf(age(p),age(s)))
+ val t=scheduleTime?:clockTimeFromObservations(p,s,now)?:return LiveResolution(p?.feed?:s?.feed,lastLive?:cachedFinal,false,LiveStatus.WAITING_FOR_ALIGNMENT,"WAITING_FOR_PRIMARY • CLOCK",count,maxOf(age(p),age(s)))
  when(liveWindowAction(t)){
   LiveWindowAction.LIVE_POLLING->{
    if(!pv&&!sv)return LiveResolution(p?.feed?:s?.feed,lastLive,false,LiveStatus.STALE,"STALE • NO FRESH SOURCE",0,maxOf(age(p),age(s)))
@@ -175,7 +177,7 @@ internal class LiveCollector(
   if(f!=null){val end=System.nanoTime()/1_000_000L;val o=SourceObservation(f,end,started,end-started);if(primary)p=o else s=o}
  }
  private fun publish(){
-  val r=resolveLiveState(p,s,Instant.now(),lastLive,lastFinal)
+  val r=resolveLiveState(p,s,Instant.now(),lastLive,lastFinal,clock())
   if(r.status==LiveStatus.LIVE_CONFIRMED)lastLive=r.hero
   if(r.status==LiveStatus.FINAL_CONFIRMED&&r.hero!=null&&r.hero!=lastFinal){lastFinal=r.hero;cacheSaver(r.hero)}
   _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
