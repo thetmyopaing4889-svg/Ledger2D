@@ -17,7 +17,7 @@ internal const val SOURCE_FRESHNESS_MS = 5_000L
 internal const val SOURCE_TIME_SKEW_MS = 2_000L
 internal const val LIVE_REFERENCE_FETCH_INTERVAL_MS = 60_000L
 
-private val MORNING_LIVE = LocalTime.of(11,0)
+private val MORNING_LIVE = LocalTime.of(11,30)
 private val MORNING_CLOSE = LocalTime.of(11,59)
 private val MORNING_FINAL = LocalTime.of(12,1)
 private val EVENING_LIVE = LocalTime.of(16,0)
@@ -43,10 +43,13 @@ internal data class SourceObservation(val feed: LiveFeedData,val fetchedAtElapse
 internal data class LiveResolution(val displayFeed:LiveFeedData?,val hero:LiveHeroSnapshot?,val heroLive:Boolean,val status:LiveStatus,val message:String,val sourceCount:Int,val staleAgeMs:Long)
 
 internal fun liveWindowAction(t:LocalTime):LiveWindowAction=when{
+ t.isBefore(LocalTime.of(9,30))->LiveWindowAction.NONE
+ t.isBefore(LocalTime.of(9,31))->LiveWindowAction.REFERENCE_ONLY
  t.isBefore(MORNING_LIVE)->LiveWindowAction.NONE
  t.isBefore(MORNING_CLOSE)->LiveWindowAction.LIVE_POLLING
  t<=MORNING_FINAL->LiveWindowAction.FINALIZING
  t.isBefore(EVENING_LIVE)->LiveWindowAction.NONE
+ t.isBefore(LocalTime.of(14,1))->LiveWindowAction.REFERENCE_ONLY
  t.isBefore(EVENING_CLOSE)->LiveWindowAction.LIVE_POLLING
  t<=EVENING_FINAL->LiveWindowAction.FINALIZING
  else->LiveWindowAction.NONE
@@ -88,6 +91,11 @@ private fun aligned(a:SourceObservation,b:SourceObservation):Boolean{
  return kotlin.math.abs(x.toEpochMilli()-y.toEpochMilli())<=SOURCE_TIME_SKEW_MS
 }
 private fun label(t:LocalTime)=if(!t.isBefore(EVENING_LIVE))LIVE_SESSION_EVENING_LABEL else LIVE_SESSION_MORNING_LABEL
+private fun resetMorningAndEveningForNewDay(f:LiveFeedData,t:LocalTime):LiveFeedData = if (!t.isBefore(LocalTime.of(9,30)) && t.isBefore(MORNING_LIVE) && currentDay(f)) f.copy(
+ morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+ evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+) else f
+
 private fun finalOf(f:LiveFeedData)=when{
  f.evening.finalized->LiveHeroSnapshot(f.evening.result,f.evening.set,f.evening.value,LIVE_SESSION_EVENING_LABEL,f.date)
  f.morning.finalized->LiveHeroSnapshot(f.morning.result,f.morning.set,f.morning.value,LIVE_SESSION_MORNING_LABEL,f.date)
@@ -130,9 +138,12 @@ internal fun resolveLiveState(p:SourceObservation?,s:SourceObservation?,now:Inst
    return LiveResolution(p.feed,lastLive,false,LiveStatus.DRAW_FREEZE,"DRAW_FREEZE • FINALIZING",count,age(p))
   }
   LiveWindowAction.NONE,LiveWindowAction.REFERENCE_ONLY->{
-   val f=p?.feed?:s?.feed; val fin=f?.let(::finalOf)
+   val raw=p?.feed?:s?.feed
+   val f=raw?.let{resetMorningAndEveningForNewDay(it,t)} ?: raw
+   val fin=f?.let(::finalOf)
    if(fin!=null&&currentDay(f))return LiveResolution(f,fin,false,LiveStatus.FINAL_CONFIRMED,"FINAL_CONFIRMED",count,0)
-   return LiveResolution(f,cachedFinal?.takeIf{canonicalDate(it.date)==currentYangonDate()},false,LiveStatus.WAITING,"WAITING",count,maxOf(age(p),age(s)))
+   val previousHero=if(t.isBefore(MORNING_LIVE)) cachedFinal else null
+   return LiveResolution(f,previousHero,false,LiveStatus.WAITING,"WAITING",count,maxOf(age(p),age(s)))
   }
  }
 }
@@ -146,10 +157,10 @@ internal class LiveCollector(
  private val cacheSaver:(LiveHeroSnapshot)->Unit={}
 ){
  private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
- private var cycle:Job?=null; private var lastReference=0L
+ private var cycle:Job?=null; private var lastReferenceSlot=""
  private var p:SourceObservation?=null; private var s:SourceObservation?=null
  private var lastLive:LiveHeroSnapshot?=null; private var lastFinal:LiveHeroSnapshot?=null
- init{val c=cacheLoader()?.takeIf{canonicalDate(it.date)==currentYangonDate()};if(c!=null){lastFinal=c;_state.value=LiveUiState.Data(null,c,false,false,status=LiveStatus.FINAL_CONFIRMED,sourceMessage="FINAL_CONFIRMED • CACHED")}}
+ init{val c=cacheLoader();if(c!=null){lastFinal=c;_state.value=LiveUiState.Data(null,c,false,false,status=LiveStatus.FINAL_CONFIRMED,sourceMessage="FINAL_CONFIRMED • CACHED")}}
  fun fetchCycle(){
   if(cycle?.isActive==true)return
   cycle=scope.launch{
@@ -169,7 +180,7 @@ internal class LiveCollector(
   _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
- fun start(){scope.launch{while(isActive){val t=clock();when(liveWindowAction(t)){LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle();LiveWindowAction.REFERENCE_ONLY->{val w=System.currentTimeMillis();if(w-lastReference>=LIVE_REFERENCE_FETCH_INTERVAL_MS){lastReference=w;fetchCycle()}};LiveWindowAction.NONE->Unit};delay(if(liveWindowAction(t)==LiveWindowAction.FINALIZING)CLOSING_POLL_INTERVAL_MS else NORMAL_POLL_INTERVAL_MS)}}}
+ fun start(){scope.launch{while(isActive){val t=clock();when(liveWindowAction(t)){LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle();LiveWindowAction.REFERENCE_ONLY->{val slot=if(t.isBefore(LocalTime.of(11,30)))"${currentYangonDate()}-0930" else "${currentYangonDate()}-1400";if(slot!=lastReferenceSlot){lastReferenceSlot=slot;fetchCycle()}};LiveWindowAction.NONE->Unit};delay(if(liveWindowAction(t)==LiveWindowAction.FINALIZING)CLOSING_POLL_INTERVAL_MS else NORMAL_POLL_INTERVAL_MS)}}}
  companion object{
   @Volatile private var shared:LiveCollector?=null
   val instance:LiveCollector get()=shared?:error("LiveCollector not started")
