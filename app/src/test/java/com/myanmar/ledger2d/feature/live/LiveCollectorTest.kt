@@ -29,11 +29,13 @@ class LiveCollectorTest {
  @Test fun `09 30 starts reference fetch`(){assertEquals(LiveWindowAction.REFERENCE_ONLY,liveWindowAction(LocalTime.of(9,30)))}
  @Test fun `11 29 is still waiting`(){assertEquals(LiveWindowAction.NONE,liveWindowAction(LocalTime.of(11,29)))}
  @Test fun `11 30 starts live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,30)))}
- @Test fun `11 59 enters finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(11,59)))}
- @Test fun `12 01 remains finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(12,1)))}
+ @Test fun `11 59 is still live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,59)))}
+ @Test fun `12 00 is still live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(12,0)))}
+ @Test fun `12 01 enters finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(12,1)))}
  @Test fun `14 00 starts reference fetch`(){assertEquals(LiveWindowAction.REFERENCE_ONLY,liveWindowAction(LocalTime.of(14,0)))}
  @Test fun `16 00 starts evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,0)))}
- @Test fun `16 29 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,29)))}
+ @Test fun `16 29 is still evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,29)))}
+ @Test fun `16 30 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,30)))}
 
  @Test fun `two matching live sources are confirmed`(){
   val p=obs(feed("38","11:40:00"));val s=obs(feed("38","11:40:00","THAISTOCK2D"))
