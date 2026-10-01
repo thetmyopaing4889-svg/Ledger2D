@@ -127,6 +127,8 @@ data class LiveSessionData(
     val value: String,
     /** True only when the verified result field is no longer "--". */
     val finalized: Boolean,
+    val historyId: String? = null,
+    val providerOpenTime: String? = null,
 )
 
 /**
@@ -146,6 +148,8 @@ sealed interface LiveUiState {
         val stale: Boolean,
         val secondaryFeed: LiveFeedData? = null,
         val sourceMessage: String = "",
+        val status: LiveStatus = LiveStatus.WAITING,
+        val staleAgeMs: Long = 0L,
     ) : LiveUiState
 
     /** No data yet and the latest fetch failed. */
@@ -225,8 +229,25 @@ internal object LiveApi {
                         val row = rows.optJSONObject(i) ?: continue
                         val digit = row.nonBlankString("twod")
                         when (row.optString("open_time")) {
-                            "12:01:00" -> morning = LiveSessionData(digit, row.nonBlankString("set"), row.nonBlankString("value"), digit != PENDING)
-                            "16:30:00" -> evening = LiveSessionData(digit, row.nonBlankString("set"), row.nonBlankString("value"), digit != PENDING)
+                            "12:01:00", "12:00:00" -> {
+                                val candidate = LiveSessionData(
+                                    digit,
+                                    row.nonBlankString("set"),
+                                    row.nonBlankString("value"),
+                                    digit != PENDING,
+                                    row.optString("history_id").takeIf { it.isNotBlank() && it != "null" },
+                                    row.optString("open_time").takeIf { it.isNotBlank() },
+                                )
+                                if (row.optString("open_time") == "12:01:00" || morning.result == PENDING) morning = candidate
+                            }
+                            "16:30:00" -> evening = LiveSessionData(
+                                digit,
+                                row.nonBlankString("set"),
+                                row.nonBlankString("value"),
+                                digit != PENDING,
+                                row.optString("history_id").takeIf { it.isNotBlank() && it != "null" },
+                                row.optString("open_time").takeIf { it.isNotBlank() },
+                            )
                         }
                     }
                 }
@@ -300,7 +321,7 @@ fun LiveScreen(
             )
             is LiveUiState.Data -> {
                 if (selectedTab == "live") {
-                    LiveContent(s.feed, s.hero, s.heroLive, s.stale, s.sourceMessage, Modifier.padding(padding))
+                    LiveContent(s.feed, s.hero, s.heroLive, s.stale, s.sourceMessage, s.status, s.staleAgeMs, Modifier.padding(padding))
                 } else if (selectedDate != null) {
                     LiveCalendarDetail(
                         history = history.firstOrNull { it.date == selectedDate },
@@ -322,7 +343,7 @@ fun LiveScreen(
 }
 
 @Composable
-private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: Boolean, stale: Boolean, sourceMessage: String, modifier: Modifier = Modifier) {
+private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: Boolean, stale: Boolean, sourceMessage: String, status: LiveStatus, staleAgeMs: Long, modifier: Modifier = Modifier) {
     val l = LocalLanguage.current
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
@@ -330,7 +351,12 @@ private fun LiveContent(feed: LiveFeedData?, hero: LiveHeroSnapshot?, heroLive: 
     ) {
         LiveHero(hero, heroLive, stale)
         if (sourceMessage.isNotBlank()) {
-            Text(sourceMessage, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (sourceMessage.contains("MISMATCH")) AppColors.Gold else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text(sourceMessage, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                color = if (status == LiveStatus.LIVE_CONFLICT || status == LiveStatus.FINAL_CONFLICT) AppColors.Gold else MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center)
+            if (staleAgeMs > 0L && staleAgeMs < Long.MAX_VALUE) {
+                Text("stale " + (staleAgeMs / 1000) + "s", modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+            }
         }
         // Session cards render pending "--" rows when today's feed is not yet
         // available; they never turn into blank/error placeholders. Both final
