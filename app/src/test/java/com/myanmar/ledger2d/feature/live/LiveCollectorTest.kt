@@ -96,7 +96,7 @@ class LiveCollectorTest {
         assertEquals(yesterdayFinal(), derived.hero)
     }
 
-    @Test fun `1130 morning window with live data switches hero to LIVE`() {
+    @Test fun `live feed defaults to Luke source metadata`() {\n        assertEquals("LUKE", sampleFeed().sourceTag)\n        assertTrue(sampleFeed().serverTimeEpochMs == null)\n    }\n\n    @Test fun `1130 morning window with live data switches hero to LIVE`() {
         val feed = sampleFeed(live = "36")
         val derived = deriveHero(feed, LocalTime.of(11, 30), cachedFinal = yesterdayFinal())
         assertTrue(derived.isLive)
