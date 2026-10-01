@@ -209,7 +209,7 @@ internal class LiveCollector(
         if (primary == null && secondary == null) return ""
         if (primary == null) return "ThaiStock2D only"
         if (secondary == null) return "Luke only"
-        if (primary.date != secondary.date) return "DATA MISMATCH • date"
+        if (canonicalDate(primary.date) != canonicalDate(secondary.date)) return "DATA MISMATCH • date"
         val evening = !clock().isBefore(EVENING_LIVE_START)
         val pf = if (evening) primary.evening.result else primary.morning.result
         val sf = if (evening) secondary.evening.result else secondary.morning.result
@@ -217,6 +217,8 @@ internal class LiveCollector(
         if (primary.live != LIVE_PENDING && secondary.live != LIVE_PENDING) return if (primary.live == secondary.live) "2 SOURCES ALIGNED" else "DATA MISMATCH"
         return "WAITING FOR SOURCE ALIGNMENT"
     }
+
+    private fun canonicalDate(raw: String): String = runCatching { java.time.LocalDate.parse(raw) }.getOrElse { java.time.LocalDate.parse(raw, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) }.toString()
 
     private fun serverDecisionTime(feed: LiveFeedData): LocalTime {
         val raw = feed.currentTime.substringAfterLast(' ').trim()
