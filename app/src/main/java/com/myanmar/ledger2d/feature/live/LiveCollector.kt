@@ -22,6 +22,12 @@ import java.util.concurrent.atomic.AtomicLong
 
 private val YANGON = ZoneId.of("Asia/Yangon")
 
+private fun monotonicMs(): Long = runCatching {
+    SystemClock.elapsedRealtime()
+}.getOrElse {
+    System.nanoTime() / 1_000_000L
+}
+
 /**
  * Luke-only Phase 1:
  * - one scheduled request every 3 seconds while a live/final result is expected
