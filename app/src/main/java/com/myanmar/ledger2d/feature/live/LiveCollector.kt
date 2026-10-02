@@ -344,6 +344,8 @@ internal class LiveCollector(
     private var referenceResetDate: LocalDate? = null
     private var reference930: Pair<String, String>? = null
     private var reference200: Pair<String, String>? = null
+    private var reference930PendingDate: LocalDate? = null
+    private var reference200PendingDate: LocalDate? = null
 
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
@@ -463,18 +465,36 @@ internal class LiveCollector(
 
         var out = base
 
-        reference930?.let { pair ->
-            out = out.copy(
-                modern930 = pair.first,
-                internet930 = pair.second,
-            )
+        when {
+            reference930 != null -> {
+                val pair = reference930!!
+                out = out.copy(
+                    modern930 = pair.first,
+                    internet930 = pair.second,
+                )
+            }
+            reference930PendingDate == currentYangonDate() -> {
+                out = out.copy(
+                    modern930 = LIVE_PENDING,
+                    internet930 = LIVE_PENDING,
+                )
+            }
         }
 
-        reference200?.let { pair ->
-            out = out.copy(
-                modern200 = pair.first,
-                internet200 = pair.second,
-            )
+        when {
+            reference200 != null -> {
+                val pair = reference200!!
+                out = out.copy(
+                    modern200 = pair.first,
+                    internet200 = pair.second,
+                )
+            }
+            reference200PendingDate == currentYangonDate() -> {
+                out = out.copy(
+                    modern200 = LIVE_PENDING,
+                    internet200 = LIVE_PENDING,
+                )
+            }
         }
 
         // A successful 09:30 reference resets the two session cards only
@@ -524,13 +544,16 @@ internal class LiveCollector(
                 if (valid) {
                     reference930 =
                         feed!!.modern930 to feed.internet930
+                    reference930PendingDate = null
                     reference930CompleteDate = cycleDate
                     referenceResetDate = cycleDate
                 } else {
-                    // Only clear after this attempt is known to be invalid.
-                    // A successful first response therefore transitions
-                    // directly from old reference -> new reference.
+                    // Do not clear before the first request. If the first
+                    // request succeeds, the UI transitions old -> new
+                    // directly. Only after an invalid/failed attempt do we
+                    // enter the explicit pending state.
                     reference930 = null
+                    reference930PendingDate = cycleDate
                 }
             } else {
                 val valid = validReferencePair(
@@ -542,9 +565,11 @@ internal class LiveCollector(
                 if (valid) {
                     reference200 =
                         feed!!.modern200 to feed.internet200
+                    reference200PendingDate = null
                     reference200CompleteDate = cycleDate
                 } else {
                     reference200 = null
+                    reference200PendingDate = cycleDate
                 }
             }
 
@@ -568,15 +593,13 @@ internal class LiveCollector(
             val cycleDate = today
 
             while (isActive) {
-                val nowDate = currentYangonDate()
                 val now = clock()
 
-                // This cycle belongs to its original day and runs through
-                // that day's remaining time, including the next day's
-                // 00:00..09:29:59 boundary. At the next 09:30 a new cycle
-                // starts for the new day.
-                if (nowDate != cycleDate) return@launch
-                if (now.isBefore(MORNING_REFERENCE)) return@launch
+                // Keep retrying across midnight. The prior 09:30 cycle owns
+                // the retry window until the next 09:30 boundary.
+                if (currentYangonDate() != cycleDate && !now.isBefore(MORNING_REFERENCE)) {
+                    return@launch
+                }
 
                 if (fetchReferencePair(true, cycleDate)) return@launch
 
@@ -595,13 +618,16 @@ internal class LiveCollector(
             val cycleDate = today
 
             while (isActive) {
-                val nowDate = currentYangonDate()
                 val now = clock()
 
-                // 14:00 is independent of the 09:30 cycle and continues
-                // until the next day's 09:29:59 boundary.
-                if (nowDate != cycleDate) return@launch
-                if (now.isBefore(AFTERNOON_REFERENCE)) return@launch
+                // The 14:00 cycle is independent and keeps retrying through
+                // midnight until the next day's 09:29:59 boundary.
+                if (currentYangonDate() != cycleDate && !now.isBefore(MORNING_REFERENCE)) {
+                    return@launch
+                }
+                if (currentYangonDate() == cycleDate && now.isBefore(AFTERNOON_REFERENCE)) {
+                    return@launch
+                }
 
                 if (fetchReferencePair(false, cycleDate)) return@launch
 
