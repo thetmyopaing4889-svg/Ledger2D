@@ -213,7 +213,7 @@ internal class LiveCollector(
    while(isActive){
     if(clock().isBefore(LocalTime.of(9,30)))return@launch
     val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
-    if(f!=null&&validReferencePair(f,f.modern930,f.internet930)){
+    if(f?.let{validReferencePair(it,it.modern930,it.internet930)}==true){
      reference930=f.modern930 to f.internet930
      reference930CompleteDate=currentYangonDate()
      referenceResetDate=currentYangonDate()
@@ -234,7 +234,7 @@ internal class LiveCollector(
    while(isActive){
     if(clock().isBefore(LocalTime.of(14,0)))return@launch
     val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
-    if(f!=null&&validReferencePair(f,f.modern200,f.internet200)){
+    if(f?.let{validReferencePair(it,it.modern200,it.internet200)}==true){
      reference200=f.modern200 to f.internet200
      reference200CompleteDate=currentYangonDate()
      publish()
