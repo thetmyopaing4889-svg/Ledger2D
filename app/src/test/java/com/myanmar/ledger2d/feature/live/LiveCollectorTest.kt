@@ -2,6 +2,7 @@ package com.myanmar.ledger2d.feature.live
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -160,8 +161,9 @@ class LiveCollectorTest {
     @Test fun slow_request_does_not_block_next_scheduled_request() = runTest {
         var calls = 0
         val firstGate = CompletableDeferred<Unit>()
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            scope,
             fetcher = {
                 calls++
                 if (calls == 1) firstGate.await()
@@ -176,6 +178,7 @@ class LiveCollectorTest {
         assertTrue(calls >= 2)
         firstGate.complete(Unit)
         runCurrent()
+        scope.cancel()
     }
 
     @Test fun late_older_response_cannot_overwrite_newer_response() = runTest {
@@ -228,8 +231,9 @@ class LiveCollectorTest {
 
     @Test fun background_polling_works_without_opening_live_screen() = runTest {
         var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            scope,
             fetcher = {
                 calls++
                 feed("38", "11:40:00")
@@ -240,5 +244,6 @@ class LiveCollectorTest {
         collector.start()
         advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
         assertTrue(calls >= 4)
+        scope.cancel()
     }
 }
