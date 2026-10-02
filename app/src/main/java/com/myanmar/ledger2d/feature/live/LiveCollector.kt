@@ -296,12 +296,11 @@ internal class LiveCollector(
 
  private fun publish(){
   val now=clock()
-  val currentOrPreviousFeed=if(now.isBefore(MORNING_LIVE)){
-   p?.feed?:s?.feed
+  val displayPrimary=if(now.isBefore(MORNING_LIVE)){
+   p?:s
   }else{
-   p?.feed?.takeIf(::currentDay)?:s?.feed?.takeIf(::currentDay)
-  }
-  val displayPrimary=currentOrPreviousFeed?.let{it.copy(feed=mergeReferenceIntoFeed(it) ?: it)}
+   p?.takeIf{currentDay(it.feed)}?:s?.takeIf{currentDay(it.feed)}
+  }?.let{it.copy(feed=mergeReferenceIntoFeed(it.feed) ?: it.feed)}
   val r=resolveLiveState(displayPrimary,s,Instant.now(),lastLive,lastFinal,now)
   if(r.status==LiveStatus.LIVE_CONFIRMED)lastLive=r.hero
   if(r.status==LiveStatus.FINAL_CONFIRMED&&r.hero!=null&&r.hero!=lastFinal){lastFinal=r.hero;cacheSaver(r.hero)}
