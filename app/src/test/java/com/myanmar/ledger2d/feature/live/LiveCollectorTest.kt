@@ -149,4 +149,41 @@ class LiveCollectorTest {
  @Test fun `screen is not required for background polling`(){
   runTest{var n=0;val s=CoroutineScope(UnconfinedTestDispatcher(testScheduler));val c=LiveCollector(s,{n++;feed("38","11:40:00")},clock={LocalTime.of(11,40)});c.start();advanceTimeBy(10000);s.cancel();assertTrue(n>=2)}
  }
+
+ @Test fun `reference data remains visible even when no live observation exists`(){
+  runTest{
+   val scope=CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+   val c=LiveCollector(scope,{feed("38","09:30:00")},clock={LocalTime.of(9,30)})
+   c.start();advanceTimeBy(100)
+   val d=c.state.value as LiveUiState.Data
+   assertEquals("98",d.feed?.modern930)
+   assertEquals("15",d.feed?.internet930)
+   assertEquals(currentYangonDate().toString(),d.feed?.date)
+   scope.cancel()
+  }
+ }
+
+ @Test fun `reference request does not run concurrently with live Luke request`(){
+  runTest{
+   var active=0
+   var maxActive=0
+   val scope=CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+   val gate=CompletableDeferred<Unit>()
+   val fetcher:suspend()->LiveFeedData?={
+    active++
+    maxActive=maxOf(maxActive,active)
+    gate.await()
+    active--
+    feed("38","11:30:00")
+   }
+   val c=LiveCollector(scope,fetcher,clock={LocalTime.of(11,30)})
+   c.start()
+   c.fetchCycle()
+   advanceTimeBy(100)
+   assertEquals(1,maxActive)
+   gate.complete(Unit)
+   advanceUntilIdle()
+   scope.cancel()
+  }
+ }
 }
