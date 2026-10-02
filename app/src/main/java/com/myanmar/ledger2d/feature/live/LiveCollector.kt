@@ -389,6 +389,12 @@ internal class LiveCollector(
                     startedAt,
                     finishedAt - startedAt,
                 )
+                if (protected.modern930 != LIVE_PENDING || protected.internet930 != LIVE_PENDING) {
+                    reference930Date = currentYangonDate()
+                }
+                if (protected.modern200 != LIVE_PENDING || protected.internet200 != LIVE_PENDING) {
+                    reference200Date = currentYangonDate()
+                }
                 publishLocked()
             }
         }
