@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.time.*
+import kotlinx.coroutines.sync.Mutex
 
 private val YANGON = ZoneId.of("Asia/Yangon")
 internal const val NORMAL_POLL_INTERVAL_MS = 3_000L
@@ -161,6 +162,8 @@ internal class LiveCollector(
 ){
  private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
  private var cycle:Job?=null
+ private val primaryRequestMutex=Mutex()
+ private val secondaryRequestMutex=Mutex()
  private var reference930Cycle:Job?=null
  private var reference200Cycle:Job?=null
  private var reference930CompleteDate:LocalDate?=null
@@ -180,12 +183,19 @@ internal class LiveCollector(
   }
  }
  private fun launchSource(src:suspend()->LiveFeedData?,primary:Boolean)=scope.launch{
-  val started=System.nanoTime()/1_000_000L;val f=try{src()}catch(_:Exception){null}
-  if(f!=null){
-   val end=System.nanoTime()/1_000_000L
-   val normalized=f
-   val o=SourceObservation(normalized,end,started,end-started)
-   if(primary)p=o else s=o
+  val mutex=if(primary)primaryRequestMutex else secondaryRequestMutex
+  if(!mutex.tryLock())return@launch
+  try{
+   val started=System.nanoTime()/1_000_000L
+   val f=try{src()}catch(_:Exception){null}
+   if(f!=null){
+    val end=System.nanoTime()/1_000_000L
+    val normalized=f
+    val o=SourceObservation(normalized,end,started,end-started)
+    if(primary)p=o else s=o
+   }
+  }finally{
+   mutex.unlock()
   }
  }
  private fun validReferencePair(f:LiveFeedData,modern:String,internet:String):Boolean=
@@ -212,7 +222,7 @@ internal class LiveCollector(
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(9,30)))return@launch
-    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
+    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestMutex.tryLock())null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestMutex.unlock()}}
     if(f==null){
      publish()
      delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
@@ -263,12 +273,34 @@ internal class LiveCollector(
   if(!t.isBefore(LocalTime.of(14,0))&&reference200CompleteDate!=today)fetchReference200Cycle()
  }
 
+ private fun referenceOnlyDisplayFeed():LiveFeedData{
+  val now=clock()
+  val beforeMorning=now.isBefore(MORNING_LIVE)
+  val date=if(beforeMorning)lastFinal?.date?:currentYangonDate().toString() else currentYangonDate().toString()
+  val base=LiveFeedData(
+   date=date,
+   currentTime=now.toString(),
+   live=LIVE_PENDING,
+   liveSet=LIVE_PENDING,
+   liveVal=LIVE_PENDING,
+   morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+   evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+   modern930=LIVE_PENDING,
+   internet930=LIVE_PENDING,
+   modern200=LIVE_PENDING,
+   internet200=LIVE_PENDING,
+   sourceTag="REFERENCE",
+  )
+  return mergeReferenceIntoFeed(base)?:base
+ }
+
  private fun publish(){
   val displayPrimary=p?.let{it.copy(feed=mergeReferenceIntoFeed(it.feed) ?: it.feed)}
   val r=resolveLiveState(displayPrimary,s,Instant.now(),lastLive,lastFinal,clock())
   if(r.status==LiveStatus.LIVE_CONFIRMED)lastLive=r.hero
   if(r.status==LiveStatus.FINAL_CONFIRMED&&r.hero!=null&&r.hero!=lastFinal){lastFinal=r.hero;cacheSaver(r.hero)}
-  _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
+  val displayFeed=r.displayFeed?:if(clock().isBefore(MORNING_LIVE)||reference930!=null||reference200!=null)referenceOnlyDisplayFeed() else null
+  _state.value=LiveUiState.Data(displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
  fun start(){
