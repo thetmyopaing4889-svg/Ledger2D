@@ -569,28 +569,30 @@ internal object LiveCacheStore {
     private const val PREFS_NAME = "live_display_cache"
     private const val KEY = "latest_final"
 
-    fun load(context: Context): LiveHeroSnapshot? = try {
-        val raw = context
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY, null)
-            ?: return null
+    fun load(context: Context): LiveHeroSnapshot? {
+        return try {
+            val raw = context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY, null)
+                ?: return null
 
-        val o = JSONObject(raw)
-        if (o.optString("state") != "FINAL_CONFIRMED") return null
+            val o = JSONObject(raw)
+            if (o.optString("state") != "FINAL_CONFIRMED") return null
 
-        val snapshot = LiveHeroSnapshot(
-            result = o.getString("result"),
-            set = o.getString("set"),
-            value = o.getString("value"),
-            sessionLabel = o.getString("sessionLabel"),
-            date = o.getString("date"),
-        )
+            val snapshot = LiveHeroSnapshot(
+                result = o.getString("result"),
+                set = o.getString("set"),
+                value = o.getString("value"),
+                sessionLabel = o.getString("sessionLabel"),
+                date = o.getString("date"),
+            )
 
-        snapshot.takeIf {
-            canonicalDate(it.date) == currentYangonDate()
+            snapshot.takeIf {
+                canonicalDate(it.date) == currentYangonDate()
+            }
+        } catch (_: Exception) {
+            null
         }
-    } catch (_: Exception) {
-        null
     }
 
     fun save(context: Context, snapshot: LiveHeroSnapshot) {
