@@ -223,8 +223,12 @@ internal fun resolveLiveState(
         ?: now.atZone(YANGON).toLocalTime()
 
     if (feed == null) {
+        // Before today's 09:30 reference window, the only meaningful hero
+        // fallback is yesterday's final result. It keeps its original date so
+        // it can never be mistaken for today's result.
         val cached = cachedFinal?.takeIf {
-            canonicalDate(it.date) == currentYangonDate()
+            decisionTime.isBefore(MORNING_REFERENCE) &&
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
         }
         return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
     }
@@ -249,15 +253,24 @@ internal fun resolveLiveState(
     fun finalHero(): LiveHeroSnapshot? = latestFinalFor(feed)
 
     return when {
-        decisionTime.isBefore(MORNING_LIVE) -> LiveResolution(
-            feed,
-            cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() },
-            false,
-            LiveStatus.WAITING,
-            "",
-            1,
-            age(p),
-        )
+        decisionTime.isBefore(MORNING_LIVE) -> {
+            val cached = if (decisionTime.isBefore(MORNING_REFERENCE)) {
+                cachedFinal?.takeIf {
+                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
+                }
+            } else {
+                null
+            }
+            LiveResolution(
+                feed,
+                cached,
+                false,
+                LiveStatus.WAITING,
+                "",
+                1,
+                age(p),
+            )
+        }
 
         decisionTime.isBefore(MORNING_CLOSE) -> {
             val hero = liveHero()
@@ -366,12 +379,20 @@ internal class LiveCollector(
     private var lastFinal: LiveHeroSnapshot? = null
 
     init {
+        // Keep the latest persisted final in memory even when it belongs to
+        // yesterday. Before 09:30 it is valid display context; after 09:30
+        // the resolver deliberately hides it.
         val cached = cacheLoader()
-            ?.takeIf { canonicalDate(it.date) == currentYangonDate() }
 
         if (cached != null) {
             lastFinal = cached
-            _state.value = LiveUiState.Data(null, cached, false, false)
+
+            if (
+                clock().isBefore(MORNING_REFERENCE) &&
+                canonicalDate(cached.date) == currentYangonDate().minusDays(1)
+            ) {
+                _state.value = LiveUiState.Data(null, cached, false, false)
+            }
         }
     }
 
@@ -577,13 +598,23 @@ internal class LiveCollector(
             activeDate = today
             primary = null
             lastLive = null
-            lastFinal = null
+            // Preserve the just-finished day's final in memory. Before 09:30
+            // the resolver may show it as yesterday's context; after 09:30 it
+            // is hidden automatically and can never become today's hero.
             reference930Date = null
             reference200Date = null
             nextReference930AttemptElapsedMs = 0L
             nextReference200AttemptElapsedMs = 0L
             latestAppliedSequence.set(requestSequence.get())
-            _state.value = LiveUiState.Data(null, null, false, false)
+
+            val previousDayFinal = lastFinal?.takeIf {
+                canonicalDate(it.date) == today.minusDays(1)
+            }
+            _state.value = if (clock().isBefore(MORNING_REFERENCE)) {
+                LiveUiState.Data(null, previousDayFinal, false, false)
+            } else {
+                LiveUiState.Data(null, null, false, false)
+            }
         }
     }
 
@@ -664,9 +695,7 @@ internal object LiveCacheStore {
                 date = o.getString("date"),
             )
 
-            snapshot.takeIf {
-                canonicalDate(it.date) == currentYangonDate()
-            }
+            snapshot
         } catch (_: Exception) {
             null
         }
