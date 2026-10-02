@@ -161,10 +161,15 @@ internal class LiveCollector(
 ){
  private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
  private var cycle:Job?=null
- private var referenceCycle:Job?=null
+ private var reference930Cycle:Job?=null
+ private var reference200Cycle:Job?=null
+ private var reference930CompleteDate:LocalDate?=null
+ private var reference200CompleteDate:LocalDate?=null
+ private var referenceResetDate:LocalDate?=null
+ private var reference930:Pair<String,String>?=null
+ private var reference200:Pair<String,String>?=null
  private var p:SourceObservation?=null; private var s:SourceObservation?=null
  private var lastLive:LiveHeroSnapshot?=null; private var lastFinal:LiveHeroSnapshot?=null
- private var referenceResetDate:LocalDate?=null
  init{val c=cacheLoader();if(c!=null){lastFinal=c;_state.value=LiveUiState.Data(null,c,false,false,status=LiveStatus.FINAL_CONFIRMED,sourceMessage="FINAL_CONFIRMED • CACHED")}}
  fun fetchCycle(){
   if(cycle?.isActive==true)return
@@ -178,84 +183,79 @@ internal class LiveCollector(
   val started=System.nanoTime()/1_000_000L;val f=try{src()}catch(_:Exception){null}
   if(f!=null){
    val end=System.nanoTime()/1_000_000L
-   val normalized=if(primary)applyReferencePolicy(f,p?.feed,clock()) else f
+   val normalized=f
    val o=SourceObservation(normalized,end,started,end-started)
    if(primary)p=o else s=o
   }
  }
- private fun applyReferencePolicy(f:LiveFeedData,previous:LiveFeedData?,t:LocalTime):LiveFeedData{
-  val today=currentYangonDate()
-  val valid930=currentDay(f)&&isValidLive2d(f.modern930)&&isValidLive2d(f.internet930)
-  val valid200=currentDay(f)&&isValidLive2d(f.modern200)&&isValidLive2d(f.internet200)
-  val after930=!t.isBefore(LocalTime.of(9,30))
-  val before14=t.isBefore(LocalTime.of(14,0))
-  val inMorningReference=after930&&before14
-  val inAfternoonReference=after930&&!before14
-  var out=f
-  if(inMorningReference){
+ private fun validReferencePair(f:LiveFeedData,modern:String,internet:String):Boolean=
+  currentDay(f)&&isValidLive2d(modern)&&isValidLive2d(internet)
+
+ private fun mergeReferenceIntoFeed(base:LiveFeedData?):LiveFeedData?{
+  if(base==null)return null
+  var out=base
+  reference930?.let{out=out.copy(modern930=it.first,internet930=it.second)}
+  reference200?.let{out=out.copy(modern200=it.first,internet200=it.second)}
+  if(referenceResetDate==currentYangonDate()&&clock().isBefore(MORNING_LIVE)){
    out=out.copy(
-    modern930=if(valid930)f.modern930 else LIVE_PENDING,
-    internet930=if(valid930)f.internet930 else LIVE_PENDING,
-    modern200=previous?.modern200?:LIVE_PENDING,
-    internet200=previous?.internet200?:LIVE_PENDING,
+    morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+    evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
    )
-   if(valid930&&referenceResetDate!=today){
-    referenceResetDate=today
-    out=out.copy(
-     morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-     evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-    )
-   }
-  }else if(inAfternoonReference){
-   out=out.copy(
-    modern930=previous?.modern930?:f.modern930,
-    internet930=previous?.internet930?:f.internet930,
-    modern200=if(valid200)f.modern200 else LIVE_PENDING,
-    internet200=if(valid200)f.internet200 else LIVE_PENDING,
-   )
-   if(t>=MORNING_LIVE&&referenceResetDate!=today){
-    referenceResetDate=today
-    out=out.copy(
-     morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-     evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-    )
-   }
-  }else{
-   out=previous?.let{f.copy(
-    morning=it.morning,
-    evening=it.evening,
-    modern930=it.modern930,
-    internet930=it.internet930,
-    modern200=it.modern200,
-    internet200=it.internet200,
-   )}?:f
   }
   return out
  }
- private fun shouldReferencePoll(t:LocalTime):Boolean{
-  return !t.isBefore(LocalTime.of(9,30))
- }
- private fun fetchReferenceCycle(){
-  if(referenceCycle?.isActive==true)return
-  referenceCycle=scope.launch{
-   val started=System.nanoTime()/1_000_000L
-   val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
-   val end=System.nanoTime()/1_000_000L
-   if(f!=null){
-    val previous=p?.feed
-    val normalized=applyReferencePolicy(f,previous,clock())
-    val merged=mergeReferenceOnly(previous,normalized)
-    p=SourceObservation(merged,p?.fetchedAtElapsedMs?:end,p?.requestStartedElapsedMs?:started,p?.roundTripMs?:end-started)
+
+ private fun fetchReference930Cycle(){
+  if(reference930Cycle?.isActive==true||reference930CompleteDate==currentYangonDate())return
+  reference930Cycle=scope.launch{
+   reference930=null
+   publish()
+   while(isActive){
+    if(clock().isBefore(LocalTime.of(9,30)))return@launch
+    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
+    if(f!=null&&validReferencePair(f,f.modern930,f.internet930)){
+     reference930=f.modern930 to f.internet930
+     reference930CompleteDate=currentYangonDate()
+     referenceResetDate=currentYangonDate()
+     publish()
+     return@launch
+    }
     publish()
-   }else publish()
+    delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+   }
   }
  }
- private fun mergeReferenceOnly(previous:LiveFeedData?,f:LiveFeedData):LiveFeedData{
-  if(previous==null)return f
-  return previous.copy(modern930=f.modern930,internet930=f.internet930,modern200=f.modern200,internet200=f.internet200,morning=f.morning,evening=f.evening)
+
+ private fun fetchReference200Cycle(){
+  if(reference200Cycle?.isActive==true||reference200CompleteDate==currentYangonDate())return
+  reference200Cycle=scope.launch{
+   reference200=null
+   publish()
+   while(isActive){
+    if(clock().isBefore(LocalTime.of(14,0)))return@launch
+    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
+    if(f!=null&&validReferencePair(f,f.modern200,f.internet200)){
+     reference200=f.modern200 to f.internet200
+     reference200CompleteDate=currentYangonDate()
+     publish()
+     return@launch
+    }
+    publish()
+    delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+   }
+  }
  }
+
+ private fun ensureReferenceJobs(t:LocalTime){
+  val today=currentYangonDate()
+  if(t.isBefore(LocalTime.of(9,30)))return
+  if(reference930CompleteDate!=today)fetchReference930Cycle()
+  if(!t.isBefore(LocalTime.of(14,0))&&reference200CompleteDate!=today)fetchReference200Cycle()
+ }
+
  private fun publish(){
-  val r=resolveLiveState(p,s,Instant.now(),lastLive,lastFinal,clock())
+  val displayPrimary=p?.let{it.copy(feed=mergeReferenceIntoFeed(it.feed) ?: it.feed)}
+  val r=resolveLiveState(displayPrimary,s,Instant.now(),lastLive,lastFinal,clock())
   if(r.status==LiveStatus.LIVE_CONFIRMED)lastLive=r.hero
   if(r.status==LiveStatus.FINAL_CONFIRMED&&r.hero!=null&&r.hero!=lastFinal){lastFinal=r.hero;cacheSaver(r.hero)}
   _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
@@ -276,7 +276,7 @@ internal class LiveCollector(
    })
   }}
   scope.launch{while(isActive){
-   if(shouldReferencePoll(clock()))fetchReferenceCycle()
+   ensureReferenceJobs(clock())
    delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
   }}
  }
