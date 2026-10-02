@@ -30,7 +30,7 @@ private fun monotonicMs(): Long = runCatching {
 
 /**
  * Luke-only Phase 1:
- * - one scheduled request every 3 seconds while a live/final result is expected
+ * - scheduled requests every 3 seconds while live/final data is expected
  * - request completion never controls the next request
  * - failed requests never erase the last successful snapshot
  * - late/out-of-order responses cannot overwrite a newer successful snapshot
@@ -51,6 +51,9 @@ private val AFTERNOON_REFERENCE = LocalTime.of(14, 0)
 private val EVENING_LIVE = LocalTime.of(16, 0)
 private val EVENING_CLOSE = LocalTime.of(16, 30)
 private val EVENING_CATCHUP_END = LocalTime.of(17, 0)
+// Continue final-result catch-up in the background for a bounded period after 5 PM.
+// This is final-result retry only; live-number polling never continues after 4:30 PM.
+private val EVENING_RETRY_END = LocalTime.of(18, 0)
 
 internal const val LIVE_PENDING = "--"
 internal const val LIVE_SESSION_MORNING_LABEL = "12:01 PM"
@@ -220,8 +223,12 @@ internal fun resolveLiveState(
         ?: now.atZone(YANGON).toLocalTime()
 
     if (feed == null) {
+        // Before today's 09:30 reference window, the only meaningful hero
+        // fallback is yesterday's final result. It keeps its original date so
+        // it can never be mistaken for today's result.
         val cached = cachedFinal?.takeIf {
-            canonicalDate(it.date) == currentYangonDate()
+            decisionTime.isBefore(MORNING_REFERENCE) &&
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
         }
         return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
     }
@@ -246,15 +253,24 @@ internal fun resolveLiveState(
     fun finalHero(): LiveHeroSnapshot? = latestFinalFor(feed)
 
     return when {
-        decisionTime.isBefore(MORNING_LIVE) -> LiveResolution(
-            feed,
-            cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() },
-            false,
-            LiveStatus.WAITING,
-            "",
-            1,
-            age(p),
-        )
+        decisionTime.isBefore(MORNING_LIVE) -> {
+            val cached = if (decisionTime.isBefore(MORNING_REFERENCE)) {
+                cachedFinal?.takeIf {
+                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
+                }
+            } else {
+                null
+            }
+            LiveResolution(
+                feed,
+                cached,
+                false,
+                LiveStatus.WAITING,
+                "",
+                1,
+                age(p),
+            )
+        }
 
         decisionTime.isBefore(MORNING_CLOSE) -> {
             val hero = liveHero()
@@ -269,7 +285,7 @@ internal fun resolveLiveState(
             )
         }
 
-        decisionTime.isBefore(LocalTime.of(13, 0)) -> {
+        decisionTime.isBefore(MORNING_CATCHUP_END) -> {
             val hero = if (morningFinal) finalHero() else liveHero()
             LiveResolution(
                 feed,
@@ -286,13 +302,30 @@ internal fun resolveLiveState(
             )
         }
 
+        decisionTime.isBefore(EVENING_LIVE) -> {
+            // Afternoon idle period: freeze the morning final. Never expose
+            // Luke's post-draw live field as a new LIVE session.
+            val hero = finalHero()
+            LiveResolution(
+                feed,
+                hero,
+                false,
+                if (hero != null) LiveStatus.FINAL_CONFIRMED else LiveStatus.WAITING,
+                "",
+                1,
+                age(p),
+            )
+        }
+
         decisionTime.isBefore(EVENING_CLOSE) -> {
             val hero = liveHero() ?: finalHero()
             LiveResolution(
                 feed,
                 hero,
                 liveHero() != null,
-                if (liveHero() != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.FINAL_CONFIRMED,
+                if (liveHero() != null) LiveStatus.LIVE_CONFIRMED
+                else if (hero != null) LiveStatus.FINAL_CONFIRMED
+                else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
@@ -300,16 +333,14 @@ internal fun resolveLiveState(
         }
 
         else -> {
-            val hero = if (eveningFinal) finalHero() else liveHero() ?: finalHero()
+            // After 4:30 PM the live field is no longer a display hero.
+            // Keep the morning final stable until the evening final arrives.
+            val hero = finalHero()
             LiveResolution(
                 feed,
                 hero,
-                !eveningFinal && canShowLive,
-                when {
-                    eveningFinal -> LiveStatus.FINAL_CONFIRMED
-                    canShowLive -> LiveStatus.LIVE_CONFIRMED
-                    else -> LiveStatus.WAITING
-                },
+                false,
+                if (hero != null) LiveStatus.FINAL_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
@@ -339,18 +370,29 @@ internal class LiveCollector(
     private var schedulerJob: Job? = null
     private var reference930Date: LocalDate? = null
     private var reference200Date: LocalDate? = null
+    private var nextReference930AttemptElapsedMs: Long = 0L
+    private var nextReference200AttemptElapsedMs: Long = 0L
+    private var activeDate: LocalDate = currentYangonDate()
 
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
     private var lastFinal: LiveHeroSnapshot? = null
 
     init {
+        // Keep the latest persisted final in memory even when it belongs to
+        // yesterday. Before 09:30 it is valid display context; after 09:30
+        // the resolver deliberately hides it.
         val cached = cacheLoader()
-            ?.takeIf { canonicalDate(it.date) == currentYangonDate() }
 
         if (cached != null) {
             lastFinal = cached
-            _state.value = LiveUiState.Data(null, cached, false, false)
+
+            if (
+                clock().isBefore(MORNING_REFERENCE) &&
+                canonicalDate(cached.date) == currentYangonDate().minusDays(1)
+            ) {
+                _state.value = LiveUiState.Data(null, cached, false, false)
+            }
         }
     }
 
@@ -425,6 +467,26 @@ internal class LiveCollector(
             } else {
                 incoming.evening
             },
+            modern930 = if (previous.modern930 != LIVE_PENDING && incoming.modern930 == LIVE_PENDING) {
+                previous.modern930
+            } else {
+                incoming.modern930
+            },
+            internet930 = if (previous.internet930 != LIVE_PENDING && incoming.internet930 == LIVE_PENDING) {
+                previous.internet930
+            } else {
+                incoming.internet930
+            },
+            modern200 = if (previous.modern200 != LIVE_PENDING && incoming.modern200 == LIVE_PENDING) {
+                previous.modern200
+            } else {
+                incoming.modern200
+            },
+            internet200 = if (previous.internet200 != LIVE_PENDING && incoming.internet200 == LIVE_PENDING) {
+                previous.internet200
+            } else {
+                incoming.internet200
+            },
         )
     }
 
@@ -451,15 +513,24 @@ internal class LiveCollector(
 
     private fun maybeReferenceFetch(t: LocalTime) {
         val today = currentYangonDate()
+        val nowElapsed = monotonicMs()
 
-        if (t >= MORNING_REFERENCE && reference930Date != today) {
-            reference930Date = today
+        if (
+            t >= MORNING_REFERENCE &&
+            reference930Date != today &&
+            nowElapsed >= nextReference930AttemptElapsedMs
+        ) {
+            nextReference930AttemptElapsedMs = nowElapsed + LIVE_REFERENCE_FETCH_INTERVAL_MS
             launchRequest()
             return
         }
 
-        if (t >= AFTERNOON_REFERENCE && reference200Date != today) {
-            reference200Date = today
+        if (
+            t >= AFTERNOON_REFERENCE &&
+            reference200Date != today &&
+            nowElapsed >= nextReference200AttemptElapsedMs
+        ) {
+            nextReference200AttemptElapsedMs = nowElapsed + LIVE_REFERENCE_FETCH_INTERVAL_MS
             launchRequest()
         }
     }
@@ -474,7 +545,7 @@ internal class LiveCollector(
             t >= MORNING_CLOSE && t < MORNING_CATCHUP_END ->
                 f?.morning?.finalized != true
             t >= EVENING_LIVE && t < EVENING_CLOSE -> true
-            t >= EVENING_CLOSE && t < EVENING_CATCHUP_END ->
+            t >= EVENING_CLOSE && t < EVENING_RETRY_END ->
                 f?.evening?.finalized != true
             else -> false
         }
@@ -517,6 +588,36 @@ internal class LiveCollector(
         )
     }
 
+    private fun reconcileDateBoundary() {
+        val today = currentYangonDate()
+        if (today == activeDate) return
+
+        synchronized(stateLock) {
+            if (today == activeDate) return
+
+            activeDate = today
+            primary = null
+            lastLive = null
+            // Preserve the just-finished day's final in memory. Before 09:30
+            // the resolver may show it as yesterday's context; after 09:30 it
+            // is hidden automatically and can never become today's hero.
+            reference930Date = null
+            reference200Date = null
+            nextReference930AttemptElapsedMs = 0L
+            nextReference200AttemptElapsedMs = 0L
+            latestAppliedSequence.set(requestSequence.get())
+
+            val previousDayFinal = lastFinal?.takeIf {
+                canonicalDate(it.date) == today.minusDays(1)
+            }
+            _state.value = if (clock().isBefore(MORNING_REFERENCE)) {
+                LiveUiState.Data(null, previousDayFinal, false, false)
+            } else {
+                LiveUiState.Data(null, null, false, false)
+            }
+        }
+    }
+
     fun start() {
         if (!started.compareAndSet(false, true)) return
 
@@ -524,6 +625,7 @@ internal class LiveCollector(
 
         schedulerJob = scope.launch {
             while (isActive) {
+                reconcileDateBoundary()
                 val t = clock()
                 maybeReferenceFetch(t)
 
@@ -593,9 +695,7 @@ internal object LiveCacheStore {
                 date = o.getString("date"),
             )
 
-            snapshot.takeIf {
-                canonicalDate(it.date) == currentYangonDate()
-            }
+            snapshot
         } catch (_: Exception) {
             null
         }

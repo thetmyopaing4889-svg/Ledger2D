@@ -89,6 +89,64 @@ class LiveCollectorTest {
         assertEquals(LiveWindowAction.FINALIZING, liveWindowAction(LocalTime.of(16, 30)))
     }
 
+    @Test fun previous_day_cached_final_is_shown_before_0930_but_keeps_yesterday_date() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+
+        val result = resolveLiveState(
+            p = null,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = cached,
+            scheduleTime = LocalTime.of(8, 30),
+        )
+
+        assertEquals("77", result.hero?.result)
+        assertEquals(yesterday.toString(), result.hero?.date)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun previous_day_cached_final_is_hidden_at_0930() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+
+        val result = resolveLiveState(
+            p = null,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = cached,
+            scheduleTime = LocalTime.of(9, 30),
+        )
+
+        assertEquals(null, result.hero)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun collector_restores_previous_day_final_after_restart_before_0930() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+        val scope = CoroutineScope(UnconfinedTestDispatcher())
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            cacheLoader = { cached },
+        )
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("77", state.hero?.result)
+        assertEquals(yesterday.toString(), state.hero?.date)
+        scope.cancel()
+    }
+
     @Test fun previous_day_feed_is_never_selected_as_current_hero() {
         val yesterday = currentYangonDate().minusDays(1)
         val old = feed("38", "17:00:00").copy(date = yesterday.toString())
@@ -137,6 +195,90 @@ class LiveCollectorTest {
 
         assertEquals("77", result.hero?.result)
         assertFalse(result.heroLive)
+    }
+
+    @Test fun afternoon_idle_period_keeps_morning_final_and_never_shows_live() {
+        val f = feed("88", "14:30:00", morning = finalMorning("36"))
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            null,
+            LocalTime.of(14, 30),
+        )
+
+        assertEquals("36", result.hero?.result)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun after_evening_close_live_field_is_not_used_as_hero() {
+        val f = feed("88", "17:05:00", morning = finalMorning("36"))
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            null,
+            LocalTime.of(17, 5),
+        )
+
+        assertEquals("36", result.hero?.result)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun valid_reference_values_never_regress_to_pending() = runTest {
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                if (calls == 1) {
+                    feed("38", "14:05:00", modern930 = "98", internet930 = "15", modern200 = "40", internet200 = "04")
+                } else {
+                    feed("39", "14:06:00", modern930 = "--", internet930 = "--", modern200 = "--", internet200 = "--")
+                }
+            },
+            clock = { LocalTime.of(14, 6) },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("98", state.feed?.modern930)
+        assertEquals("15", state.feed?.internet930)
+        assertEquals("40", state.feed?.modern200)
+        assertEquals("04", state.feed?.internet200)
+        scope.cancel()
+    }
+
+    @Test fun evening_final_retry_continues_after_1700_until_bounded_end() = runTest {
+        var now = LocalTime.of(17, 5)
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                null
+            },
+            clock = { now },
+        )
+
+        collector.start()
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS + 100L)
+        val callsBeforeEnd = calls
+        assertTrue(callsBeforeEnd >= 2)
+
+        now = LocalTime.of(18, 0)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 2)
+        assertEquals(callsBeforeEnd, calls)
+
+        scope.cancel()
     }
 
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
