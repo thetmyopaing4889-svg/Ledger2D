@@ -89,6 +89,64 @@ class LiveCollectorTest {
         assertEquals(LiveWindowAction.FINALIZING, liveWindowAction(LocalTime.of(16, 30)))
     }
 
+    @Test fun previous_day_cached_final_is_shown_before_0930_but_keeps_yesterday_date() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+
+        val result = resolveLiveState(
+            p = null,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = cached,
+            scheduleTime = LocalTime.of(8, 30),
+        )
+
+        assertEquals("77", result.hero?.result)
+        assertEquals(yesterday.toString(), result.hero?.date)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun previous_day_cached_final_is_hidden_at_0930() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+
+        val result = resolveLiveState(
+            p = null,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = cached,
+            scheduleTime = LocalTime.of(9, 30),
+        )
+
+        assertEquals(null, result.hero)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun collector_restores_previous_day_final_after_restart_before_0930() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+        val scope = CoroutineScope(UnconfinedTestDispatcher())
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            cacheLoader = { cached },
+        )
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("77", state.hero?.result)
+        assertEquals(yesterday.toString(), state.hero?.date)
+        scope.cancel()
+    }
+
     @Test fun previous_day_feed_is_never_selected_as_current_hero() {
         val yesterday = currentYangonDate().minusDays(1)
         val old = feed("38", "17:00:00").copy(date = yesterday.toString())
