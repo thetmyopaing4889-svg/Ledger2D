@@ -161,6 +161,7 @@ internal class LiveCollector(
 ){
  private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
  private var cycle:Job?=null
+ private var referenceCycle:Job?=null
  private var p:SourceObservation?=null; private var s:SourceObservation?=null
  private var lastLive:LiveHeroSnapshot?=null; private var lastFinal:LiveHeroSnapshot?=null
  private var referenceResetDate:LocalDate?=null
@@ -232,9 +233,26 @@ internal class LiveCollector(
   return out
  }
  private fun shouldReferencePoll(t:LocalTime):Boolean{
-  if(t.isBefore(LocalTime.of(9,30)))return false
-  val action=liveWindowAction(t)
-  return action!=LiveWindowAction.LIVE_POLLING&&action!=LiveWindowAction.FINALIZING
+  return !t.isBefore(LocalTime.of(9,30))
+ }
+ private fun fetchReferenceCycle(){
+  if(referenceCycle?.isActive==true)return
+  referenceCycle=scope.launch{
+   val started=System.nanoTime()/1_000_000L
+   val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
+   val end=System.nanoTime()/1_000_000L
+   if(f!=null){
+    val previous=p?.feed
+    val normalized=applyReferencePolicy(f,previous,clock())
+    val merged=mergeReferenceOnly(previous,normalized)
+    p=SourceObservation(merged,p?.fetchedAtElapsedMs?:end,p?.requestStartedElapsedMs?:started,p?.roundTripMs?:end-started)
+    publish()
+   }else publish()
+  }
+ }
+ private fun mergeReferenceOnly(previous:LiveFeedData?,f:LiveFeedData):LiveFeedData{
+  if(previous==null)return f
+  return previous.copy(modern930=f.modern930,internet930=f.internet930,modern200=f.modern200,internet200=f.internet200,morning=f.morning,evening=f.evening)
  }
  private fun publish(){
   val r=resolveLiveState(p,s,Instant.now(),lastLive,lastFinal,clock())
@@ -243,21 +261,25 @@ internal class LiveCollector(
   _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
- fun start(){scope.launch{while(isActive){
-  val t=clock()
-  val action=liveWindowAction(t)
-  when(action){
-   LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle()
-   LiveWindowAction.REFERENCE_ONLY->fetchCycle()
-   LiveWindowAction.NONE->if(shouldReferencePoll(t))fetchCycle()
-  }
-  delay(when{
-   action==LiveWindowAction.FINALIZING->CLOSING_POLL_INTERVAL_MS
-   action==LiveWindowAction.LIVE_POLLING->NORMAL_POLL_INTERVAL_MS
-   shouldReferencePoll(t)->LIVE_REFERENCE_FETCH_INTERVAL_MS
-   else->NORMAL_POLL_INTERVAL_MS
-  })
- }}}
+ fun start(){
+  scope.launch{while(isActive){
+   val t=clock()
+   val action=liveWindowAction(t)
+   when(action){
+    LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle()
+    LiveWindowAction.NONE,LiveWindowAction.REFERENCE_ONLY->Unit
+   }
+   delay(when{
+    action==LiveWindowAction.FINALIZING->CLOSING_POLL_INTERVAL_MS
+    action==LiveWindowAction.LIVE_POLLING->NORMAL_POLL_INTERVAL_MS
+    else->NORMAL_POLL_INTERVAL_MS
+   })
+  }}
+  scope.launch{while(isActive){
+   if(shouldReferencePoll(clock()))fetchReferenceCycle()
+   delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+  }}
+ }
  companion object{
   @Volatile private var shared:LiveCollector?=null
   val instance:LiveCollector get()=shared?:error("LiveCollector not started")
