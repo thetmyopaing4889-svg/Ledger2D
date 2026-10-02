@@ -248,7 +248,7 @@ internal class LiveCollector(
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(14,0)))return@launch
-    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestMutex.tryLock())null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestMutex.unlock()}}
+    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestInFlight.compareAndSet(false,true))null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestInFlight.set(false)}}
     if(f==null){
      publish()
      delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
