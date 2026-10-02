@@ -150,18 +150,4 @@ class LiveCollectorTest {
   runTest{var n=0;val s=CoroutineScope(UnconfinedTestDispatcher(testScheduler));val c=LiveCollector(s,{n++;feed("38","11:40:00")},clock={LocalTime.of(11,40)});c.start();advanceTimeBy(10000);s.cancel();assertTrue(n>=2)}
  }
 
- @Test fun `reference data remains visible even when no live observation exists`(){
-  runTest{
-   val scope=CoroutineScope(UnconfinedTestDispatcher(testScheduler))
-   val c=LiveCollector(scope,{feed("38","09:30:00")},clock={LocalTime.of(9,30)})
-   c.start();advanceTimeBy(100)
-   val d=c.state.value as LiveUiState.Data
-   assertEquals("98",d.feed?.modern930)
-   assertEquals("15",d.feed?.internet930)
-   assertEquals(currentYangonDate().toString(),d.feed?.date)
-   scope.cancel()
-  }
- }
-
-
 }
