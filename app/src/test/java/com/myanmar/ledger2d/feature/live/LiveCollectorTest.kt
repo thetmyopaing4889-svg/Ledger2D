@@ -139,6 +139,90 @@ class LiveCollectorTest {
         assertFalse(result.heroLive)
     }
 
+    @Test fun afternoon_idle_period_keeps_morning_final_and_never_shows_live() {
+        val f = feed("88", "14:30:00", morning = finalMorning("36"))
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            null,
+            LocalTime.of(14, 30),
+        )
+
+        assertEquals("36", result.hero?.result)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun after_evening_close_live_field_is_not_used_as_hero() {
+        val f = feed("88", "17:05:00", morning = finalMorning("36"))
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            null,
+            LocalTime.of(17, 5),
+        )
+
+        assertEquals("36", result.hero?.result)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun valid_reference_values_never_regress_to_pending() = runTest {
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                if (calls == 1) {
+                    feed("38", "14:05:00", modern930 = "98", internet930 = "15", modern200 = "40", internet200 = "04")
+                } else {
+                    feed("39", "14:06:00", modern930 = "--", internet930 = "--", modern200 = "--", internet200 = "--")
+                }
+            },
+            clock = { LocalTime.of(14, 6) },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("98", state.feed?.modern930)
+        assertEquals("15", state.feed?.internet930)
+        assertEquals("40", state.feed?.modern200)
+        assertEquals("04", state.feed?.internet200)
+        scope.cancel()
+    }
+
+    @Test fun evening_final_retry_continues_after_1700_until_bounded_end() = runTest {
+        var now = LocalTime.of(17, 5)
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                null
+            },
+            clock = { now },
+        )
+
+        collector.start()
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS + 100L)
+        val callsBeforeEnd = calls
+        assertTrue(callsBeforeEnd >= 2)
+
+        now = LocalTime.of(18, 0)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 2)
+        assertEquals(callsBeforeEnd, calls)
+
+        scope.cancel()
+    }
+
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
         var calls = 0
         val collector = LiveCollector(
