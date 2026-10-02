@@ -330,6 +330,9 @@ internal class LiveCollector(
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
  fun start(){
+  // Catch up any already-passed reference slot immediately when the app starts.
+  // The background loop below continues the same schedule for later slots.
+  ensureReferenceJobs(clock())
   scope.launch{while(isActive){
    val t=clock()
    val action=liveWindowAction(t)
