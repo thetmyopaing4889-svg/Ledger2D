@@ -38,23 +38,65 @@ class LiveCollectorTest {
  @Test fun `16 30 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,30)))}
 
 
- @Test fun `09 30 resets reference values and session cards when new reference arrives`(){
+ @Test fun `09 30 reference polls independently from live window`(){
   runTest{
-   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","09:30:00")},clock={LocalTime.of(9,30)})
-   c.fetchCycle();advanceUntilIdle()
+   var n=0
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{n++;feed("38","09:30:00")},clock={LocalTime.of(9,30)})
+   c.start();advanceUntilIdle()
    val d=c.state.value as LiveUiState.Data
+   assertEquals("98",d.feed?.modern930);assertEquals("15",d.feed?.internet930)
+   assertTrue(n>=1)
+  }
+ }
+ @Test fun `09 30 reference remains eligible during live and after 14 00`(){
+  runTest{
+   var now=LocalTime.of(11,30);var n=0
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{n++;feed("38","09:30:00").copy(modern930="--",internet930="--")},clock={now})
+   c.start();advanceTimeBy(61000)
+   assertTrue(n>=1)
+   now=LocalTime.of(14,0);advanceTimeBy(61000)
+   assertTrue(n>=2)
+  }
+ }
+ @Test fun `14 00 reference starts independently while 09 30 is still missing`(){
+  runTest{
+   var now=LocalTime.of(14,0);var n=0
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{
+    n++
+    if(n==1) feed("38","14:00:00").copy(modern930="--",internet930="--",modern200="--",internet200="--")
+    else feed("38","14:00:00").copy(modern930="--",internet930="--",modern200="98",internet200="15")
+   },clock={now})
+   c.start();advanceUntilIdle()
+   val d=c.state.value as LiveUiState.Data
+   assertEquals("98",d.feed?.modern200);assertEquals("15",d.feed?.internet200)
+   assertTrue(n>=2)
+  }
+ }
+ @Test fun `09 30 success resets session cards only after both values are valid`(){
+  runTest{
+   var valid=false
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{
+    if(valid) feed("38","09:30:00") else feed("38","09:30:00").copy(modern930="--",internet930="--")
+   },clock={LocalTime.of(9,30)})
+   c.fetchCycle();advanceUntilIdle()
+   var d=c.state.value as LiveUiState.Data
+   assertEquals("--",d.feed?.modern930);assertEquals("--",d.feed?.morning?.result)
+   valid=true
+   c.start();advanceUntilIdle()
+   d=c.state.value as LiveUiState.Data
    assertEquals("98",d.feed?.modern930);assertEquals("15",d.feed?.internet930)
    assertEquals("--",d.feed?.morning?.result);assertEquals("--",d.feed?.evening?.result)
   }
  }
- @Test fun `14 00 clears afternoon reference until new values arrive`(){
+ @Test fun `14 00 reference clears its own slot before success`(){
   runTest{
    val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","14:00:00").copy(modern200="--",internet200="--")},clock={LocalTime.of(14,0)})
-   c.fetchCycle();advanceUntilIdle()
+   c.start();advanceUntilIdle()
    val d=c.state.value as LiveUiState.Data
    assertEquals("--",d.feed?.modern200);assertEquals("--",d.feed?.internet200)
   }
  }
+
  @Test fun `two matching live sources are confirmed`(){
   val p=obs(feed("38","11:40:00"));val s=obs(feed("38","11:40:00","THAISTOCK2D"))
   val r=resolveLiveState(p,s,Instant.now(),null,null,LocalTime.of(11,40))
