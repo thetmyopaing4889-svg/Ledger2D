@@ -192,8 +192,8 @@ internal class LiveCollector(
   currentDay(f)&&isValidLive2d(modern)&&isValidLive2d(internet)
 
  private fun mergeReferenceIntoFeed(base:LiveFeedData?):LiveFeedData?{
-  if(base==null)return null
-  var out=base
+  val source=base?:return null
+  var out=source
   reference930?.let{out=out.copy(modern930=it.first,internet930=it.second)}
   reference200?.let{out=out.copy(modern200=it.first,internet200=it.second)}
   if(referenceResetDate==currentYangonDate()){
