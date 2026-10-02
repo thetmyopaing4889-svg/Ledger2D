@@ -337,8 +337,13 @@ internal class LiveCollector(
     private val stateLock = Any()
 
     private var schedulerJob: Job? = null
-    private var reference930Date: LocalDate? = null
-    private var reference200Date: LocalDate? = null
+    private var reference930Cycle: Job? = null
+    private var reference200Cycle: Job? = null
+    private var reference930CompleteDate: LocalDate? = null
+    private var reference200CompleteDate: LocalDate? = null
+    private var referenceResetDate: LocalDate? = null
+    private var reference930: Pair<String, String>? = null
+    private var reference200: Pair<String, String>? = null
 
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
@@ -395,12 +400,6 @@ internal class LiveCollector(
                     startedAt,
                     finishedAt - startedAt,
                 )
-                if (protected.modern930 != LIVE_PENDING || protected.internet930 != LIVE_PENDING) {
-                    reference930Date = currentYangonDate()
-                }
-                if (protected.modern200 != LIVE_PENDING || protected.internet200 != LIVE_PENDING) {
-                    reference200Date = currentYangonDate()
-                }
                 publishLocked()
             }
         }
@@ -449,18 +448,212 @@ internal class LiveCollector(
             feed.internet200 != LIVE_PENDING
     }
 
-    private fun maybeReferenceFetch(t: LocalTime) {
-        val today = currentYangonDate()
+    private fun validReferencePair(
+        feed: LiveFeedData?,
+        modern: String,
+        internet: String,
+    ): Boolean =
+        feed != null &&
+            currentDay(feed) &&
+            isValidLive2d(modern) &&
+            isValidLive2d(internet)
 
-        if (t >= MORNING_REFERENCE && reference930Date != today) {
-            reference930Date = today
-            launchRequest()
+    private fun mergeReferenceIntoFeed(base: LiveFeedData?): LiveFeedData? {
+        if (base == null) return null
+
+        var out = base
+
+        reference930?.let { pair ->
+            out = out.copy(
+                modern930 = pair.first,
+                internet930 = pair.second,
+            )
+        }
+
+        reference200?.let { pair ->
+            out = out.copy(
+                modern200 = pair.first,
+                internet200 = pair.second,
+            )
+        }
+
+        // A successful 09:30 reference resets the two session cards only
+        // while we are still before the 11:30 live boundary. This prevents
+        // old values from flashing through the new reference cycle, but does
+        // not allow the reset to overwrite LIVE polling after 11:30.
+        if (referenceResetDate == currentYangonDate() && clock().isBefore(MORNING_LIVE)) {
+            out = out.copy(
+                morning = LiveSessionData(
+                    LIVE_PENDING,
+                    LIVE_PENDING,
+                    LIVE_PENDING,
+                    false,
+                ),
+                evening = LiveSessionData(
+                    LIVE_PENDING,
+                    LIVE_PENDING,
+                    LIVE_PENDING,
+                    false,
+                ),
+            )
+        }
+
+        return out
+    }
+
+    private suspend fun fetchReferencePair(
+        isMorning: Boolean,
+        cycleDate: LocalDate,
+    ): Boolean {
+        val feed = try {
+            fetcher()
+        } catch (_: Exception) {
+            null
+        }
+
+        synchronized(stateLock) {
+            if (currentYangonDate() != cycleDate) return false
+
+            if (isMorning) {
+                val valid = validReferencePair(
+                    feed,
+                    feed?.modern930 ?: LIVE_PENDING,
+                    feed?.internet930 ?: LIVE_PENDING,
+                )
+
+                if (valid) {
+                    reference930 =
+                        feed!!.modern930 to feed.internet930
+                    reference930CompleteDate = cycleDate
+                    referenceResetDate = cycleDate
+                } else {
+                    // Only clear after this attempt is known to be invalid.
+                    // A successful first response therefore transitions
+                    // directly from old reference -> new reference.
+                    reference930 = null
+                }
+            } else {
+                val valid = validReferencePair(
+                    feed,
+                    feed?.modern200 ?: LIVE_PENDING,
+                    feed?.internet200 ?: LIVE_PENDING,
+                )
+
+                if (valid) {
+                    reference200 =
+                        feed!!.modern200 to feed.internet200
+                    reference200CompleteDate = cycleDate
+                } else {
+                    reference200 = null
+                }
+            }
+
+            publishLocked()
+        }
+
+        return if (isMorning) {
+            reference930CompleteDate == cycleDate
+        } else {
+            reference200CompleteDate == cycleDate
+        }
+    }
+
+    private fun fetchReference930Cycle() {
+        val today = currentYangonDate()
+        if (reference930Cycle?.isActive == true || reference930CompleteDate == today) {
             return
         }
 
-        if (t >= AFTERNOON_REFERENCE && reference200Date != today) {
-            reference200Date = today
-            launchRequest()
+        reference930Cycle = scope.launch {
+            val cycleDate = today
+
+            while (isActive) {
+                val nowDate = currentYangonDate()
+                val now = clock()
+
+                // This cycle belongs to its original day and runs through
+                // that day's remaining time, including the next day's
+                // 00:00..09:29:59 boundary. At the next 09:30 a new cycle
+                // starts for the new day.
+                if (nowDate != cycleDate) return@launch
+                if (now.isBefore(MORNING_REFERENCE)) return@launch
+
+                if (fetchReferencePair(true, cycleDate)) return@launch
+
+                delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun fetchReference200Cycle() {
+        val today = currentYangonDate()
+        if (reference200Cycle?.isActive == true || reference200CompleteDate == today) {
+            return
+        }
+
+        reference200Cycle = scope.launch {
+            val cycleDate = today
+
+            while (isActive) {
+                val nowDate = currentYangonDate()
+                val now = clock()
+
+                // 14:00 is independent of the 09:30 cycle and continues
+                // until the next day's 09:29:59 boundary.
+                if (nowDate != cycleDate) return@launch
+                if (now.isBefore(AFTERNOON_REFERENCE)) return@launch
+
+                if (fetchReferencePair(false, cycleDate)) return@launch
+
+                delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun maybeReferenceFetch(t: LocalTime) {
+        val today = currentYangonDate()
+
+        if (t >= MORNING_REFERENCE && reference930CompleteDate != today) {
+            fetchReference930Cycle()
+        }
+
+        if (t >= AFTERNOON_REFERENCE && reference200CompleteDate != today) {
+            fetchReference200Cycle()
+        }
+
+        // If 09:30 has still not produced a valid pair by 11:30, reset
+        // Morning + Evening exactly once. A late 09:30 success updates the
+        // reference values but must not reset the cards a second time.
+        if (
+            t >= MORNING_LIVE &&
+            reference930CompleteDate != today &&
+            referenceResetDate != today
+        ) {
+            synchronized(stateLock) {
+                if (reference930CompleteDate != today && referenceResetDate != today) {
+                    referenceResetDate = today
+                    val feed = primary?.feed
+                    if (feed != null && currentDay(feed)) {
+                        primary = primary?.copy(
+                            feed = feed.copy(
+                                morning = LiveSessionData(
+                                    LIVE_PENDING,
+                                    LIVE_PENDING,
+                                    LIVE_PENDING,
+                                    false,
+                                ),
+                                evening = LiveSessionData(
+                                    LIVE_PENDING,
+                                    LIVE_PENDING,
+                                    LIVE_PENDING,
+                                    false,
+                                ),
+                            )
+                        )
+                        publishLocked()
+                    }
+                }
+            }
         }
     }
 
@@ -481,8 +674,14 @@ internal class LiveCollector(
     }
 
     private fun publishLocked() {
+        val displayPrimary = primary?.let { observation ->
+            mergeReferenceIntoFeed(observation.feed)?.let { merged ->
+                observation.copy(feed = merged)
+            } ?: observation
+        }
+
         val resolution = resolveLiveState(
-            p = primary,
+            p = displayPrimary,
             s = null,
             now = Instant.now(),
             lastLive = lastLive,
