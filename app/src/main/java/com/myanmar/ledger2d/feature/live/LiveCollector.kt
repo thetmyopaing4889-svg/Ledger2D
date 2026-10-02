@@ -17,6 +17,7 @@ internal const val FINAL_GRACE_MS = 30_000L
 internal const val SOURCE_FRESHNESS_MS = 5_000L
 internal const val SOURCE_TIME_SKEW_MS = 2_000L
 internal const val LIVE_REFERENCE_FETCH_INTERVAL_MS = 60_000L
+private const val REFERENCE_BUSY_RETRY_INTERVAL_MS = 500L
 
 private val MORNING_LIVE = LocalTime.of(11,30)
 private val MORNING_CLOSE = LocalTime.of(12,1)
@@ -222,7 +223,17 @@ internal class LiveCollector(
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(9,30)))return@launch
-    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestInFlight.compareAndSet(false,true))null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestInFlight.set(false)}}
+    val acquired=primaryRequestInFlight.compareAndSet(false,true)
+    if(!acquired){
+     publish()
+     delay(REFERENCE_BUSY_RETRY_INTERVAL_MS)
+     continue
+    }
+    val f=try{
+     withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
+    }finally{
+     primaryRequestInFlight.set(false)
+    }
     if(f==null){
      publish()
      delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
@@ -248,7 +259,17 @@ internal class LiveCollector(
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(14,0)))return@launch
-    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestInFlight.compareAndSet(false,true))null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestInFlight.set(false)}}
+    val acquired=primaryRequestInFlight.compareAndSet(false,true)
+    if(!acquired){
+     publish()
+     delay(REFERENCE_BUSY_RETRY_INTERVAL_MS)
+     continue
+    }
+    val f=try{
+     withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
+    }finally{
+     primaryRequestInFlight.set(false)
+    }
     if(f==null){
      publish()
      delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
