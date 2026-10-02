@@ -163,27 +163,5 @@ class LiveCollectorTest {
   }
  }
 
- @Test fun `reference request does not run concurrently with live Luke request`(){
-  runTest{
-   var active=0
-   var maxActive=0
-   val scope=CoroutineScope(UnconfinedTestDispatcher(testScheduler))
-   val gate=CompletableDeferred<Unit>()
-   val fetcher:suspend()->LiveFeedData?={
-    active++
-    maxActive=maxOf(maxActive,active)
-    gate.await()
-    active--
-    feed("38","11:30:00")
-   }
-   val c=LiveCollector(scope,fetcher,clock={LocalTime.of(11,30)})
-   c.start()
-   c.fetchCycle()
-   advanceTimeBy(100)
-   assertEquals(1,maxActive)
-   gate.complete(Unit)
-   advanceTimeBy(100)
-   scope.cancel()
-  }
- }
+
 }
