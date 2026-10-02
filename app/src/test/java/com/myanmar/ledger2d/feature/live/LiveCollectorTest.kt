@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -174,7 +175,7 @@ class LiveCollectorTest {
 
         assertTrue(calls >= 2)
         firstGate.complete(Unit)
-        advanceUntilIdle()
+        runCurrent()
     }
 
     @Test fun late_older_response_cannot_overwrite_newer_response() = runTest {
