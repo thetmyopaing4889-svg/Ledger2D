@@ -295,11 +295,17 @@ internal class LiveCollector(
  }
 
  private fun publish(){
-  val displayPrimary=p?.let{it.copy(feed=mergeReferenceIntoFeed(it.feed) ?: it.feed)}
-  val r=resolveLiveState(displayPrimary,s,Instant.now(),lastLive,lastFinal,clock())
+  val now=clock()
+  val currentOrPreviousFeed=if(now.isBefore(MORNING_LIVE)){
+   p?.feed?:s?.feed
+  }else{
+   p?.feed?.takeIf(::currentDay)?:s?.feed?.takeIf(::currentDay)
+  }
+  val displayPrimary=currentOrPreviousFeed?.let{it.copy(feed=mergeReferenceIntoFeed(it) ?: it)}
+  val r=resolveLiveState(displayPrimary,s,Instant.now(),lastLive,lastFinal,now)
   if(r.status==LiveStatus.LIVE_CONFIRMED)lastLive=r.hero
   if(r.status==LiveStatus.FINAL_CONFIRMED&&r.hero!=null&&r.hero!=lastFinal){lastFinal=r.hero;cacheSaver(r.hero)}
-  val displayFeed=r.displayFeed?:if(clock().isBefore(MORNING_LIVE)||reference930!=null||reference200!=null)referenceOnlyDisplayFeed() else null
+  val displayFeed=r.displayFeed?:referenceOnlyDisplayFeed()
   _state.value=LiveUiState.Data(displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
