@@ -196,7 +196,7 @@ internal class LiveCollector(
   var out=base
   reference930?.let{out=out.copy(modern930=it.first,internet930=it.second)}
   reference200?.let{out=out.copy(modern200=it.first,internet200=it.second)}
-  if(referenceResetDate==currentYangonDate()&&clock().isBefore(MORNING_LIVE)){
+  if(referenceResetDate==currentYangonDate()){
    out=out.copy(
     morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
     evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
@@ -208,7 +208,7 @@ internal class LiveCollector(
  private fun fetchReference930Cycle(){
   if(reference930Cycle?.isActive==true||reference930CompleteDate==currentYangonDate())return
   reference930Cycle=scope.launch{
-   reference930=null
+   reference930=LIVE_PENDING to LIVE_PENDING
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(9,30)))return@launch
@@ -229,7 +229,7 @@ internal class LiveCollector(
  private fun fetchReference200Cycle(){
   if(reference200Cycle?.isActive==true||reference200CompleteDate==currentYangonDate())return
   reference200Cycle=scope.launch{
-   reference200=null
+   reference200=LIVE_PENDING to LIVE_PENDING
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(14,0)))return@launch
