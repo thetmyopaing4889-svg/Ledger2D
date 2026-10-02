@@ -1,9 +1,8 @@
 package com.myanmar.ledger2d.feature.live
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -12,94 +11,233 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
- private fun feed(v:String,t:String,source:String="LUKE")=LiveFeedData(currentYangonDate().toString(),t,v,"1600","20000",
-  LiveSessionData("--","--","--",false),LiveSessionData("--","--","--",false),"98","15","40","04",source,
-  currentYangonDate().atTime(LocalTime.parse(t)).atZone(ZoneId.of("Asia/Yangon")).toInstant().toEpochMilli())
- private fun obs(f:LiveFeedData)=SourceObservation(f,System.nanoTime()/1_000_000L,System.nanoTime()/1_000_000L,100)
- private fun final(v:String,source:String)=feed(v,"12:01:00",source).copy(
-  morning=LiveSessionData(v,"1600","20000",true,if(source=="THAISTOCK2D")"thai-1" else "luke-1","12:01:00"))
+    private val yangon = ZoneId.of("Asia/Yangon")
 
- @Test fun `09 30 starts reference fetch`(){assertEquals(LiveWindowAction.REFERENCE_ONLY,liveWindowAction(LocalTime.of(9,30)))}
- @Test fun `11 29 is still waiting`(){assertEquals(LiveWindowAction.NONE,liveWindowAction(LocalTime.of(11,29)))}
- @Test fun `11 30 starts live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,30)))}
- @Test fun `11 59 is still live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(11,59)))}
- @Test fun `12 00 is still live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(12,0)))}
- @Test fun `12 01 enters finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(12,1)))}
- @Test fun `14 00 starts reference fetch`(){assertEquals(LiveWindowAction.REFERENCE_ONLY,liveWindowAction(LocalTime.of(14,0)))}
- @Test fun `16 00 starts evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,0)))}
- @Test fun `16 29 is still evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,29)))}
- @Test fun `16 30 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,30)))}
+    private fun feed(
+        value: String,
+        time: String,
+        morning: LiveSessionData = LiveSessionData("--", "--", "--", false),
+        evening: LiveSessionData = LiveSessionData("--", "--", "--", false),
+        modern930: String = "98",
+        internet930: String = "15",
+        modern200: String = "40",
+        internet200: String = "04",
+    ) = LiveFeedData(
+        date = currentYangonDate().toString(),
+        currentTime = time,
+        live = value,
+        liveSet = "1600",
+        liveVal = "20000",
+        morning = morning,
+        evening = evening,
+        modern930 = modern930,
+        internet930 = internet930,
+        modern200 = modern200,
+        internet200 = internet200,
+        sourceTag = "LUKE",
+        serverTimeEpochMs = currentYangonDate()
+            .atTime(LocalTime.parse(time))
+            .atZone(yangon)
+            .toInstant()
+            .toEpochMilli(),
+    )
 
+    private fun finalMorning(value: String) = LiveSessionData(
+        result = value, set = "1600", value = "20000", finalized = true, providerOpenTime = "12:01:00"
+    )
 
- @Test fun `09 30 resets reference values and session cards when new reference arrives`(){
-  runTest{
-   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","09:30:00")},clock={LocalTime.of(9,30)})
-   c.fetchCycle();advanceUntilIdle()
-   val d=c.state.value as LiveUiState.Data
-   assertEquals("98",d.feed?.modern930);assertEquals("15",d.feed?.internet930)
-   assertEquals("--",d.feed?.morning?.result);assertEquals("--",d.feed?.evening?.result)
-  }
- }
- @Test fun `14 00 clears afternoon reference until new values arrive`(){
-  runTest{
-   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","14:00:00").copy(modern200="--",internet200="--")},clock={LocalTime.of(14,0)})
-   c.fetchCycle();advanceUntilIdle()
-   val d=c.state.value as LiveUiState.Data
-   assertEquals("--",d.feed?.modern200);assertEquals("--",d.feed?.internet200)
-  }
- }
- @Test fun `two matching live sources are confirmed`(){
-  val p=obs(feed("38","11:40:00"));val s=obs(feed("38","11:40:00","THAISTOCK2D"))
-  val r=resolveLiveState(p,s,Instant.now(),null,null,LocalTime.of(11,40))
-  assertEquals(LiveStatus.LIVE_CONFIRMED,r.status);assertTrue(r.heroLive);assertEquals("38",r.hero?.result)
- }
- @Test fun `live mismatch never selects a source`(){
-  val last=LiveHeroSnapshot("37","1","2","11:19:00",currentYangonDate().toString())
-  val r=resolveLiveState(obs(feed("38","11:40:00")),obs(feed("39","11:40:00","THAISTOCK2D")),Instant.now(),last,null,LocalTime.of(11,40))
-  assertEquals(LiveStatus.LIVE_CONFLICT,r.status);assertFalse(r.heroLive);assertEquals("37",r.hero?.result)
- }
- @Test fun `single live source is degraded`(){
-  val r=resolveLiveState(obs(feed("38","11:40:00")),null,Instant.now(),null,null,LocalTime.of(11,40))
-  assertEquals(LiveStatus.LIVE_DEGRADED,r.status);assertTrue(r.heroLive)
- }
- @Test fun `matching finals become confirmed`(){
-  val r=resolveLiveState(obs(final("38","LUKE")),obs(final("38","THAISTOCK2D")),Instant.now(),null,null,LocalTime.of(12,1))
-  assertEquals(LiveStatus.FINAL_CONFIRMED,r.status);assertEquals("38",r.hero?.result)
- }
- @Test fun `final mismatch is conflict and disputed result is hidden`(){
-  val r=resolveLiveState(obs(final("38","LUKE")),obs(final("39","THAISTOCK2D")),Instant.now(),null,null,LocalTime.of(12,1))
-  assertEquals(LiveStatus.FINAL_CONFLICT,r.status);assertEquals("--",r.displayFeed?.morning?.result)
- }
- @Test fun `previous final cache is available for next morning hero`(){
-  val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_EVENING_LABEL,currentYangonDate().minusDays(1).toString())
-  val current=feed("--","09:30:00")
-  val r=resolveLiveState(obs(current),null,Instant.now(),null,old,LocalTime.of(9,30))
-  assertEquals(LiveStatus.WAITING,r.status)
-  assertEquals("38",r.hero?.result)
-  assertEquals("--",r.displayFeed?.morning?.result)
-  assertEquals("--",r.displayFeed?.evening?.result)
- }
- @Test fun `both sources start in one cycle and cycle does not overlap`(){
-  runTest{
-   var a=0;var b=0;val ga=CompletableDeferred<Unit>();val gb=CompletableDeferred<Unit>()
-   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{a++;ga.await();feed("38","11:40:00")},{b++;gb.await();feed("38","11:40:00","THAISTOCK2D")})
-   c.fetchCycle();c.fetchCycle();advanceTimeBy(100);assertEquals(1,a);assertEquals(1,b)
-   ga.complete(Unit);gb.complete(Unit);advanceUntilIdle();assertTrue(c.state.value is LiveUiState.Data)
-  }
- }
- @Test fun `live result is not persisted`(){
-  runTest{var saved:LiveHeroSnapshot?=null;val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","11:40:00")},{feed("38","11:40:00","THAISTOCK2D")},{LocalTime.of(11,40)},{null},{saved=it})
-   c.fetchCycle();advanceUntilIdle();assertEquals(null,saved)
-  }
- }
- @Test fun `screen is not required for background polling`(){
-  runTest{var n=0;val s=CoroutineScope(UnconfinedTestDispatcher(testScheduler));val c=LiveCollector(s,{n++;feed("38","11:40:00")},clock={LocalTime.of(11,40)});c.start();advanceTimeBy(10000);s.cancel();assertTrue(n>=2)}
- }
+    private fun finalEvening(value: String) = LiveSessionData(
+        result = value, set = "1600", value = "20000", finalized = true, providerOpenTime = "16:30:00"
+    )
+
+    @Test fun schedule_0930_is_reference() {
+        assertEquals(LiveWindowAction.REFERENCE_ONLY, liveWindowAction(LocalTime.of(9, 30)))
+    }
+
+    @Test fun schedule_1129_is_reference() {
+        assertEquals(LiveWindowAction.REFERENCE_ONLY, liveWindowAction(LocalTime.of(11, 29)))
+    }
+
+    @Test fun schedule_1130_starts_live() {
+        assertEquals(LiveWindowAction.LIVE_POLLING, liveWindowAction(LocalTime.of(11, 30)))
+    }
+
+    @Test fun schedule_1200_is_still_live() {
+        assertEquals(LiveWindowAction.LIVE_POLLING, liveWindowAction(LocalTime.of(12, 0)))
+    }
+
+    @Test fun schedule_1201_starts_final_catchup() {
+        assertEquals(LiveWindowAction.FINALIZING, liveWindowAction(LocalTime.of(12, 1)))
+    }
+
+    @Test fun schedule_1400_is_reference() {
+        assertEquals(LiveWindowAction.REFERENCE_ONLY, liveWindowAction(LocalTime.of(14, 0)))
+    }
+
+    @Test fun schedule_1600_starts_evening_live() {
+        assertEquals(LiveWindowAction.LIVE_POLLING, liveWindowAction(LocalTime.of(16, 0)))
+    }
+
+    @Test fun schedule_1630_starts_evening_final_catchup() {
+        assertEquals(LiveWindowAction.FINALIZING, liveWindowAction(LocalTime.of(16, 30)))
+    }
+
+    @Test fun previous_day_feed_is_never_selected_as_current_hero() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed("38", "17:00:00").copy(date = yesterday.toString())
+        val oldObs = SourceObservation(old, 0L, 0L, 10L)
+
+        val result = resolveLiveState(
+            p = oldObs,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = LiveHeroSnapshot("08", "1", "2", LIVE_SESSION_MORNING_LABEL, yesterday.toString()),
+            scheduleTime = LocalTime.of(17, 0),
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals(null, result.hero)
+        assertEquals(null, result.displayFeed)
+    }
+
+    @Test fun morning_final_is_shown_immediately_after_final_response() {
+        val f = feed("36", "12:03:00", morning = finalMorning("36"))
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            null,
+            LocalTime.of(12, 3),
+        )
+
+        assertEquals("36", result.hero?.result)
+        assertFalse(result.heroLive)
+        assertEquals("36", result.displayFeed?.morning?.result)
+    }
+
+    @Test fun evening_final_is_shown_immediately_after_final_response() {
+        val f = feed("77", "17:00:00", evening = finalEvening("77"))
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            null,
+            LocalTime.of(17, 0),
+        )
+
+        assertEquals("77", result.hero?.result)
+        assertFalse(result.heroLive)
+    }
+
+    @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) feed("38", "11:40:00") else null
+            },
+            clock = { LocalTime.of(11, 40) },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        assertEquals("38", (collector.state.value as LiveUiState.Data).hero?.result)
+    }
+
+    @Test fun slow_request_does_not_block_next_scheduled_request() = runTest {
+        var calls = 0
+        val firstGate = CompletableDeferred<Unit>()
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) firstGate.await()
+                feed(if (calls == 1) "38" else "39", "11:40:00")
+            },
+            clock = { LocalTime.of(11, 40) },
+        )
+
+        collector.start()
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS + 100L)
+
+        assertTrue(calls >= 2)
+        firstGate.complete(Unit)
+        advanceUntilIdle()
+    }
+
+    @Test fun late_older_response_cannot_overwrite_newer_response() = runTest {
+        val first = CompletableDeferred<LiveFeedData?>()
+        val second = CompletableDeferred<LiveFeedData?>()
+        var calls = 0
+
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) first.await() else second.await()
+            },
+            clock = { LocalTime.of(11, 40) },
+        )
+
+        collector.fetchCycle()
+        collector.fetchCycle()
+
+        second.complete(feed("39", "11:40:02"))
+        advanceUntilIdle()
+        assertEquals("39", (collector.state.value as LiveUiState.Data).hero?.result)
+
+        first.complete(feed("38", "11:40:01"))
+        advanceUntilIdle()
+        assertEquals("39", (collector.state.value as LiveUiState.Data).hero?.result)
+    }
+
+    @Test fun final_result_cannot_regress_to_pending() = runTest {
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) feed("36", "12:03:00", morning = finalMorning("36"))
+                else feed("37", "12:04:00")
+            },
+            clock = { LocalTime.of(12, 4) },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("36", state.hero?.result)
+    }
+
+    @Test fun background_polling_works_without_opening_live_screen() = runTest {
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                feed("38", "11:40:00")
+            },
+            clock = { LocalTime.of(11, 40) },
+        )
+
+        collector.start()
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
+        assertTrue(calls >= 4)
+    }
 }
