@@ -167,7 +167,7 @@ private fun currentDay(f: LiveFeedData): Boolean =
 
 private fun age(o: SourceObservation?): Long =
     if (o == null) Long.MAX_VALUE
-    else maxOf(0L, SystemClock.elapsedRealtime() - o.fetchedAtElapsedMs)
+    else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
 
 private fun liveValid(o: SourceObservation?): Boolean {
     val f = o?.feed ?: return false
@@ -362,13 +362,13 @@ internal class LiveCollector(
         val sequence = requestSequence.incrementAndGet()
 
         scope.launch {
-            val startedAt = SystemClock.elapsedRealtime()
+            val startedAt = monotonicMs()
             val feed = try {
                 fetcher()
             } catch (_: Exception) {
                 null
             }
-            val finishedAt = SystemClock.elapsedRealtime()
+            val finishedAt = monotonicMs()
 
             if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
 
