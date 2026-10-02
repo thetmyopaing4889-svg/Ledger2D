@@ -19,9 +19,9 @@ import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
- private fun feed(v:String,t:String,source:String="LUKE")=LiveFeedData("01/10/2026",t,v,"1600","20000",
+ private fun feed(v:String,t:String,source:String="LUKE")=LiveFeedData(currentYangonDate().toString(),t,v,"1600","20000",
   LiveSessionData("--","--","--",false),LiveSessionData("--","--","--",false),"98","15","40","04",source,
-  LocalDate.of(2026,10,1).atTime(LocalTime.parse(t)).atZone(ZoneId.of("Asia/Yangon")).toInstant().toEpochMilli())
+  currentYangonDate().atTime(LocalTime.parse(t)).atZone(ZoneId.of("Asia/Yangon")).toInstant().toEpochMilli())
  private fun obs(f:LiveFeedData)=SourceObservation(f,System.nanoTime()/1_000_000L,System.nanoTime()/1_000_000L,100)
  private fun final(v:String,source:String)=feed(v,"12:01:00",source).copy(
   morning=LiveSessionData(v,"1600","20000",true,if(source=="THAISTOCK2D")"thai-1" else "luke-1","12:01:00"))
@@ -37,13 +37,31 @@ class LiveCollectorTest {
  @Test fun `16 29 is still evening live`(){assertEquals(LiveWindowAction.LIVE_POLLING,liveWindowAction(LocalTime.of(16,29)))}
  @Test fun `16 30 enters evening finalizing`(){assertEquals(LiveWindowAction.FINALIZING,liveWindowAction(LocalTime.of(16,30)))}
 
+
+ @Test fun `09 30 resets reference values and session cards when new reference arrives`(){
+  runTest{
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","09:30:00")},clock={LocalTime.of(9,30)})
+   c.fetchCycle();advanceUntilIdle()
+   val d=c.state.value as LiveUiState.Data
+   assertEquals("98",d.feed?.modern930);assertEquals("15",d.feed?.internet930)
+   assertEquals("--",d.feed?.morning?.result);assertEquals("--",d.feed?.evening?.result)
+  }
+ }
+ @Test fun `14 00 clears afternoon reference until new values arrive`(){
+  runTest{
+   val c=LiveCollector(CoroutineScope(UnconfinedTestDispatcher(testScheduler)),{feed("38","14:00:00").copy(modern200="--",internet200="--")},clock={LocalTime.of(14,0)})
+   c.fetchCycle();advanceUntilIdle()
+   val d=c.state.value as LiveUiState.Data
+   assertEquals("--",d.feed?.modern200);assertEquals("--",d.feed?.internet200)
+  }
+ }
  @Test fun `two matching live sources are confirmed`(){
   val p=obs(feed("38","11:40:00"));val s=obs(feed("38","11:40:00","THAISTOCK2D"))
   val r=resolveLiveState(p,s,Instant.now(),null,null,LocalTime.of(11,40))
   assertEquals(LiveStatus.LIVE_CONFIRMED,r.status);assertTrue(r.heroLive);assertEquals("38",r.hero?.result)
  }
  @Test fun `live mismatch never selects a source`(){
-  val last=LiveHeroSnapshot("37","1","2","11:19:00","01/10/2026")
+  val last=LiveHeroSnapshot("37","1","2","11:19:00",currentYangonDate().toString())
   val r=resolveLiveState(obs(feed("38","11:40:00")),obs(feed("39","11:40:00","THAISTOCK2D")),Instant.now(),last,null,LocalTime.of(11,40))
   assertEquals(LiveStatus.LIVE_CONFLICT,r.status);assertFalse(r.heroLive);assertEquals("37",r.hero?.result)
  }
@@ -60,7 +78,7 @@ class LiveCollectorTest {
   assertEquals(LiveStatus.FINAL_CONFLICT,r.status);assertEquals("--",r.displayFeed?.morning?.result)
  }
  @Test fun `previous final cache is available for next morning hero`(){
-  val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_EVENING_LABEL,"30/09/2026")
+  val old=LiveHeroSnapshot("38","1","2",LIVE_SESSION_EVENING_LABEL,currentYangonDate().minusDays(1).toString())
   val current=feed("--","09:30:00")
   val r=resolveLiveState(obs(current),null,Instant.now(),null,old,LocalTime.of(9,30))
   assertEquals(LiveStatus.WAITING,r.status)
