@@ -163,6 +163,7 @@ internal class LiveCollector(
  private var cycle:Job?=null
  private var p:SourceObservation?=null; private var s:SourceObservation?=null
  private var lastLive:LiveHeroSnapshot?=null; private var lastFinal:LiveHeroSnapshot?=null
+ private var referenceResetDate:LocalDate?=null
  init{val c=cacheLoader();if(c!=null){lastFinal=c;_state.value=LiveUiState.Data(null,c,false,false,status=LiveStatus.FINAL_CONFIRMED,sourceMessage="FINAL_CONFIRMED • CACHED")}}
  fun fetchCycle(){
   if(cycle?.isActive==true)return
@@ -174,7 +175,66 @@ internal class LiveCollector(
  }
  private fun launchSource(src:suspend()->LiveFeedData?,primary:Boolean)=scope.launch{
   val started=System.nanoTime()/1_000_000L;val f=try{src()}catch(_:Exception){null}
-  if(f!=null){val end=System.nanoTime()/1_000_000L;val o=SourceObservation(f,end,started,end-started);if(primary)p=o else s=o}
+  if(f!=null){
+   val end=System.nanoTime()/1_000_000L
+   val normalized=if(primary)applyReferencePolicy(f,p?.feed,clock()) else f
+   val o=SourceObservation(normalized,end,started,end-started)
+   if(primary)p=o else s=o
+  }
+ }
+ private fun applyReferencePolicy(f:LiveFeedData,previous:LiveFeedData?,t:LocalTime):LiveFeedData{
+  val today=currentYangonDate()
+  val valid930=currentDay(f)&&isValidLive2d(f.modern930)&&isValidLive2d(f.internet930)
+  val valid200=currentDay(f)&&isValidLive2d(f.modern200)&&isValidLive2d(f.internet200)
+  val after930=!t.isBefore(LocalTime.of(9,30))
+  val before14=t.isBefore(LocalTime.of(14,0))
+  val inMorningReference=after930&&before14
+  val inAfternoonReference=after930&&!before14
+  var out=f
+  if(inMorningReference){
+   out=out.copy(
+    modern930=if(valid930)f.modern930 else LIVE_PENDING,
+    internet930=if(valid930)f.internet930 else LIVE_PENDING,
+    modern200=previous?.modern200?:LIVE_PENDING,
+    internet200=previous?.internet200?:LIVE_PENDING,
+   )
+   if(valid930&&referenceResetDate!=today){
+    referenceResetDate=today
+    out=out.copy(
+     morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+     evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+    )
+   }
+  }else if(inAfternoonReference){
+   out=out.copy(
+    modern930=previous?.modern930?:f.modern930,
+    internet930=previous?.internet930?:f.internet930,
+    modern200=if(valid200)f.modern200 else LIVE_PENDING,
+    internet200=if(valid200)f.internet200 else LIVE_PENDING,
+   )
+   if(t>=MORNING_LIVE&&referenceResetDate!=today){
+    referenceResetDate=today
+    out=out.copy(
+     morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+     evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
+    )
+   }
+  }else{
+   out=previous?.let{f.copy(
+    morning=it.morning,
+    evening=it.evening,
+    modern930=it.modern930,
+    internet930=it.internet930,
+    modern200=it.modern200,
+    internet200=it.internet200,
+   )}?:f
+  }
+  return out
+ }
+ private fun shouldReferencePoll(t:LocalTime):Boolean{
+  if(t.isBefore(LocalTime.of(9,30)))return false
+  val action=liveWindowAction(t)
+  return action!=LiveWindowAction.LIVE_POLLING&&action!=LiveWindowAction.FINALIZING
  }
  private fun publish(){
   val r=resolveLiveState(p,s,Instant.now(),lastLive,lastFinal,clock())
@@ -183,7 +243,21 @@ internal class LiveCollector(
   _state.value=LiveUiState.Data(r.displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
  }
  private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
- fun start(){scope.launch{while(isActive){val t=clock();val action=liveWindowAction(t);when(action){LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle();LiveWindowAction.REFERENCE_ONLY->fetchCycle();LiveWindowAction.NONE->Unit};delay(when(action){LiveWindowAction.FINALIZING->CLOSING_POLL_INTERVAL_MS;LiveWindowAction.REFERENCE_ONLY->LIVE_REFERENCE_FETCH_INTERVAL_MS;else->NORMAL_POLL_INTERVAL_MS})}}}
+ fun start(){scope.launch{while(isActive){
+  val t=clock()
+  val action=liveWindowAction(t)
+  when(action){
+   LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle()
+   LiveWindowAction.REFERENCE_ONLY->fetchCycle()
+   LiveWindowAction.NONE->if(shouldReferencePoll(t))fetchCycle()
+  }
+  delay(when{
+   action==LiveWindowAction.FINALIZING->CLOSING_POLL_INTERVAL_MS
+   action==LiveWindowAction.LIVE_POLLING->NORMAL_POLL_INTERVAL_MS
+   shouldReferencePoll(t)->LIVE_REFERENCE_FETCH_INTERVAL_MS
+   else->NORMAL_POLL_INTERVAL_MS
+  })
+ }}}
  companion object{
   @Volatile private var shared:LiveCollector?=null
   val instance:LiveCollector get()=shared?:error("LiveCollector not started")
