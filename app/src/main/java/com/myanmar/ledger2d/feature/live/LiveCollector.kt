@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.time.*
-import kotlinx.coroutines.sync.Mutex
+import java.util.concurrent.atomic.AtomicBoolean
 
 private val YANGON = ZoneId.of("Asia/Yangon")
 internal const val NORMAL_POLL_INTERVAL_MS = 3_000L
@@ -162,8 +162,8 @@ internal class LiveCollector(
 ){
  private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
  private var cycle:Job?=null
- private val primaryRequestMutex=Mutex()
- private val secondaryRequestMutex=Mutex()
+ private val primaryRequestInFlight=AtomicBoolean(false)
+ private val secondaryRequestInFlight=AtomicBoolean(false)
  private var reference930Cycle:Job?=null
  private var reference200Cycle:Job?=null
  private var reference930CompleteDate:LocalDate?=null
@@ -183,8 +183,8 @@ internal class LiveCollector(
   }
  }
  private fun launchSource(src:suspend()->LiveFeedData?,primary:Boolean)=scope.launch{
-  val mutex=if(primary)primaryRequestMutex else secondaryRequestMutex
-  if(!mutex.tryLock())return@launch
+  val inFlight=if(primary)primaryRequestInFlight else secondaryRequestInFlight
+  if(!inFlight.compareAndSet(false,true))return@launch
   try{
    val started=System.nanoTime()/1_000_000L
    val f=try{src()}catch(_:Exception){null}
@@ -195,7 +195,7 @@ internal class LiveCollector(
     if(primary)p=o else s=o
    }
   }finally{
-   mutex.unlock()
+   inFlight.set(false)
   }
  }
  private fun validReferencePair(f:LiveFeedData,modern:String,internet:String):Boolean=
@@ -222,7 +222,7 @@ internal class LiveCollector(
    publish()
    while(isActive){
     if(clock().isBefore(LocalTime.of(9,30)))return@launch
-    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestMutex.tryLock())null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestMutex.unlock()}}
+    val f=withTimeoutOrNull(CYCLE_DEADLINE_MS){if(!primaryRequestInFlight.compareAndSet(false,true))null else try{fetcher()}catch(_:Exception){null}finally{primaryRequestInFlight.set(false)}}
     if(f==null){
      publish()
      delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
