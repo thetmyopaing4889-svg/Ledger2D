@@ -84,8 +84,8 @@ private const val THAISTOCK_LIVE_ENDPOINT = "https://api.thaistock2d.com/live"
 // app-scoped background collector and this screen share one tunable constant.
 
 /** HTTP timeouts in ms. */
-private const val LIVE_CONNECT_TIMEOUT_MS = 8_000
-private const val LIVE_READ_TIMEOUT_MS = 8_000
+private const val LIVE_CONNECT_TIMEOUT_MS = 2_500
+private const val LIVE_READ_TIMEOUT_MS = 3_000
 
 /** Presentation-only blink half-cycle for the LIVE number (never blocks data). */
 private const val LIVE_BLINK_DURATION_MS = 700
