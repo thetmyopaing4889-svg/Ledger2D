@@ -182,7 +182,7 @@ class LiveCollectorTest {
    advanceTimeBy(100)
    assertEquals(1,maxActive)
    gate.complete(Unit)
-   advanceUntilIdle()
+   advanceTimeBy(100)
    scope.cancel()
   }
  }
