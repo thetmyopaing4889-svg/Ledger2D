@@ -196,7 +196,7 @@ internal class LiveCollector(
   var out=source
   reference930?.let{out=out.copy(modern930=it.first,internet930=it.second)}
   reference200?.let{out=out.copy(modern200=it.first,internet200=it.second)}
-  if(referenceResetDate==currentYangonDate()){
+  if(referenceResetDate==currentYangonDate()&&clock().isBefore(MORNING_LIVE)){
    out=out.copy(
     morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
     evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
