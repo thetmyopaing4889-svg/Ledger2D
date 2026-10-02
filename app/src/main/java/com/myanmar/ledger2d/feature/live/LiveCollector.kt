@@ -1,30 +1,56 @@
 package com.myanmar.ledger2d.feature.live
 
 import android.content.Context
-import kotlinx.coroutines.*
+import android.os.SystemClock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.time.*
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 private val YANGON = ZoneId.of("Asia/Yangon")
+
+private fun monotonicMs(): Long = runCatching {
+    SystemClock.elapsedRealtime()
+}.getOrElse {
+    System.nanoTime() / 1_000_000L
+}
+
+/**
+ * Luke-only Phase 1:
+ * - one scheduled request every 3 seconds while a live/final result is expected
+ * - request completion never controls the next request
+ * - failed requests never erase the last successful snapshot
+ * - late/out-of-order responses cannot overwrite a newer successful snapshot
+ */
 internal const val NORMAL_POLL_INTERVAL_MS = 3_000L
-internal const val CLOSING_POLL_INTERVAL_MS = 1_500L
-internal const val CYCLE_DEADLINE_MS = 3_500L
+internal const val CLOSING_POLL_INTERVAL_MS = NORMAL_POLL_INTERVAL_MS
+internal const val CYCLE_DEADLINE_MS = 0L
 internal const val FINAL_GRACE_MS = 30_000L
 internal const val SOURCE_FRESHNESS_MS = 5_000L
 internal const val SOURCE_TIME_SKEW_MS = 2_000L
 internal const val LIVE_REFERENCE_FETCH_INTERVAL_MS = 60_000L
-private const val REFERENCE_BUSY_RETRY_INTERVAL_MS = 500L
 
-private val MORNING_LIVE = LocalTime.of(11,30)
-private val MORNING_CLOSE = LocalTime.of(12,1)
-private val MORNING_FINAL = LocalTime.of(12,1)
-private val EVENING_LIVE = LocalTime.of(16,0)
-private val EVENING_CLOSE = LocalTime.of(16,30)
-private val EVENING_FINAL = LocalTime.of(16,30)
+private val MORNING_REFERENCE = LocalTime.of(9, 30)
+private val MORNING_LIVE = LocalTime.of(11, 30)
+private val MORNING_CLOSE = LocalTime.of(12, 1)
+private val MORNING_CATCHUP_END = LocalTime.of(12, 31)
+private val AFTERNOON_REFERENCE = LocalTime.of(14, 0)
+private val EVENING_LIVE = LocalTime.of(16, 0)
+private val EVENING_CLOSE = LocalTime.of(16, 30)
+private val EVENING_CATCHUP_END = LocalTime.of(17, 0)
 
 internal const val LIVE_PENDING = "--"
 internal const val LIVE_SESSION_MORNING_LABEL = "12:01 PM"
@@ -38,328 +64,558 @@ data class LiveHeroSnapshot(
     val date: String,
 )
 
-internal enum class LiveWindowAction { NONE, REFERENCE_ONLY, LIVE_POLLING, FINALIZING }
-enum class LiveStatus { WAITING,LIVE_CONFIRMED,LIVE_DEGRADED,WAITING_FOR_ALIGNMENT,LIVE_CONFLICT,STALE,FINALIZING,WAITING_FOR_PRIMARY,DRAW_FREEZE,RESULT_AVAILABLE,FINAL_CONFIRMED,DEGRADED_FINAL,FINAL_CONFLICT,STALE_PRIMARY }
-
-internal data class SourceObservation(val feed: LiveFeedData,val fetchedAtElapsedMs:Long,val requestStartedElapsedMs:Long,val roundTripMs:Long)
-internal data class LiveResolution(val displayFeed:LiveFeedData?,val hero:LiveHeroSnapshot?,val heroLive:Boolean,val status:LiveStatus,val message:String,val sourceCount:Int,val staleAgeMs:Long)
-
-internal fun liveWindowAction(t:LocalTime):LiveWindowAction=when{
- t.isBefore(LocalTime.of(9,30))->LiveWindowAction.NONE
- t.isBefore(LocalTime.of(9,31))->LiveWindowAction.REFERENCE_ONLY
- t.isBefore(MORNING_LIVE)->LiveWindowAction.NONE
- t.isBefore(MORNING_CLOSE)->LiveWindowAction.LIVE_POLLING
-t<=MORNING_FINAL->LiveWindowAction.FINALIZING
- t.isBefore(LocalTime.of(14,0))->LiveWindowAction.NONE
- t.isBefore(LocalTime.of(14,1))->LiveWindowAction.REFERENCE_ONLY
- t.isBefore(EVENING_LIVE)->LiveWindowAction.NONE
- t.isBefore(EVENING_CLOSE)->LiveWindowAction.LIVE_POLLING
- t<=EVENING_FINAL->LiveWindowAction.FINALIZING
- else->LiveWindowAction.NONE
-}
-internal fun currentYangonDate():LocalDate=LocalDate.now(YANGON)
-internal fun canonicalDate(raw:String):LocalDate?=runCatching{LocalDate.parse(raw.trim())}.getOrElse{runCatching{LocalDate.parse(raw.trim(),java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))}.getOrNull()}
-internal fun parseDecisionInstant(f:LiveFeedData):Instant?{
- f.serverTimeEpochMs?.let{return Instant.ofEpochMilli(it)}
- val raw=f.currentTime.trim()
- if(raw.isBlank()||raw==LIVE_PENDING)return null
- return try{
-  when{
-   raw.contains("T")->Instant.parse(raw)
-   raw.contains(" ")->LocalDateTime.parse(raw.replace(' ','T')).atZone(YANGON).toInstant()
-   else->{
-    val d=canonicalDate(f.date)?:return null
-    LocalDateTime.of(d,LocalTime.parse(raw.take(8))).atZone(YANGON).toInstant()
-   }
-  }
- }catch(_:Exception){null}
-}
-internal fun isValidLive2d(v:String)=v.matches(Regex("^[0-9]{2}$"))
-private fun validMoney(v:String)=v.isNotBlank()&&v!=LIVE_PENDING
-private fun currentDay(f:LiveFeedData)=canonicalDate(f.date)==currentYangonDate()
-private fun age(o:SourceObservation?)=if(o==null)Long.MAX_VALUE else maxOf(0,System.nanoTime()/1_000_000L-o.fetchedAtElapsedMs)
-
-private fun fresh(o:SourceObservation?):Boolean{
- if(o==null||!currentDay(o.feed)||!isValidLive2d(o.feed.live)||!validMoney(o.feed.liveSet)||!validMoney(o.feed.liveVal))return false
- val t=parseDecisionInstant(o.feed)?:return false
- return age(o)<=SOURCE_FRESHNESS_MS&&t.isAfter(Instant.EPOCH)
-}
-private fun finalValid(o:SourceObservation?,s:LiveSessionData?,thai:Boolean):Boolean{
- if(o==null||s==null||!s.finalized||!currentDay(o.feed)||!isValidLive2d(s.result)||!validMoney(s.set)||!validMoney(s.value))return false
- if(thai&&s.historyId.isNullOrBlank())return false
- return parseDecisionInstant(o.feed)!=null
-}
-private fun aligned(a:SourceObservation,b:SourceObservation):Boolean{
- val x=parseDecisionInstant(a.feed)?:return false; val y=parseDecisionInstant(b.feed)?:return false
- return kotlin.math.abs(x.toEpochMilli()-y.toEpochMilli())<=SOURCE_TIME_SKEW_MS
-}
-private fun label(t:LocalTime)=if(!t.isBefore(EVENING_LIVE))LIVE_SESSION_EVENING_LABEL else LIVE_SESSION_MORNING_LABEL
-private fun resetMorningAndEveningForNewDay(f:LiveFeedData,t:LocalTime):LiveFeedData = if (!t.isBefore(LocalTime.of(9,30)) && t.isBefore(MORNING_LIVE) && currentDay(f)) f.copy(
- morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
- evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-) else f
-
-private fun finalOf(f:LiveFeedData)=when{
- f.evening.finalized->LiveHeroSnapshot(f.evening.result,f.evening.set,f.evening.value,LIVE_SESSION_EVENING_LABEL,f.date)
- f.morning.finalized->LiveHeroSnapshot(f.morning.result,f.morning.set,f.morning.value,LIVE_SESSION_MORNING_LABEL,f.date)
- else->null
+internal enum class LiveWindowAction {
+    NONE,
+    REFERENCE_ONLY,
+    LIVE_POLLING,
+    FINALIZING,
 }
 
-private fun clockTimeFromObservations(p:SourceObservation?,s:SourceObservation?,now:Instant):LocalTime? = (p?.feed?.let(::parseDecisionInstant) ?: s?.feed?.let(::parseDecisionInstant))?.atZone(YANGON)?.toLocalTime()
+enum class LiveStatus {
+    WAITING,
+    LIVE_CONFIRMED,
+    LIVE_DEGRADED,
+    WAITING_FOR_ALIGNMENT,
+    LIVE_CONFLICT,
+    STALE,
+    FINALIZING,
+    WAITING_FOR_PRIMARY,
+    DRAW_FREEZE,
+    RESULT_AVAILABLE,
+    FINAL_CONFIRMED,
+    DEGRADED_FINAL,
+    FINAL_CONFLICT,
+    STALE_PRIMARY,
+}
 
-internal fun resolveLiveState(p:SourceObservation?,s:SourceObservation?,now:Instant,lastLive:LiveHeroSnapshot?,cachedFinal:LiveHeroSnapshot?,scheduleTime:LocalTime?=null):LiveResolution{
- val pv=fresh(p); val sv=fresh(s); val count=listOf(pv,sv).count{it}; val pt=p?.feed?.let(::parseDecisionInstant)
- val t=scheduleTime?:clockTimeFromObservations(p,s,now)?:return LiveResolution(p?.feed?:s?.feed,lastLive?:cachedFinal,false,LiveStatus.WAITING_FOR_ALIGNMENT,"WAITING_FOR_PRIMARY • CLOCK",count,maxOf(age(p),age(s)))
- when(liveWindowAction(t)){
-  LiveWindowAction.LIVE_POLLING->{
-   if(!pv&&!sv)return LiveResolution(p?.feed?:s?.feed,lastLive,false,LiveStatus.STALE,"STALE • NO FRESH SOURCE",0,maxOf(age(p),age(s)))
-   if(pv&&sv){
-    if(!aligned(p!!,s!!))return LiveResolution(p.feed,lastLive,false,LiveStatus.WAITING_FOR_ALIGNMENT,"SYNCING • TIME ALIGNMENT",2,maxOf(age(p),age(s)))
-    if(p.feed.live==s.feed.live){
-     val h=LiveHeroSnapshot(p.feed.live,p.feed.liveSet,p.feed.liveVal,p.feed.currentTime,p.feed.date)
-     return LiveResolution(p.feed,h,true,LiveStatus.LIVE_CONFIRMED,"LIVE_CONFIRMED • CROSS-SOURCE MATCH",2,0)
+internal data class SourceObservation(
+    val feed: LiveFeedData,
+    val fetchedAtElapsedMs: Long,
+    val requestStartedElapsedMs: Long,
+    val roundTripMs: Long,
+)
+
+internal data class LiveResolution(
+    val displayFeed: LiveFeedData?,
+    val hero: LiveHeroSnapshot?,
+    val heroLive: Boolean,
+    val status: LiveStatus,
+    val message: String,
+    val sourceCount: Int,
+    val staleAgeMs: Long,
+)
+
+internal fun liveWindowAction(t: LocalTime): LiveWindowAction = when {
+    t.isBefore(MORNING_REFERENCE) -> LiveWindowAction.NONE
+    t.isBefore(MORNING_LIVE) -> LiveWindowAction.REFERENCE_ONLY
+    t.isBefore(MORNING_CLOSE) -> LiveWindowAction.LIVE_POLLING
+    t.isBefore(MORNING_CATCHUP_END) -> LiveWindowAction.FINALIZING
+    t.isBefore(AFTERNOON_REFERENCE) -> LiveWindowAction.NONE
+    t.isBefore(AFTERNOON_REFERENCE.plusMinutes(1)) -> LiveWindowAction.REFERENCE_ONLY
+    t.isBefore(EVENING_LIVE) -> LiveWindowAction.NONE
+    t.isBefore(EVENING_CLOSE) -> LiveWindowAction.LIVE_POLLING
+    t.isBefore(EVENING_CATCHUP_END) -> LiveWindowAction.FINALIZING
+    else -> LiveWindowAction.NONE
+}
+
+internal fun currentYangonDate(): LocalDate = LocalDate.now(YANGON)
+
+internal fun canonicalDate(raw: String): LocalDate? = runCatching {
+    LocalDate.parse(raw.trim())
+}.getOrElse {
+    runCatching {
+        LocalDate.parse(
+            raw.trim(),
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+        )
+    }.getOrNull()
+}
+
+internal fun parseDecisionInstant(f: LiveFeedData): Instant? {
+    f.serverTimeEpochMs?.let { return Instant.ofEpochMilli(it) }
+    val raw = f.currentTime.trim()
+    if (raw.isBlank() || raw == LIVE_PENDING) return null
+
+    return try {
+        when {
+            raw.contains("T") -> Instant.parse(raw)
+            raw.contains(" ") -> java.time.LocalDateTime
+                .parse(raw.replace(' ', 'T'))
+                .atZone(YANGON)
+                .toInstant()
+            else -> {
+                val d = canonicalDate(f.date) ?: return null
+                java.time.LocalDateTime
+                    .of(d, LocalTime.parse(raw.take(8)))
+                    .atZone(YANGON)
+                    .toInstant()
+            }
+        }
+    } catch (_: Exception) {
+        null
     }
-    return LiveResolution(p.feed,lastLive,false,LiveStatus.LIVE_CONFLICT,"LIVE_CONFLICT • DATA MISMATCH",2,maxOf(age(p),age(s)))
-   }
-   val o=if(pv)p!! else s!!; val h=LiveHeroSnapshot(o.feed.live,o.feed.liveSet,o.feed.liveVal,o.feed.currentTime,o.feed.date)
-   return LiveResolution(o.feed,h,true,LiveStatus.LIVE_DEGRADED,if(pv)"LIVE_DEGRADED • LUKE" else "LIVE_DEGRADED • THAISTOCK2D",1,age(o))
-  }
-  LiveWindowAction.FINALIZING->{
-   if(!pv)return LiveResolution(p?.feed,lastLive,false,LiveStatus.WAITING_FOR_PRIMARY,"FINALIZING • WAITING_FOR_PRIMARY",count,maxOf(age(p),age(s)))
-   val evening=!t.isBefore(EVENING_LIVE); val ps=if(evening)p!!.feed.evening else p!!.feed.morning; val ss=s?.let{if(evening)it.feed.evening else it.feed.morning}
-   val pf=finalValid(p,ps,false); val sf=finalValid(s,ss,true)
-   if(pf&&sf){
-    if(ps.result==ss!!.result){
-     val h=LiveHeroSnapshot(ps.result,ps.set,ps.value,label(t),p.feed.date)
-     return LiveResolution(p.feed,h,false,LiveStatus.FINAL_CONFIRMED,"FINAL_CONFIRMED • CROSS-SOURCE MATCH",2,0)
+}
+
+internal fun isValidLive2d(v: String): Boolean =
+    v.matches(Regex("^[0-9]{2}$"))
+
+private fun validMoney(v: String): Boolean =
+    v.isNotBlank() && v != LIVE_PENDING
+
+private fun currentDay(f: LiveFeedData): Boolean =
+    canonicalDate(f.date) == currentYangonDate()
+
+private fun age(o: SourceObservation?): Long =
+    if (o == null) Long.MAX_VALUE
+    else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
+
+private fun liveValid(o: SourceObservation?): Boolean {
+    val f = o?.feed ?: return false
+    return currentDay(f) &&
+        isValidLive2d(f.live) &&
+        validMoney(f.liveSet) &&
+        validMoney(f.liveVal) &&
+        parseDecisionInstant(f) != null
+}
+
+private fun finalValid(session: LiveSessionData?, feed: LiveFeedData?): Boolean {
+    if (session == null || feed == null || !currentDay(feed) || !session.finalized) return false
+    return isValidLive2d(session.result) &&
+        validMoney(session.set) &&
+        validMoney(session.value)
+}
+
+private fun latestFinalFor(feed: LiveFeedData): LiveHeroSnapshot? = when {
+    feed.evening.finalized -> LiveHeroSnapshot(
+        feed.evening.result,
+        feed.evening.set,
+        feed.evening.value,
+        LIVE_SESSION_EVENING_LABEL,
+        feed.date,
+    )
+    feed.morning.finalized -> LiveHeroSnapshot(
+        feed.morning.result,
+        feed.morning.set,
+        feed.morning.value,
+        LIVE_SESSION_MORNING_LABEL,
+        feed.date,
+    )
+    else -> null
+}
+
+internal fun resolveLiveState(
+    p: SourceObservation?,
+    s: SourceObservation?,
+    now: Instant,
+    lastLive: LiveHeroSnapshot?,
+    cachedFinal: LiveHeroSnapshot?,
+    scheduleTime: LocalTime? = null,
+): LiveResolution {
+    val feed = p?.feed?.takeIf(::currentDay)
+    val decisionTime = feed
+        ?.let(::parseDecisionInstant)
+        ?.atZone(YANGON)
+        ?.toLocalTime()
+        ?: scheduleTime
+        ?: now.atZone(YANGON).toLocalTime()
+
+    if (feed == null) {
+        val cached = cachedFinal?.takeIf {
+            canonicalDate(it.date) == currentYangonDate()
+        }
+        return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
     }
-    val safe=if(evening)p.feed.copy(evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false)) else p.feed.copy(morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false))
-    return LiveResolution(safe,lastLive,false,LiveStatus.FINAL_CONFLICT,"FINAL_CONFLICT • DATA MISMATCH",2,maxOf(age(p),age(s)))
-   }
-   if(pf){
-    val h=LiveHeroSnapshot(ps.result,ps.set,ps.value,label(t),p.feed.date); val elapsed=now.toEpochMilli()-pt!!.toEpochMilli()
-    return LiveResolution(p.feed,h,false,if(elapsed>=FINAL_GRACE_MS)LiveStatus.DEGRADED_FINAL else LiveStatus.RESULT_AVAILABLE,if(elapsed>=FINAL_GRACE_MS)"DEGRADED_FINAL • UNVERIFIED LUKE" else "RESULT_AVAILABLE • LUKE UNVERIFIED",1,age(p))
-   }
-   return LiveResolution(p.feed,lastLive,false,LiveStatus.DRAW_FREEZE,"DRAW_FREEZE • FINALIZING",count,age(p))
-  }
-  LiveWindowAction.NONE,LiveWindowAction.REFERENCE_ONLY->{
-   val raw=p?.feed?:s?.feed
-   val f=raw?.let{resetMorningAndEveningForNewDay(it,t)} ?: raw
-   val fin=f?.let(::finalOf)
-   if(fin!=null&&currentDay(f))return LiveResolution(f,fin,false,LiveStatus.FINAL_CONFIRMED,"FINAL_CONFIRMED",count,0)
-   val previousHero=if(t.isBefore(MORNING_LIVE)) cachedFinal else null
-   return LiveResolution(f,previousHero,false,LiveStatus.WAITING,"WAITING",count,maxOf(age(p),age(s)))
-  }
- }
+
+    val canShowLive = liveValid(p)
+    val morningFinal = finalValid(feed.morning, feed)
+    val eveningFinal = finalValid(feed.evening, feed)
+
+    fun liveHero(): LiveHeroSnapshot? =
+        if (canShowLive) {
+            LiveHeroSnapshot(
+                result = feed.live,
+                set = feed.liveSet,
+                value = feed.liveVal,
+                sessionLabel = feed.currentTime,
+                date = feed.date,
+            )
+        } else {
+            null
+        }
+
+    fun finalHero(): LiveHeroSnapshot? = latestFinalFor(feed)
+
+    return when {
+        decisionTime.isBefore(MORNING_LIVE) -> LiveResolution(
+            feed,
+            cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() },
+            false,
+            LiveStatus.WAITING,
+            "",
+            1,
+            age(p),
+        )
+
+        decisionTime.isBefore(MORNING_CLOSE) -> {
+            val hero = liveHero()
+            LiveResolution(
+                feed,
+                hero ?: finalHero(),
+                hero != null,
+                if (hero != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
+                "",
+                1,
+                age(p),
+            )
+        }
+
+        decisionTime.isBefore(LocalTime.of(13, 0)) -> {
+            val hero = if (morningFinal) finalHero() else liveHero()
+            LiveResolution(
+                feed,
+                hero,
+                !morningFinal && hero != null,
+                when {
+                    morningFinal -> LiveStatus.FINAL_CONFIRMED
+                    hero != null -> LiveStatus.LIVE_CONFIRMED
+                    else -> LiveStatus.WAITING
+                },
+                "",
+                1,
+                age(p),
+            )
+        }
+
+        decisionTime.isBefore(EVENING_CLOSE) -> {
+            val hero = liveHero() ?: finalHero()
+            LiveResolution(
+                feed,
+                hero,
+                liveHero() != null,
+                if (liveHero() != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.FINAL_CONFIRMED,
+                "",
+                1,
+                age(p),
+            )
+        }
+
+        else -> {
+            val hero = if (eveningFinal) finalHero() else liveHero() ?: finalHero()
+            LiveResolution(
+                feed,
+                hero,
+                !eveningFinal && canShowLive,
+                when {
+                    eveningFinal -> LiveStatus.FINAL_CONFIRMED
+                    canShowLive -> LiveStatus.LIVE_CONFIRMED
+                    else -> LiveStatus.WAITING
+                },
+                "",
+                1,
+                age(p),
+            )
+        }
+    }
 }
 
 internal class LiveCollector(
- private val scope:CoroutineScope,
- private val fetcher:suspend()->LiveFeedData?,
- private val secondaryFetcher:(suspend()->LiveFeedData?)?=null,
- private val clock:()->LocalTime={LocalTime.now(YANGON)},
- cacheLoader:()->LiveHeroSnapshot?={null},
- private val cacheSaver:(LiveHeroSnapshot)->Unit={}
-){
- private val _state=MutableStateFlow<LiveUiState>(LiveUiState.Loading); val state:StateFlow<LiveUiState> = _state.asStateFlow()
- private var cycle:Job?=null
- private val primaryRequestInFlight=AtomicBoolean(false)
- private val secondaryRequestInFlight=AtomicBoolean(false)
- private var reference930Cycle:Job?=null
- private var reference200Cycle:Job?=null
- private var reference930CompleteDate:LocalDate?=null
- private var reference200CompleteDate:LocalDate?=null
- private var referenceResetDate:LocalDate?=null
- private var reference930:Pair<String,String>?=null
- private var reference200:Pair<String,String>?=null
- private var p:SourceObservation?=null; private var s:SourceObservation?=null
- private var lastLive:LiveHeroSnapshot?=null; private var lastFinal:LiveHeroSnapshot?=null
- init{val c=cacheLoader();if(c!=null){lastFinal=c;_state.value=LiveUiState.Data(null,c,false,false,status=LiveStatus.FINAL_CONFIRMED,sourceMessage="FINAL_CONFIRMED • CACHED")}}
- fun fetchCycle(){
-  if(cycle?.isActive==true)return
-  cycle=scope.launch{
-   val pj=launchSource(fetcher,true);val sj=secondaryFetcher?.let{launchSource(it,false)}
-   withTimeoutOrNull(CYCLE_DEADLINE_MS){while(pj.isActive||sj?.isActive==true)delay(10)}
-   if(pj.isActive)pj.cancel();sj?.cancel();publish()
-  }
- }
- private fun launchSource(src:suspend()->LiveFeedData?,primary:Boolean)=scope.launch{
-  val inFlight=if(primary)primaryRequestInFlight else secondaryRequestInFlight
-  if(!inFlight.compareAndSet(false,true))return@launch
-  try{
-   val started=System.nanoTime()/1_000_000L
-   val f=try{src()}catch(_:Exception){null}
-   if(f!=null){
-    val end=System.nanoTime()/1_000_000L
-    val normalized=f
-    val o=SourceObservation(normalized,end,started,end-started)
-    if(primary)p=o else s=o
-   }
-  }finally{
-   inFlight.set(false)
-  }
- }
- private fun validReferencePair(f:LiveFeedData,modern:String,internet:String):Boolean=
-  currentDay(f)&&isValidLive2d(modern)&&isValidLive2d(internet)
+    private val scope: CoroutineScope,
+    private val fetcher: suspend () -> LiveFeedData?,
+    private val secondaryFetcher: (suspend () -> LiveFeedData?)? = null,
+    private val clock: () -> LocalTime = { LocalTime.now(YANGON) },
+    cacheLoader: () -> LiveHeroSnapshot? = { null },
+    private val cacheSaver: (LiveHeroSnapshot) -> Unit = {},
+) {
+    private val _state = MutableStateFlow<LiveUiState>(
+        LiveUiState.Data(null, null, false, false)
+    )
+    val state: StateFlow<LiveUiState> = _state.asStateFlow()
 
- private fun mergeReferenceIntoFeed(base:LiveFeedData?):LiveFeedData?{
-  val source=base?:return null
-  var out=source
-  reference930?.let{out=out.copy(modern930=it.first,internet930=it.second)}
-  reference200?.let{out=out.copy(modern200=it.first,internet200=it.second)}
-  if(referenceResetDate==currentYangonDate()&&clock().isBefore(MORNING_LIVE)){
-   out=out.copy(
-    morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-    evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-   )
-  }
-  return out
- }
+    private val started = AtomicBoolean(false)
+    private val requestSequence = AtomicLong(0L)
+    private val latestAppliedSequence = AtomicLong(0L)
+    private val stateLock = Any()
 
- private fun fetchReference930Cycle(){
-  if(reference930Cycle?.isActive==true||reference930CompleteDate==currentYangonDate())return
-  reference930Cycle=scope.launch{
-   reference930=LIVE_PENDING to LIVE_PENDING
-   publish()
-   while(isActive){
-    if(clock().isBefore(LocalTime.of(9,30)))return@launch
-    val acquired=primaryRequestInFlight.compareAndSet(false,true)
-    if(!acquired){
-     publish()
-     delay(REFERENCE_BUSY_RETRY_INTERVAL_MS)
-     continue
-    }
-    val f=try{
-     withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
-    }finally{
-     primaryRequestInFlight.set(false)
-    }
-    if(f==null){
-     publish()
-     delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-     continue
-    }
-    if(validReferencePair(f,f.modern930,f.internet930)){
-     reference930=f.modern930 to f.internet930
-     reference930CompleteDate=currentYangonDate()
-     referenceResetDate=currentYangonDate()
-     publish()
-     return@launch
-    }
-    publish()
-    delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-   }
-  }
- }
+    private var schedulerJob: Job? = null
+    private var reference930Date: LocalDate? = null
+    private var reference200Date: LocalDate? = null
 
- private fun fetchReference200Cycle(){
-  if(reference200Cycle?.isActive==true||reference200CompleteDate==currentYangonDate())return
-  reference200Cycle=scope.launch{
-   reference200=LIVE_PENDING to LIVE_PENDING
-   publish()
-   while(isActive){
-    if(clock().isBefore(LocalTime.of(14,0)))return@launch
-    val acquired=primaryRequestInFlight.compareAndSet(false,true)
-    if(!acquired){
-     publish()
-     delay(REFERENCE_BUSY_RETRY_INTERVAL_MS)
-     continue
-    }
-    val f=try{
-     withTimeoutOrNull(CYCLE_DEADLINE_MS){try{fetcher()}catch(_:Exception){null}}
-    }finally{
-     primaryRequestInFlight.set(false)
-    }
-    if(f==null){
-     publish()
-     delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-     continue
-    }
-    if(validReferencePair(f,f.modern200,f.internet200)){
-     reference200=f.modern200 to f.internet200
-     reference200CompleteDate=currentYangonDate()
-     publish()
-     return@launch
-    }
-    publish()
-    delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-   }
-  }
- }
+    private var primary: SourceObservation? = null
+    private var lastLive: LiveHeroSnapshot? = null
+    private var lastFinal: LiveHeroSnapshot? = null
 
- private fun ensureReferenceJobs(t:LocalTime){
-  val today=currentYangonDate()
-  if(t.isBefore(LocalTime.of(9,30)))return
-  if(reference930CompleteDate!=today)fetchReference930Cycle()
-  if(!t.isBefore(LocalTime.of(14,0))&&reference200CompleteDate!=today)fetchReference200Cycle()
- }
+    init {
+        val cached = cacheLoader()
+            ?.takeIf { canonicalDate(it.date) == currentYangonDate() }
 
- private fun referenceOnlyDisplayFeed():LiveFeedData{
-  val now=clock()
-  val beforeMorning=now.isBefore(MORNING_LIVE)
-  val date=if(beforeMorning)lastFinal?.date?:currentYangonDate().toString() else currentYangonDate().toString()
-  val base=LiveFeedData(
-   date=date,
-   currentTime=now.toString(),
-   live=LIVE_PENDING,
-   liveSet=LIVE_PENDING,
-   liveVal=LIVE_PENDING,
-   morning=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-   evening=LiveSessionData(LIVE_PENDING,LIVE_PENDING,LIVE_PENDING,false),
-   modern930=LIVE_PENDING,
-   internet930=LIVE_PENDING,
-   modern200=LIVE_PENDING,
-   internet200=LIVE_PENDING,
-   sourceTag="REFERENCE",
-  )
-  return mergeReferenceIntoFeed(base)?:base
- }
+        if (cached != null) {
+            lastFinal = cached
+            _state.value = LiveUiState.Data(null, cached, false, false)
+        }
+    }
 
- private fun publish(){
-  val now=clock()
-  val displayPrimary=if(now.isBefore(MORNING_LIVE)){
-   p?:s
-  }else{
-   p?.takeIf{currentDay(it.feed)}?:s?.takeIf{currentDay(it.feed)}
-  }?.let{it.copy(feed=mergeReferenceIntoFeed(it.feed) ?: it.feed)}
-  val r=resolveLiveState(displayPrimary,s,Instant.now(),lastLive,lastFinal,now)
-  if(r.status==LiveStatus.LIVE_CONFIRMED)lastLive=r.hero
-  if(r.status==LiveStatus.FINAL_CONFIRMED&&r.hero!=null&&r.hero!=lastFinal){lastFinal=r.hero;cacheSaver(r.hero)}
-  val displayFeed=r.displayFeed?:referenceOnlyDisplayFeed()
-  _state.value=LiveUiState.Data(displayFeed,r.hero,r.heroLive,p==null&&s==null,r.secondaryFeed(),r.message,r.status,r.staleAgeMs)
- }
- private fun LiveResolution.secondaryFeed():LiveFeedData?=s?.feed
- fun start(){
-  // Catch up any already-passed reference slot immediately when the app starts.
-  // The background loop below continues the same schedule for later slots.
-  ensureReferenceJobs(clock())
-  scope.launch{while(isActive){
-   val t=clock()
-   val action=liveWindowAction(t)
-   when(action){
-    LiveWindowAction.LIVE_POLLING,LiveWindowAction.FINALIZING->fetchCycle()
-    LiveWindowAction.NONE,LiveWindowAction.REFERENCE_ONLY->Unit
-   }
-   delay(when{
-    action==LiveWindowAction.FINALIZING->CLOSING_POLL_INTERVAL_MS
-    action==LiveWindowAction.LIVE_POLLING->NORMAL_POLL_INTERVAL_MS
-    else->NORMAL_POLL_INTERVAL_MS
-   })
-  }}
-  scope.launch{while(isActive){
-   ensureReferenceJobs(clock())
-   delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-  }}
- }
- companion object{
-  @Volatile private var shared:LiveCollector?=null
-  val instance:LiveCollector get()=shared?:error("LiveCollector not started")
-  fun startOnce(context:Context){if(shared!=null)return;synchronized(this){if(shared!=null)return;val c=LiveCollector(CoroutineScope(SupervisorJob()+Dispatchers.Default),{withContext(Dispatchers.IO){LiveApi.fetch()}},{withContext(Dispatchers.IO){LiveApi.fetchThaiStock()}},{LocalTime.now(YANGON)},{LiveCacheStore.load(context)},{LiveCacheStore.save(context,it)});shared=c;c.start();c.fetchCycle()}}
- }
+    fun fetchCycle() {
+        launchRequest()
+    }
+
+    private fun launchRequest() {
+        val sequence = requestSequence.incrementAndGet()
+
+        scope.launch {
+            val startedAt = monotonicMs()
+            val feed = try {
+                fetcher()
+            } catch (_: Exception) {
+                null
+            }
+            val finishedAt = monotonicMs()
+
+            if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
+
+            synchronized(stateLock) {
+                if (sequence <= latestAppliedSequence.get()) return@synchronized
+
+                val previous = primary?.feed
+                val incomingTime = parseDecisionInstant(feed)
+                val previousTime = previous?.let(::parseDecisionInstant)
+
+                if (
+                    incomingTime != null &&
+                    previousTime != null &&
+                    incomingTime.isBefore(previousTime)
+                ) {
+                    return@synchronized
+                }
+
+                val protected = protectFinalSessions(previous, feed)
+                latestAppliedSequence.set(sequence)
+                primary = SourceObservation(
+                    protected,
+                    finishedAt,
+                    startedAt,
+                    finishedAt - startedAt,
+                )
+                if (protected.modern930 != LIVE_PENDING || protected.internet930 != LIVE_PENDING) {
+                    reference930Date = currentYangonDate()
+                }
+                if (protected.modern200 != LIVE_PENDING || protected.internet200 != LIVE_PENDING) {
+                    reference200Date = currentYangonDate()
+                }
+                publishLocked()
+            }
+        }
+    }
+
+    private fun protectFinalSessions(
+        previous: LiveFeedData?,
+        incoming: LiveFeedData,
+    ): LiveFeedData {
+        if (previous == null || !currentDay(previous) || !currentDay(incoming)) {
+            return incoming
+        }
+
+        return incoming.copy(
+            morning = if (previous.morning.finalized && !incoming.morning.finalized) {
+                previous.morning
+            } else {
+                incoming.morning
+            },
+            evening = if (previous.evening.finalized && !incoming.evening.finalized) {
+                previous.evening
+            } else {
+                incoming.evening
+            },
+        )
+    }
+
+    private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
+        if (!currentDay(feed)) return false
+        if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
+
+        val hasLive =
+            isValidLive2d(feed.live) &&
+                validMoney(feed.liveSet) &&
+                validMoney(feed.liveVal)
+
+        val hasMorningFinal = finalValid(feed.morning, feed)
+        val hasEveningFinal = finalValid(feed.evening, feed)
+
+        return hasLive ||
+            hasMorningFinal ||
+            hasEveningFinal ||
+            feed.modern930 != LIVE_PENDING ||
+            feed.internet930 != LIVE_PENDING ||
+            feed.modern200 != LIVE_PENDING ||
+            feed.internet200 != LIVE_PENDING
+    }
+
+    private fun maybeReferenceFetch(t: LocalTime) {
+        val today = currentYangonDate()
+
+        if (t >= MORNING_REFERENCE && reference930Date != today) {
+            reference930Date = today
+            launchRequest()
+            return
+        }
+
+        if (t >= AFTERNOON_REFERENCE && reference200Date != today) {
+            reference200Date = today
+            launchRequest()
+        }
+    }
+
+    private fun shouldPoll(t: LocalTime): Boolean {
+        val f = synchronized(stateLock) {
+            primary?.feed?.takeIf(::currentDay)
+        }
+
+        return when {
+            t >= MORNING_LIVE && t < MORNING_CLOSE -> true
+            t >= MORNING_CLOSE && t < MORNING_CATCHUP_END ->
+                f?.morning?.finalized != true
+            t >= EVENING_LIVE && t < EVENING_CLOSE -> true
+            t >= EVENING_CLOSE && t < EVENING_CATCHUP_END ->
+                f?.evening?.finalized != true
+            else -> false
+        }
+    }
+
+    private fun publishLocked() {
+        val resolution = resolveLiveState(
+            p = primary,
+            s = null,
+            now = Instant.now(),
+            lastLive = lastLive,
+            cachedFinal = lastFinal,
+            scheduleTime = clock(),
+        )
+
+        if (resolution.heroLive) {
+            lastLive = resolution.hero
+        }
+
+        val hero = resolution.hero
+        if (
+            !resolution.heroLive &&
+            hero != null &&
+            canonicalDate(hero.date) == currentYangonDate() &&
+            hero != lastFinal
+        ) {
+            lastFinal = hero
+            cacheSaver(hero)
+        }
+
+        _state.value = LiveUiState.Data(
+            feed = resolution.displayFeed,
+            hero = resolution.hero,
+            heroLive = resolution.heroLive,
+            stale = false,
+            secondaryFeed = null,
+            sourceMessage = "",
+            status = resolution.status,
+            staleAgeMs = resolution.staleAgeMs,
+        )
+    }
+
+    fun start() {
+        if (!started.compareAndSet(false, true)) return
+
+        fetchCycle()
+
+        schedulerJob = scope.launch {
+            while (isActive) {
+                val t = clock()
+                maybeReferenceFetch(t)
+
+                if (shouldPoll(t)) {
+                    launchRequest()
+                }
+
+                delay(NORMAL_POLL_INTERVAL_MS)
+            }
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var shared: LiveCollector? = null
+
+        val instance: LiveCollector
+            get() = shared ?: error("LiveCollector not started")
+
+        fun startOnce(context: Context) {
+            if (shared != null) return
+
+            synchronized(this) {
+                if (shared != null) return
+
+                val collector = LiveCollector(
+                    scope = CoroutineScope(
+                        kotlinx.coroutines.SupervisorJob() + Dispatchers.Default
+                    ),
+                    fetcher = {
+                        withContext(Dispatchers.IO) {
+                            LiveApi.fetch()
+                        }
+                    },
+                    secondaryFetcher = null,
+                    clock = { LocalTime.now(YANGON) },
+                    cacheLoader = { LiveCacheStore.load(context) },
+                    cacheSaver = { LiveCacheStore.save(context, it) },
+                )
+
+                shared = collector
+                collector.start()
+            }
+        }
+    }
 }
 
-internal object LiveCacheStore{
- private const val PREFS_NAME="live_display_cache";private const val KEY="latest_final"
- fun load(c:Context):LiveHeroSnapshot?=try{val o=JSONObject(c.getSharedPreferences(PREFS_NAME,Context.MODE_PRIVATE).getString(KEY,null)?:return null);if(o.optString("state")!="FINAL_CONFIRMED")null else LiveHeroSnapshot(o.getString("result"),o.getString("set"),o.getString("value"),o.getString("sessionLabel"),o.getString("date"))}catch(_:Exception){null}
- fun save(c:Context,s:LiveHeroSnapshot){runCatching{val o=JSONObject().put("result",s.result).put("set",s.set).put("value",s.value).put("sessionLabel",s.sessionLabel).put("date",s.date).put("state","FINAL_CONFIRMED");c.getSharedPreferences(PREFS_NAME,Context.MODE_PRIVATE).edit().putString(KEY,o.toString()).apply()}}
+internal object LiveCacheStore {
+    private const val PREFS_NAME = "live_display_cache"
+    private const val KEY = "latest_final"
+
+    fun load(context: Context): LiveHeroSnapshot? {
+        return try {
+            val raw = context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY, null)
+                ?: return null
+
+            val o = JSONObject(raw)
+            if (o.optString("state") != "FINAL_CONFIRMED") return null
+
+            val snapshot = LiveHeroSnapshot(
+                result = o.getString("result"),
+                set = o.getString("set"),
+                value = o.getString("value"),
+                sessionLabel = o.getString("sessionLabel"),
+                date = o.getString("date"),
+            )
+
+            snapshot.takeIf {
+                canonicalDate(it.date) == currentYangonDate()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun save(context: Context, snapshot: LiveHeroSnapshot) {
+        runCatching {
+            val o = JSONObject()
+                .put("result", snapshot.result)
+                .put("set", snapshot.set)
+                .put("value", snapshot.value)
+                .put("sessionLabel", snapshot.sessionLabel)
+                .put("date", snapshot.date)
+                .put("state", "FINAL_CONFIRMED")
+
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY, o.toString())
+                .apply()
+        }
+    }
 }
