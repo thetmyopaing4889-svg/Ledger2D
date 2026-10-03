@@ -146,6 +146,7 @@ class LiveCollectorTest {
             scope,
             fetcher = { old },
             clock = { LocalTime.of(9, 34) },
+            dateProvider = { friday },
         )
 
         collector.start()
@@ -372,6 +373,48 @@ class LiveCollectorTest {
         assertEquals("33", state.feed?.internet930)
         assertEquals("98", state.feed?.modern200)
         assertEquals("78", state.feed?.internet200)
+
+        scope.cancel()
+    }
+
+    @Test fun friday_after_evening_final_stops_reference_retries() = runTest {
+        var calls = 0
+        val fridayFeed = feed(
+            "--",
+            "17:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                fridayFeed
+            },
+            clock = { LocalTime.of(17, 0) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
+        runCurrent()
+
+        // Only the app-start fetch is allowed; Friday's post-final period
+        // is a hold state, so no new reference cycle begins.
+        assertEquals(1, calls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("--", state.feed?.modern930)
+        assertEquals("--", state.feed?.internet930)
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
 
         scope.cancel()
     }
