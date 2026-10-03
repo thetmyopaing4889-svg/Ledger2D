@@ -57,6 +57,193 @@ class LiveCollectorTest {
         result = value, set = "1600", value = "20000", finalized = true, providerOpenTime = "16:30:00"
     )
 
+
+    @Test fun daily_cycle_date_switches_at_0930() {
+        val today = currentYangonDate()
+        assertEquals(today.minusDays(1), dailyCycleDate(today, LocalTime.of(9, 29, 59)))
+        assertEquals(today, dailyCycleDate(today, LocalTime.of(9, 30)))
+    }
+
+    @Test fun app_clock_controls_phase_even_when_luke_reports_previous_day_time() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "--",
+            "17:00:00",
+            evening = finalEvening("25"),
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+
+        val result = resolveLiveState(
+            p = SourceObservation(old, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(11, 40),
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("25", result.hero?.result)
+        assertEquals(yesterday.toString(), result.hero?.date)
+    }
+
+    @Test fun current_day_live_replaces_previous_day_fallback_without_rewriting_live_engine() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val previous = feed(
+            "--",
+            "17:00:00",
+            evening = finalEvening("25"),
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+
+        val todayLive = feed(
+            "36",
+            "11:40:00",
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(todayLive, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = LiveHeroSnapshot(
+                result = previous.evening.result,
+                set = previous.evening.set,
+                value = previous.evening.value,
+                sessionLabel = LIVE_SESSION_EVENING_LABEL,
+                date = previous.date,
+            ),
+            scheduleTime = LocalTime.of(11, 40),
+        )
+
+        assertTrue(result.heroLive)
+        assertEquals("36", result.hero?.result)
+        assertEquals(todayLive.date, result.hero?.date)
+    }
+
+    @Test fun successful_0930_reference_starts_new_cycle_and_resets_cards() = runTest {
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "--",
+            "17:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = { old },
+            clock = { LocalTime.of(9, 34) },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+
+        scope.cancel()
+    }
+
+    @Test fun failed_0930_reference_keeps_old_cards_until_1130_then_resets() = runTest {
+        var now = LocalTime.of(9, 34)
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "--",
+            "17:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = { old },
+            clock = { now },
+        )
+
+        collector.start()
+        runCurrent()
+
+        var state = collector.state.value as LiveUiState.Data
+        assertEquals("22", state.feed?.morning?.result)
+        assertEquals("25", state.feed?.evening?.result)
+        assertEquals("--", state.feed?.modern930)
+        assertEquals("--", state.feed?.internet930)
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+
+        now = LocalTime.of(11, 30)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun late_0930_success_after_1130_fills_reference_without_resetting_cards_again() = runTest {
+        var now = LocalTime.of(9, 34)
+        var referenceReady = false
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "--",
+            "17:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+
+        val late = old.copy(modern930 = "80", internet930 = "33")
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = { if (referenceReady) late else old },
+            clock = { now },
+        )
+
+        collector.start()
+        runCurrent()
+
+        now = LocalTime.of(11, 30)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+
+        referenceReady = true
+        advanceTimeBy(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+
+        scope.cancel()
+    }
+
     @Test fun schedule_0930_is_reference() {
         assertEquals(LiveWindowAction.REFERENCE_ONLY, liveWindowAction(LocalTime.of(9, 30)))
     }

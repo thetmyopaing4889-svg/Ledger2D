@@ -731,7 +731,12 @@ private fun LiveReferenceTable(feed: LiveFeedData?) {
                 Surface(Modifier.width(4.dp).height(16.dp), shape = RoundedCornerShape(2.dp), color = AppColors.Gold) {}
                 Text(l.text("အကြည့်စာရင်း", "Reference"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Ink)
                 Spacer(Modifier.weight(1f))
-                Text(feed?.date ?: PENDING, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold)
+                Text(
+                    dailyCycleDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Gold,
+                )
             }
             // Compact grid: one row per reference time, one column per source.
             Row(verticalAlignment = Alignment.CenterVertically) {
