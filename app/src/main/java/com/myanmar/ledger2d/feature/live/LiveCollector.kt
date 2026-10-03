@@ -416,13 +416,15 @@ internal class LiveCollector(
             }
             val finishedAt = monotonicMs()
 
-            if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
+            if (feed == null) return@launch
+            val normalized = normalizeNewDayPending(feed)
+            if (!isUsableLukeSnapshot(normalized)) return@launch
 
             synchronized(stateLock) {
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
-                val incomingTime = parseDecisionInstant(feed)
+                val incomingTime = parseDecisionInstant(normalized)
                 val previousTime = previous?.let(::parseDecisionInstant)
 
                 if (
@@ -433,7 +435,7 @@ internal class LiveCollector(
                     return@synchronized
                 }
 
-                val protected = protectFinalSessions(previous, feed)
+                val protected = protectFinalSessions(previous, normalized)
                 latestAppliedSequence.set(sequence)
                 primary = SourceObservation(
                     protected,
@@ -444,6 +446,26 @@ internal class LiveCollector(
                 cacheFeedSaver(protected)
                 publishLocked()
             }
+        }
+    }
+
+    private fun normalizeNewDayPending(feed: LiveFeedData): LiveFeedData {
+        if (!currentDay(feed)) return feed
+
+        val t = parseDecisionInstant(feed)
+            ?.atZone(YANGON)
+            ?.toLocalTime()
+            ?: return feed
+
+        return if (t >= MORNING_REFERENCE && t < MORNING_CLOSE) {
+            feed.copy(
+                morning = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                modern200 = LIVE_PENDING,
+                internet200 = LIVE_PENDING,
+            )
+        } else {
+            feed
         }
     }
 
