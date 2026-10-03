@@ -127,7 +127,7 @@ private fun isDisplayableFeedForSchedule(
     val feedDate = canonicalDate(feed.date) ?: return false
     val today = currentYangonDate()
     return feedDate == today ||
-        (scheduleTime.isBefore(MORNING_REFERENCE) && feedDate == today.minusDays(1))
+        (scheduleTime.isBefore(MORNING_LIVE) && feedDate == today.minusDays(1))
 }
 
 internal fun canonicalDate(raw: String): LocalDate? = runCatching {
@@ -259,12 +259,12 @@ internal fun resolveLiveState(
 
     return when {
         decisionTime.isBefore(MORNING_LIVE) -> {
-            // Before today's 09:30 boundary, Luke may legitimately return
-            // yesterday's final feed (for example on a fresh install).
-            // Show that previous-day final in LIVE only; never treat it as
-            // today's live/reference data.
+            // Luke may keep returning the latest completed day's feed after
+            // 09:30. Until today's 11:30 live boundary, that previous-day
+            // final remains valid for the LIVE hero only. Reference values
+            // are handled independently and may already belong to today.
             val previousDayFinal = if (
-                effectiveScheduleTime.isBefore(MORNING_REFERENCE) &&
+                effectiveScheduleTime.isBefore(MORNING_LIVE) &&
                 canonicalDate(feed.date) == currentYangonDate().minusDays(1)
             ) {
                 latestFinalFor(feed)
@@ -497,7 +497,6 @@ internal class LiveCollector(
         internet: String,
     ): Boolean =
         feed != null &&
-            currentDay(feed) &&
             isValidLive2d(modern) &&
             isValidLive2d(internet)
 
