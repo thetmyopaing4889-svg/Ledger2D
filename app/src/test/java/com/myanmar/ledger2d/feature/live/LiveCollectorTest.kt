@@ -460,7 +460,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun eleven_thirty_current_day_live_keeps_live_engine_data_but_projection_resets_cards() {
+    @Test fun eleven_thirty_current_day_live_keeps_live_engine_data_but_projection_resets_cards() = runTest {
         val todayFeed = feed(
             "36",
             "11:40:00",
