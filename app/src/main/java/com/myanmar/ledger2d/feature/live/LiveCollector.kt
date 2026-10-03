@@ -679,6 +679,33 @@ internal class LiveCollector(
     private fun maybeReferenceFetch(t: LocalTime) {
         val today = currentYangonDate()
 
+        // The new day starts its session cards at 09:30 regardless of whether
+        // the first reference request succeeds. A failed request must leave
+        // the UI at today's clean pending state; a later success only fills
+        // Modern/Internet and never restores yesterday's session cards.
+        if (t >= MORNING_REFERENCE && referenceResetDate != today) {
+            synchronized(stateLock) {
+                if (referenceResetDate != today) {
+                    referenceResetDate = today
+                    primary = primary?.let { observation ->
+                        if (currentDay(observation.feed)) {
+                            observation.copy(
+                                feed = observation.feed.copy(
+                                    morning = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                                    evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                                    modern200 = LIVE_PENDING,
+                                    internet200 = LIVE_PENDING,
+                                )
+                            )
+                        } else {
+                            observation
+                        }
+                    }
+                    publishLocked()
+                }
+            }
+        }
+
         if (t >= MORNING_REFERENCE && reference930CompleteDate != today) {
             fetchReference930Cycle()
         }
