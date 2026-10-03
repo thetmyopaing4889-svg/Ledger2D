@@ -337,6 +337,8 @@ internal class LiveCollector(
     private val clock: () -> LocalTime = { LocalTime.now(YANGON) },
     cacheLoader: () -> LiveHeroSnapshot? = { null },
     private val cacheSaver: (LiveHeroSnapshot) -> Unit = {},
+    private val cacheFeedLoader: () -> LiveFeedData? = { null },
+    private val cacheFeedSaver: (LiveFeedData) -> Unit = {},
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
