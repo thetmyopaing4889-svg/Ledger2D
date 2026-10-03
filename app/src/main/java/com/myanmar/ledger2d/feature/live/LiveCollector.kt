@@ -233,7 +233,9 @@ internal fun resolveLiveState(
 
     if (feed == null) {
         val cached = cachedFinal?.takeIf {
-            canonicalDate(it.date) == currentYangonDate()
+            val date = canonicalDate(it.date) ?: return@takeIf false
+            date == currentYangonDate() ||
+                (decisionTime.isBefore(MORNING_LIVE) && date == currentYangonDate().minusDays(1))
         }
         return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
     }
@@ -260,7 +262,9 @@ internal fun resolveLiveState(
     return when {
         decisionTime.isBefore(MORNING_LIVE) -> LiveResolution(
             feed,
-            cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() },
+            cachedFinal?.takeIf {
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
+            },
             false,
             LiveStatus.WAITING,
             "",
