@@ -19,6 +19,10 @@ import java.time.ZoneId
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
     private val yangon = ZoneId.of("Asia/Yangon")
+    private val friday = java.time.LocalDate.of(2026, 10, 2)
+    private val saturday = friday.plusDays(1)
+    private val sunday = friday.plusDays(2)
+    private val monday = friday.plusDays(3)
 
     private fun feed(
         value: String,
@@ -30,7 +34,7 @@ class LiveCollectorTest {
         modern200: String = "40",
         internet200: String = "04",
     ) = LiveFeedData(
-        date = currentYangonDate().toString(),
+        date = friday.toString(),
         currentTime = time,
         live = value,
         liveSet = "1600",
@@ -42,7 +46,7 @@ class LiveCollectorTest {
         modern200 = modern200,
         internet200 = internet200,
         sourceTag = "LUKE",
-        serverTimeEpochMs = currentYangonDate()
+        serverTimeEpochMs = friday
             .atTime(LocalTime.parse(time))
             .atZone(yangon)
             .toInstant()
@@ -58,10 +62,13 @@ class LiveCollectorTest {
     )
 
 
-    @Test fun daily_cycle_date_switches_at_0930() {
-        val today = currentYangonDate()
-        assertEquals(today.minusDays(1), dailyCycleDate(today, LocalTime.of(9, 29, 59)))
-        assertEquals(today, dailyCycleDate(today, LocalTime.of(9, 30)))
+    @Test fun daily_cycle_date_switches_at_0930_and_skips_weekend() {
+        assertEquals(friday, dailyCycleDate(friday, LocalTime.of(9, 29, 59)))
+        assertEquals(friday, dailyCycleDate(friday, LocalTime.of(23, 59)))
+        assertEquals(friday, dailyCycleDate(saturday, LocalTime.of(11, 23)))
+        assertEquals(friday, dailyCycleDate(sunday, LocalTime.of(15, 0)))
+        assertEquals(friday, dailyCycleDate(monday, LocalTime.of(9, 29, 59)))
+        assertEquals(monday, dailyCycleDate(monday, LocalTime.of(9, 30)))
     }
 
     @Test fun app_clock_controls_phase_even_when_luke_reports_previous_day_time() {
@@ -79,6 +86,7 @@ class LiveCollectorTest {
             lastLive = null,
             cachedFinal = null,
             scheduleTime = LocalTime.of(11, 40),
+            scheduleDate = friday,
         )
 
         assertFalse(result.heroLive)
@@ -112,6 +120,7 @@ class LiveCollectorTest {
                 date = previous.date,
             ),
             scheduleTime = LocalTime.of(11, 40),
+            scheduleDate = friday,
         )
 
         assertTrue(result.heroLive)
@@ -174,6 +183,7 @@ class LiveCollectorTest {
             scope,
             fetcher = { old },
             clock = { now },
+            dateProvider = { friday },
         )
 
         collector.start()
@@ -222,6 +232,7 @@ class LiveCollectorTest {
             scope,
             fetcher = { if (referenceReady) late else old },
             clock = { now },
+            dateProvider = { friday },
         )
 
         collector.start()
@@ -240,6 +251,199 @@ class LiveCollectorTest {
         assertEquals("--", state.feed?.evening?.result)
         assertEquals("80", state.feed?.modern930)
         assertEquals("33", state.feed?.internet930)
+
+        scope.cancel()
+    }
+
+    @Test fun weekend_holds_friday_state_without_entering_live_phase() {
+        val fridayFeed = feed(
+            "--",
+            "16:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(fridayFeed, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(11, 23),
+            scheduleDate = saturday,
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("25", result.hero?.result)
+        assertEquals(friday.toString(), result.displayFeed?.date)
+        assertEquals("22", result.displayFeed?.morning?.result)
+        assertEquals("25", result.displayFeed?.evening?.result)
+        assertEquals("80", result.displayFeed?.modern930)
+        assertEquals("33", result.displayFeed?.internet930)
+        assertEquals("98", result.displayFeed?.modern200)
+        assertEquals("78", result.displayFeed?.internet200)
+    }
+
+    @Test fun sunday_also_holds_friday_state() {
+        val fridayFeed = feed(
+            "--",
+            "16:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(fridayFeed, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 0),
+            scheduleDate = sunday,
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("25", result.hero?.result)
+        assertEquals(friday.toString(), result.displayFeed?.date)
+    }
+
+    @Test fun monday_before_0930_still_holds_friday_state() {
+        val fridayFeed = feed(
+            "--",
+            "16:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(fridayFeed, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(8, 30),
+            scheduleDate = monday,
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("25", result.hero?.result)
+        assertEquals(friday.toString(), result.displayFeed?.date)
+    }
+
+    @Test fun weekend_collector_does_not_poll_live_or_references() = runTest {
+        var calls = 0
+        val fridayFeed = feed(
+            "--",
+            "16:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                fridayFeed
+            },
+            clock = { LocalTime.of(11, 40) },
+            dateProvider = { saturday },
+        )
+
+        collector.start()
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
+        runCurrent()
+
+        assertEquals(1, calls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("22", state.feed?.morning?.result)
+        assertEquals("25", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+
+        scope.cancel()
+    }
+
+    @Test fun monday_0930_starts_new_working_day_cycle() = runTest {
+        val fridayFeed = feed(
+            "--",
+            "16:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val mondayFeed = fridayFeed.copy(
+            modern930 = "80",
+            internet930 = "33",
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = { mondayFeed },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { monday },
+        )
+
+        collector.start()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+
+        scope.cancel()
+    }
+
+    @Test fun eleven_thirty_current_day_live_keeps_live_engine_data_but_projection_resets_cards() {
+        val todayFeed = feed(
+            "36",
+            "11:40:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = { todayFeed },
+            clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.heroLive)
+        assertEquals("36", state.hero?.result)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
 
         scope.cancel()
     }
@@ -292,6 +496,7 @@ class LiveCollectorTest {
             lastLive = null,
             cachedFinal = null,
             scheduleTime = LocalTime.of(9, 22),
+            scheduleDate = friday,
         )
 
         assertFalse(result.heroLive)
@@ -316,6 +521,7 @@ class LiveCollectorTest {
             lastLive = null,
             cachedFinal = null,
             scheduleTime = LocalTime.of(7, 46),
+            scheduleDate = friday,
         )
 
         assertFalse(result.heroLive)
@@ -339,6 +545,7 @@ class LiveCollectorTest {
             lastLive = null,
             cachedFinal = null,
             scheduleTime = LocalTime.of(9, 34),
+            scheduleDate = friday,
         )
 
         assertFalse(result.heroLive)
@@ -364,6 +571,7 @@ class LiveCollectorTest {
             lastLive = null,
             cachedFinal = null,
             scheduleTime = LocalTime.of(9, 34),
+            scheduleDate = friday,
         )
 
         assertFalse(result.heroLive)
@@ -382,6 +590,7 @@ class LiveCollectorTest {
             null,
             null,
             LocalTime.of(12, 3),
+            friday,
         )
 
         assertEquals("36", result.hero?.result)
@@ -398,6 +607,7 @@ class LiveCollectorTest {
             null,
             null,
             LocalTime.of(17, 0),
+            friday,
         )
 
         assertEquals("77", result.hero?.result)
@@ -413,6 +623,7 @@ class LiveCollectorTest {
                 if (calls == 1) feed("38", "11:40:00") else null
             },
             clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
         )
 
         collector.fetchCycle()
@@ -435,6 +646,7 @@ class LiveCollectorTest {
                 feed(if (calls == 1) "38" else "39", "11:40:00")
             },
             clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
         )
 
         collector.start()
@@ -458,6 +670,7 @@ class LiveCollectorTest {
                 if (calls == 1) first.await() else second.await()
             },
             clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
         )
 
         collector.fetchCycle()
@@ -482,6 +695,7 @@ class LiveCollectorTest {
                 else feed("37", "12:04:00")
             },
             clock = { LocalTime.of(12, 4) },
+            dateProvider = { friday },
         )
 
         collector.fetchCycle()
@@ -504,6 +718,7 @@ class LiveCollectorTest {
                 feed("38", "11:40:00")
             },
             clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
         )
 
         collector.start()
