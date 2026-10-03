@@ -273,12 +273,17 @@ internal fun resolveLiveState(
         )
 
         decisionTime.isBefore(MORNING_CLOSE) -> {
-            val hero = liveHero()
+            val live = liveHero()
+            val carryOver = lastLive
+                ?: cachedFinal?.takeIf {
+                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
+                }
+            val hero = live ?: carryOver ?: finalHero()
             LiveResolution(
                 feed,
-                hero ?: finalHero(),
+                hero,
                 hero != null,
-                if (hero != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
+                if (live != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
@@ -286,7 +291,12 @@ internal fun resolveLiveState(
         }
 
         decisionTime.isBefore(LocalTime.of(13, 0)) -> {
-            val hero = if (morningFinal) finalHero() else liveHero()
+            val live = liveHero()
+            val carryOver = lastLive
+                ?: cachedFinal?.takeIf {
+                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
+                }
+            val hero = if (morningFinal) finalHero() else live ?: carryOver
             LiveResolution(
                 feed,
                 hero,
@@ -852,7 +862,10 @@ internal object LiveCacheStore {
             )
 
             snapshot.takeIf {
-                canonicalDate(it.date) == currentYangonDate()
+                val date = canonicalDate(it.date) ?: return@takeIf false
+                date == currentYangonDate() ||
+                    (LocalTime.now(YANGON).isBefore(MORNING_LIVE) &&
+                        date == currentYangonDate().minusDays(1))
             }
         } catch (_: Exception) {
             null
