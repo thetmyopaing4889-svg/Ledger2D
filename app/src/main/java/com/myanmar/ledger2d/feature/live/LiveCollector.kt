@@ -153,9 +153,13 @@ private fun isDisplayableFeedForSchedule(
 
     // Luke's "date" is the latest completed draw date, not the app's daily
     // cycle date. During a new working-day cycle, the latest completed result
-    // may still belong to the previous working day. During Sat/Sun, the last
-    // working-day feed remains the displayable snapshot.
-    return feedDate == cycleDate || feedDate == previousWorking
+    // may still belong to the previous working day. During Sat/Sun, only the
+    // held last-working-day snapshot is displayable; do not fall back further.
+    return if (!isWorkingDay(today)) {
+        feedDate == cycleDate
+    } else {
+        feedDate == cycleDate || feedDate == previousWorking
+    }
 }
 
 internal fun canonicalDate(raw: String): LocalDate? = runCatching {
