@@ -120,6 +120,16 @@ internal fun liveWindowAction(t: LocalTime): LiveWindowAction = when {
 
 internal fun currentYangonDate(): LocalDate = LocalDate.now(YANGON)
 
+private fun isDisplayableFeedForSchedule(
+    feed: LiveFeedData,
+    scheduleTime: LocalTime,
+): Boolean {
+    val feedDate = canonicalDate(feed.date) ?: return false
+    val today = currentYangonDate()
+    return feedDate == today ||
+        (scheduleTime.isBefore(MORNING_REFERENCE) && feedDate == today.minusDays(1))
+}
+
 internal fun canonicalDate(raw: String): LocalDate? = runCatching {
     LocalDate.parse(raw.trim())
 }.getOrElse {
@@ -211,13 +221,15 @@ internal fun resolveLiveState(
     cachedFinal: LiveHeroSnapshot?,
     scheduleTime: LocalTime? = null,
 ): LiveResolution {
-    val feed = p?.feed?.takeIf(::currentDay)
+    val effectiveScheduleTime = scheduleTime ?: now.atZone(YANGON).toLocalTime()
+    val feed = p?.feed?.takeIf {
+        isDisplayableFeedForSchedule(it, effectiveScheduleTime)
+    }
     val decisionTime = feed
         ?.let(::parseDecisionInstant)
         ?.atZone(YANGON)
         ?.toLocalTime()
-        ?: scheduleTime
-        ?: now.atZone(YANGON).toLocalTime()
+        ?: effectiveScheduleTime
 
     if (feed == null) {
         val cached = cachedFinal?.takeIf {
@@ -352,12 +364,23 @@ internal class LiveCollector(
     private var lastFinal: LiveHeroSnapshot? = null
 
     init {
-        val cached = cacheLoader()
-            ?.takeIf { canonicalDate(it.date) == currentYangonDate() }
+        val scheduleTime = clock()
+        val cachedFeed = cacheFeedLoader()
+            ?.takeIf { isDisplayableFeedForSchedule(it, scheduleTime) }
 
-        if (cached != null) {
-            lastFinal = cached
-            _state.value = LiveUiState.Data(null, cached, false, false)
+        if (cachedFeed != null) {
+            val startedAt = monotonicMs()
+            primary = SourceObservation(cachedFeed, startedAt, startedAt, 0L)
+            lastFinal = latestFinalFor(cachedFeed)
+            publishLocked()
+        } else {
+            val cached = cacheLoader()
+                ?.takeIf { canonicalDate(it.date) == currentYangonDate() }
+
+            if (cached != null) {
+                lastFinal = cached
+                _state.value = LiveUiState.Data(null, cached, false, false)
+            }
         }
     }
 
@@ -402,6 +425,7 @@ internal class LiveCollector(
                     startedAt,
                     finishedAt - startedAt,
                 )
+                cacheFeedSaver(protected)
                 publishLocked()
             }
         }
@@ -430,7 +454,7 @@ internal class LiveCollector(
     }
 
     private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
-        if (!currentDay(feed)) return false
+        if (!isDisplayableFeedForSchedule(feed, clock())) return false
         if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
 
         val hasLive =
@@ -787,6 +811,8 @@ internal class LiveCollector(
                     clock = { LocalTime.now(YANGON) },
                     cacheLoader = { LiveCacheStore.load(context) },
                     cacheSaver = { LiveCacheStore.save(context, it) },
+                    cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
+                    cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
                 )
 
                 shared = collector
@@ -799,6 +825,7 @@ internal class LiveCollector(
 internal object LiveCacheStore {
     private const val PREFS_NAME = "live_display_cache"
     private const val KEY = "latest_final"
+    private const val FEED_KEY = "latest_feed"
 
     fun load(context: Context): LiveHeroSnapshot? {
         return try {
@@ -843,4 +870,84 @@ internal object LiveCacheStore {
                 .apply()
         }
     }
+
+    fun loadFeed(context: Context): LiveFeedData? {
+        return runCatching {
+            val raw = context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(FEED_KEY, null)
+                ?: return null
+
+            val o = JSONObject(raw)
+            LiveFeedData(
+                date = o.optString("date", ""),
+                currentTime = o.optString("currentTime", ""),
+                live = o.optString("live", LIVE_PENDING),
+                liveSet = o.optString("liveSet", LIVE_PENDING),
+                liveVal = o.optString("liveVal", LIVE_PENDING),
+                morning = loadSession(o.optJSONObject("morning")),
+                evening = loadSession(o.optJSONObject("evening")),
+                modern930 = o.optString("modern930", LIVE_PENDING),
+                internet930 = o.optString("internet930", LIVE_PENDING),
+                modern200 = o.optString("modern200", LIVE_PENDING),
+                internet200 = o.optString("internet200", LIVE_PENDING),
+                sourceTag = o.optString("sourceTag", "LUKE"),
+                serverTimeEpochMs = if (o.has("serverTimeEpochMs") && !o.isNull("serverTimeEpochMs")) {
+                    o.optLong("serverTimeEpochMs")
+                } else {
+                    null
+                },
+            )
+        }.getOrNull()
+    }
+
+    private fun loadSession(o: JSONObject?): LiveSessionData {
+        if (o == null) return LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false)
+        return LiveSessionData(
+            result = o.optString("result", LIVE_PENDING),
+            set = o.optString("set", LIVE_PENDING),
+            value = o.optString("value", LIVE_PENDING),
+            finalized = o.optBoolean("finalized", false),
+            historyId = o.optString("historyId").ifBlank { null },
+            providerOpenTime = o.optString("providerOpenTime").ifBlank { null },
+        )
+    }
+
+    fun saveFeed(context: Context, feed: LiveFeedData) {
+        runCatching {
+            val o = JSONObject()
+                .put("date", feed.date)
+                .put("currentTime", feed.currentTime)
+                .put("live", feed.live)
+                .put("liveSet", feed.liveSet)
+                .put("liveVal", feed.liveVal)
+                .put("morning", saveSession(feed.morning))
+                .put("evening", saveSession(feed.evening))
+                .put("modern930", feed.modern930)
+                .put("internet930", feed.internet930)
+                .put("modern200", feed.modern200)
+                .put("internet200", feed.internet200)
+                .put("sourceTag", feed.sourceTag)
+                .apply {
+                    feed.serverTimeEpochMs?.let { put("serverTimeEpochMs", it) }
+                }
+
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(FEED_KEY, o.toString())
+                .apply()
+        }
+    }
+
+    private fun saveSession(session: LiveSessionData): JSONObject =
+        JSONObject()
+            .put("result", session.result)
+            .put("set", session.set)
+            .put("value", session.value)
+            .put("finalized", session.finalized)
+            .apply {
+                session.historyId?.let { put("historyId", it) }
+                session.providerOpenTime?.let { put("providerOpenTime", it) }
+            }
 }
