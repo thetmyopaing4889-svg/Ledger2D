@@ -272,12 +272,16 @@ internal fun resolveLiveState(
         }
 
         decisionTime.isBefore(MORNING_CLOSE) -> {
-            val hero = liveHero()
+            val live = liveHero()
+            val carryOver = cachedFinal?.takeIf {
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
+            }
+            val hero = live ?: carryOver ?: finalHero()
             LiveResolution(
                 feed,
-                hero ?: finalHero(),
-                hero != null,
-                if (hero != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
+                hero,
+                live != null || (hero != null && carryOver != null),
+                if (live != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
@@ -285,7 +289,11 @@ internal fun resolveLiveState(
         }
 
         decisionTime.isBefore(MORNING_CATCHUP_END) -> {
-            val hero = if (morningFinal) finalHero() else liveHero()
+            val live = liveHero()
+            val carryOver = cachedFinal?.takeIf {
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
+            }
+            val hero = if (morningFinal) finalHero() else live ?: carryOver
             LiveResolution(
                 feed,
                 hero,
@@ -512,7 +520,7 @@ internal class LiveCollector(
             ?: return feed
 
         return when {
-            t >= MORNING_REFERENCE && t < MORNING_LIVE -> feed.copy(
+            t >= MORNING_REFERENCE && t < MORNING_CLOSE -> feed.copy(
                 morning = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
                 evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
                 modern200 = LIVE_PENDING,
