@@ -128,7 +128,7 @@ internal fun dailyCycleDate(
 
 private fun isDisplayableFeedForSchedule(
     feed: LiveFeedData,
-    scheduleTime: LocalTime,
+    _scheduleTime: LocalTime,
 ): Boolean {
     val feedDate = canonicalDate(feed.date) ?: return false
     val today = currentYangonDate()
@@ -369,7 +369,9 @@ internal class LiveCollector(
 
     private var schedulerJob: Job? = null
     private var reference930Cycle: Job? = null
+    private var reference930CycleDate: LocalDate? = null
     private var reference200Cycle: Job? = null
+    private var reference200CycleDate: LocalDate? = null
     private var reference930CompleteDate: LocalDate? = null
     private var reference200CompleteDate: LocalDate? = null
     private var referenceResetDate: LocalDate? = null
@@ -559,6 +561,7 @@ internal class LiveCollector(
         // At 11:30, the cards must reset regardless of reference success.
         if (
             referenceResetDate == cycleDate &&
+            !t.isBefore(MORNING_REFERENCE) &&
             t.isBefore(MORNING_LIVE)
         ) {
             out = out.copy(
@@ -649,10 +652,16 @@ internal class LiveCollector(
 
     private fun fetchReference930Cycle() {
         val today = currentYangonDate()
-        if (reference930Cycle?.isActive == true || reference930CompleteDate == today) {
+        if (reference930CompleteDate == today) {
             return
         }
+        if (reference930Cycle?.isActive == true) {
+            if (reference930CycleDate == today) return
+            reference930Cycle?.cancel()
+            reference930Cycle = null
+        }
 
+        reference930CycleDate = today
         reference930Cycle = scope.launch {
             val cycleDate = today
 
@@ -674,10 +683,16 @@ internal class LiveCollector(
 
     private fun fetchReference200Cycle() {
         val today = currentYangonDate()
-        if (reference200Cycle?.isActive == true || reference200CompleteDate == today) {
+        if (reference200CompleteDate == today) {
             return
         }
+        if (reference200Cycle?.isActive == true) {
+            if (reference200CycleDate == today) return
+            reference200Cycle?.cancel()
+            reference200Cycle = null
+        }
 
+        reference200CycleDate = today
         reference200Cycle = scope.launch {
             val cycleDate = today
 
