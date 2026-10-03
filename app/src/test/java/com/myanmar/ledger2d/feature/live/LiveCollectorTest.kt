@@ -147,6 +147,44 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+
+    @Test fun daily_reset_clears_future_fields_and_preserves_yesterday_context() = runTest {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot("77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString())
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                feed(
+                    value = "38",
+                    time = "09:35:00",
+                    morning = finalMorning("36"),
+                    evening = finalEvening("77"),
+                    modern930 = "98",
+                    internet930 = "15",
+                    modern200 = "40",
+                    internet200 = "04",
+                )
+            },
+            clock = { LocalTime.of(9, 35) },
+            cacheLoader = { cached },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("77", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("98", state.feed?.modern930)
+        assertEquals("15", state.feed?.internet930)
+        assertEquals(LIVE_PENDING, state.feed?.modern200)
+        assertEquals(LIVE_PENDING, state.feed?.internet200)
+        assertEquals(LIVE_PENDING, state.feed?.morning?.result)
+        assertEquals(LIVE_PENDING, state.feed?.evening?.result)
+        scope.cancel()
+    }
+
     @Test fun previous_day_feed_is_never_selected_as_current_hero() {
         val yesterday = currentYangonDate().minusDays(1)
         val old = feed("38", "17:00:00").copy(date = yesterday.toString())
