@@ -64,7 +64,7 @@ class LiveCollectorTest {
 
 
     @Test fun daily_cycle_date_switches_at_0930_and_skips_weekend() {
-        assertEquals(friday, dailyCycleDate(friday, LocalTime.of(9, 29, 59)))
+        assertEquals(thursday, dailyCycleDate(friday, LocalTime.of(9, 29, 59)))
         assertEquals(friday, dailyCycleDate(friday, LocalTime.of(23, 59)))
         assertEquals(friday, dailyCycleDate(saturday, LocalTime.of(11, 23)))
         assertEquals(friday, dailyCycleDate(sunday, LocalTime.of(15, 0)))
