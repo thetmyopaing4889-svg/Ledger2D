@@ -136,11 +136,7 @@ internal fun dailyCycleDate(
     date: LocalDate = currentYangonDate(),
     time: LocalTime = LocalTime.now(YANGON),
 ): LocalDate =
-    when {
-        !isWorkingDay(date) -> previousWorkingDay(date)
-        time.isBefore(MORNING_REFERENCE) -> previousWorkingDay(date)
-        else -> date
-    }
+    if (isWorkingDay(date)) date else previousWorkingDay(date)
 
 private fun isDisplayableFeedForSchedule(
     feed: LiveFeedData,
@@ -617,6 +613,16 @@ internal class LiveCollector(
                 )
             }
             reference200PendingDate == cycleDate -> {
+                out = out.copy(
+                    modern200 = LIVE_PENDING,
+                    internet200 = LIVE_PENDING,
+                )
+            }
+            isWorkingDay(today) &&
+                !t.isBefore(MORNING_REFERENCE) &&
+                reference200Date != cycleDate -> {
+                // The 14:00 slot belongs to the new working-day cycle from
+                // 09:30 onward, even before its independent retry cycle starts.
                 out = out.copy(
                     modern200 = LIVE_PENDING,
                     internet200 = LIVE_PENDING,
