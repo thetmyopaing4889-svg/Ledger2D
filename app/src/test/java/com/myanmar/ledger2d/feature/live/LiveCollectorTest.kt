@@ -135,6 +135,65 @@ class LiveCollectorTest {
         assertEquals(null, result.displayFeed)
     }
 
+
+    @Test fun next_day_before_1130_keeps_yesterday_final_as_carry_over() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+        val f = feed(
+            value = "38",
+            time = "09:35:00",
+            morning = finalMorning("36"),
+            evening = finalEvening("77"),
+            modern930 = "98",
+            internet930 = "15",
+            modern200 = "40",
+            internet200 = "04",
+        )
+
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            cached,
+            LocalTime.of(9, 35),
+        )
+
+        assertEquals("77", result.hero?.result)
+        assertFalse(result.heroLive)
+        assertEquals("98", result.displayFeed?.modern930)
+        assertEquals("15", result.displayFeed?.internet930)
+    }
+
+    @Test fun next_day_1130_can_show_carry_over_as_live_until_new_live_arrives() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val cached = LiveHeroSnapshot(
+            "77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, yesterday.toString()
+        )
+        val f = feed(
+            value = LIVE_PENDING,
+            time = "11:35:00",
+            modern930 = "98",
+            internet930 = "15",
+            modern200 = LIVE_PENDING,
+            internet200 = LIVE_PENDING,
+        )
+
+        val result = resolveLiveState(
+            SourceObservation(f, 100L, 0L, 100L),
+            null,
+            java.time.Instant.now(),
+            null,
+            cached,
+            LocalTime.of(11, 35),
+        )
+
+        assertEquals("77", result.hero?.result)
+        assertTrue(result.heroLive)
+    }
+
     @Test fun morning_final_is_shown_immediately_after_final_response() {
         val f = feed("36", "12:03:00", morning = finalMorning("36"))
         val result = resolveLiveState(
