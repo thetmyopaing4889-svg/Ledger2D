@@ -233,7 +233,9 @@ internal fun resolveLiveState(
 
     if (feed == null) {
         val cached = cachedFinal?.takeIf {
-            canonicalDate(it.date) == currentYangonDate()
+            val date = canonicalDate(it.date) ?: return@takeIf false
+            date == currentYangonDate() ||
+                (decisionTime.isBefore(MORNING_LIVE) && date == currentYangonDate().minusDays(1))
         }
         return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
     }
@@ -260,7 +262,9 @@ internal fun resolveLiveState(
     return when {
         decisionTime.isBefore(MORNING_LIVE) -> LiveResolution(
             feed,
-            cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() },
+            cachedFinal?.takeIf {
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
+            },
             false,
             LiveStatus.WAITING,
             "",
@@ -269,12 +273,17 @@ internal fun resolveLiveState(
         )
 
         decisionTime.isBefore(MORNING_CLOSE) -> {
-            val hero = liveHero()
+            val live = liveHero()
+            val carryOver = lastLive
+                ?: cachedFinal?.takeIf {
+                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
+                }
+            val hero = live ?: carryOver ?: finalHero()
             LiveResolution(
                 feed,
-                hero ?: finalHero(),
+                hero,
                 hero != null,
-                if (hero != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
+                if (live != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
@@ -282,7 +291,12 @@ internal fun resolveLiveState(
         }
 
         decisionTime.isBefore(LocalTime.of(13, 0)) -> {
-            val hero = if (morningFinal) finalHero() else liveHero()
+            val live = liveHero()
+            val carryOver = lastLive
+                ?: cachedFinal?.takeIf {
+                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
+                }
+            val hero = if (morningFinal) finalHero() else live ?: carryOver
             LiveResolution(
                 feed,
                 hero,
@@ -402,13 +416,15 @@ internal class LiveCollector(
             }
             val finishedAt = monotonicMs()
 
-            if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
+            if (feed == null) return@launch
+            val normalized = normalizeNewDayPending(feed)
+            if (!isUsableLukeSnapshot(normalized)) return@launch
 
             synchronized(stateLock) {
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
-                val incomingTime = parseDecisionInstant(feed)
+                val incomingTime = parseDecisionInstant(normalized)
                 val previousTime = previous?.let(::parseDecisionInstant)
 
                 if (
@@ -419,7 +435,7 @@ internal class LiveCollector(
                     return@synchronized
                 }
 
-                val protected = protectFinalSessions(previous, feed)
+                val protected = protectFinalSessions(previous, normalized)
                 latestAppliedSequence.set(sequence)
                 primary = SourceObservation(
                     protected,
@@ -430,6 +446,26 @@ internal class LiveCollector(
                 cacheFeedSaver(protected)
                 publishLocked()
             }
+        }
+    }
+
+    private fun normalizeNewDayPending(feed: LiveFeedData): LiveFeedData {
+        if (!currentDay(feed)) return feed
+
+        val t = parseDecisionInstant(feed)
+            ?.atZone(YANGON)
+            ?.toLocalTime()
+            ?: return feed
+
+        return if (t >= MORNING_REFERENCE && t < MORNING_CLOSE) {
+            feed.copy(
+                morning = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                modern200 = LIVE_PENDING,
+                internet200 = LIVE_PENDING,
+            )
+        } else {
+            feed
         }
     }
 
@@ -665,6 +701,33 @@ internal class LiveCollector(
     private fun maybeReferenceFetch(t: LocalTime) {
         val today = currentYangonDate()
 
+        // The new day starts its session cards at 09:30 regardless of whether
+        // the first reference request succeeds. A failed request must leave
+        // the UI at today's clean pending state; a later success only fills
+        // Modern/Internet and never restores yesterday's session cards.
+        if (t >= MORNING_REFERENCE && referenceResetDate != today) {
+            synchronized(stateLock) {
+                if (referenceResetDate != today) {
+                    referenceResetDate = today
+                    primary = primary?.let { observation ->
+                        if (currentDay(observation.feed)) {
+                            observation.copy(
+                                feed = observation.feed.copy(
+                                    morning = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                                    evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                                    modern200 = LIVE_PENDING,
+                                    internet200 = LIVE_PENDING,
+                                )
+                            )
+                        } else {
+                            observation
+                        }
+                    }
+                    publishLocked()
+                }
+            }
+        }
+
         if (t >= MORNING_REFERENCE && reference930CompleteDate != today) {
             fetchReference930Cycle()
         }
@@ -848,7 +911,10 @@ internal object LiveCacheStore {
             )
 
             snapshot.takeIf {
-                canonicalDate(it.date) == currentYangonDate()
+                val date = canonicalDate(it.date) ?: return@takeIf false
+                date == currentYangonDate() ||
+                    (LocalTime.now(YANGON).isBefore(MORNING_LIVE) &&
+                        date == currentYangonDate().minusDays(1))
             }
         } catch (_: Exception) {
             null
