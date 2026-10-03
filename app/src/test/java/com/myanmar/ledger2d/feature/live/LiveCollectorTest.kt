@@ -20,6 +20,7 @@ import java.time.ZoneId
 class LiveCollectorTest {
     private val yangon = ZoneId.of("Asia/Yangon")
     private val friday = java.time.LocalDate.of(2026, 10, 2)
+    private val thursday = friday.minusDays(1)
     private val saturday = friday.plusDays(1)
     private val sunday = friday.plusDays(2)
     private val monday = friday.plusDays(3)
@@ -72,7 +73,7 @@ class LiveCollectorTest {
     }
 
     @Test fun app_clock_controls_phase_even_when_luke_reports_previous_day_time() {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "--",
             "17:00:00",
@@ -95,7 +96,7 @@ class LiveCollectorTest {
     }
 
     @Test fun current_day_live_replaces_previous_day_fallback_without_rewriting_live_engine() {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val previous = feed(
             "--",
             "17:00:00",
@@ -129,7 +130,7 @@ class LiveCollectorTest {
     }
 
     @Test fun successful_0930_reference_starts_new_cycle_and_resets_cards() = runTest {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "--",
             "17:00:00",
@@ -167,7 +168,7 @@ class LiveCollectorTest {
 
     @Test fun failed_0930_reference_keeps_old_cards_until_1130_then_resets() = runTest {
         var now = LocalTime.of(9, 34)
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "--",
             "17:00:00",
@@ -214,7 +215,7 @@ class LiveCollectorTest {
     @Test fun late_0930_success_after_1130_fills_reference_without_resetting_cards_again() = runTest {
         var now = LocalTime.of(9, 34)
         var referenceReady = false
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "--",
             "17:00:00",
@@ -524,7 +525,7 @@ class LiveCollectorTest {
     }
 
     @Test fun previous_day_morning_response_shows_yesterdays_final_before_0930() {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "--",
             "09:22:11",
@@ -549,7 +550,7 @@ class LiveCollectorTest {
     }
 
     @Test fun previous_day_feed_is_kept_until_0930() {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "38",
             "17:00:00",
@@ -573,7 +574,7 @@ class LiveCollectorTest {
     }
 
     @Test fun previous_day_feed_remains_visible_after_0930_until_live_boundary() {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "38",
             "17:00:00",
@@ -598,7 +599,7 @@ class LiveCollectorTest {
     }
 
     @Test fun yesterday_live_and_today_reference_can_coexist() {
-        val yesterday = currentYangonDate().minusDays(1)
+        val yesterday = thursday
         val old = feed(
             "38",
             "17:00:00",
