@@ -541,7 +541,14 @@ internal class LiveCollector(
         // while we are still before the 11:30 live boundary. This prevents
         // old values from flashing through the new reference cycle, but does
         // not allow the reset to overwrite LIVE polling after 11:30.
-        if (referenceResetDate == currentYangonDate() && clock().isBefore(MORNING_LIVE)) {
+        // Reset today's session cards for the new reference cycle, but never
+        // erase a previous-day final that is intentionally being shown on a
+        // fresh install before today's 11:30 live boundary.
+        if (
+            referenceResetDate == currentYangonDate() &&
+            clock().isBefore(MORNING_LIVE) &&
+            currentDay(out)
+        ) {
             out = out.copy(
                 morning = LiveSessionData(
                     LIVE_PENDING,
