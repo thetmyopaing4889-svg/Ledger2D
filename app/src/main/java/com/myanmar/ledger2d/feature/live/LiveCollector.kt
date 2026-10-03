@@ -136,7 +136,11 @@ internal fun dailyCycleDate(
     date: LocalDate = currentYangonDate(),
     time: LocalTime = LocalTime.now(YANGON),
 ): LocalDate =
-    if (isWorkingDay(date)) date else previousWorkingDay(date)
+    when {
+        !isWorkingDay(date) -> previousWorkingDay(date)
+        time.isBefore(MORNING_REFERENCE) -> previousWorkingDay(date)
+        else -> date
+    }
 
 private fun isDisplayableFeedForSchedule(
     feed: LiveFeedData,
@@ -667,6 +671,18 @@ internal class LiveCollector(
                 morning = pendingSessions,
                 evening = pendingSessions,
             )
+        }
+
+        if (
+            workingToday &&
+            !t.isBefore(EVENING_LIVE) &&
+            t.isBefore(EVENING_CLOSE) &&
+            currentDay(out, today)
+        ) {
+            // Evening starts a new session at 16:00. Preserve the verified
+            // morning final, but project the evening card to Pending until
+            // the 16:30 final is confirmed.
+            out = out.copy(evening = pendingSessions)
         }
 
         return out
