@@ -444,7 +444,7 @@ class LiveCollectorTest {
             dateProvider = { monday },
         )
 
-        collector.fetchCycle()
+        collector.start()
         runCurrent()
 
         val state = collector.state.value as LiveUiState.Data
