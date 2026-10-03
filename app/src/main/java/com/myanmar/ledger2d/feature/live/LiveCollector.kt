@@ -258,15 +258,30 @@ internal fun resolveLiveState(
     fun finalHero(): LiveHeroSnapshot? = latestFinalFor(feed)
 
     return when {
-        decisionTime.isBefore(MORNING_LIVE) -> LiveResolution(
-            feed,
-            cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() },
-            false,
-            LiveStatus.WAITING,
-            "",
-            1,
-            age(p),
-        )
+        decisionTime.isBefore(MORNING_LIVE) -> {
+            // Before today's 09:30 boundary, Luke may legitimately return
+            // yesterday's final feed (for example on a fresh install).
+            // Show that previous-day final in LIVE only; never treat it as
+            // today's live/reference data.
+            val previousDayFinal = if (
+                effectiveScheduleTime.isBefore(MORNING_REFERENCE) &&
+                canonicalDate(feed.date) == currentYangonDate().minusDays(1)
+            ) {
+                latestFinalFor(feed)
+            } else {
+                cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() }
+            }
+
+            LiveResolution(
+                feed,
+                previousDayFinal,
+                false,
+                LiveStatus.WAITING,
+                "",
+                1,
+                age(p),
+            )
+        }
 
         decisionTime.isBefore(MORNING_CLOSE) -> {
             val hero = liveHero()
