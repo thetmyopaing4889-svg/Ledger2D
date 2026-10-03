@@ -136,7 +136,7 @@ class LiveCollectorTest {
         assertEquals(yesterday.toString(), result.displayFeed?.date)
     }
 
-    @Test fun previous_day_feed_is_hidden_at_0930_boundary() {
+    @Test fun previous_day_feed_remains_visible_after_0930_until_live_boundary() {
         val yesterday = currentYangonDate().minusDays(1)
         val old = feed(
             "38",
@@ -151,12 +151,39 @@ class LiveCollectorTest {
             now = java.time.Instant.now(),
             lastLive = null,
             cachedFinal = null,
-            scheduleTime = LocalTime.of(9, 30),
+            scheduleTime = LocalTime.of(9, 34),
         )
 
         assertFalse(result.heroLive)
-        assertEquals(null, result.hero)
-        assertEquals(null, result.displayFeed)
+        assertEquals("77", result.hero?.result)
+        assertEquals(yesterday.toString(), result.hero?.date)
+        assertEquals(yesterday.toString(), result.displayFeed?.date)
+    }
+
+    @Test fun yesterday_live_and_today_reference_can_coexist() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "38",
+            "17:00:00",
+            evening = finalEvening("77"),
+            modern930 = "80",
+            internet930 = "33",
+        ).copy(date = yesterday.toString())
+
+        val result = resolveLiveState(
+            p = SourceObservation(old, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(9, 34),
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("77", result.hero?.result)
+        assertEquals("80", result.displayFeed?.modern930)
+        assertEquals("33", result.displayFeed?.internet930)
+        assertEquals(yesterday.toString(), result.displayFeed?.date)
     }
 
     @Test fun morning_final_is_shown_immediately_after_final_response() {
