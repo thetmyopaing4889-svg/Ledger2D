@@ -89,6 +89,30 @@ class LiveCollectorTest {
         assertEquals(LiveWindowAction.FINALIZING, liveWindowAction(LocalTime.of(16, 30)))
     }
 
+    @Test fun previous_day_morning_response_shows_yesterdays_final_before_0930() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "--",
+            "09:22:11",
+            evening = finalEvening("25"),
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+        val oldObs = SourceObservation(old, 0L, 0L, 10L)
+
+        val result = resolveLiveState(
+            p = oldObs,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(9, 22),
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("25", result.hero?.result)
+        assertEquals(yesterday.toString(), result.hero?.date)
+        assertEquals(yesterday.toString(), result.displayFeed?.date)
+    }
+
     @Test fun previous_day_feed_is_kept_until_0930() {
         val yesterday = currentYangonDate().minusDays(1)
         val old = feed(
