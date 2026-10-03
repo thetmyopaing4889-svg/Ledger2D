@@ -223,11 +223,11 @@ internal fun resolveLiveState(
         ?: now.atZone(YANGON).toLocalTime()
 
     if (feed == null) {
-        // Before today's 09:30 reference window, the only meaningful hero
-        // fallback is yesterday's final result. It keeps its original date so
-        // it can never be mistaken for today's result.
+        // Until today's 11:30 LIVE session starts, keep yesterday evening's
+        // final visible as the carry-over display. It is explicitly dated
+        // yesterday and is never treated as today's result.
         val cached = cachedFinal?.takeIf {
-            decisionTime.isBefore(MORNING_REFERENCE) &&
+            decisionTime.isBefore(MORNING_LIVE) &&
                 canonicalDate(it.date) == currentYangonDate().minusDays(1)
         }
         return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
@@ -254,12 +254,11 @@ internal fun resolveLiveState(
 
     return when {
         decisionTime.isBefore(MORNING_LIVE) -> {
-            val cached = if (decisionTime.isBefore(MORNING_REFERENCE)) {
-                cachedFinal?.takeIf {
-                    canonicalDate(it.date) == currentYangonDate().minusDays(1)
-                }
-            } else {
-                null
+            // Daily reset window: from 09:30 until 11:30 the reference table
+            // belongs to TODAY, while the hero continues carrying yesterday's
+            // evening final until today's LIVE feed becomes available.
+            val cached = cachedFinal?.takeIf {
+                canonicalDate(it.date) == currentYangonDate().minusDays(1)
             }
             LiveResolution(
                 feed,
@@ -412,13 +411,15 @@ internal class LiveCollector(
             }
             val finishedAt = monotonicMs()
 
-            if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
+            if (feed == null) return@launch
+            val normalized = normalizeDailyReset(feed)
+            if (!isUsableLukeSnapshot(normalized)) return@launch
 
             synchronized(stateLock) {
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
-                val incomingTime = parseDecisionInstant(feed)
+                val incomingTime = parseDecisionInstant(normalized)
                 val previousTime = previous?.let(::parseDecisionInstant)
 
                 if (
@@ -429,7 +430,7 @@ internal class LiveCollector(
                     return@synchronized
                 }
 
-                val protected = protectFinalSessions(previous, feed)
+                val protected = protectFinalSessions(previous, normalized)
                 latestAppliedSequence.set(sequence)
                 primary = SourceObservation(
                     protected,
@@ -488,6 +489,42 @@ internal class LiveCollector(
                 incoming.internet200
             },
         )
+    }
+
+    /**
+     * Luke can expose values from the previous daily cycle in fields that are
+     * not yet due for today's cycle. Once the collector has crossed 09:30,
+     * today's reference/session state must start clean:
+     * - 09:30 Modern/Internet are populated only from today's response.
+     * - 14:00 Modern/Internet are forced to pending until the 14:00 cycle.
+     * - 12:01 / 4:30 session cards are pending until their own final windows.
+     *
+     * The LIVE field is intentionally left untouched; display-window logic
+     * decides when it can become the hero.
+     */
+    private fun normalizeDailyReset(feed: LiveFeedData): LiveFeedData {
+        val today = currentYangonDate()
+        if (canonicalDate(feed.date) != today) return feed
+
+        val t = parseDecisionInstant(feed)
+            ?.atZone(YANGON)
+            ?.toLocalTime()
+            ?: return feed
+
+        return when {
+            t >= MORNING_REFERENCE && t < MORNING_LIVE -> feed.copy(
+                morning = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                modern200 = LIVE_PENDING,
+                internet200 = LIVE_PENDING,
+            )
+            t >= MORNING_LIVE && t < AFTERNOON_REFERENCE -> feed.copy(
+                evening = LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false),
+                modern200 = LIVE_PENDING,
+                internet200 = LIVE_PENDING,
+            )
+            else -> feed
+        }
     }
 
     private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
