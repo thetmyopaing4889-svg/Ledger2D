@@ -443,8 +443,8 @@ class LiveCollectorTest {
             dateProvider = { monday },
         )
 
-        collector.start()
-        advanceUntilIdle()
+        collector.fetchCycle()
+        runCurrent()
 
         val state = collector.state.value as LiveUiState.Data
         assertEquals("25", state.hero?.result)
@@ -479,8 +479,8 @@ class LiveCollectorTest {
             dateProvider = { friday },
         )
 
-        collector.start()
-        advanceUntilIdle()
+        collector.fetchCycle()
+        runCurrent()
 
         val state = collector.state.value as LiveUiState.Data
         assertTrue(state.heroLive)
