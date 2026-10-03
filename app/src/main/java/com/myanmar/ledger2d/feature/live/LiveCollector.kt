@@ -448,6 +448,19 @@ internal class LiveCollector(
                     startedAt,
                     finishedAt - startedAt,
                 )
+
+                // Keep the latest completed result from the previous day in
+                // memory as a hero fallback when today's Luke feed arrives
+                // without today's LIVE value yet. This is display state only;
+                // it never participates in betting or ledger calculations.
+                val incomingFinal = latestFinalFor(protected)
+                if (
+                    incomingFinal != null &&
+                    canonicalDate(incomingFinal.date) != currentYangonDate()
+                ) {
+                    lastFinal = incomingFinal
+                }
+
                 cacheFeedSaver(protected)
                 publishLocked()
             }
