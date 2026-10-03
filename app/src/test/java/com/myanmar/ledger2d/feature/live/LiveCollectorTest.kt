@@ -89,9 +89,13 @@ class LiveCollectorTest {
         assertEquals(LiveWindowAction.FINALIZING, liveWindowAction(LocalTime.of(16, 30)))
     }
 
-    @Test fun previous_day_feed_is_never_selected_as_current_hero() {
+    @Test fun previous_day_feed_is_kept_until_0930() {
         val yesterday = currentYangonDate().minusDays(1)
-        val old = feed("38", "17:00:00").copy(date = yesterday.toString())
+        val old = feed(
+            "38",
+            "17:00:00",
+            evening = finalEvening("77"),
+        ).copy(date = yesterday.toString())
         val oldObs = SourceObservation(old, 0L, 0L, 10L)
 
         val result = resolveLiveState(
@@ -99,8 +103,31 @@ class LiveCollectorTest {
             s = null,
             now = java.time.Instant.now(),
             lastLive = null,
-            cachedFinal = LiveHeroSnapshot("08", "1", "2", LIVE_SESSION_MORNING_LABEL, yesterday.toString()),
-            scheduleTime = LocalTime.of(17, 0),
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(7, 46),
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("77", result.hero?.result)
+        assertEquals(yesterday.toString(), result.displayFeed?.date)
+    }
+
+    @Test fun previous_day_feed_is_hidden_at_0930_boundary() {
+        val yesterday = currentYangonDate().minusDays(1)
+        val old = feed(
+            "38",
+            "17:00:00",
+            evening = finalEvening("77"),
+        ).copy(date = yesterday.toString())
+        val oldObs = SourceObservation(old, 0L, 0L, 10L)
+
+        val result = resolveLiveState(
+            p = oldObs,
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(9, 30),
         )
 
         assertFalse(result.heroLive)
