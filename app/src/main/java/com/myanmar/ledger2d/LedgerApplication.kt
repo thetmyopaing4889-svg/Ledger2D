@@ -18,7 +18,10 @@ class LedgerApplication : Application() {
 
         // App-scoped 2D LIVE collector: window-gated polling that continues
         // during the scheduled LIVE windows even when the screen is closed.
-        LiveCollector.startOnce(this)
+        LiveCollector.startOnce(
+            this,
+            liveRoomSaver = { patches -> container.liveResults.apply(patches) },
+        )
     }
 }
 
@@ -29,6 +32,7 @@ class AppContainer(val database: LedgerDatabase) {
     val bets: BetRepository = RoomBetRepository(database)
     val winners: WinningNumberRepository = RoomWinningNumberRepository(database)
     val history: HistoryResultRepository = RoomHistoryResultRepository(database)
+    val liveResults: LiveDailyResultRepository = RoomLiveDailyResultRepository(database)
     val closedDays: ClosedDayRepository = RoomClosedDayRepository(database.closedDayDao())
     val closedNumbers: ClosedNumberRepository = RoomClosedNumberRepository(database.closedNumberDao())
     val limits: LimitRepository = RoomLimitRepository(database.limitDao())

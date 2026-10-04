@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalTime
@@ -771,3 +772,272 @@ class LiveCollectorTest {
         scope.cancel()
     }
 }
+
+
+    @Test fun live_room_patches_split_previous_result_date_from_current_cycle_references() {
+        val f = feed(
+            "--",
+            "09:34:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = thursday.toString(), serverTimeEpochMs = 1_000L)
+
+        val patches = buildLiveDailyResultPatches(
+            feed = f,
+            today = friday,
+            now = LocalTime.of(9, 34),
+        )
+
+        val yesterday = patches.single { it.date == thursday }
+        val todayPatch = patches.single { it.date == friday }
+
+        assertEquals("22", yesterday.morning2d)
+        assertEquals("25", yesterday.evening2d)
+        assertNull(yesterday.modern930)
+        assertEquals("80", todayPatch.modern930)
+        assertEquals("33", todayPatch.internet930)
+        assertEquals("98", todayPatch.modern200)
+        assertEquals("78", todayPatch.internet200)
+        assertNull(todayPatch.morning2d)
+        assertNull(todayPatch.evening2d)
+    }
+
+    @Test fun live_room_does_not_persist_current_day_references_before_0930() {
+        val f = feed(
+            "--",
+            "09:22:11",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = thursday.toString(), serverTimeEpochMs = 900L)
+
+        val patches = buildLiveDailyResultPatches(
+            feed = f,
+            today = friday,
+            now = LocalTime.of(9, 29, 59),
+        )
+
+        val yesterday = patches.single { it.date == thursday }
+        assertEquals("22", yesterday.morning2d)
+        assertNull(patches.firstOrNull { it.date == friday })
+    }
+
+    @Test fun live_room_full_evening_snapshot_is_one_current_day_patch() {
+        val f = feed(
+            "25",
+            "18:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = friday.toString(), serverTimeEpochMs = 10_000L)
+
+        val patches = buildLiveDailyResultPatches(
+            feed = f,
+            today = friday,
+            now = LocalTime.of(18, 0),
+        )
+
+        assertEquals(1, patches.size)
+        val p = patches.single()
+        assertEquals(friday, p.date)
+        assertEquals("80", p.modern930)
+        assertEquals("33", p.internet930)
+        assertEquals("98", p.modern200)
+        assertEquals("78", p.internet200)
+        assertEquals("22", p.morning2d)
+        assertEquals("25", p.evening2d)
+    }
+
+    @Test fun live_room_pending_patch_never_erases_existing_valid_values() {
+        val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
+            id = 7L,
+            date = friday,
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+            morning2d = "22",
+            morningSet = "1,000",
+            morningValue = "2,000",
+            evening2d = "25",
+            eveningSet = "3,000",
+            eveningValue = "4,000",
+            reference930SourceAt = 100L,
+            reference200SourceAt = 200L,
+            morningSourceAt = 300L,
+            eveningSourceAt = 400L,
+            updatedAt = 500L,
+        )
+
+        val pending = com.myanmar.ledger2d.core.database.LiveDailyResultPatch(
+            date = friday,
+        )
+
+        val merged = com.myanmar.ledger2d.core.repository.LiveDailyResultMerger.merge(
+            old = old,
+            patch = pending,
+            updatedAt = 600L,
+        )
+
+        assertEquals(old, merged)
+    }
+
+    @Test fun live_room_morning_correction_can_update_morning_without_blocking_later_reference_retry() {
+        val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
+            id = 1L,
+            date = friday,
+            modern930 = null,
+            internet930 = null,
+            modern200 = null,
+            internet200 = null,
+            morning2d = "35",
+            morningSet = "1,000",
+            morningValue = "2,000",
+            evening2d = null,
+            eveningSet = null,
+            eveningValue = null,
+            reference930SourceAt = null,
+            reference200SourceAt = null,
+            morningSourceAt = 120L,
+            eveningSourceAt = null,
+            updatedAt = 120L,
+        )
+
+        val lateReference = com.myanmar.ledger2d.core.database.LiveDailyResultPatch(
+            date = friday,
+            modern930 = "80",
+            internet930 = "33",
+            reference930SourceAt = 100L,
+        )
+
+        val merged = com.myanmar.ledger2d.core.repository.LiveDailyResultMerger.merge(
+            old = old,
+            patch = lateReference,
+            updatedAt = 200L,
+        )
+
+        assertEquals("35", merged.morning2d)
+        assertEquals("80", merged.modern930)
+        assertEquals("33", merged.internet930)
+    }
+
+    @Test fun live_room_newer_provider_correction_updates_final_morning_result() {
+        val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
+            id = 1L,
+            date = friday,
+            modern930 = null,
+            internet930 = null,
+            modern200 = null,
+            internet200 = null,
+            morning2d = "35",
+            morningSet = "1,000",
+            morningValue = "2,000",
+            evening2d = null,
+            eveningSet = null,
+            eveningValue = null,
+            reference930SourceAt = null,
+            reference200SourceAt = null,
+            morningSourceAt = 120L,
+            eveningSourceAt = null,
+            updatedAt = 120L,
+        )
+
+        val corrected = com.myanmar.ledger2d.core.database.LiveDailyResultPatch(
+            date = friday,
+            morning2d = "36",
+            morningSet = "1,100",
+            morningValue = "2,100",
+            morningSourceAt = 130L,
+        )
+
+        val merged = com.myanmar.ledger2d.core.repository.LiveDailyResultMerger.merge(
+            old = old,
+            patch = corrected,
+            updatedAt = 130L,
+        )
+
+        assertEquals("36", merged.morning2d)
+        assertEquals("1,100", merged.morningSet)
+        assertEquals("2,100", merged.morningValue)
+    }
+
+    @Test fun live_room_older_morning_observation_cannot_regress_newer_morning_result() {
+        val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
+            id = 1L,
+            date = friday,
+            modern930 = null,
+            internet930 = null,
+            modern200 = null,
+            internet200 = null,
+            morning2d = "36",
+            morningSet = "1,100",
+            morningValue = "2,100",
+            evening2d = null,
+            eveningSet = null,
+            eveningValue = null,
+            reference930SourceAt = null,
+            reference200SourceAt = null,
+            morningSourceAt = 130L,
+            eveningSourceAt = null,
+            updatedAt = 130L,
+        )
+
+        val older = com.myanmar.ledger2d.core.database.LiveDailyResultPatch(
+            date = friday,
+            morning2d = "35",
+            morningSet = "1,000",
+            morningValue = "2,000",
+            morningSourceAt = 120L,
+        )
+
+        val merged = com.myanmar.ledger2d.core.repository.LiveDailyResultMerger.merge(
+            old = old,
+            patch = older,
+            updatedAt = 140L,
+        )
+
+        assertEquals("36", merged.morning2d)
+        assertEquals("1,100", merged.morningSet)
+        assertEquals("2,100", merged.morningValue)
+    }
+
+    @Test fun collector_persists_reference_snapshot_through_room_saver_without_changing_ui_flow() = runTest {
+        val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
+        val f = feed(
+            "--",
+            "09:34:00",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+        ).copy(date = thursday.toString(), serverTimeEpochMs = 1_000L)
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { f },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { friday },
+            liveRoomSaver = { patches -> saved += patches },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+
+        assertTrue(saved.any { it.date == friday && it.modern930 == "80" && it.internet930 == "33" })
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+
+        scope.cancel()
+    }
