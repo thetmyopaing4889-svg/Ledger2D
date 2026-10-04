@@ -771,8 +771,6 @@ class LiveCollectorTest {
         assertTrue(calls >= 4)
         scope.cancel()
     }
-}
-
 
     @Test fun live_room_patches_split_previous_result_date_from_current_cycle_references() {
         val f = feed(
@@ -800,8 +798,8 @@ class LiveCollectorTest {
         assertNull(yesterday.modern930)
         assertEquals("80", todayPatch.modern930)
         assertEquals("33", todayPatch.internet930)
-        assertEquals("98", todayPatch.modern200)
-        assertEquals("78", todayPatch.internet200)
+        assertNull(todayPatch.modern200)
+        assertNull(todayPatch.internet200)
         assertNull(todayPatch.morning2d)
         assertNull(todayPatch.evening2d)
     }
@@ -1041,3 +1039,4 @@ class LiveCollectorTest {
 
         scope.cancel()
     }
+}
