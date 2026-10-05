@@ -2,6 +2,8 @@ package com.myanmar.ledger2d.feature.live
 
 import android.content.Context
 import com.myanmar.ledger2d.core.database.LiveDailyResultPatch
+import com.myanmar.ledger2d.core.database.HistoryResultEntity
+import com.myanmar.ledger2d.core.repository.HistorySync
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -232,6 +234,35 @@ internal fun previousWorkingDay(date: LocalDate): LocalDate {
         d = d.minusDays(1)
     }
     return d
+}
+
+internal fun historyRowToFinal(row: HistoryResultEntity): LiveHeroSnapshot? {
+    val result: String
+    val set: String
+    val value: String
+    val label: String
+
+    if (isValidLive2d(row.evening2d)) {
+        result = row.evening2d
+        set = row.eveningSet
+        value = row.eveningValue
+        label = LIVE_SESSION_EVENING_LABEL
+    } else if (isValidLive2d(row.morning2d)) {
+        result = row.morning2d
+        set = row.morningSet
+        value = row.morningValue
+        label = LIVE_SESSION_MORNING_LABEL
+    } else {
+        return null
+    }
+
+    return LiveHeroSnapshot(
+        result = result,
+        set = set.takeUnless { it == "-" }.orEmpty().ifBlank { LIVE_PENDING },
+        value = value.takeUnless { it == "-" }.orEmpty().ifBlank { LIVE_PENDING },
+        sessionLabel = label,
+        date = row.date.toString(),
+    )
 }
 
 internal fun dailyCycleDate(
@@ -512,6 +543,7 @@ internal class LiveCollector(
     private val cacheFeedLoader: () -> LiveFeedData? = { null },
     private val cacheFeedSaver: (LiveFeedData) -> Unit = {},
     private val liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
+    private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -1071,6 +1103,29 @@ internal class LiveCollector(
         }
     }
 
+    private suspend fun recoverPreviousWorkingDayFinal() {
+        val today = dateProvider()
+        val cycleDate = dailyCycleDate(today, clock())
+        val previousWorking = previousWorkingDay(cycleDate)
+
+        synchronized(stateLock) {
+            val existingDate = lastFinal?.let { canonicalDate(it.date) }
+            if (existingDate == cycleDate || existingDate == previousWorking) return
+        }
+
+        val recovered = runCatching {
+            historicalFinalFetcher?.invoke(previousWorking)
+        }.getOrNull() ?: return
+
+        synchronized(stateLock) {
+            val recoveredDate = canonicalDate(recovered.date)
+            if (recoveredDate == previousWorking || recoveredDate == cycleDate) {
+                lastFinal = recovered
+                publishLocked()
+            }
+        }
+    }
+
     private fun publishLocked() {
         val displayPrimary = primary?.let { observation ->
             mergeReferenceIntoFeed(observation.feed)?.let { merged ->
@@ -1118,9 +1173,10 @@ internal class LiveCollector(
     fun start() {
         if (!started.compareAndSet(false, true)) return
 
-        fetchCycle()
-
         schedulerJob = scope.launch {
+            recoverPreviousWorkingDayFinal()
+            fetchCycle()
+
             while (isActive) {
                 val t = clock()
                 maybeReferenceFetch(t)
@@ -1166,6 +1222,11 @@ internal class LiveCollector(
                     cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
                     liveRoomSaver = liveRoomSaver,
+                    historicalFinalFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let(::historyRowToFinal)
+                    },
                 )
 
                 shared = collector

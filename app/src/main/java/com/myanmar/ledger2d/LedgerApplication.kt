@@ -18,6 +18,8 @@ class LedgerApplication : Application() {
 
         // App-scoped 2D LIVE collector: window-gated polling that continues
         // during the scheduled LIVE windows even when the screen is closed.
+        // Its cold-start historical fallback uses the existing HistorySync
+        // source inside LiveCollector; Room remains a write-only live record.
         LiveCollector.startOnce(
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },

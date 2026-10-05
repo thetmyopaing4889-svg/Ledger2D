@@ -543,6 +543,47 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun fresh_install_monday_before_morning_live_recovers_previous_final_without_local_cache() = runTest {
+        val mondayFeed = LiveFeedData(
+            date = monday.toString(),
+            currentTime = "10:27:00",
+            live = "--",
+            liveSet = "--",
+            liveVal = "--",
+            morning = LiveSessionData("--", "--", "--", false),
+            evening = LiveSessionData("--", "--", "--", false),
+            modern930 = "81",
+            internet930 = "17",
+            modern200 = "--",
+            internet200 = "--",
+            sourceTag = "LUKE",
+            serverTimeEpochMs = monday.atTime(10, 27).atZone(yangon).toInstant().toEpochMilli(),
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { mondayFeed },
+            clock = { LocalTime.of(10, 27) },
+            dateProvider = { monday },
+            historicalFinalFetcher = { date ->
+                assertEquals(friday, date)
+                LiveHeroSnapshot("25", "1,571.62", "71,085.86", LIVE_SESSION_EVENING_LABEL, friday.toString())
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("81", state.feed?.modern930)
+        assertEquals("17", state.feed?.internet930)
+
+        scope.cancel()
+    }
+
     @Test fun schedule_0930_is_reference() {
         assertEquals(LiveWindowAction.REFERENCE_ONLY, liveWindowAction(LocalTime.of(9, 30)))
     }
