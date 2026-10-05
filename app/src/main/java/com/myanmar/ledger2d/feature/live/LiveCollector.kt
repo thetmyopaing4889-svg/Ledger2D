@@ -499,14 +499,17 @@ internal fun resolveLiveState(
             )
         }
 
-        phaseTime.isBefore(EVENING_CLOSE) -> {
-            val live = liveHero()
-            val hero = live ?: finalHero() ?: heldFinal
+        phaseTime.isBefore(EVENING_LIVE) -> {
+            // 13:00–16:00 is a frozen/reference phase. A one-time Luke
+            // startup/reference response may still contain a live value, but
+            // that value must never become the active LIVE hero outside the
+            // scheduled evening LIVE window.
+            val hero = finalHero() ?: heldFinal
             LiveResolution(
                 feed,
                 hero,
-                live != null,
-                if (live != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.FINAL_CONFIRMED,
+                false,
+                if (hero != null) LiveStatus.FINAL_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
