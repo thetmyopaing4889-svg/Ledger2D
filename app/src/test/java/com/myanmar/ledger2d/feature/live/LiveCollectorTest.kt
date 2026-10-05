@@ -949,14 +949,13 @@ class LiveCollectorTest {
                 feed(
                     "--",
                     "18:00:00",
-                    date = monday.toString(),
                     morning = finalMorning("36"),
                     evening = finalEvening("77"),
                     modern930 = "80",
                     internet930 = "33",
                     modern200 = "98",
                     internet200 = "78",
-                ).copy(serverTimeEpochMs = null)
+                ).copy(date = monday.toString(), serverTimeEpochMs = null)
             },
             clock = { LocalTime.of(18, 0) },
             dateProvider = { monday },
