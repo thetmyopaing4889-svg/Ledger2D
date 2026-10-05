@@ -821,6 +821,167 @@ class LiveCollectorTest {
         assertFalse(result.heroLive)
     }
 
+    @Test fun fresh_start_0830_does_not_start_reference_or_live_polling() = runTest {
+        var calls = 0
+        val yesterday = thursday
+        val old = feed(
+            "--",
+            "17:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                old
+            },
+            clock = { LocalTime.of(8, 30) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        runCurrent()
+        assertEquals(1, calls)
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals(yesterday.toString(), state.feed?.date)
+
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
+        runCurrent()
+        assertEquals(1, calls)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_1000_catches_up_0930_reference_without_live_polling() = runTest {
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                feed(
+                    "--",
+                    "10:00:00",
+                    morning = LiveSessionData("--", "--", "--", false),
+                    evening = LiveSessionData("--", "--", "--", false),
+                    modern930 = "80",
+                    internet930 = "33",
+                    modern200 = "98",
+                    internet200 = "78",
+                )
+            },
+            clock = { LocalTime.of(10, 0) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(2, calls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+        assertFalse(state.heroLive)
+
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 2)
+        runCurrent()
+        assertEquals(2, calls)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_1500_catches_up_both_reference_slots_without_live_polling() = runTest {
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                feed(
+                    "--",
+                    "15:00:00",
+                    morning = finalMorning("36"),
+                    evening = LiveSessionData("--", "--", "--", false),
+                    modern930 = "80",
+                    internet930 = "33",
+                    modern200 = "98",
+                    internet200 = "78",
+                )
+            },
+            clock = { LocalTime.of(15, 0) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(3, calls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("36", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 2)
+        runCurrent()
+        assertEquals(3, calls)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_1800_catches_up_reference_slots_without_starting_evening_live_polling() = runTest {
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                feed(
+                    "--",
+                    "18:00:00",
+                    date = monday.toString(),
+                    morning = finalMorning("36"),
+                    evening = finalEvening("77"),
+                    modern930 = "80",
+                    internet930 = "33",
+                    modern200 = "98",
+                    internet200 = "78",
+                ).copy(serverTimeEpochMs = null)
+            },
+            clock = { LocalTime.of(18, 0) },
+            dateProvider = { monday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(3, calls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("77", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
+        runCurrent()
+        assertEquals(3, calls)
+
+        scope.cancel()
+    }
+
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
         var calls = 0
         val collector = LiveCollector(
