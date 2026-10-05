@@ -5,6 +5,7 @@ import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
+import com.myanmar.ledger2d.feature.live.LiveRoomKeeperScheduler
 
 object LedgerApplicationContextHolder { lateinit var context: Application }
 
@@ -24,6 +25,11 @@ class LedgerApplication : Application() {
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },
         )
+
+        // Historical coverage is independent of today's LIVE flow. WorkManager
+        // keeps the Room Keeper alive in the background and only runs it when
+        // network connectivity is available.
+        LiveRoomKeeperScheduler.enqueue(this)
     }
 }
 
