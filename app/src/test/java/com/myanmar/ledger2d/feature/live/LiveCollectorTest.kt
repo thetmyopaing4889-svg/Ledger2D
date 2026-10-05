@@ -717,6 +717,77 @@ class LiveCollectorTest {
         assertEquals(yesterday.toString(), result.displayFeed?.date)
     }
 
+    @Test fun afternoon_reference_phase_does_not_promote_startup_luke_live_to_hero() {
+        val todayFeed = feed(
+            "35",
+            "15:10:00",
+            morning = finalMorning("36"),
+            evening = LiveSessionData("--", "--", "--", false),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(todayFeed, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(15, 10),
+            scheduleDate = friday,
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("36", result.hero?.result)
+        assertEquals("15:10:00", result.displayFeed?.currentTime)
+    }
+
+    @Test fun afternoon_hold_starts_at_1400_and_stays_non_live() {
+        val todayFeed = feed(
+            "35",
+            "14:00:00",
+            morning = finalMorning("36"),
+            evening = LiveSessionData("--", "--", "--", false),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(todayFeed, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(14, 0),
+            scheduleDate = friday,
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("36", result.hero?.result)
+    }
+
+    @Test fun evening_live_resumes_exactly_at_1600() {
+        val todayFeed = feed(
+            "44",
+            "16:00:00",
+            morning = finalMorning("36"),
+            evening = LiveSessionData("--", "--", "--", false),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(todayFeed, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 0),
+            scheduleDate = friday,
+        )
+
+        assertTrue(result.heroLive)
+        assertEquals("44", result.hero?.result)
+    }
+
     @Test fun morning_final_is_shown_immediately_after_final_response() {
         val f = feed("36", "12:03:00", morning = finalMorning("36"))
         val result = resolveLiveState(
