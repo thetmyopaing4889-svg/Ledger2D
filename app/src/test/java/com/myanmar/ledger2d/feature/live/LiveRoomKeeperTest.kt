@@ -47,13 +47,14 @@ class LiveRoomKeeperTest {
 
     @Test
     fun closed_working_day_is_skipped_without_blocking_later_gap() = runTest {
+        val today = LocalDate.of(2026, 10, 9)
         val closedDate = LocalDate.of(2026, 10, 8)
         val dateBefore = LocalDate.of(2026, 10, 7)
 
         val live = FakeLiveRepository()
         val keeper = keeper(
             live = live,
-            today = monday,
+            today = today,
             start = dateBefore,
             closedDates = setOf(closedDate),
             primaryRows = mapOf(
@@ -65,7 +66,7 @@ class LiveRoomKeeperTest {
 
         assertEquals(LiveRoomKeeperOutcome.Complete, outcome)
         assertTrue(live.get(dateBefore) != null)
-        assertEquals(dateBefore.plusDays(1), keeper.checkpoint.get())
+        assertEquals(today, keeper.checkpoint.get())
     }
 
     @Test
