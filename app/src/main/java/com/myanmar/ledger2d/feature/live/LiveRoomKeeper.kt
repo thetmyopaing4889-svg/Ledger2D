@@ -298,11 +298,11 @@ internal class LiveRoomKeeper(
     private fun isMissingMetric(value: String?): Boolean =
         value == null || !isValidMetric(value)
 
-    private fun isValid2d(value: String): Boolean =
-        value.matches(TWO_DIGIT_REGEX)
+    private fun isValid2d(value: String?): Boolean =
+        value?.matches(TWO_DIGIT_REGEX) == true
 
-    private fun isValidMetric(value: String): Boolean =
-        value.isNotBlank() && value != "-" && value != "--" && value != "null"
+    private fun isValidMetric(value: String?): Boolean =
+        !value.isNullOrBlank() && value != "-" && value != "--" && value != "null"
 
     private companion object {
         val TWO_DIGIT_REGEX = Regex("^[0-9]{2}$")
