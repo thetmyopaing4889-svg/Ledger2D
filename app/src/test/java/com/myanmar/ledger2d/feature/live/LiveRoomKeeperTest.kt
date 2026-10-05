@@ -59,6 +59,7 @@ class LiveRoomKeeperTest {
             closedDates = setOf(closedDate),
             primaryRows = mapOf(
                 dateBefore to completeHistory(dateBefore),
+                friday to completeHistory(friday),
             ),
         )
 
