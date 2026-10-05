@@ -1039,7 +1039,9 @@ internal class LiveCollector(
 
         val cycleDate = dailyCycleDate(today, t)
 
-        if (t >= MORNING_REFERENCE && t.isBefore(EVENING_CLOSE) && reference930CompleteDate != cycleDate) {
+        val referenceRetryOpen = referenceRetryWindowOpen(cycleDate, today, t)
+
+        if (referenceRetryOpen && t >= MORNING_REFERENCE && reference930CompleteDate != cycleDate) {
             synchronized(stateLock) {
                 if (
                     reference200CompleteDate != cycleDate &&
@@ -1060,8 +1062,8 @@ internal class LiveCollector(
         }
 
         if (
+            referenceRetryOpen &&
             t >= AFTERNOON_REFERENCE &&
-            t.isBefore(EVENING_CLOSE) &&
             reference200CompleteDate != cycleDate
         ) {
             fetchReference200Cycle()
@@ -1178,6 +1180,11 @@ internal class LiveCollector(
 
         schedulerJob = scope.launch {
             recoverPreviousWorkingDayFinal()
+
+            // Reconstruct any reference slot that has already passed before
+            // the app starts. This is catch-up only; shouldPoll() still keeps
+            // LIVE network polling confined to the real LIVE windows.
+            maybeReferenceFetch(clock())
             fetchCycle()
 
             while (isActive) {
