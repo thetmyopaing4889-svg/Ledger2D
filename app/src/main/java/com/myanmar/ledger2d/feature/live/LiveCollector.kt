@@ -596,6 +596,18 @@ internal class LiveCollector(
                 val incomingTime = parseDecisionInstant(feed)
                 val previousTime = previous?.let(::parseDecisionInstant)
 
+                // Preserve the last completed working-day final before a
+                // newer provider snapshot replaces the primary feed. A
+                // Monday reference response can be today's feed while LIVE
+                // is still pending; it must not erase Friday's held hero.
+                previous?.let(::latestFinalFor)?.let { previousFinal ->
+                    val cycleDate = dailyCycleDate(dateProvider(), clock())
+                    val previousWorking = previousWorkingDay(cycleDate)
+                    if (canonicalDate(previousFinal.date) == previousWorking) {
+                        lastFinal = previousFinal
+                    }
+                }
+
                 if (
                     incomingTime != null &&
                     previousTime != null &&
