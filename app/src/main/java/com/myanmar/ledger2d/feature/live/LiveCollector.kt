@@ -291,6 +291,9 @@ internal fun historyRowToFeed(
 ): LiveFeedData {
     val cycleDate = dailyCycleDate(today, now)
     val isCurrentCycleRow = row.date == cycleDate
+    val isHeldFallbackRow =
+        row.date != today &&
+            (now.isBefore(MORNING_LIVE) || !isWorkingDay(today))
 
     fun session(
         result: String,
@@ -322,13 +325,13 @@ internal fun historyRowToFeed(
         row.morning2d,
         row.morningSet,
         row.morningValue,
-        isCurrentCycleRow && showMorningFinal,
+        (isCurrentCycleRow && showMorningFinal) || isHeldFallbackRow,
     )
     val evening = session(
         row.evening2d,
         row.eveningSet,
         row.eveningValue,
-        isCurrentCycleRow && showEveningFinal,
+        (isCurrentCycleRow && showEveningFinal) || isHeldFallbackRow,
     )
 
     val show930Reference =
@@ -336,22 +339,22 @@ internal fun historyRowToFeed(
     val show200Reference =
         heldCompletedCycle || !now.isBefore(AFTERNOON_REFERENCE)
 
-    val modern930 = if (isCurrentCycleRow && show930Reference) {
+    val modern930 = if ((isCurrentCycleRow || isHeldFallbackRow) && show930Reference) {
         row.modern930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
     } else {
         LIVE_PENDING
     }
-    val internet930 = if (isCurrentCycleRow && show930Reference) {
+    val internet930 = if ((isCurrentCycleRow || isHeldFallbackRow) && show930Reference) {
         row.internet930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
     } else {
         LIVE_PENDING
     }
-    val modern200 = if (isCurrentCycleRow && show200Reference) {
+    val modern200 = if ((isCurrentCycleRow || isHeldFallbackRow) && show200Reference) {
         row.modern200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
     } else {
         LIVE_PENDING
     }
-    val internet200 = if (isCurrentCycleRow && show200Reference) {
+    val internet200 = if ((isCurrentCycleRow || isHeldFallbackRow) && show200Reference) {
         row.internet200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
     } else {
         LIVE_PENDING
@@ -1207,6 +1210,20 @@ internal class LiveCollector(
 
         if (referenceRetryOpen && t >= MORNING_REFERENCE && reference930CompleteDate != cycleDate) {
             synchronized(stateLock) {
+                // From 09:30 onward, previous-day 09:30/14:00 values are no
+                // longer valid for the new cycle. Mask both slots immediately
+                // while their independent current-day fetches are running.
+                // A successful fetch clears the pending marker and supplies
+                // today's value.
+                if (
+                    reference930CompleteDate != cycleDate &&
+                    reference930PendingDate != cycleDate
+                ) {
+                    reference930 = null
+                    reference930Date = null
+                    reference930PendingDate = cycleDate
+                }
+
                 if (
                     reference200CompleteDate != cycleDate &&
                     reference200PendingDate != cycleDate
@@ -1216,8 +1233,8 @@ internal class LiveCollector(
                     reference200 = null
                     reference200Date = null
                     reference200PendingDate = cycleDate
-                    publishLocked()
                 }
+                publishLocked()
             }
 
             if (reference930CompleteDate != cycleDate) {
@@ -1280,15 +1297,19 @@ internal class LiveCollector(
         // Cold start must reconstruct the state that belongs to the exact
         // Daily Flow phase represented by the app clock. Before 09:30 the
         // cycleDate is already the held completed working day. After 09:30,
-        // today's cycle owns the UI; historical data may reconstruct only
-        // facts whose display boundary has already passed.
-        val recoveredCurrent = runCatching {
-            historicalFeedFetcher?.invoke(cycleDate)
+        // today's cycle owns the UI, but the previous working-day snapshot is
+        // still the required temporary hold until today's 09:30 reference or
+        // LIVE data is accepted.
+        val previousWorking = previousWorkingDay(cycleDate)
+        val fallbackFeedDate =
+            if (cycleDate != today) cycleDate else previousWorking
+
+        val recoveredFeed = runCatching {
+            historicalFeedFetcher?.invoke(fallbackFeedDate)
         }.getOrNull()
 
-        val previousWorking = previousWorkingDay(cycleDate)
         val recoveredPreviousFinal = runCatching {
-            historicalFinalFetcher?.invoke(if (cycleDate != today) cycleDate else previousWorking)
+            historicalFinalFetcher?.invoke(fallbackFeedDate)
         }.getOrNull()
 
         synchronized(stateLock) {
@@ -1301,38 +1322,16 @@ internal class LiveCollector(
                 }
             }
 
-            if (recoveredCurrent != null && canonicalDate(recoveredCurrent.date) == cycleDate) {
-                val projected = recoveredCurrent
+            if (recoveredFeed != null && canonicalDate(recoveredFeed.date) == fallbackFeedDate) {
+                val projected = recoveredFeed
                 val startedAt = monotonicMs()
                 primary = SourceObservation(projected, startedAt, startedAt, 0L)
 
-                // Historical values are a read-only cold-start baseline. Seed
-                // only reference slots whose display boundaries have passed,
-                // so a failed Luke catch-up cannot erase valid historical data.
-                if (!now.isBefore(MORNING_REFERENCE)) {
-                    val pair930 = projected.modern930 to projected.internet930
-                    if (validReferencePair(projected, pair930.first, pair930.second)) {
-                        reference930 = pair930
-                        reference930Date = cycleDate
-                        reference930CompleteDate = cycleDate
-                        reference930PendingDate = null
-                    } else {
-                        reference930PendingDate = cycleDate
-                    }
-                }
-
-                if (!now.isBefore(AFTERNOON_REFERENCE)) {
-                    val pair200 = projected.modern200 to projected.internet200
-                    if (validReferencePair(projected, pair200.first, pair200.second)) {
-                        reference200 = pair200
-                        reference200Date = cycleDate
-                        reference200CompleteDate = cycleDate
-                        reference200PendingDate = null
-                    } else {
-                        reference200PendingDate = cycleDate
-                    }
-                }
-
+                // Historical fallback data is display-only. Never mark
+                // today's reference slot complete from a previous day's row:
+                // the 09:30/14:00 cycles must still fetch today's references
+                // independently from Luke.
+                //
                 // A current-day projected final is allowed to replace the
                 // previous-day hero only when its phase has actually passed.
                 latestFinalFor(projected)?.let { lastFinal = it }
