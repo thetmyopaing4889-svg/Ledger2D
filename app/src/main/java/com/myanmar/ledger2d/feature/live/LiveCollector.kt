@@ -394,24 +394,34 @@ internal fun historyRowToFeed(
     )
 }
 
-internal fun historyRowToFinal(row: HistoryResultEntity): LiveHeroSnapshot? {
+internal fun historyRowToFinal(row: HistoryResultEntity): LiveHeroSnapshot? =
+    historyRowToFinal(row, LocalTime.of(23, 59, 59))
+
+internal fun historyRowToFinal(
+    row: HistoryResultEntity,
+    now: LocalTime,
+): LiveHeroSnapshot? {
     val result: String
     val set: String
     val value: String
     val label: String
 
-    if (isValidLive2d(row.evening2d)) {
-        result = row.evening2d
-        set = row.eveningSet
-        value = row.eveningValue
-        label = LIVE_SESSION_EVENING_LABEL
-    } else if (isValidLive2d(row.morning2d)) {
-        result = row.morning2d
-        set = row.morningSet
-        value = row.morningValue
-        label = LIVE_SESSION_MORNING_LABEL
-    } else {
-        return null
+    when {
+        !now.isBefore(EVENING_CLOSE) && isValidLive2d(row.evening2d) -> {
+            result = row.evening2d
+            set = row.eveningSet
+            value = row.eveningValue
+            label = LIVE_SESSION_EVENING_LABEL
+        }
+
+        !now.isBefore(MORNING_CLOSE) && isValidLive2d(row.morning2d) -> {
+            result = row.morning2d
+            set = row.morningSet
+            value = row.morningValue
+            label = LIVE_SESSION_MORNING_LABEL
+        }
+
+        else -> return null
     }
 
     return LiveHeroSnapshot(
@@ -1526,7 +1536,12 @@ internal class LiveCollector(
                     historicalFinalFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()
-                            ?.let(::historyRowToFinal)
+                            ?.let { row ->
+                                historyRowToFinal(
+                                    row,
+                                    LocalTime.now(YANGON),
+                                )
+                            }
                     },
                     historicalFeedFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
