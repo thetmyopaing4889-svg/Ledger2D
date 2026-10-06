@@ -1293,48 +1293,117 @@ internal class LiveCollector(
         val today = dateProvider()
         val now = clock()
         val cycleDate = dailyCycleDate(today, now)
-
-        // Cold start must reconstruct the state that belongs to the exact
-        // Daily Flow phase represented by the app clock. Before 09:30 the
-        // cycleDate is already the held completed working day. After 09:30,
-        // today's cycle owns the UI, but the previous working-day snapshot is
-        // still the required temporary hold until today's 09:30 reference or
-        // LIVE data is accepted.
         val previousWorking = previousWorkingDay(cycleDate)
+
+        // First recover the exact cycle row represented by the app clock.
+        // Before 09:30, cycleDate is already the previous working day.
+        // After 09:30, prefer today's row; only fall back to the previous
+        // working-day row when today's historical row is unavailable.
+        val currentFeed = runCatching {
+            historicalFeedFetcher?.invoke(cycleDate)
+        }.getOrNull()?.takeIf {
+            canonicalDate(it.date) == cycleDate
+        }
+
         val fallbackFeedDate =
-            if (cycleDate != today) cycleDate else previousWorking
-
-        val recoveredFeed = runCatching {
-            historicalFeedFetcher?.invoke(fallbackFeedDate)
-        }.getOrNull()
-
-        val recoveredPreviousFinal = runCatching {
-            historicalFinalFetcher?.invoke(fallbackFeedDate)
-        }.getOrNull()
-
-        synchronized(stateLock) {
-            if (recoveredPreviousFinal != null) {
-                val d = canonicalDate(recoveredPreviousFinal.date)
-                val allowedPreviousDate =
-                    if (cycleDate != today) cycleDate else previousWorking
-                if (d == allowedPreviousDate || d == cycleDate) {
-                    lastFinal = recoveredPreviousFinal
-                }
+            if (
+                cycleDate == today &&
+                isWorkingDay(today) &&
+                !now.isBefore(MORNING_REFERENCE)
+            ) {
+                previousWorking
+            } else {
+                null
             }
 
-            if (recoveredFeed != null && canonicalDate(recoveredFeed.date) == fallbackFeedDate) {
+        val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
+            runCatching {
+                historicalFeedFetcher?.invoke(fallbackFeedDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == fallbackFeedDate
+            }
+        } else {
+            null
+        }
+
+        val currentFinal = runCatching {
+            historicalFinalFetcher?.invoke(cycleDate)
+        }.getOrNull()?.takeIf {
+            canonicalDate(it.date) == cycleDate
+        }
+
+        val fallbackFinal = if (
+            currentFinal == null &&
+            fallbackFeedDate != null &&
+            fallbackFeedDate != cycleDate
+        ) {
+            runCatching {
+                historicalFinalFetcher?.invoke(fallbackFeedDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == fallbackFeedDate
+            }
+        } else {
+            null
+        }
+
+        val recoveredFeed = currentFeed ?: fallbackFeed
+
+        synchronized(stateLock) {
+            // A current-cycle final has priority over the previous working
+            // day's hero. When the current cycle is still pending, keep the
+            // previous working-day final as the temporary hero hold.
+            when {
+                currentFinal != null -> lastFinal = currentFinal
+                fallbackFinal != null -> lastFinal = fallbackFinal
+            }
+
+            if (recoveredFeed != null) {
                 val projected = recoveredFeed
                 val startedAt = monotonicMs()
                 primary = SourceObservation(projected, startedAt, startedAt, 0L)
 
-                // Historical fallback data is display-only. Never mark
-                // today's reference slot complete from a previous day's row:
-                // the 09:30/14:00 cycles must still fetch today's references
-                // independently from Luke.
+                // Historical data may fully reconstruct a completed held day:
+                // - any pre-09:30 start (cycleDate is already the held day), or
+                // - a same-day cold start after the evening final.
                 //
-                // A current-day projected final is allowed to replace the
-                // previous-day hero only when its phase has actually passed.
-                latestFinalFor(projected)?.let { lastFinal = it }
+                // Do not seed a working day's references during the active
+                // 09:30/14:00 retry windows. Those slots must still be fetched
+                // from Luke for the current cycle. Once the day is complete,
+                // its historical row is an authoritative display baseline.
+                val recoveredDate = canonicalDate(projected.date)
+                val completedHeldCycle =
+                    recoveredDate == cycleDate &&
+                        (
+                            cycleDate != today ||
+                                !now.isBefore(EVENING_CLOSE)
+                            )
+
+                if (completedHeldCycle) {
+                    val pair930 = projected.modern930 to projected.internet930
+                    if (validReferencePair(projected, pair930.first, pair930.second)) {
+                        reference930 = pair930
+                        reference930Date = cycleDate
+                        reference930CompleteDate = cycleDate
+                        reference930PendingDate = null
+                    }
+
+                    val pair200 = projected.modern200 to projected.internet200
+                    if (validReferencePair(projected, pair200.first, pair200.second)) {
+                        reference200 = pair200
+                        reference200Date = cycleDate
+                        reference200CompleteDate = cycleDate
+                        reference200PendingDate = null
+                    }
+                }
+
+                latestFinalFor(projected)?.let { historicalFinal ->
+                    if (
+                        currentFinal == null &&
+                        canonicalDate(historicalFinal.date) == recoveredDate
+                    ) {
+                        lastFinal = historicalFinal
+                    }
+                }
 
                 publishLocked()
                 return
