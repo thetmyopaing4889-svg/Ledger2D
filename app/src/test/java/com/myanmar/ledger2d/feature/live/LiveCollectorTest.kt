@@ -1878,7 +1878,7 @@ class LiveCollectorTest {
             internet930 = "33",
             modern200 = "--",
             internet200 = "--",
-        ).copy(date = thursday.toString(), serverTimeEpochMs = 1_000L)
+        ).copy(date = friday.toString(), serverTimeEpochMs = 1_000L)
 
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
