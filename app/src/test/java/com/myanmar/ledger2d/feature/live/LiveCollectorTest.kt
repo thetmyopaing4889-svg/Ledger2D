@@ -574,16 +574,28 @@ class LiveCollectorTest {
             "17:00:00",
             morning = finalMorning("22"),
             evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+        val todayReference = feed(
+            "--",
+            "09:34:00",
             modern930 = "80",
             internet930 = "33",
-            modern200 = "98",
-            internet200 = "78",
-        ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
+            modern200 = "--",
+            internet200 = "--",
+        ).copy(date = friday.toString(), serverTimeEpochMs = 1_000L)
+        var calls = 0
 
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
-            fetcher = { old },
+            fetcher = {
+                calls++
+                if (calls == 1) todayReference else old
+            },
             clock = { LocalTime.of(9, 34) },
             dateProvider = { friday },
         )
@@ -665,7 +677,14 @@ class LiveCollectorTest {
             internet200 = "78",
         ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
 
-        val late = old.copy(modern930 = "80", internet930 = "33")
+        val late = feed(
+            "--",
+            "11:31:00",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+        ).copy(date = friday.toString(), serverTimeEpochMs = 2_000L)
 
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
@@ -1933,6 +1952,71 @@ class LiveCollectorTest {
         assertEquals("--", state.feed?.internet930)
 
         scope.cancel()
+    }
+
+    @Test fun stale_provider_1400_reference_does_not_complete_current_cycle() = runTest {
+        val stale = feed(
+            "--",
+            "14:05:00",
+            modern930 = "81",
+            internet930 = "17",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(
+            date = monday.toString(),
+            serverTimeEpochMs = monday
+                .atTime(14, 5)
+                .atZone(yangon)
+                .toInstant()
+                .toEpochMilli(),
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { stale },
+            clock = { LocalTime.of(14, 5) },
+            dateProvider = { tuesday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+
+        scope.cancel()
+    }
+
+    @Test fun friday_1630_current_day_partial_snapshot_wins_over_previous_day() {
+        val fridayFeed = feed(
+            "--",
+            "16:30:00",
+            morning = finalMorning("36"),
+            evening = LiveSessionData("--", "--", "--", false),
+        ).copy(date = friday.toString())
+        val thursdayFeed = fridayFeed.copy(
+            date = thursday.toString(),
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(fridayFeed, 100L, 0L, 10L),
+            s = SourceObservation(thursdayFeed, 100L, 0L, 10L),
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 30),
+            scheduleDate = friday,
+        )
+
+        assertEquals(friday.toString(), result.displayFeed?.date)
+        assertEquals("36", result.displayFeed?.morning?.result)
+        assertEquals("--", result.displayFeed?.evening?.result)
+        assertEquals("36", result.hero?.result)
+        assertFalse(result.heroLive)
     }
 
     @Test fun main_poll_cannot_erase_successful_current_day_reference() = runTest {
