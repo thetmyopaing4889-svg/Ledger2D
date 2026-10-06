@@ -25,6 +25,7 @@ class LiveCollectorTest {
     private val saturday = friday.plusDays(1)
     private val sunday = friday.plusDays(2)
     private val monday = friday.plusDays(3)
+    private val tuesday = monday.plusDays(1)
 
     private fun feed(
         value: String,
@@ -71,6 +72,73 @@ class LiveCollectorTest {
         assertEquals(friday, dailyCycleDate(sunday, LocalTime.of(15, 0)))
         assertEquals(friday, dailyCycleDate(monday, LocalTime.of(9, 29, 59)))
         assertEquals(monday, dailyCycleDate(monday, LocalTime.of(9, 30)))
+    }
+
+    @Test fun fresh_start_tuesday_before_0930_recovers_monday_not_friday() = runTest {
+        val mondayFinal = LiveHeroSnapshot(
+            result = "77",
+            set = "1600",
+            value = "20000",
+            sessionLabel = LIVE_SESSION_EVENING_LABEL,
+            date = monday.toString(),
+        )
+        val fridayFinal = mondayFinal.copy(result = "25", date = friday.toString())
+
+        var recoveredDate: java.time.LocalDate? = null
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(7, 0) },
+            dateProvider = { tuesday },
+            historicalFinalFetcher = { date ->
+                recoveredDate = date
+                when (date) {
+                    monday -> mondayFinal
+                    friday -> fridayFinal
+                    else -> null
+                }
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(monday, recoveredDate)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("77", state.hero?.result)
+        assertEquals(monday.toString(), state.hero?.date)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_tuesday_before_0930_rejects_friday_only_cached_hero() = runTest {
+        val fridayFinal = LiveHeroSnapshot(
+            result = "25",
+            set = "1600",
+            value = "20000",
+            sessionLabel = LIVE_SESSION_EVENING_LABEL,
+            date = friday.toString(),
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(7, 0) },
+            dateProvider = { tuesday },
+            cacheLoader = { fridayFinal },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertNull(state.hero)
+
+        scope.cancel()
     }
 
     @Test fun app_clock_controls_phase_even_when_luke_reports_previous_day_time() {
