@@ -439,9 +439,15 @@ class LiveCollectorTest {
         val mondayRow = historyRow(monday, morning = "36", evening = "57")
         val tuesdayRow = historyRow(tuesday, morning = "44", evening = "66")
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val tuesdayFeed = historyRowToFeed(tuesdayRow, tuesday, LocalTime.of(11, 30)).copy(
+            sourceTag = "LUKE",
+            live = LIVE_PENDING,
+            liveSet = LIVE_PENDING,
+            liveVal = LIVE_PENDING,
+        )
         val collector = LiveCollector(
             scope = scope,
-            fetcher = { null },
+            fetcher = { tuesdayFeed },
             clock = { LocalTime.of(11, 30) },
             dateProvider = { tuesday },
             historicalFeedFetcher = { date ->
