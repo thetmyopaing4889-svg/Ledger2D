@@ -282,16 +282,19 @@ private fun isDisplayableFeedForSchedule(
 ): Boolean {
     val feedDate = canonicalDate(feed.date) ?: return false
     val cycleDate = dailyCycleDate(today, scheduleTime)
-    val previousWorking = previousWorkingDay(cycleDate)
 
-    // Luke's "date" is the latest completed draw date, not the app's daily
-    // cycle date. During a new working-day cycle, the latest completed result
-    // may still belong to the previous working day. During Sat/Sun, only the
-    // held last-working-day snapshot is displayable; do not fall back further.
-    return if (!isWorkingDay(today)) {
-        feedDate == cycleDate
-    } else {
-        feedDate == cycleDate || feedDate == previousWorking
+    // dailyCycleDate() already moves a working-day pre-09:30 start onto the
+    // previous working day. Do not step back a second time there: that would
+    // turn Tuesday morning's Monday hold into Friday, Wednesday morning's
+    // Tuesday hold into Monday, and so on.
+    //
+    // After 09:30, the current working day owns the cycle and the previous
+    // working day remains a legitimate fallback while today's LIVE/final
+    // data has not arrived yet. Weekend hold is cycleDate (Friday) only.
+    return when {
+        !isWorkingDay(today) -> feedDate == cycleDate
+        scheduleTime.isBefore(MORNING_REFERENCE) -> feedDate == cycleDate
+        else -> feedDate == cycleDate || feedDate == previousWorkingDay(cycleDate)
     }
 }
 
@@ -411,7 +414,11 @@ internal fun resolveLiveState(
         feed?.takeIf { canonicalDate(it.date) == previousWorking }?.let(::latestFinalFor)
     val cachedRelevantFinal = cachedFinal?.takeIf {
         val d = canonicalDate(it.date)
-        d == cycleDate || d == previousWorking
+        when {
+            !isWorkingDay(today) -> d == cycleDate
+            effectiveScheduleTime.isBefore(MORNING_REFERENCE) -> d == cycleDate
+            else -> d == cycleDate || d == previousWorking
+        }
     }
     val heldFinal = cycleFinal ?: previousWorkingFinal ?: cachedRelevantFinal
 
@@ -596,7 +603,11 @@ internal class LiveCollector(
             val cached = cacheLoader()
                 ?.takeIf {
                     val d = canonicalDate(it.date)
-                    d == cycleDate || d == previousWorking
+                    when {
+                        !isWorkingDay(today) -> d == cycleDate
+                        scheduleTime.isBefore(MORNING_REFERENCE) -> d == cycleDate
+                        else -> d == cycleDate || d == previousWorking
+                    }
                 }
 
             if (cached != null) {
@@ -1110,21 +1121,33 @@ internal class LiveCollector(
 
     private suspend fun recoverPreviousWorkingDayFinal() {
         val today = dateProvider()
-        val cycleDate = dailyCycleDate(today, clock())
-        val previousWorking = previousWorkingDay(cycleDate)
+        val now = clock()
+        val cycleDate = dailyCycleDate(today, now)
+
+        // Before 09:30, cycleDate already represents the held completed
+        // working day. Recover that day directly. Calling
+        // previousWorkingDay(cycleDate) here would skip one completed working
+        // day on every Tue-Fri morning.
+        //
+        // At/after 09:30, today's cycle owns the display and the immediately
+        // previous working day is the correct historical fallback until a
+        // current-day final arrives. Weekend cycleDate is Friday, so it also
+        // recovers Friday exactly once.
+        val recoveryDate =
+            if (cycleDate != today) cycleDate else previousWorkingDay(cycleDate)
 
         synchronized(stateLock) {
             val existingDate = lastFinal?.let { canonicalDate(it.date) }
-            if (existingDate == cycleDate || existingDate == previousWorking) return
+            if (existingDate == recoveryDate || existingDate == cycleDate) return
         }
 
         val recovered = runCatching {
-            historicalFinalFetcher?.invoke(previousWorking)
+            historicalFinalFetcher?.invoke(recoveryDate)
         }.getOrNull() ?: return
 
         synchronized(stateLock) {
             val recoveredDate = canonicalDate(recovered.date)
-            if (recoveredDate == previousWorking || recoveredDate == cycleDate) {
+            if (recoveredDate == recoveryDate || recoveredDate == cycleDate) {
                 lastFinal = recovered
                 publishLocked()
             }
