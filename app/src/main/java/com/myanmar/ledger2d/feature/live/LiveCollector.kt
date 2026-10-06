@@ -357,15 +357,23 @@ internal fun historyRowToFeed(
         LIVE_PENDING
     }
 
-    val finalTime = when {
-        evening.finalized -> EVENING_CLOSE
-        morning.finalized -> MORNING_CLOSE
-        else -> LocalTime.MIDNIGHT
+    val projectedTime = if (!isCurrentCycleRow) {
+        EVENING_CLOSE
+    } else {
+        when {
+            now.isBefore(MORNING_REFERENCE) -> MORNING_REFERENCE
+            now.isBefore(MORNING_LIVE) -> MORNING_REFERENCE
+            now.isBefore(MORNING_CLOSE) -> MORNING_LIVE
+            now.isBefore(AFTERNOON_REFERENCE) -> MORNING_CLOSE
+            now.isBefore(EVENING_LIVE) -> AFTERNOON_REFERENCE
+            now.isBefore(EVENING_CLOSE) -> EVENING_LIVE
+            else -> EVENING_CLOSE
+        }
     }
 
     return LiveFeedData(
         date = row.date.toString(),
-        currentTime = finalTime.toString(),
+        currentTime = projectedTime.toString(),
         live = LIVE_PENDING,
         liveSet = LIVE_PENDING,
         liveVal = LIVE_PENDING,
@@ -376,7 +384,7 @@ internal fun historyRowToFeed(
         modern200 = modern200,
         internet200 = internet200,
         sourceTag = "HISTORY",
-        serverTimeEpochMs = row.date.atTime(finalTime).atZone(YANGON).toInstant().toEpochMilli(),
+        serverTimeEpochMs = row.date.atTime(projectedTime).atZone(YANGON).toInstant().toEpochMilli(),
     )
 }
 
@@ -1297,6 +1305,33 @@ internal class LiveCollector(
                 val projected = historyRowToFeed(recoveredCurrent, today, now)
                 val startedAt = monotonicMs()
                 primary = SourceObservation(projected, startedAt, startedAt, 0L)
+
+                // Historical values are a read-only cold-start baseline. Seed
+                // only reference slots whose display boundaries have passed,
+                // so a failed Luke catch-up cannot erase valid historical data.
+                if (!now.isBefore(MORNING_REFERENCE)) {
+                    val pair930 = projected.modern930 to projected.internet930
+                    if (validReferencePair(projected, pair930.first, pair930.second)) {
+                        reference930 = pair930
+                        reference930Date = cycleDate
+                        reference930CompleteDate = cycleDate
+                        reference930PendingDate = null
+                    } else {
+                        reference930PendingDate = cycleDate
+                    }
+                }
+
+                if (!now.isBefore(AFTERNOON_REFERENCE)) {
+                    val pair200 = projected.modern200 to projected.internet200
+                    if (validReferencePair(projected, pair200.first, pair200.second)) {
+                        reference200 = pair200
+                        reference200Date = cycleDate
+                        reference200CompleteDate = cycleDate
+                        reference200PendingDate = null
+                    } else {
+                        reference200PendingDate = cycleDate
+                    }
+                }
 
                 // A current-day projected final is allowed to replace the
                 // previous-day hero only when its phase has actually passed.
