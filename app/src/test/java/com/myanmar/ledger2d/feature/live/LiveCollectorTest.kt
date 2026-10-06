@@ -1289,7 +1289,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun fresh_start_0935_reference_failure_keeps_yesterday_cards_until_1130() = runTest {
+    @Test(timeout = 10_000) fun fresh_start_0935_reference_failure_keeps_yesterday_cards_until_1130() = runTest {
         val mondayRow = historyRow(monday)
         var now = LocalTime.of(9, 35)
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
