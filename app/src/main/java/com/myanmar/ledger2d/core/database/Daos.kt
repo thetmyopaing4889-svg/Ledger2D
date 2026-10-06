@@ -60,6 +60,20 @@ import java.time.LocalDate
     @Query("DELETE FROM history_results WHERE date < :date") suspend fun deleteBefore(date: LocalDate)
 }
 
+@Dao interface LiveDailyResultDao {
+    @Query("SELECT * FROM live_daily_results ORDER BY date DESC")
+    fun observeAll(): Flow<List<LiveDailyResultEntity>>
+
+    @Query("SELECT * FROM live_daily_results WHERE date=:date")
+    fun observe(date: LocalDate): Flow<LiveDailyResultEntity?>
+
+    @Query("SELECT * FROM live_daily_results WHERE date=:date")
+    suspend fun get(date: LocalDate): LiveDailyResultEntity?
+
+    @Upsert
+    suspend fun upsert(value: LiveDailyResultEntity): Long
+}
+
 @Dao interface ClosedDayDao {
     @Query("SELECT * FROM closed_days ORDER BY date") fun observeAll(): Flow<List<ClosedDayEntity>>
     @Query("SELECT EXISTS(SELECT 1 FROM closed_days WHERE date=:date)") suspend fun isClosed(date: LocalDate): Boolean
