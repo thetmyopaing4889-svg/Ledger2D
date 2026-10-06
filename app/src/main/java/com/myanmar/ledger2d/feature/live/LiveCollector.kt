@@ -1534,8 +1534,8 @@ internal class LiveCollector(
                             ?.let { row ->
                                 historyRowToFeed(
                                     row,
-                                    dateProvider(),
-                                    clock(),
+                                    currentYangonDate(),
+                                    LocalTime.now(YANGON),
                                 )
                             }
                     },
