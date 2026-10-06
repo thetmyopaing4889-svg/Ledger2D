@@ -141,6 +141,175 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun history_row_reconstructs_complete_held_feed() {
+        val row = com.myanmar.ledger2d.core.database.HistoryResultEntity(
+            date = monday,
+            morning2d = "36",
+            morningSet = "1,500",
+            morningValue = "30,000",
+            evening2d = "57",
+            eveningSet = "1,576.45",
+            eveningValue = "55,047.95",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val feed = historyRowToFeed(row)
+
+        assertEquals(monday.toString(), feed.date)
+        assertEquals("36", feed.morning.result)
+        assertTrue(feed.morning.finalized)
+        assertEquals("57", feed.evening.result)
+        assertTrue(feed.evening.finalized)
+        assertEquals("80", feed.modern930)
+        assertEquals("33", feed.internet930)
+        assertEquals("98", feed.modern200)
+        assertEquals("78", feed.internet200)
+        assertEquals("--", feed.live)
+        assertEquals("HISTORY", feed.sourceTag)
+    }
+
+    @Test fun fresh_start_tuesday_before_0930_reconstructs_monday_full_held_state() = runTest {
+        val mondayRow = com.myanmar.ledger2d.core.database.HistoryResultEntity(
+            date = monday,
+            morning2d = "36",
+            morningSet = "1,500",
+            morningValue = "30,000",
+            evening2d = "57",
+            eveningSet = "1,576.45",
+            eveningValue = "55,047.95",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        var historyCalls = 0
+        var lukeCalls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                lukeCalls++
+                null
+            },
+            clock = { LocalTime.of(8, 24) },
+            dateProvider = { tuesday },
+            historicalFeedFetcher = { date ->
+                historyCalls++
+                assertEquals(monday, date)
+                historyRowToFeed(mondayRow)
+            },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(1, historyCalls)
+        assertEquals(1, lukeCalls)
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_monday_before_0930_reconstructs_friday_full_held_state() = runTest {
+        val fridayRow = com.myanmar.ledger2d.core.database.HistoryResultEntity(
+            date = friday,
+            morning2d = "22",
+            morningSet = "1,200",
+            morningValue = "20,000",
+            evening2d = "25",
+            eveningSet = "1,300",
+            eveningValue = "21,000",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        var recoveredDate: java.time.LocalDate? = null
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            dateProvider = { monday },
+            historicalFeedFetcher = { date ->
+                recoveredDate = date
+                historyRowToFeed(fridayRow)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(friday, recoveredDate)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(friday.toString(), state.feed?.date)
+        assertEquals("22", state.feed?.morning?.result)
+        assertEquals("25", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun weekend_cold_start_reconstructs_friday_full_held_state() = runTest {
+        val fridayRow = com.myanmar.ledger2d.core.database.HistoryResultEntity(
+            date = friday,
+            morning2d = "22",
+            morningSet = "1,200",
+            morningValue = "20,000",
+            evening2d = "25",
+            eveningSet = "1,300",
+            eveningValue = "21,000",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(18, 0) },
+            dateProvider = { saturday },
+            historicalFeedFetcher = {
+                historyRowToFeed(fridayRow)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(friday.toString(), state.feed?.date)
+        assertEquals("25", state.hero?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
     @Test fun app_clock_controls_phase_even_when_luke_reports_previous_day_time() {
         val yesterday = thursday
         val old = feed(
