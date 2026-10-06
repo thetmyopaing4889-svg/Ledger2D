@@ -1921,7 +1921,7 @@ class LiveCollectorTest {
 
     @Test fun stale_provider_reference_does_not_complete_current_cycle() = runTest {
         val stale = feed(
-            "--",
+            "35",
             "09:35:00",
             modern930 = "80",
             internet930 = "33",
