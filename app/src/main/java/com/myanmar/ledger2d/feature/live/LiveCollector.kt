@@ -1302,7 +1302,7 @@ internal class LiveCollector(
             }
 
             if (recoveredCurrent != null && canonicalDate(recoveredCurrent.date) == cycleDate) {
-                val projected = historyRowToFeed(recoveredCurrent, today, now)
+                val projected = recoveredCurrent
                 val startedAt = monotonicMs()
                 primary = SourceObservation(projected, startedAt, startedAt, 0L)
 
