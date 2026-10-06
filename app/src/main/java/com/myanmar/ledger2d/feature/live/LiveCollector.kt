@@ -1295,46 +1295,107 @@ internal class LiveCollector(
         val cycleDate = dailyCycleDate(today, now)
 
         // Cold start must reconstruct the state that belongs to the exact
-        // Daily Flow phase represented by the app clock. Before 09:30 the
-        // cycleDate is already the held completed working day. After 09:30,
-        // today's cycle owns the UI, but the previous working-day snapshot is
-        // still the required temporary hold until today's 09:30 reference or
-        // LIVE data is accepted.
+        // Daily Flow phase represented by the app clock.
+        //
+        // Before 09:30, cycleDate is the held completed working day.
+        // From 09:30 onward, today's cycle owns the UI when a current-day
+        // history row already exists. If it does not exist yet, the previous
+        // working-day row is the temporary display fallback until today's
+        // LIVE/final data replaces it.
         val previousWorking = previousWorkingDay(cycleDate)
         val fallbackFeedDate =
             if (cycleDate != today) cycleDate else previousWorking
 
-        val recoveredFeed = runCatching {
-            historicalFeedFetcher?.invoke(fallbackFeedDate)
+        val recoveredCurrent = runCatching {
+            historicalFeedFetcher?.invoke(cycleDate)
         }.getOrNull()
 
-        val recoveredPreviousFinal = runCatching {
-            historicalFinalFetcher?.invoke(fallbackFeedDate)
-        }.getOrNull()
-
-        synchronized(stateLock) {
-            if (recoveredPreviousFinal != null) {
-                val d = canonicalDate(recoveredPreviousFinal.date)
-                val allowedPreviousDate =
-                    if (cycleDate != today) cycleDate else previousWorking
-                if (d == allowedPreviousDate || d == cycleDate) {
-                    lastFinal = recoveredPreviousFinal
-                }
+        val recoveredFallback =
+            if (fallbackFeedDate == cycleDate) {
+                recoveredCurrent
+            } else {
+                runCatching {
+                    historicalFeedFetcher?.invoke(fallbackFeedDate)
+                }.getOrNull()
             }
 
-            if (recoveredFeed != null && canonicalDate(recoveredFeed.date) == fallbackFeedDate) {
-                val projected = recoveredFeed
-                val startedAt = monotonicMs()
-                primary = SourceObservation(projected, startedAt, startedAt, 0L)
+        val recoveredCurrentFinal = runCatching {
+            historicalFinalFetcher?.invoke(cycleDate)
+        }.getOrNull()
 
-                // Historical fallback data is display-only. Never mark
-                // today's reference slot complete from a previous day's row:
-                // the 09:30/14:00 cycles must still fetch today's references
-                // independently from Luke.
-                //
-                // A current-day projected final is allowed to replace the
-                // previous-day hero only when its phase has actually passed.
-                latestFinalFor(projected)?.let { lastFinal = it }
+        val recoveredFallbackFinal =
+            if (fallbackFeedDate == cycleDate) {
+                recoveredCurrentFinal
+            } else {
+                runCatching {
+                    historicalFinalFetcher?.invoke(fallbackFeedDate)
+                }.getOrNull()
+            }
+
+        synchronized(stateLock) {
+            // Keep the previous working-day final as the hero fallback first.
+            // A current-cycle final, when actually available, may replace it
+            // below. This prevents a pre-draw current-day history row from
+            // showing a future result as the LIVE hero.
+            val allowedPreviousDate =
+                if (cycleDate != today) cycleDate else previousWorking
+
+            listOfNotNull(recoveredFallbackFinal, recoveredCurrentFinal)
+                .forEach { snapshot ->
+                    val d = canonicalDate(snapshot.date)
+                    if (d == allowedPreviousDate || d == cycleDate) {
+                        if (d == allowedPreviousDate) {
+                            lastFinal = snapshot
+                        }
+                    }
+                }
+
+            val recovered =
+                recoveredCurrent?.takeIf {
+                    canonicalDate(it.date) == cycleDate
+                } ?: recoveredFallback?.takeIf {
+                    canonicalDate(it.date) == fallbackFeedDate
+                }
+
+            if (recovered != null) {
+                val recoveredIsCycleRow = canonicalDate(recovered.date) == cycleDate
+                val startedAt = monotonicMs()
+                primary = SourceObservation(recovered, startedAt, startedAt, 0L)
+
+                // Only a row that belongs to this cycle may seed the cycle's
+                // own reference slots. A previous working-day fallback is
+                // display-only and must never make today's 09:30/14:00 retry
+                // appear complete.
+                if (recoveredIsCycleRow) {
+                    if (!now.isBefore(MORNING_REFERENCE)) {
+                        val pair930 = recovered.modern930 to recovered.internet930
+                        if (validReferencePair(recovered, pair930.first, pair930.second)) {
+                            reference930 = pair930
+                            reference930Date = cycleDate
+                            reference930CompleteDate = cycleDate
+                            reference930PendingDate = null
+                        } else {
+                            reference930PendingDate = cycleDate
+                        }
+                    }
+
+                    if (!now.isBefore(AFTERNOON_REFERENCE)) {
+                        val pair200 = recovered.modern200 to recovered.internet200
+                        if (validReferencePair(recovered, pair200.first, pair200.second)) {
+                            reference200 = pair200
+                            reference200Date = cycleDate
+                            reference200CompleteDate = cycleDate
+                            reference200PendingDate = null
+                        } else {
+                            reference200PendingDate = cycleDate
+                        }
+                    }
+                }
+
+                // A completed current-cycle history row is allowed to replace
+                // the held hero only when history reconstruction says its
+                // session boundary has actually passed.
+                latestFinalFor(recovered)?.let { lastFinal = it }
 
                 publishLocked()
                 return
