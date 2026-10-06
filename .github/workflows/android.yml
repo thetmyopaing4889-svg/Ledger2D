@@ -21,7 +21,7 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
       - name: Unit tests, lint, and debug APK
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.myanmar.ledger2d.feature.live.LiveCollectorTest.stale_provider_reference_does_not_complete_current_cycle'
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.myanmar.ledger2d.feature.live.LiveCollectorTest.schedule_aware_history_projection_hides_future_evening_result'
       - name: Release APK verification
         run: ./gradlew --no-daemon assembleRelease
       - name: Upload debug APK
