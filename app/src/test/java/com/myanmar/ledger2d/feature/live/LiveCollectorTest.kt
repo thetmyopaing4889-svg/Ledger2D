@@ -2155,4 +2155,41 @@ class LiveCollectorTest {
         assertEquals("--", projected.internet200)
     }
 
+    @Test fun fresh_start_1230_does_not_promote_historical_evening_result_to_hero() = runTest {
+        val row = historyRow(
+            tuesday,
+            morning = "44",
+            evening = "66",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val now = LocalTime.of(12, 30)
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { now },
+            dateProvider = { tuesday },
+            historicalFeedFetcher = { date ->
+                if (date == tuesday) historyRowToFeed(row, tuesday, now) else null
+            },
+            historicalFinalFetcher = { date ->
+                if (date == tuesday) historyRowToFinal(row) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("44", state.hero?.result)
+        assertEquals(LIVE_SESSION_MORNING_LABEL, state.hero?.sessionLabel)
+        assertEquals("--", state.feed?.evening?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
 }

@@ -1336,11 +1336,15 @@ internal class LiveCollector(
             null
         }
 
-        val currentFinal = runCatching {
-            historicalFinalFetcher?.invoke(cycleDate)
-        }.getOrNull()?.takeIf {
-            canonicalDate(it.date) == cycleDate
-        }
+        // The standalone historical-final converter returns the latest
+        // result in a row and is not phase-aware. For the current cycle use
+        // the already projected feed instead, so a stored evening result
+        // cannot become the Hero before 16:30 (or a morning result before
+        // 12:01) during a cold start. A previous completed working-day
+        // fallback is safe to read directly below.
+        val currentFinal = currentFeed
+            ?.let(::latestFinalFor)
+            ?.takeIf { canonicalDate(it.date) == cycleDate }
 
         val fallbackFinal = if (
             currentFinal == null &&
