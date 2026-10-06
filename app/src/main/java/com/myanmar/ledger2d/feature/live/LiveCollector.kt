@@ -150,7 +150,11 @@ internal fun buildLiveDailyResultPatches(
 
     // References belong to the app's current working-day cycle, not Luke's
     // completed-result date. Never persist them before their display boundary.
-    if (isWorkingDay(today) && cycleDate == today) {
+    if (
+        isWorkingDay(today) &&
+        cycleDate == today &&
+        providerDate == cycleDate
+    ) {
         val modern930 = if (!now.isBefore(MORNING_REFERENCE)) {
             feed.modern930.takeIf(::isValidLive2d)
         } else null
@@ -449,6 +453,7 @@ private fun isDisplayableFeedForSchedule(
     return when {
         !isWorkingDay(today) -> feedDate == cycleDate
         scheduleTime.isBefore(MORNING_REFERENCE) -> feedDate == cycleDate
+        !scheduleTime.isBefore(EVENING_CATCHUP_END) -> feedDate == cycleDate
         else -> feedDate == cycleDate || feedDate == previousWorkingDay(cycleDate)
     }
 }
@@ -1081,11 +1086,13 @@ internal class LiveCollector(
             if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return false
 
             if (isMorning) {
-                val valid = validReferencePair(
-                    feed,
-                    feed?.modern930 ?: LIVE_PENDING,
-                    feed?.internet930 ?: LIVE_PENDING,
-                )
+                val valid =
+                    canonicalDate(feed?.date.orEmpty()) == cycleDate &&
+                        validReferencePair(
+                            feed,
+                            feed?.modern930 ?: LIVE_PENDING,
+                            feed?.internet930 ?: LIVE_PENDING,
+                        )
 
                 if (valid) {
                     reference930 =
@@ -1104,11 +1111,13 @@ internal class LiveCollector(
                     reference930PendingDate = cycleDate
                 }
             } else {
-                val valid = validReferencePair(
-                    feed,
-                    feed?.modern200 ?: LIVE_PENDING,
-                    feed?.internet200 ?: LIVE_PENDING,
-                )
+                val valid =
+                    canonicalDate(feed?.date.orEmpty()) == cycleDate &&
+                        validReferencePair(
+                            feed,
+                            feed?.modern200 ?: LIVE_PENDING,
+                            feed?.internet200 ?: LIVE_PENDING,
+                        )
 
                 if (valid) {
                     reference200 =
@@ -1522,7 +1531,13 @@ internal class LiveCollector(
                     historicalFeedFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()
-                            ?.let(::historyRowToFeed)
+                            ?.let { row ->
+                                historyRowToFeed(
+                                    row,
+                                    dateProvider(),
+                                    clock(),
+                                )
+                            }
                     },
                 )
 
