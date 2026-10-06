@@ -236,6 +236,54 @@ internal fun previousWorkingDay(date: LocalDate): LocalDate {
     return d
 }
 
+private fun historySession(
+    result: String,
+    set: String,
+    value: String,
+): LiveSessionData {
+    val normalizedResult = result.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    val normalizedSet = set.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    val normalizedValue = value.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    return LiveSessionData(
+        result = normalizedResult,
+        set = normalizedSet,
+        value = normalizedValue,
+        finalized = isValidLive2d(normalizedResult),
+    )
+}
+
+/**
+ * Reconstruct the complete held working-day display from the same historical
+ * 2D source already used by the Room Keeper. This is display-only cold-start
+ * state before the next working-day 09:30 boundary; it does not fabricate a
+ * LIVE value.
+ */
+internal fun historyRowToFeed(row: HistoryResultEntity): LiveFeedData {
+    val morning = historySession(row.morning2d, row.morningSet, row.morningValue)
+    val evening = historySession(row.evening2d, row.eveningSet, row.eveningValue)
+    val lastFinalTime = when {
+        evening.finalized -> LocalTime.of(16, 30)
+        morning.finalized -> LocalTime.of(12, 1)
+        else -> LocalTime.MIDNIGHT
+    }
+
+    return LiveFeedData(
+        date = row.date.toString(),
+        currentTime = lastFinalTime.toString(),
+        live = LIVE_PENDING,
+        liveSet = LIVE_PENDING,
+        liveVal = LIVE_PENDING,
+        morning = morning,
+        evening = evening,
+        modern930 = row.modern930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        internet930 = row.internet930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        modern200 = row.modern200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        internet200 = row.internet200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        sourceTag = "HISTORY",
+        serverTimeEpochMs = row.date.atTime(lastFinalTime).atZone(YANGON).toInstant().toEpochMilli(),
+    )
+}
+
 internal fun historyRowToFinal(row: HistoryResultEntity): LiveHeroSnapshot? {
     val result: String
     val set: String
@@ -554,6 +602,7 @@ internal class LiveCollector(
     private val cacheFeedSaver: (LiveFeedData) -> Unit = {},
     private val liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
     private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
+    private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -1123,16 +1172,32 @@ internal class LiveCollector(
         val today = dateProvider()
         val now = clock()
         val cycleDate = dailyCycleDate(today, now)
+        val beforeNextCycleBoundary = cycleDate != today
 
-        // Before 09:30, cycleDate already represents the held completed
-        // working day. Recover that day directly. Calling
-        // previousWorkingDay(cycleDate) here would skip one completed working
-        // day on every Tue-Fri morning.
-        //
-        // At/after 09:30, today's cycle owns the display and the immediately
-        // previous working day is the correct historical fallback until a
-        // current-day final arrives. Weekend cycleDate is Friday, so it also
-        // recovers Friday exactly once.
+        // Before 09:30, the held cycleDate is the complete working-day state
+        // the user should see: final cards + 09:30/14:00 references. Recover
+        // the whole historical row instead of only its 4:30 hero. This also
+        // keeps a Tue-Fri morning from stepping back one extra working day.
+        if (beforeNextCycleBoundary) {
+            val recoveredFeed = runCatching {
+                historicalFeedFetcher?.invoke(cycleDate)
+            }.getOrNull()
+
+            if (recoveredFeed != null && canonicalDate(recoveredFeed.date) == cycleDate) {
+                synchronized(stateLock) {
+                    val startedAt = monotonicMs()
+                    primary = SourceObservation(recoveredFeed, startedAt, startedAt, 0L)
+                    lastFinal = latestFinalFor(recoveredFeed)
+                    publishLocked()
+                }
+                return
+            }
+        }
+
+        // At/after 09:30, today's cycle owns the display and only the
+        // immediately previous working-day final is a historical hero fallback
+        // until today's final arrives. Weekend cycleDate is Friday, so the
+        // existing final recovery remains Friday for the whole weekend.
         val recoveryDate =
             if (cycleDate != today) cycleDate else previousWorkingDay(cycleDate)
 
@@ -1259,6 +1324,11 @@ internal class LiveCollector(
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()
                             ?.let(::historyRowToFinal)
+                    },
+                    historicalFeedFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let(::historyRowToFeed)
                     },
                 )
 
