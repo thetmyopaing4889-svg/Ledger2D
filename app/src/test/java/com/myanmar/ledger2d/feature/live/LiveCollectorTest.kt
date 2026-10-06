@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -368,7 +369,7 @@ class LiveCollectorTest {
     @Test fun fresh_start_monday_1830_enters_monday_completed_phase_completely() = runTest {
         val mondayRow = historyRow(monday)
         val fridayRow = historyRow(friday, morning = "22", evening = "25")
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
