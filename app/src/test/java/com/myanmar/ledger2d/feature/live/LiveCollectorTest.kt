@@ -310,6 +310,200 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    private fun historyRow(
+        date: java.time.LocalDate,
+        morning: String = "36",
+        evening: String = "57",
+        modern930: String = "80",
+        internet930: String = "33",
+        modern200: String = "98",
+        internet200: String = "78",
+    ) = com.myanmar.ledger2d.core.database.HistoryResultEntity(
+        date = date,
+        morning2d = morning,
+        morningSet = "1,500",
+        morningValue = "30,000",
+        evening2d = evening,
+        eveningSet = "1,576.45",
+        eveningValue = "55,047.95",
+        modern930 = modern930,
+        internet930 = internet930,
+        modern200 = modern200,
+        internet200 = internet200,
+    )
+
+    @Test fun fresh_start_monday_0830_enters_friday_held_phase_completely() = runTest {
+        val fridayRow = historyRow(friday, morning = "22", evening = "25")
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            dateProvider = { monday },
+            historicalFeedFetcher = { date ->
+                if (date == friday) historyRowToFeed(fridayRow, monday, LocalTime.of(8, 30)) else null
+            },
+            historicalFinalFetcher = { date ->
+                if (date == friday) historyRowToFinal(fridayRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(friday.toString(), state.feed?.date)
+        assertEquals("22", state.feed?.morning?.result)
+        assertEquals("25", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("25", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_monday_1830_enters_monday_completed_phase_completely() = runTest {
+        val mondayRow = historyRow(monday)
+        val fridayRow = historyRow(friday, morning = "22", evening = "25")
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(18, 30) },
+            dateProvider = { monday },
+            historicalFeedFetcher = { date ->
+                when (date) {
+                    monday -> historyRowToFeed(mondayRow, monday, LocalTime.of(18, 30))
+                    else -> null
+                }
+            },
+            historicalFinalFetcher = { date ->
+                if (date == friday) historyRowToFinal(fridayRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_tuesday_0830_enters_monday_held_phase_completely() = runTest {
+        val mondayRow = historyRow(monday)
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            dateProvider = { tuesday },
+            historicalFeedFetcher = { date ->
+                if (date == monday) historyRowToFeed(mondayRow, tuesday, LocalTime.of(8, 30)) else null
+            },
+            historicalFinalFetcher = { date ->
+                if (date == monday) historyRowToFinal(mondayRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_tuesday_1130_enters_new_cycle_with_pending_sessions_and_live_gate() = runTest {
+        val mondayRow = historyRow(monday, morning = "36", evening = "57")
+        val tuesdayRow = historyRow(tuesday, morning = "44", evening = "66")
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(11, 30) },
+            dateProvider = { tuesday },
+            historicalFeedFetcher = { date ->
+                if (date == tuesday) historyRowToFeed(tuesdayRow, tuesday, LocalTime.of(11, 30)) else null
+            },
+            historicalFinalFetcher = { date ->
+                if (date == monday) historyRowToFinal(mondayRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+        assertEquals("57", state.hero?.result)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun fresh_start_tuesday_1730_enters_tuesday_completed_phase_completely() = runTest {
+        val mondayRow = historyRow(monday, morning = "36", evening = "57")
+        val tuesdayRow = historyRow(tuesday, morning = "44", evening = "66")
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(17, 30) },
+            dateProvider = { tuesday },
+            historicalFeedFetcher = { date ->
+                if (date == tuesday) historyRowToFeed(tuesdayRow, tuesday, LocalTime.of(17, 30)) else null
+            },
+            historicalFinalFetcher = { date ->
+                if (date == monday) historyRowToFinal(mondayRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("44", state.feed?.morning?.result)
+        assertEquals("66", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("78", state.feed?.internet200)
+        assertEquals("66", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
     @Test fun app_clock_controls_phase_even_when_luke_reports_previous_day_time() {
         val yesterday = thursday
         val old = feed(
