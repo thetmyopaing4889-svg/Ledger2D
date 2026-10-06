@@ -453,7 +453,7 @@ private fun isDisplayableFeedForSchedule(
     return when {
         !isWorkingDay(today) -> feedDate == cycleDate
         scheduleTime.isBefore(MORNING_REFERENCE) -> feedDate == cycleDate
-        !scheduleTime.isBefore(EVENING_CATCHUP_END) -> feedDate == cycleDate
+        !scheduleTime.isBefore(EVENING_CLOSE) -> feedDate == cycleDate
         else -> feedDate == cycleDate || feedDate == previousWorkingDay(cycleDate)
     }
 }
@@ -1318,7 +1318,8 @@ internal class LiveCollector(
             if (
                 cycleDate == today &&
                 isWorkingDay(today) &&
-                !now.isBefore(MORNING_REFERENCE)
+                !now.isBefore(MORNING_REFERENCE) &&
+                    now.isBefore(EVENING_CLOSE)
             ) {
                 previousWorking
             } else {
