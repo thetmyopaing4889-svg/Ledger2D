@@ -1919,7 +1919,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun stale_provider_reference_does_not_complete_current_cycle() = runTest {
+    @Test(timeout = 10_000) fun stale_provider_reference_does_not_complete_current_cycle() = runTest {
         val stale = feed(
             "--",
             "09:35:00",
