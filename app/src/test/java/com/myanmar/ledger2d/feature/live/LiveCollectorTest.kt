@@ -2017,6 +2017,34 @@ class LiveCollectorTest {
         assertFalse(result.heroLive)
     }
 
+    @Test fun stale_provider_reference_does_not_complete_afternoon_cycle() = runTest {
+        val stale = feed(
+            "--",
+            "14:05:00",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        ).copy(date = monday.toString())
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { stale },
+            clock = { LocalTime.of(14, 5) },
+            dateProvider = { tuesday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("--", state.feed?.modern200)
+        assertEquals("--", state.feed?.internet200)
+
+        scope.cancel()
+    }
+
     @Test fun main_poll_cannot_erase_successful_current_day_reference() = runTest {
         val currentReference = feed(
             "--",
