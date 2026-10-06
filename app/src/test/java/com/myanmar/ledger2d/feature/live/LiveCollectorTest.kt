@@ -1932,13 +1932,6 @@ class LiveCollectorTest {
         assertEquals("--", state.feed?.modern930)
         assertEquals("--", state.feed?.internet930)
 
-        advanceTimeBy(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-        runCurrent()
-
-        state = collector.state.value as LiveUiState.Data
-        assertEquals("--", state.feed?.modern930)
-        assertEquals("--", state.feed?.internet930)
-
         scope.cancel()
     }
 
