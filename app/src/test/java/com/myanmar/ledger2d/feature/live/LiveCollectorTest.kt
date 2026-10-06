@@ -1521,7 +1521,7 @@ class LiveCollectorTest {
         collector.start()
         runCurrent()
 
-        assertEquals(3, calls)
+        assertEquals(1, calls)
         val state = collector.state.value as LiveUiState.Data
         assertEquals(monday.toString(), state.feed?.date)
         assertEquals("80", state.feed?.modern930)
