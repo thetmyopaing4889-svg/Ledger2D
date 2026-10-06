@@ -14,11 +14,16 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Rule
+import org.junit.rules.Timeout
 import java.time.LocalTime
 import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
+    @Rule @JvmField
+    val testTimeout: Timeout = Timeout.seconds(10)
+
     private val yangon = ZoneId.of("Asia/Yangon")
     private val friday = java.time.LocalDate.of(2026, 10, 2)
     private val thursday = friday.minusDays(1)
