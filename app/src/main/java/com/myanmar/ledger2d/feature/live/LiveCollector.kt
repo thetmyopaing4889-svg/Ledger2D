@@ -310,8 +310,14 @@ internal fun historyRowToFeed(
         )
     }
 
-    val showMorningFinal = !now.isBefore(MORNING_CLOSE)
-    val showEveningFinal = !now.isBefore(EVENING_CLOSE)
+    // When the historical row is the held cycleDate itself (Monday-Friday
+    // pre-09:30, or the weekend-held Friday row), the whole completed row is
+    // valid because that cycle has already finished. For today's cycle,
+    // future session/reference values must stay masked until their boundaries.
+    val heldCompletedCycle = cycleDate != today
+
+    val showMorningFinal = heldCompletedCycle || !now.isBefore(MORNING_CLOSE)
+    val showEveningFinal = heldCompletedCycle || !now.isBefore(EVENING_CLOSE)
     val morning = session(
         row.morning2d,
         row.morningSet,
@@ -326,11 +332,9 @@ internal fun historyRowToFeed(
     )
 
     val show930Reference =
-        !isWorkingDay(today) ||
-            !now.isBefore(MORNING_REFERENCE)
+        heldCompletedCycle || !now.isBefore(MORNING_REFERENCE)
     val show200Reference =
-        !isWorkingDay(today) ||
-            !now.isBefore(AFTERNOON_REFERENCE)
+        heldCompletedCycle || !now.isBefore(AFTERNOON_REFERENCE)
 
     val modern930 = if (isCurrentCycleRow && show930Reference) {
         row.modern930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
