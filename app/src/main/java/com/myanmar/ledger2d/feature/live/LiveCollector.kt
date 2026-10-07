@@ -1010,7 +1010,6 @@ internal class LiveCollector(
                 // without today's LIVE value yet. This is display state only;
                 // it never participates in betting or ledger calculations.
                 val incomingFinal = latestFinalFor(protected)
-                val today = dateProvider()
                 if (
                     incomingFinal != null &&
                     canonicalDate(incomingFinal.date) != today
