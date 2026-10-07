@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalTime
@@ -330,6 +331,35 @@ class LiveCollectorTest {
         assertEquals("38", result.hero?.result)
         assertTrue(result.heroLive)
         assertEquals(LiveStatus.LIVE_CONFIRMED, result.status)
+    }
+
+    @Test fun evening_phase_recomputes_ui_when_new_evening_request_fails() = runTest {
+        var schedule = LocalTime.of(11, 40)
+        var calls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                calls++
+                if (calls == 1) feed("38", "11:40:00") else null
+            },
+            clock = { schedule },
+        )
+
+        collector.start()
+        runCurrent()
+        assertEquals("38", (collector.state.value as LiveUiState.Data).hero?.result)
+        assertTrue((collector.state.value as LiveUiState.Data).heroLive)
+
+        schedule = LocalTime.of(16, 5)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS + 100L)
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertFalse(state.heroLive)
+        assertNotEquals("38", state.hero?.result)
+
+        scope.cancel()
     }
 
     @Test fun slow_request_does_not_block_next_scheduled_request() = runTest {
