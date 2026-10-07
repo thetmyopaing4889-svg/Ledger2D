@@ -1,7 +1,7 @@
 name: Android CI
 on:
   push:
-    branches: [main]
+    branches: [main, recover/403-line-2026-10-07]
   pull_request:
     branches: [main]
   workflow_dispatch:
