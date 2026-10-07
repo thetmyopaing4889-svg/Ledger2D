@@ -152,7 +152,8 @@ internal fun buildLiveDailyResultPatches(
     // completed-result date. Never persist them before their display boundary.
     if (
         isWorkingDay(today) &&
-        cycleDate == today
+        cycleDate == today &&
+        providerDate == cycleDate
     ) {
         val modern930 = if (!now.isBefore(MORNING_REFERENCE)) {
             feed.modern930.takeIf(::isValidLive2d)
@@ -750,6 +751,11 @@ internal class LiveCollector(
     private var reference930PendingDate: LocalDate? = null
     private var reference200PendingDate: LocalDate? = null
 
+    // A successful reference request is also a valid current-cycle display
+    // baseline even when the normal LIVE fetch is empty. Keep that feed
+    // separate from the raw primary so 09:30/14:00 can render deterministically.
+    private var referenceFeed: LiveFeedData? = null
+
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
     private var lastFinal: LiveHeroSnapshot? = null
@@ -958,12 +964,20 @@ internal class LiveCollector(
             isValidLive2d(internet)
 
     private fun mergeReferenceIntoFeed(base: LiveFeedData?): LiveFeedData? {
-        if (base == null) return null
-
         val today = dateProvider()
         val t = clock()
         val cycleDate = dailyCycleDate(today, t)
-        var out = base
+
+        // The reference fetch has its own lifecycle. When it succeeds before
+        // the main poll returns a usable snapshot, use that successful feed as
+        // the display baseline instead of waiting for primary.
+        val effectiveBase = base ?: referenceFeed?.takeIf {
+            canonicalDate(it.date) == cycleDate
+        }
+
+        if (effectiveBase == null) return null
+
+        var out = effectiveBase
 
         // 09:30 starts the new cycle. A successful pair is applied directly;
         // after a failed attempt, pending masks the provider's previous-day
@@ -1110,6 +1124,7 @@ internal class LiveCollector(
                     reference930PendingDate = null
                     reference930CompleteDate = cycleDate
                     referenceResetDate = cycleDate
+                    referenceFeed = feed
                 } else {
                     // Do not clear before the first request. If the first
                     // request succeeds, the UI transitions old -> new
@@ -1134,6 +1149,7 @@ internal class LiveCollector(
                     reference200Date = cycleDate
                     reference200PendingDate = null
                     reference200CompleteDate = cycleDate
+                    referenceFeed = feed
                 } else {
                     reference200 = null
                     reference200Date = cycleDate
@@ -1437,6 +1453,9 @@ internal class LiveCollector(
             mergeReferenceIntoFeed(observation.feed)?.let { merged ->
                 observation.copy(feed = merged)
             } ?: observation
+        } ?: mergeReferenceIntoFeed(null)?.let { feed ->
+            val startedAt = monotonicMs()
+            SourceObservation(feed, startedAt, startedAt, 0L)
         }
 
         val resolution = resolveLiveState(
