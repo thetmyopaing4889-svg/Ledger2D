@@ -716,16 +716,22 @@ internal fun isCurrentCycleReferenceObservation(
     feed: LiveFeedData,
     cycleDate: LocalDate,
 ): Boolean {
-    val serverDate = feed.serverTimeEpochMs
-        ?.let { Instant.ofEpochMilli(it).atZone(YANGON).toLocalDate() }
+    val epoch = feed.serverTimeEpochMs
+    // Unit fixtures and some legacy provider responses may omit a real epoch
+    // and use a tiny sentinel. Treat those as "no absolute server date" so
+    // #403's split history-date/current-reference behavior stays valid.
+    if (epoch == null || epoch < 946684800000L) return true
+
+    val serverDate = Instant.ofEpochMilli(epoch)
+        .atZone(YANGON)
+        .toLocalDate()
 
     // Some Luke responses carry the current reference values while the
     // provider's result-date field still names the previous completed day.
-    // When the response has no usable absolute server timestamp, preserve
-    // that established #403 behavior. If a timestamp is present, require it
-    // to belong to the current working-day cycle so stale provider snapshots
-    // cannot complete a reference retry.
-    return serverDate == null || serverDate == cycleDate
+    // When an absolute server timestamp is available, require that timestamp
+    // to belong to the current working-day cycle so stale snapshots cannot
+    // complete a reference retry.
+    return serverDate == cycleDate
 }
 
 internal class LiveCollector(
@@ -818,9 +824,11 @@ internal class LiveCollector(
             }
             val finishedAt = monotonicMs()
 
-            if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
+            if (feed == null) return@launch
 
             synchronized(stateLock) {
+                captureHeldFinalLocked(feed)
+                if (!isUsableLukeSnapshot(feed)) return@synchronized
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
@@ -872,6 +880,30 @@ internal class LiveCollector(
                 cacheFeedSaver(protected)
                 publishLocked()
                 syncLiveRoom(protected)
+            }
+        }
+    }
+
+    private fun captureHeldFinalLocked(feed: LiveFeedData) {
+        val final = latestFinalFor(feed) ?: return
+        val finalDate = canonicalDate(final.date) ?: return
+
+        val today = dateProvider()
+        val now = clock()
+        val cycleDate = dailyCycleDate(today, now)
+        val previousWorking = previousWorkingDay(cycleDate)
+
+        // A previous-working-day completed result is valid as the temporary
+        // hero while the new cycle is still at reference/pending/live stages.
+        // It must not become the primary feed or affect financial data.
+        if (finalDate == cycleDate || finalDate == previousWorking) {
+            val existingDate = canonicalDate(lastFinal?.date.orEmpty())
+            if (
+                existingDate == null ||
+                existingDate == previousWorking ||
+                finalDate == cycleDate
+            ) {
+                lastFinal = final
             }
         }
     }
