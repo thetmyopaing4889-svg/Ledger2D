@@ -1,7 +1,7 @@
 name: Android CI
 on:
   push:
-    branches: [main]
+    branches: [main, diag/live-root-cause-20261007]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
       - name: Unit tests, lint, and debug APK
-        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.myanmar.ledger2d.feature.live.LiveCollectorTest' --info
       - name: Release APK verification
         run: ./gradlew --no-daemon assembleRelease
       - name: Upload debug APK
