@@ -396,6 +396,7 @@ internal class LiveCollector(
     private var primaryLiveSession: LiveSession? = null
     private var lastLive: LiveHeroSnapshot? = null
     private var lastFinal: LiveHeroSnapshot? = null
+    private var lastPhaseMarker: Pair<LiveWindowAction, LiveSession?>? = null
 
     init {
         val scheduleTime = clock()
@@ -815,6 +816,8 @@ internal class LiveCollector(
     }
 
     private fun publishLocked() {
+        lastPhaseMarker = liveWindowAction(clock()) to liveSessionForTime(clock())
+
         val displayPrimary = primary?.let { observation ->
             mergeReferenceIntoFeed(observation.feed)?.let { merged ->
                 observation.copy(feed = merged)
@@ -866,6 +869,14 @@ internal class LiveCollector(
         schedulerJob = scope.launch {
             while (isActive) {
                 val t = clock()
+
+                synchronized(stateLock) {
+                    val phaseMarker = liveWindowAction(t) to liveSessionForTime(t)
+                    if (phaseMarker != lastPhaseMarker) {
+                        publishLocked()
+                    }
+                }
+
                 maybeReferenceFetch(t)
 
                 if (shouldPoll(t)) {
