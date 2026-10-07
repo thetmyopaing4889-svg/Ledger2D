@@ -1249,7 +1249,8 @@ internal class LiveCollector(
             null
         }
 
-        val closedSnapshot = feed != null &&
+        val closedSnapshot = isMorning &&
+            feed != null &&
             feed.isCloseDay &&
             isCurrentCycleReferenceObservation(feed, cycleDate)
 

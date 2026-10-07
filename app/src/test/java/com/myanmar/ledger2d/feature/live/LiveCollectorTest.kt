@@ -319,8 +319,7 @@ class LiveCollectorTest {
         var now = LocalTime.of(9, 30)
         var today = wednesday
         var lukeCalls = 0
-
-        val closedFeed = feed(
+        var lukeResponse = feed(
             value = "--",
             time = "09:30:00",
             date = wednesday,
@@ -330,6 +329,7 @@ class LiveCollectorTest {
             modern200 = "--",
             internet200 = "--",
         )
+
         val heldRow = historyRow(
             date = tuesday,
             morning = "36",
@@ -347,7 +347,7 @@ class LiveCollectorTest {
             scope = scope,
             fetcher = {
                 lukeCalls++
-                closedFeed
+                lukeResponse
             },
             clock = { now },
             dateProvider = { today },
@@ -388,6 +388,28 @@ class LiveCollectorTest {
         assertFalse(state.closedDay)
         assertEquals(tuesday.toString(), state.feed?.date)
         assertEquals("57", state.hero?.result)
+
+        // At the next working-day 09:30, a non-closed Luke observation starts
+        // the existing normal reference flow again.
+        now = LocalTime.of(9, 30)
+        lukeResponse = feed(
+            value = "--",
+            time = "09:30:00",
+            date = thursday,
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val callsBeforeNormal = lukeCalls
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertFalse(state.closedDay)
+        assertTrue(lukeCalls > callsBeforeNormal)
+        assertEquals("11", state.feed?.modern930)
+        assertEquals("22", state.feed?.internet930)
+        assertEquals("--", state.feed?.morning?.result)
 
         scope.cancel()
     }
