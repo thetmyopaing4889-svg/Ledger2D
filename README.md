@@ -56,3 +56,5 @@ The main workspace is Home-first and operational: it provides a compact dashboar
 GitHub Actions runs unit tests, debug lint, debug APK assembly, release APK assembly, and uploads both APK artifacts. The local JSON backup/restore feature remains intentionally unexposed until its Android file-picker, schema validation, and transactional restore path can be implemented and tested end-to-end. Real-device visual/accessibility testing and release signing with a user-owned keystore are deployment steps outside the repository-only CI build.
 
 Latest verified source changes are delivered through the `main` branch. Download the debug APK from the `ledger2d-debug-apk` artifact on the latest successful [Android CI run](https://github.com/thetmyopaing4889-svg/Ledger2D/actions).
+
+<!-- CI verification trigger -->
