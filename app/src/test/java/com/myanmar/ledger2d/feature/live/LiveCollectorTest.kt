@@ -85,7 +85,7 @@ class LiveCollectorTest {
         val fridayFinal = mondayFinal.copy(result = "25", date = friday.toString())
 
         var recoveredDate: java.time.LocalDate? = null
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -122,7 +122,7 @@ class LiveCollectorTest {
             date = friday.toString(),
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -188,7 +188,7 @@ class LiveCollectorTest {
 
         var historyCalls = 0
         var lukeCalls = 0
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = {
@@ -241,7 +241,7 @@ class LiveCollectorTest {
         )
 
         var recoveredDate: java.time.LocalDate? = null
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -286,7 +286,7 @@ class LiveCollectorTest {
             internet200 = "78",
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -334,7 +334,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_monday_0830_enters_friday_held_phase_completely() = runTest {
         val fridayRow = historyRow(friday, morning = "22", evening = "25")
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -368,7 +368,7 @@ class LiveCollectorTest {
     @Test fun fresh_start_monday_1830_enters_monday_completed_phase_completely() = runTest {
         val mondayRow = historyRow(monday)
         val fridayRow = historyRow(friday, morning = "22", evening = "25")
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -404,7 +404,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_tuesday_0830_enters_monday_held_phase_completely() = runTest {
         val mondayRow = historyRow(monday)
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -438,7 +438,7 @@ class LiveCollectorTest {
     @Test fun fresh_start_tuesday_1130_enters_new_cycle_with_pending_sessions_and_live_gate() = runTest {
         val mondayRow = historyRow(monday, morning = "36", evening = "57")
         val tuesdayRow = historyRow(tuesday, morning = "44", evening = "66")
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val tuesdayFeed = historyRowToFeed(tuesdayRow, tuesday, LocalTime.of(11, 30)).copy(
             sourceTag = "LUKE",
             live = LIVE_PENDING,
@@ -479,7 +479,7 @@ class LiveCollectorTest {
     @Test fun fresh_start_tuesday_1730_enters_tuesday_completed_phase_completely() = runTest {
         val mondayRow = historyRow(monday, morning = "36", evening = "57")
         val tuesdayRow = historyRow(tuesday, morning = "44", evening = "66")
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -589,7 +589,7 @@ class LiveCollectorTest {
         ).copy(date = friday.toString(), serverTimeEpochMs = 1_000L)
         var calls = 0
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -630,7 +630,7 @@ class LiveCollectorTest {
             internet200 = "78",
         ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = { old },
@@ -686,7 +686,7 @@ class LiveCollectorTest {
             internet200 = "--",
         ).copy(date = friday.toString(), serverTimeEpochMs = 2_000L)
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = { if (referenceReady) late else old },
@@ -806,7 +806,7 @@ class LiveCollectorTest {
             internet200 = "78",
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -848,7 +848,7 @@ class LiveCollectorTest {
             internet200 = "--",
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -893,7 +893,7 @@ class LiveCollectorTest {
             internet930 = "33",
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = { mondayFeed },
@@ -929,7 +929,7 @@ class LiveCollectorTest {
             internet200 = "--",
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = { todayFeed },
@@ -976,7 +976,7 @@ class LiveCollectorTest {
             serverTimeEpochMs = monday.atTime(9, 41).atZone(yangon).toInstant().toEpochMilli(),
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { mondayFeed },
@@ -1016,7 +1016,7 @@ class LiveCollectorTest {
             serverTimeEpochMs = monday.atTime(10, 27).atZone(yangon).toInstant().toEpochMilli(),
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { mondayFeed },
@@ -1287,7 +1287,7 @@ class LiveCollectorTest {
             evening = finalEvening("25"),
         ).copy(date = yesterday.toString(), serverTimeEpochMs = null)
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -1317,7 +1317,7 @@ class LiveCollectorTest {
     @Test fun fresh_start_0935_reference_failure_keeps_yesterday_cards_until_1130() = runTest {
         val mondayRow = historyRow(monday)
         var now = LocalTime.of(9, 35)
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
@@ -1386,7 +1386,7 @@ class LiveCollectorTest {
                 .toEpochMilli(),
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { tuesdayFeed },
@@ -1417,7 +1417,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_1000_catches_up_0930_reference_without_live_polling() = runTest {
         var calls = 0
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -1457,7 +1457,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_1500_catches_up_both_reference_slots_without_live_polling() = runTest {
         var calls = 0
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -1498,7 +1498,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_1800_catches_up_reference_slots_without_starting_evening_live_polling() = runTest {
         var calls = 0
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -1541,7 +1541,7 @@ class LiveCollectorTest {
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
         var calls = 0
         val collector = LiveCollector(
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)),
             fetcher = {
                 calls++
                 if (calls == 1) feed("38", "11:40:00") else null
@@ -1561,7 +1561,7 @@ class LiveCollectorTest {
     @Test fun slow_request_does_not_block_next_scheduled_request() = runTest {
         var calls = 0
         val firstGate = CompletableDeferred<Unit>()
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -1588,7 +1588,7 @@ class LiveCollectorTest {
         var calls = 0
 
         val collector = LiveCollector(
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)),
             fetcher = {
                 calls++
                 if (calls == 1) first.await() else second.await()
@@ -1612,7 +1612,7 @@ class LiveCollectorTest {
     @Test fun final_result_cannot_regress_to_pending() = runTest {
         var calls = 0
         val collector = LiveCollector(
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)),
             fetcher = {
                 calls++
                 if (calls == 1) feed("36", "12:03:00", morning = finalMorning("36"))
@@ -1634,7 +1634,7 @@ class LiveCollectorTest {
 
     @Test fun background_polling_works_without_opening_live_screen() = runTest {
         var calls = 0
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
             fetcher = {
@@ -1899,7 +1899,7 @@ class LiveCollectorTest {
             internet200 = "--",
         ).copy(date = friday.toString(), serverTimeEpochMs = 1_000L)
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { f },
@@ -1936,7 +1936,7 @@ class LiveCollectorTest {
                 .toEpochMilli(),
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { stale },
@@ -1970,7 +1970,7 @@ class LiveCollectorTest {
                 .toEpochMilli(),
         )
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { stale },
@@ -2027,7 +2027,7 @@ class LiveCollectorTest {
             internet200 = "78",
         ).copy(date = monday.toString())
 
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { stale },
@@ -2066,7 +2066,7 @@ class LiveCollectorTest {
             internet930 = "--",
         )
         var calls = 0
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = {
@@ -2128,7 +2128,7 @@ class LiveCollectorTest {
             sessionLabel = LIVE_SESSION_MORNING_LABEL,
             date = friday.toString(),
         )
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { null },
