@@ -1533,7 +1533,9 @@ class LiveCollectorTest {
 
         advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
         runCurrent()
-        assertEquals(3, calls)
+        // 16:30 closes the daily cycle. By 18:00 the display is frozen;
+        // fresh-install catch-up must not start a new LIVE polling loop.
+        assertEquals(1, calls)
 
         scope.cancel()
     }
