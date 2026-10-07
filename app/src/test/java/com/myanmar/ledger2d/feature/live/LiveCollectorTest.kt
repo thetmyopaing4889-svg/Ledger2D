@@ -1651,7 +1651,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun live_room_patches_split_previous_result_date_from_current_cycle_references() {
+    @Test fun live_room_does_not_promote_previous_result_references_to_current_cycle() {
         val f = feed(
             "--",
             "09:34:00",
@@ -1670,17 +1670,10 @@ class LiveCollectorTest {
         )
 
         val yesterday = patches.single { it.date == thursday }
-        val todayPatch = patches.single { it.date == friday }
-
         assertEquals("22", yesterday.morning2d)
         assertEquals("25", yesterday.evening2d)
         assertNull(yesterday.modern930)
-        assertEquals("80", todayPatch.modern930)
-        assertEquals("33", todayPatch.internet930)
-        assertNull(todayPatch.modern200)
-        assertNull(todayPatch.internet200)
-        assertNull(todayPatch.morning2d)
-        assertNull(todayPatch.evening2d)
+        assertNull(patches.firstOrNull { it.date == friday })
     }
 
     @Test fun live_room_does_not_persist_current_day_references_before_0930() {
@@ -2177,6 +2170,23 @@ class LiveCollectorTest {
         assertEquals("33", projected.internet930)
         assertEquals("--", projected.modern200)
         assertEquals("--", projected.internet200)
+    }
+
+    @Test fun schedule_aware_history_final_uses_morning_before_evening_close() {
+        val row = historyRow(
+            tuesday,
+            morning = "44",
+            evening = "66",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val hero = historyRowToFinal(row, LocalTime.of(12, 30))
+
+        assertEquals("44", hero?.result)
+        assertEquals(LIVE_SESSION_MORNING_LABEL, hero?.sessionLabel)
     }
 
 }

@@ -152,7 +152,8 @@ internal fun buildLiveDailyResultPatches(
     // completed-result date. Never persist them before their display boundary.
     if (
         isWorkingDay(today) &&
-        cycleDate == today
+        cycleDate == today &&
+        providerDate == cycleDate
     ) {
         val modern930 = if (!now.isBefore(MORNING_REFERENCE)) {
             feed.modern930.takeIf(::isValidLive2d)
