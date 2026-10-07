@@ -889,8 +889,15 @@ class LiveCollectorTest {
             internet200 = "78",
         )
         val mondayFeed = fridayFeed.copy(
+            date = monday.toString(),
+            currentTime = "09:34:00",
             modern930 = "80",
             internet930 = "33",
+            serverTimeEpochMs = monday
+                .atTime(9, 34)
+                .atZone(yangon)
+                .toInstant()
+                .toEpochMilli(),
         )
 
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
@@ -1521,7 +1528,7 @@ class LiveCollectorTest {
         collector.start()
         runCurrent()
 
-        assertEquals(1, calls)
+        assertEquals(3, calls)
         val state = collector.state.value as LiveUiState.Data
         assertEquals(monday.toString(), state.feed?.date)
         assertEquals("80", state.feed?.modern930)
