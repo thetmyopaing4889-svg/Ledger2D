@@ -631,6 +631,7 @@ class LiveCollectorTest {
             cachedFinal = null,
             scheduleTime = LocalTime.of(11, 40),
             scheduleDate = friday,
+            primaryLiveSession = LiveSession.MORNING,
         )
 
         assertFalse(result.heroLive)
