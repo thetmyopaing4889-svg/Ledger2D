@@ -21,7 +21,7 @@ import java.time.ZoneId
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
     private val yangon = ZoneId.of("Asia/Yangon")
-    private val friday = java.time.LocalDate.of(2026, 10, 2)
+    private val friday = java.time.LocalDate.now(yangon).with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.FRIDAY))
     private val thursday = friday.minusDays(1)
     private val saturday = friday.plusDays(1)
     private val sunday = friday.plusDays(2)
@@ -1350,6 +1350,7 @@ class LiveCollectorTest {
             cachedFinal = null,
             scheduleTime = LocalTime.of(16, 0),
             scheduleDate = friday,
+            primaryLiveSession = LiveSession.EVENING,
         )
 
         assertTrue(result.heroLive)
