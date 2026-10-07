@@ -24,3 +24,7 @@ jobs:
         run: chmod +x gradlew
       - name: Run one LIVE test
         run: ./gradlew --no-daemon testDebugUnitTest --tests "com.myanmar.ledger2d.feature.live.LiveCollectorTest.${{ matrix.test }}" --console=plain
+      - name: Print test report details
+        if: always()
+        run: |
+          find app/build/test-results/testDebugUnitTest -type f -name '*.xml' -print -exec cat {} \\;
