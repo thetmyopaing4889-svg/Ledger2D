@@ -901,8 +901,11 @@ class LiveCollectorTest {
             dateProvider = { monday },
         )
 
+        println("TRACE monday0930: before-start")
         collector.start()
+        println("TRACE monday0930: before-runCurrent")
         runCurrent()
+        println("TRACE monday0930: after-runCurrent")
 
         val state = collector.state.value as LiveUiState.Data
         assertEquals("25", state.hero?.result)
@@ -1518,8 +1521,11 @@ class LiveCollectorTest {
             dateProvider = { monday },
         )
 
+        println("TRACE fresh1800: before-start")
         collector.start()
+        println("TRACE fresh1800: before-runCurrent")
         runCurrent()
+        println("TRACE fresh1800: after-runCurrent calls=$calls")
 
         assertEquals(1, calls)
         val state = collector.state.value as LiveUiState.Data
@@ -2072,8 +2078,11 @@ class LiveCollectorTest {
             dateProvider = { tuesday },
         )
 
+        println("TRACE mainPoll: before-start")
         collector.start()
+        println("TRACE mainPoll: before-runCurrent")
         runCurrent()
+        println("TRACE mainPoll: after-runCurrent calls=$calls")
 
         val state = collector.state.value as LiveUiState.Data
         assertTrue(calls >= 2)

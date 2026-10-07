@@ -17,27 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         test:
-          - fresh_start_tuesday_before_0930_recovers_monday_not_friday
-          - fresh_start_tuesday_before_0930_rejects_friday_only_cached_hero
-          - fresh_start_tuesday_before_0930_reconstructs_monday_full_held_state
-          - fresh_start_monday_before_0930_reconstructs_friday_full_held_state
-          - fresh_start_monday_0830_enters_friday_held_phase_completely
-          - fresh_start_monday_1830_enters_monday_completed_phase_completely
-          - fresh_start_tuesday_0830_enters_monday_held_phase_completely
-          - fresh_start_tuesday_1130_enters_new_cycle_with_pending_sessions_and_live_gate
-          - fresh_start_tuesday_1730_enters_tuesday_completed_phase_completely
-          - monday_before_0930_still_holds_friday_state
-          - weekend_collector_does_not_poll_live_or_references
           - monday_0930_starts_new_working_day_cycle
-          - monday_reference_response_keeps_friday_hero_until_morning_live
-          - fresh_install_monday_before_morning_live_recovers_previous_final_without_local_cache
-          - fresh_start_0830_does_not_start_reference_or_live_polling
-          - fresh_start_0935_reference_failure_keeps_yesterday_cards_until_1130
-          - fresh_start_0935_fetches_todays_reference_instead_of_historical_reference
-          - fresh_start_1000_catches_up_0930_reference_without_live_polling
-          - fresh_start_1500_catches_up_both_reference_slots_without_live_polling
           - fresh_start_1800_catches_up_reference_slots_without_starting_evening_live_polling
-          - background_polling_works_without_opening_live_screen
           - main_poll_cannot_erase_successful_current_day_reference
     steps:
       - uses: actions/checkout@v4
