@@ -30,14 +30,14 @@ class LiveCollectorTest {
     private fun feed(
         value: String,
         time: String,
-        date: java.time.LocalDate = friday,
-        isCloseDay: Boolean = false,
         morning: LiveSessionData = LiveSessionData("--", "--", "--", false),
         evening: LiveSessionData = LiveSessionData("--", "--", "--", false),
         modern930: String = "98",
         internet930: String = "15",
         modern200: String = "40",
         internet200: String = "04",
+        date: java.time.LocalDate = friday,
+        isCloseDay: Boolean = false,
     ) = LiveFeedData(
         date = date.toString(),
         currentTime = time,
