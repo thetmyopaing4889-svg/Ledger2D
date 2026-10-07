@@ -153,7 +153,7 @@ internal fun buildLiveDailyResultPatches(
     if (
         isWorkingDay(today) &&
         cycleDate == today &&
-        providerDate == cycleDate
+        isCurrentCycleReferenceObservation(feed, cycleDate)
     ) {
         val modern930 = if (!now.isBefore(MORNING_REFERENCE)) {
             feed.modern930.takeIf(::isValidLive2d)
@@ -712,6 +712,22 @@ internal fun resolveLiveState(
     }
 }
 
+internal fun isCurrentCycleReferenceObservation(
+    feed: LiveFeedData,
+    cycleDate: LocalDate,
+): Boolean {
+    val serverDate = feed.serverTimeEpochMs
+        ?.let { Instant.ofEpochMilli(it).atZone(YANGON).toLocalDate() }
+
+    // Some Luke responses carry the current reference values while the
+    // provider's result-date field still names the previous completed day.
+    // When the response has no usable absolute server timestamp, preserve
+    // that established #403 behavior. If a timestamp is present, require it
+    // to belong to the current working-day cycle so stale provider snapshots
+    // cannot complete a reference retry.
+    return serverDate == null || serverDate == cycleDate
+}
+
 internal class LiveCollector(
     private val scope: CoroutineScope,
     private val fetcher: suspend () -> LiveFeedData?,
@@ -755,6 +771,7 @@ internal class LiveCollector(
     // baseline even when the normal LIVE fetch is empty. Keep that feed
     // separate from the raw primary so 09:30/14:00 can render deterministically.
     private var referenceFeed: LiveFeedData? = null
+    private var referenceFeedDate: LocalDate? = null
 
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
@@ -964,7 +981,7 @@ internal class LiveCollector(
         // the main poll returns a usable snapshot, use that successful feed as
         // the display baseline instead of waiting for primary.
         val effectiveBase = base ?: referenceFeed?.takeIf {
-            canonicalDate(it.date) == cycleDate
+            referenceFeedDate == cycleDate
         }
 
         if (effectiveBase == null) return null
@@ -1102,11 +1119,12 @@ internal class LiveCollector(
 
             if (isMorning) {
                 val valid =
-                    canonicalDate(feed?.date.orEmpty()) == cycleDate &&
+                    feed != null &&
+                        isCurrentCycleReferenceObservation(feed, cycleDate) &&
                         validReferencePair(
                             feed,
-                            feed?.modern930 ?: LIVE_PENDING,
-                            feed?.internet930 ?: LIVE_PENDING,
+                            feed.modern930,
+                            feed.internet930,
                         )
 
                 if (valid) {
@@ -1117,6 +1135,7 @@ internal class LiveCollector(
                     reference930CompleteDate = cycleDate
                     referenceResetDate = cycleDate
                     referenceFeed = feed
+                    referenceFeedDate = cycleDate
                 } else {
                     // Do not clear before the first request. If the first
                     // request succeeds, the UI transitions old -> new
@@ -1128,11 +1147,12 @@ internal class LiveCollector(
                 }
             } else {
                 val valid =
-                    canonicalDate(feed?.date.orEmpty()) == cycleDate &&
+                    feed != null &&
+                        isCurrentCycleReferenceObservation(feed, cycleDate) &&
                         validReferencePair(
                             feed,
-                            feed?.modern200 ?: LIVE_PENDING,
-                            feed?.internet200 ?: LIVE_PENDING,
+                            feed.modern200,
+                            feed.internet200,
                         )
 
                 if (valid) {
@@ -1142,6 +1162,7 @@ internal class LiveCollector(
                     reference200PendingDate = null
                     reference200CompleteDate = cycleDate
                     referenceFeed = feed
+                    referenceFeedDate = cycleDate
                 } else {
                     reference200 = null
                     reference200Date = cycleDate
