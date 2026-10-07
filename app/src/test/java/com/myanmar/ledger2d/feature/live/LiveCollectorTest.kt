@@ -1939,11 +1939,12 @@ class LiveCollectorTest {
 
         collector.start()
         runCurrent()
-        scope.cancel()
 
         var state = collector.state.value as LiveUiState.Data
         assertEquals("--", state.feed?.modern930)
         assertEquals("--", state.feed?.internet930)
+
+        scope.cancel()
     }
 
     @Test fun stale_provider_1400_reference_does_not_complete_current_cycle() = runTest {
@@ -1973,11 +1974,12 @@ class LiveCollectorTest {
 
         collector.start()
         runCurrent()
-        scope.cancel()
 
         val state = collector.state.value as LiveUiState.Data
         assertEquals("--", state.feed?.modern200)
         assertEquals("--", state.feed?.internet200)
+
+        scope.cancel()
     }
 
     @Test fun friday_1630_current_day_partial_snapshot_wins_over_previous_day() {
@@ -2072,7 +2074,6 @@ class LiveCollectorTest {
 
         collector.start()
         runCurrent()
-        scope.cancel()
 
         val state = collector.state.value as LiveUiState.Data
         assertTrue(calls >= 2)
@@ -2080,6 +2081,8 @@ class LiveCollectorTest {
         assertEquals("17", state.feed?.internet930)
         assertEquals("--", state.feed?.modern200)
         assertEquals("--", state.feed?.internet200)
+
+        scope.cancel()
     }
 
     @Test fun friday_after_1700_rejects_previous_working_day_primary_feed() {
@@ -2135,13 +2138,14 @@ class LiveCollectorTest {
 
         collector.start()
         runCurrent()
-        scope.cancel()
 
         val state = collector.state.value as LiveUiState.Data
         assertNull(state.feed)
         assertEquals("36", state.hero?.result)
         assertEquals(friday.toString(), state.hero?.date)
         assertFalse(state.heroLive)
+
+        scope.cancel()
     }
 
     @Test fun schedule_aware_history_projection_hides_future_evening_result() {
