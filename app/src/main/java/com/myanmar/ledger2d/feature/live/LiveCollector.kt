@@ -774,17 +774,9 @@ internal class LiveCollector(
             publishLocked()
             syncLiveRoom(cachedFeed)
         } else {
-            val cycleDate = dailyCycleDate(today, scheduleTime)
-            val previousWorking = previousWorkingDay(cycleDate)
+            val bootstrap = freshInstallBootstrapPlan(today, scheduleTime)
             val cached = cacheLoader()
-                ?.takeIf {
-                    val d = canonicalDate(it.date)
-                    when {
-                        !isWorkingDay(today) -> d == cycleDate
-                        scheduleTime.isBefore(MORNING_REFERENCE) -> d == cycleDate
-                        else -> d == cycleDate || d == previousWorking
-                    }
-                }
+                ?.takeIf { canonicalDate(it.date) in bootstrap.allowedCacheDates }
 
             if (cached != null) {
                 lastFinal = cached
@@ -1326,30 +1318,18 @@ internal class LiveCollector(
     private suspend fun recoverPreviousWorkingDayFinal() {
         val today = dateProvider()
         val now = clock()
-        val cycleDate = dailyCycleDate(today, now)
-        val previousWorking = previousWorkingDay(cycleDate)
+        val bootstrap = freshInstallBootstrapPlan(today, now)
+        val cycleDate = bootstrap.cycleDate
+        val fallbackFeedDate = bootstrap.fallbackDate
 
         // First recover the exact cycle row represented by the app clock.
-        // Before 09:30, cycleDate is already the previous working day.
-        // After 09:30, prefer today's row; only fall back to the previous
-        // working-day row when today's historical row is unavailable.
+        // Fresh-install policy owns only the date selection; the Daily Flow
+        // still decides what portions of that row are displayable.
         val currentFeed = runCatching {
             historicalFeedFetcher?.invoke(cycleDate)
         }.getOrNull()?.takeIf {
             canonicalDate(it.date) == cycleDate
         }
-
-        val fallbackFeedDate =
-            if (
-                cycleDate == today &&
-                isWorkingDay(today) &&
-                !now.isBefore(MORNING_REFERENCE) &&
-                    now.isBefore(EVENING_CLOSE)
-            ) {
-                previousWorking
-            } else {
-                null
-            }
 
         val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
             runCatching {
