@@ -908,6 +908,16 @@ class LiveCollectorTest {
             fetcher = { mondayFeed },
             clock = { LocalTime.of(9, 34) },
             dateProvider = { monday },
+            historicalFinalFetcher = { date ->
+                assertEquals(friday, date)
+                LiveHeroSnapshot(
+                    result = "25",
+                    set = "1,571.62",
+                    value = "71,085.86",
+                    sessionLabel = LIVE_SESSION_EVENING_LABEL,
+                    date = friday.toString(),
+                )
+            },
         )
 
         try {
@@ -915,7 +925,6 @@ class LiveCollectorTest {
             runCurrent()
 
             val state = collector.state.value as LiveUiState.Data
-            throw AssertionError("MONDAY_TRACE hero=${state.hero?.result} heroLive=${state.heroLive} morning=${state.feed?.morning?.result} evening=${state.feed?.evening?.result} m930=${state.feed?.modern930} i930=${state.feed?.internet930} m200=${state.feed?.modern200} i200=${state.feed?.internet200} date=${state.feed?.date}")
             assertEquals("25", state.hero?.result)
             assertFalse(state.heroLive)
             assertEquals("--", state.feed?.morning?.result)
