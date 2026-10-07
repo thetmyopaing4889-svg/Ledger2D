@@ -531,9 +531,12 @@ private fun age(o: SourceObservation?): Long =
     if (o == null) Long.MAX_VALUE
     else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
 
-private fun hasValidLive(feed: LiveFeedData?): Boolean {
+private fun hasValidLive(
+    feed: LiveFeedData?,
+    date: LocalDate = currentYangonDate(),
+): Boolean {
     val f = feed ?: return false
-    return currentDay(f) &&
+    return currentDay(f, date) &&
         isValidLive2d(f.live) &&
         validMoney(f.liveSet) &&
         validMoney(f.liveVal) &&
@@ -988,6 +991,7 @@ internal class LiveCollector(
                     previous = previous,
                     incoming = protectedFinals,
                     scheduleTime = scheduleTime,
+                    scheduleDate = dateProvider(),
                 )
                 latestAppliedSequence.set(sequence)
                 val observation = SourceObservation(
@@ -999,7 +1003,7 @@ internal class LiveCollector(
 
                 val activeSession = liveSessionForTime(scheduleTime)
                 primaryLiveSession = when {
-                    activeSession != null && hasValidLive(protected) -> activeSession
+                    activeSession != null && hasValidLive(protected, dateProvider()) -> activeSession
                     activeSession != null -> null
                     else -> primaryLiveSession
                 }
@@ -1096,12 +1100,13 @@ internal class LiveCollector(
         previous: LiveFeedData?,
         incoming: LiveFeedData,
         scheduleTime: LocalTime,
+        scheduleDate: LocalDate,
     ): LiveFeedData {
         val activeSession = liveSessionForTime(scheduleTime) ?: return incoming
-        if (primaryLiveSession != activeSession || !hasValidLive(previous)) {
+        if (primaryLiveSession != activeSession || !hasValidLive(previous, scheduleDate)) {
             return incoming
         }
-        if (hasValidLive(incoming)) {
+        if (hasValidLive(incoming, scheduleDate)) {
             return incoming
         }
 
