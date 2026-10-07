@@ -24,6 +24,13 @@ interface HistoryResultRepository {
     suspend fun get(date: LocalDate): HistoryResultEntity?
     suspend fun sync(): HistorySyncSummary
 }
+
+interface LiveDailyResultRepository {
+    fun observeAll(): Flow<List<LiveDailyResultEntity>>
+    fun observe(date: LocalDate): Flow<LiveDailyResultEntity?>
+    suspend fun get(date: LocalDate): LiveDailyResultEntity?
+    suspend fun apply(patches: List<LiveDailyResultPatch>): Int
+}
 interface ClosedDayRepository { fun observeAll(): Flow<List<ClosedDayEntity>>; suspend fun isClosed(date: LocalDate): Boolean; suspend fun add(date: LocalDate): Long; suspend fun remove(value: ClosedDayEntity) }
 interface ClosedNumberRepository { fun observe(agentId: Long): Flow<List<ClosedNumberEntity>>; suspend fun getDigits(agentId: Long): Set<String>; suspend fun add(agentId: Long, digit: String): Long; suspend fun remove(value: ClosedNumberEntity) }
 interface LimitRepository { fun observeAllLimit(customerId: Long): Flow<AllLimitEntity?>; fun observeSpecial(customerId: Long): Flow<List<SpecialLimitEntity>>; suspend fun get(customerId: Long): EffectiveLimits; suspend fun setAll(customerId: Long, amount: Long?); suspend fun setSpecial(customerId: Long, digit: String, amount: Long); suspend fun deleteSpecial(value: SpecialLimitEntity) }
@@ -72,6 +79,132 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     override suspend fun delete(entry:BetEntryEntity) = db.withTransaction { require(db.winningNumberDao().get(entry.drawDate,entry.drawSession)==null); dao.deleteEntry(entry) }
 }
 class RoomWinningNumberRepository(private val db:LedgerDatabase):WinningNumberRepository { private val dao=db.winningNumberDao(); override fun observeAll()=dao.observeAll(); override fun observe(date:LocalDate,session:DrawSession)=dao.observe(date,session); override suspend fun get(date:LocalDate,session:DrawSession)=dao.get(date,session); override suspend fun save(date:LocalDate,session:DrawSession,digit:String):Long { require(BetParser.validDigit(digit)); require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)); val now=System.currentTimeMillis(); val old=dao.get(date,session); require(old==null || db.betDao().countEntries(date,session)==0); return dao.upsert(WinningNumberEntity(id=old?.id?:0,date=date,session=session,digit=digit,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun update(existing:WinningNumberEntity,date:LocalDate,session:DrawSession,digit:String):Long = db.withTransaction { require(BetParser.validDigit(digit)); require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)); require(db.betDao().countEntries(existing.date,existing.session)==0); require(db.betDao().countEntries(date,session)==0); val now=System.currentTimeMillis(); dao.delete(existing); dao.upsert(WinningNumberEntity(id=existing.id,date=date,session=session,digit=digit,createdAt=existing.createdAt,updatedAt=now)) }; override suspend fun delete(value:WinningNumberEntity) { require(db.betDao().countEntries(value.date,value.session)==0); dao.delete(value) } }
+class RoomLiveDailyResultRepository(private val db: LedgerDatabase): LiveDailyResultRepository {
+    private val dao = db.liveDailyResultDao()
+
+    override fun observeAll() = dao.observeAll()
+    override fun observe(date: LocalDate) = dao.observe(date)
+    override suspend fun get(date: LocalDate) = dao.get(date)
+
+    override suspend fun apply(patches: List<LiveDailyResultPatch>): Int =
+        db.withTransaction {
+            var changed = 0
+            patches.forEach { patch ->
+                val old = dao.get(patch.date)
+                val merged = LiveDailyResultMerger.merge(
+                    old = old,
+                    patch = patch,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                if (merged != old) {
+                    dao.upsert(merged)
+                    changed++
+                }
+            }
+            changed
+        }
+}
+
+internal object LiveDailyResultMerger {
+    fun merge(
+        old: LiveDailyResultEntity?,
+        patch: LiveDailyResultPatch,
+        updatedAt: Long,
+    ): LiveDailyResultEntity {
+        val current = old ?: LiveDailyResultEntity(
+            date = patch.date,
+            modern930 = null,
+            internet930 = null,
+            modern200 = null,
+            internet200 = null,
+            morning2d = null,
+            morningSet = null,
+            morningValue = null,
+            evening2d = null,
+            eveningSet = null,
+            eveningValue = null,
+            reference930SourceAt = null,
+            reference200SourceAt = null,
+            morningSourceAt = null,
+            eveningSourceAt = null,
+            updatedAt = updatedAt,
+        )
+
+        var modern930 = current.modern930
+        var internet930 = current.internet930
+        var modern200 = current.modern200
+        var internet200 = current.internet200
+        var morning2d = current.morning2d
+        var morningSet = current.morningSet
+        var morningValue = current.morningValue
+        var evening2d = current.evening2d
+        var eveningSet = current.eveningSet
+        var eveningValue = current.eveningValue
+        var reference930SourceAt = current.reference930SourceAt
+        var reference200SourceAt = current.reference200SourceAt
+        var morningSourceAt = current.morningSourceAt
+        var eveningSourceAt = current.eveningSourceAt
+
+        if ((patch.modern930 != null || patch.internet930 != null) &&
+            (reference930SourceAt == null || patch.reference930SourceAt == null || patch.reference930SourceAt >= reference930SourceAt)
+        ) {
+            patch.modern930?.let { modern930 = it }
+            patch.internet930?.let { internet930 = it }
+            patch.reference930SourceAt?.let { reference930SourceAt = maxOf(reference930SourceAt ?: Long.MIN_VALUE, it) }
+        }
+
+        if ((patch.modern200 != null || patch.internet200 != null) &&
+            (reference200SourceAt == null || patch.reference200SourceAt == null || patch.reference200SourceAt >= reference200SourceAt)
+        ) {
+            patch.modern200?.let { modern200 = it }
+            patch.internet200?.let { internet200 = it }
+            patch.reference200SourceAt?.let { reference200SourceAt = maxOf(reference200SourceAt ?: Long.MIN_VALUE, it) }
+        }
+
+        if ((patch.morning2d != null || patch.morningSet != null || patch.morningValue != null) &&
+            (morningSourceAt == null || patch.morningSourceAt == null || patch.morningSourceAt >= morningSourceAt)
+        ) {
+            patch.morning2d?.let { morning2d = it }
+            patch.morningSet?.let { morningSet = it }
+            patch.morningValue?.let { morningValue = it }
+            patch.morningSourceAt?.let { morningSourceAt = maxOf(morningSourceAt ?: Long.MIN_VALUE, it) }
+        }
+
+        if ((patch.evening2d != null || patch.eveningSet != null || patch.eveningValue != null) &&
+            (eveningSourceAt == null || patch.eveningSourceAt == null || patch.eveningSourceAt >= eveningSourceAt)
+        ) {
+            patch.evening2d?.let { evening2d = it }
+            patch.eveningSet?.let { eveningSet = it }
+            patch.eveningValue?.let { eveningValue = it }
+            patch.eveningSourceAt?.let { eveningSourceAt = maxOf(eveningSourceAt ?: Long.MIN_VALUE, it) }
+        }
+
+        val candidate = current.copy(
+            modern930 = modern930,
+            internet930 = internet930,
+            modern200 = modern200,
+            internet200 = internet200,
+            morning2d = morning2d,
+            morningSet = morningSet,
+            morningValue = morningValue,
+            evening2d = evening2d,
+            eveningSet = eveningSet,
+            eveningValue = eveningValue,
+            reference930SourceAt = reference930SourceAt,
+            reference200SourceAt = reference200SourceAt,
+            morningSourceAt = morningSourceAt,
+            eveningSourceAt = eveningSourceAt,
+            updatedAt = updatedAt,
+        )
+
+        return if (candidate.copy(updatedAt = current.updatedAt) == current) {
+            current
+        } else {
+            candidate
+        }
+    }
+}
+
 class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResultRepository {
     private val dao = db.historyResultDao()
 

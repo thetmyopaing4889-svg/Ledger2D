@@ -1,0 +1,30 @@
+name: Diagnose LIVE test groups
+
+on:
+  push:
+    branches: [fix/daily-flow-final-build]
+  workflow_dispatch:
+
+jobs:
+  live-group:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: group1_1
+            tests: >-
+              --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.daily_cycle_date_switches_at_0930_and_skips_weekend --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_tuesday_before_0930_recovers_monday_not_friday --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_tuesday_before_0930_rejects_friday_only_cached_hero --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.history_row_reconstructs_complete_held_feed --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_tuesday_before_0930_reconstructs_monday_full_held_state --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_monday_before_0930_reconstructs_friday_full_held_state --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.weekend_cold_start_reconstructs_friday_full_held_state --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_monday_0830_enters_friday_held_phase_completely --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_monday_1830_enters_monday_completed_phase_completely --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_tuesday_0830_enters_monday_held_phase_completely
+          - group: group1_2
+            tests: >-
+              --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_tuesday_1130_enters_new_cycle_with_pending_sessions_and_live_gate --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.fresh_start_tuesday_1730_enters_tuesday_completed_phase_completely --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.app_clock_controls_phase_even_when_luke_reports_previous_day_time --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.current_day_live_replaces_previous_day_fallback_without_rewriting_live_engine --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.successful_0930_reference_starts_new_cycle_and_resets_cards --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.failed_0930_reference_keeps_old_cards_until_1130_then_resets --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.late_0930_success_after_1130_fills_reference_without_resetting_cards_again --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.weekend_holds_friday_state_without_entering_live_phase --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.sunday_also_holds_friday_state --tests com.myanmar.ledger2d.feature.live.LiveCollectorTest.monday_before_0930_still_holds_friday_state
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: chmod +x gradlew
+      - name: Run LIVE test group
+        run: ./gradlew --no-daemon testDebugUnitTest ${{ matrix.tests }} --console=plain
