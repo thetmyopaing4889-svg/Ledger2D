@@ -2306,6 +2306,7 @@ class LiveCollectorTest {
                 else feed("--", "11:41:00")
             },
             clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
         )
 
         collector.fetchCycle()
@@ -2331,6 +2332,7 @@ class LiveCollectorTest {
                 else feed("--", "16:06:00")
             },
             clock = { LocalTime.of(16, 5) },
+            dateProvider = { friday },
         )
 
         collector.fetchCycle()
@@ -2357,6 +2359,7 @@ class LiveCollectorTest {
                 else feed("--", "16:05:00")
             },
             clock = { schedule },
+            dateProvider = { friday },
         )
 
         collector.fetchCycle()
@@ -2400,6 +2403,7 @@ class LiveCollectorTest {
                 if (calls == 1) feed("38", "11:40:00") else null
             },
             clock = { schedule },
+            dateProvider = { friday },
         )
 
         collector.start()
