@@ -827,8 +827,14 @@ internal class LiveCollector(
             if (feed == null) return@launch
 
             synchronized(stateLock) {
+                val previousHeldFinal = lastFinal
                 captureHeldFinalLocked(feed)
-                if (!isUsableLukeSnapshot(feed)) return@synchronized
+                if (!isUsableLukeSnapshot(feed)) {
+                    if (lastFinal != previousHeldFinal) {
+                        publishLocked()
+                    }
+                    return@synchronized
+                }
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
