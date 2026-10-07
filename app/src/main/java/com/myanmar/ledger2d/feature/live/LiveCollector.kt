@@ -531,6 +531,15 @@ private fun age(o: SourceObservation?): Long =
     if (o == null) Long.MAX_VALUE
     else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
 
+private fun hasValidLive(feed: LiveFeedData?): Boolean {
+    val f = feed ?: return false
+    return currentDay(f) &&
+        isValidLive2d(f.live) &&
+        validMoney(f.liveSet) &&
+        validMoney(f.liveVal) &&
+        parseDecisionInstant(f) != null
+}
+
 private fun liveValid(
     o: SourceObservation?,
     date: LocalDate = currentYangonDate(),
