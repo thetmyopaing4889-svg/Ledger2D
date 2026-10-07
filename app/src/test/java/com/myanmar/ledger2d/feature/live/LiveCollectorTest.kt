@@ -915,7 +915,7 @@ class LiveCollectorTest {
             runCurrent()
 
             val state = collector.state.value as LiveUiState.Data
-            println("MONDAY_TRACE hero=${state.hero?.result} heroLive=${state.heroLive} morning=${state.feed?.morning?.result} evening=${state.feed?.evening?.result} m930=${state.feed?.modern930} i930=${state.feed?.internet930} m200=${state.feed?.modern200} i200=${state.feed?.internet200} date=${state.feed?.date}")
+            throw AssertionError("MONDAY_TRACE hero=${state.hero?.result} heroLive=${state.heroLive} morning=${state.feed?.morning?.result} evening=${state.feed?.evening?.result} m930=${state.feed?.modern930} i930=${state.feed?.internet930} m200=${state.feed?.modern200} i200=${state.feed?.internet200} date=${state.feed?.date}")
             assertEquals("25", state.hero?.result)
             assertFalse(state.heroLive)
             assertEquals("--", state.feed?.morning?.result)
