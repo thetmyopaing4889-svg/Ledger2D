@@ -35,6 +35,51 @@ data class HistoryResultEntity(
     val internet200: String
 )
 
+@Entity(tableName = "live_daily_results", indices = [Index(value = ["date"], unique = true)])
+data class LiveDailyResultEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** App Daily Flow date. This is deliberately not Luke's provider `date`. */
+    val date: LocalDate,
+    val modern930: String?,
+    val internet930: String?,
+    val modern200: String?,
+    val internet200: String?,
+    val morning2d: String?,
+    val morningSet: String?,
+    val morningValue: String?,
+    val evening2d: String?,
+    val eveningSet: String?,
+    val eveningValue: String?,
+    /** Source observation ordering is tracked per independent data group. */
+    val reference930SourceAt: Long?,
+    val reference200SourceAt: Long?,
+    val morningSourceAt: Long?,
+    val eveningSourceAt: Long?,
+    val updatedAt: Long,
+)
+
+/**
+ * A partial patch produced from one accepted LiveFeedData observation.
+ * Null means "no new value for this field" and never means "erase old data".
+ */
+data class LiveDailyResultPatch(
+    val date: LocalDate,
+    val modern930: String? = null,
+    val internet930: String? = null,
+    val modern200: String? = null,
+    val internet200: String? = null,
+    val morning2d: String? = null,
+    val morningSet: String? = null,
+    val morningValue: String? = null,
+    val evening2d: String? = null,
+    val eveningSet: String? = null,
+    val eveningValue: String? = null,
+    val reference930SourceAt: Long? = null,
+    val reference200SourceAt: Long? = null,
+    val morningSourceAt: Long? = null,
+    val eveningSourceAt: Long? = null,
+)
+
 @Entity(tableName = "closed_days", indices = [Index(value = ["date"], unique = true)])
 data class ClosedDayEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val date: LocalDate, val createdAt: Long, val updatedAt: Long)
 

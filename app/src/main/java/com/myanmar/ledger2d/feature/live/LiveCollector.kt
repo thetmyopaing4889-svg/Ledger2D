@@ -1,6 +1,9 @@
 package com.myanmar.ledger2d.feature.live
 
 import android.content.Context
+import com.myanmar.ledger2d.core.database.LiveDailyResultPatch
+import com.myanmar.ledger2d.core.database.HistoryResultEntity
+import com.myanmar.ledger2d.core.repository.HistorySync
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -88,6 +92,111 @@ enum class LiveStatus {
     STALE_PRIMARY,
 }
 
+internal fun buildLiveDailyResultPatches(
+    feed: LiveFeedData,
+    today: LocalDate,
+    now: LocalTime,
+): List<LiveDailyResultPatch> {
+    val cycleDate = dailyCycleDate(today, now)
+    val providerDate = canonicalDate(feed.date)
+    val sourceAt = feed.serverTimeEpochMs
+        ?: parseDecisionInstant(feed)?.toEpochMilli()
+        ?: Instant.now().toEpochMilli()
+
+    val byDate = linkedMapOf<LocalDate, LiveDailyResultPatch>()
+
+    fun mergePatch(
+        date: LocalDate,
+        update: LiveDailyResultPatch.() -> LiveDailyResultPatch,
+    ) {
+        val old = byDate[date]
+        val base = old ?: LiveDailyResultPatch(date = date)
+        byDate[date] = base.update()
+    }
+
+    if (
+        providerDate != null &&
+        isWorkingDay(providerDate) &&
+        (providerDate == cycleDate || providerDate == previousWorkingDay(cycleDate))
+    ) {
+        val morning2d = feed.morning.result.takeIf(::isValidLive2d)
+        val morningSet = feed.morning.set.takeIf(::validMoney)
+        val morningValue = feed.morning.value.takeIf(::validMoney)
+        val evening2d = feed.evening.result.takeIf(::isValidLive2d)
+        val eveningSet = feed.evening.set.takeIf(::validMoney)
+        val eveningValue = feed.evening.value.takeIf(::validMoney)
+
+        if (morning2d != null || morningSet != null || morningValue != null) {
+            mergePatch(providerDate) {
+                copy(
+                    morning2d = morning2d,
+                    morningSet = morningSet,
+                    morningValue = morningValue,
+                    morningSourceAt = sourceAt,
+                )
+            }
+        }
+        if (evening2d != null || eveningSet != null || eveningValue != null) {
+            mergePatch(providerDate) {
+                copy(
+                    evening2d = evening2d,
+                    eveningSet = eveningSet,
+                    eveningValue = eveningValue,
+                    eveningSourceAt = sourceAt,
+                )
+            }
+        }
+    }
+
+    // References belong to the app's current working-day cycle, not Luke's
+    // completed-result date. Never persist them before their display boundary.
+    if (
+        isWorkingDay(today) &&
+        cycleDate == today &&
+        isCurrentCycleReferenceObservation(feed, cycleDate)
+    ) {
+        val modern930 = if (!now.isBefore(MORNING_REFERENCE)) {
+            feed.modern930.takeIf(::isValidLive2d)
+        } else null
+        val internet930 = if (!now.isBefore(MORNING_REFERENCE)) {
+            feed.internet930.takeIf(::isValidLive2d)
+        } else null
+
+        val modern200 = if (!now.isBefore(AFTERNOON_REFERENCE)) {
+            feed.modern200.takeIf(::isValidLive2d)
+        } else null
+        val internet200 = if (!now.isBefore(AFTERNOON_REFERENCE)) {
+            feed.internet200.takeIf(::isValidLive2d)
+        } else null
+
+        if (modern930 != null || internet930 != null || modern200 != null || internet200 != null) {
+            mergePatch(today) {
+                copy(
+                    modern930 = modern930,
+                    internet930 = internet930,
+                    modern200 = modern200,
+                    internet200 = internet200,
+                    reference930SourceAt = if (modern930 != null || internet930 != null) sourceAt else null,
+                    reference200SourceAt = if (modern200 != null || internet200 != null) sourceAt else null,
+                )
+            }
+        }
+    }
+
+    return byDate.values.filter {
+        it.modern930 != null ||
+            it.internet930 != null ||
+            it.modern200 != null ||
+            it.internet200 != null ||
+            it.morning2d != null ||
+            it.morningSet != null ||
+            it.morningValue != null ||
+            it.evening2d != null ||
+            it.eveningSet != null ||
+            it.eveningValue != null
+    }
+}
+
 internal data class SourceObservation(
     val feed: LiveFeedData,
     val fetchedAtElapsedMs: Long,
@@ -120,14 +229,243 @@ internal fun liveWindowAction(t: LocalTime): LiveWindowAction = when {
 
 internal fun currentYangonDate(): LocalDate = LocalDate.now(YANGON)
 
+internal fun isWorkingDay(date: LocalDate): Boolean =
+    date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
+
+internal fun previousWorkingDay(date: LocalDate): LocalDate {
+    var d = date.minusDays(1)
+    while (!isWorkingDay(d)) {
+        d = d.minusDays(1)
+    }
+    return d
+}
+
+private fun historySession(
+    result: String,
+    set: String,
+    value: String,
+): LiveSessionData {
+    val normalizedResult = result.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    val normalizedSet = set.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    val normalizedValue = value.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    return LiveSessionData(
+        result = normalizedResult,
+        set = normalizedSet,
+        value = normalizedValue,
+        finalized = isValidLive2d(normalizedResult),
+    )
+}
+
+/**
+ * Reconstruct the complete held working-day display from the same historical
+ * 2D source already used by the Room Keeper. This is display-only cold-start
+ * state before the next working-day 09:30 boundary; it does not fabricate a
+ * LIVE value.
+ */
+internal fun historyRowToFeed(row: HistoryResultEntity): LiveFeedData {
+    val morning = historySession(row.morning2d, row.morningSet, row.morningValue)
+    val evening = historySession(row.evening2d, row.eveningSet, row.eveningValue)
+    val lastFinalTime = when {
+        evening.finalized -> LocalTime.of(16, 30)
+        morning.finalized -> LocalTime.of(12, 1)
+        else -> LocalTime.MIDNIGHT
+    }
+
+    return LiveFeedData(
+        date = row.date.toString(),
+        currentTime = lastFinalTime.toString(),
+        live = LIVE_PENDING,
+        liveSet = LIVE_PENDING,
+        liveVal = LIVE_PENDING,
+        morning = morning,
+        evening = evening,
+        modern930 = row.modern930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        internet930 = row.internet930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        modern200 = row.modern200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        internet200 = row.internet200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING,
+        sourceTag = "HISTORY",
+        serverTimeEpochMs = row.date.atTime(lastFinalTime).atZone(YANGON).toInstant().toEpochMilli(),
+    )
+}
+
+internal fun historyRowToFeed(
+    row: HistoryResultEntity,
+    today: LocalDate = currentYangonDate(),
+    now: LocalTime = LocalTime.now(YANGON),
+): LiveFeedData {
+    val cycleDate = dailyCycleDate(today, now)
+    val isCurrentCycleRow = row.date == cycleDate
+    val isHeldFallbackRow =
+        row.date != today &&
+            (now.isBefore(MORNING_LIVE) || !isWorkingDay(today))
+
+    fun session(
+        result: String,
+        set: String,
+        value: String,
+        allowed: Boolean,
+    ): LiveSessionData {
+        if (!allowed) return LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false)
+        val normalizedResult = result.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+        val normalizedSet = set.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+        val normalizedValue = value.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+        return LiveSessionData(
+            result = normalizedResult,
+            set = normalizedSet,
+            value = normalizedValue,
+            finalized = isValidLive2d(normalizedResult),
+        )
+    }
+
+    // When the historical row is the held cycleDate itself (Monday-Friday
+    // pre-09:30, or the weekend-held Friday row), the whole completed row is
+    // valid because that cycle has already finished. For today's cycle,
+    // future session/reference values must stay masked until their boundaries.
+    val heldCompletedCycle = cycleDate != today
+
+    val showMorningFinal = heldCompletedCycle || !now.isBefore(MORNING_CLOSE)
+    val showEveningFinal = heldCompletedCycle || !now.isBefore(EVENING_CLOSE)
+    val morning = session(
+        row.morning2d,
+        row.morningSet,
+        row.morningValue,
+        (isCurrentCycleRow && showMorningFinal) || isHeldFallbackRow,
+    )
+    val evening = session(
+        row.evening2d,
+        row.eveningSet,
+        row.eveningValue,
+        (isCurrentCycleRow && showEveningFinal) || isHeldFallbackRow,
+    )
+
+    val show930Reference =
+        heldCompletedCycle || !now.isBefore(MORNING_REFERENCE)
+    val show200Reference =
+        heldCompletedCycle || !now.isBefore(AFTERNOON_REFERENCE)
+
+    val modern930 = if ((isCurrentCycleRow || isHeldFallbackRow) && show930Reference) {
+        row.modern930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    } else {
+        LIVE_PENDING
+    }
+    val internet930 = if ((isCurrentCycleRow || isHeldFallbackRow) && show930Reference) {
+        row.internet930.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    } else {
+        LIVE_PENDING
+    }
+    val modern200 = if ((isCurrentCycleRow || isHeldFallbackRow) && show200Reference) {
+        row.modern200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    } else {
+        LIVE_PENDING
+    }
+    val internet200 = if ((isCurrentCycleRow || isHeldFallbackRow) && show200Reference) {
+        row.internet200.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
+    } else {
+        LIVE_PENDING
+    }
+
+    val projectedTime = if (!isCurrentCycleRow) {
+        EVENING_CLOSE
+    } else {
+        when {
+            now.isBefore(MORNING_REFERENCE) -> MORNING_REFERENCE
+            now.isBefore(MORNING_LIVE) -> MORNING_REFERENCE
+            now.isBefore(MORNING_CLOSE) -> MORNING_LIVE
+            now.isBefore(AFTERNOON_REFERENCE) -> MORNING_CLOSE
+            now.isBefore(EVENING_LIVE) -> AFTERNOON_REFERENCE
+            now.isBefore(EVENING_CLOSE) -> EVENING_LIVE
+            else -> EVENING_CLOSE
+        }
+    }
+
+    return LiveFeedData(
+        date = row.date.toString(),
+        currentTime = projectedTime.toString(),
+        live = LIVE_PENDING,
+        liveSet = LIVE_PENDING,
+        liveVal = LIVE_PENDING,
+        morning = morning,
+        evening = evening,
+        modern930 = modern930,
+        internet930 = internet930,
+        modern200 = modern200,
+        internet200 = internet200,
+        sourceTag = "HISTORY",
+        serverTimeEpochMs = row.date.atTime(projectedTime).atZone(YANGON).toInstant().toEpochMilli(),
+    )
+}
+
+internal fun historyRowToFinal(row: HistoryResultEntity): LiveHeroSnapshot? =
+    historyRowToFinal(row, LocalTime.of(23, 59, 59))
+
+internal fun historyRowToFinal(
+    row: HistoryResultEntity,
+    now: LocalTime,
+): LiveHeroSnapshot? {
+    val result: String
+    val set: String
+    val value: String
+    val label: String
+
+    when {
+        !now.isBefore(EVENING_CLOSE) && isValidLive2d(row.evening2d) -> {
+            result = row.evening2d
+            set = row.eveningSet
+            value = row.eveningValue
+            label = LIVE_SESSION_EVENING_LABEL
+        }
+
+        !now.isBefore(MORNING_CLOSE) && isValidLive2d(row.morning2d) -> {
+            result = row.morning2d
+            set = row.morningSet
+            value = row.morningValue
+            label = LIVE_SESSION_MORNING_LABEL
+        }
+
+        else -> return null
+    }
+
+    return LiveHeroSnapshot(
+        result = result,
+        set = set.takeUnless { it == "-" }.orEmpty().ifBlank { LIVE_PENDING },
+        value = value.takeUnless { it == "-" }.orEmpty().ifBlank { LIVE_PENDING },
+        sessionLabel = label,
+        date = row.date.toString(),
+    )
+}
+
+internal fun dailyCycleDate(
+    date: LocalDate = currentYangonDate(),
+    time: LocalTime = LocalTime.now(YANGON),
+): LocalDate =
+    when {
+        !isWorkingDay(date) -> previousWorkingDay(date)
+        time.isBefore(MORNING_REFERENCE) -> previousWorkingDay(date)
+        else -> date
+    }
+
 private fun isDisplayableFeedForSchedule(
     feed: LiveFeedData,
     scheduleTime: LocalTime,
+    today: LocalDate = currentYangonDate(),
 ): Boolean {
     val feedDate = canonicalDate(feed.date) ?: return false
-    val today = currentYangonDate()
-    return feedDate == today ||
-        (scheduleTime.isBefore(MORNING_LIVE) && feedDate == today.minusDays(1))
+    val cycleDate = dailyCycleDate(today, scheduleTime)
+
+    // dailyCycleDate() already moves a working-day pre-09:30 start onto the
+    // previous working day. Do not step back a second time there: that would
+    // turn Tuesday morning's Monday hold into Friday, Wednesday morning's
+    // Tuesday hold into Monday, and so on.
+    //
+    // After 09:30, the current working day owns the cycle and the previous
+    // working day remains a legitimate fallback while today's LIVE/final
+    // data has not arrived yet. Weekend hold is cycleDate (Friday) only.
+    return when {
+        !isWorkingDay(today) -> feedDate == cycleDate
+        scheduleTime.isBefore(MORNING_REFERENCE) -> feedDate == cycleDate
+        !scheduleTime.isBefore(EVENING_CLOSE) -> feedDate == cycleDate
+        else -> feedDate == cycleDate || feedDate == previousWorkingDay(cycleDate)
+    }
 }
 
 internal fun canonicalDate(raw: String): LocalDate? = runCatching {
@@ -172,24 +510,34 @@ internal fun isValidLive2d(v: String): Boolean =
 private fun validMoney(v: String): Boolean =
     v.isNotBlank() && v != LIVE_PENDING
 
-private fun currentDay(f: LiveFeedData): Boolean =
-    canonicalDate(f.date) == currentYangonDate()
+private fun currentDay(
+    f: LiveFeedData,
+    date: LocalDate = currentYangonDate(),
+): Boolean =
+    canonicalDate(f.date) == date
 
 private fun age(o: SourceObservation?): Long =
     if (o == null) Long.MAX_VALUE
     else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
 
-private fun liveValid(o: SourceObservation?): Boolean {
+private fun liveValid(
+    o: SourceObservation?,
+    date: LocalDate = currentYangonDate(),
+): Boolean {
     val f = o?.feed ?: return false
-    return currentDay(f) &&
+    return currentDay(f, date) &&
         isValidLive2d(f.live) &&
         validMoney(f.liveSet) &&
         validMoney(f.liveVal) &&
         parseDecisionInstant(f) != null
 }
 
-private fun finalValid(session: LiveSessionData?, feed: LiveFeedData?): Boolean {
-    if (session == null || feed == null || !currentDay(feed) || !session.finalized) return false
+private fun finalValid(
+    session: LiveSessionData?,
+    feed: LiveFeedData?,
+    date: LocalDate = currentYangonDate(),
+): Boolean {
+    if (session == null || feed == null || !currentDay(feed, date) || !session.finalized) return false
     return isValidLive2d(session.result) &&
         validMoney(session.set) &&
         validMoney(session.value)
@@ -220,27 +568,47 @@ internal fun resolveLiveState(
     lastLive: LiveHeroSnapshot?,
     cachedFinal: LiveHeroSnapshot?,
     scheduleTime: LocalTime? = null,
+    scheduleDate: LocalDate? = null,
+    liveClosedDayDate: LocalDate? = null,
 ): LiveResolution {
     val effectiveScheduleTime = scheduleTime ?: now.atZone(YANGON).toLocalTime()
-    val feed = p?.feed?.takeIf {
-        isDisplayableFeedForSchedule(it, effectiveScheduleTime)
+    val today = scheduleDate ?: currentYangonDate()
+    val closedHoldDate = liveClosedDayDate
+    val cycleDate = if (closedHoldDate != null) {
+        previousWorkingDay(closedHoldDate)
+    } else {
+        dailyCycleDate(today, effectiveScheduleTime)
     }
-    val decisionTime = feed
-        ?.let(::parseDecisionInstant)
-        ?.atZone(YANGON)
-        ?.toLocalTime()
-        ?: effectiveScheduleTime
+    val previousWorking = previousWorkingDay(cycleDate)
+    val feed = p?.feed?.takeIf {
+        if (closedHoldDate != null) {
+            canonicalDate(it.date) == cycleDate
+        } else {
+            isDisplayableFeedForSchedule(it, effectiveScheduleTime, today)
+        }
+    }
+    val cycleFinal =
+        feed?.takeIf { canonicalDate(it.date) == cycleDate }?.let(::latestFinalFor)
+    val previousWorkingFinal =
+        feed?.takeIf { canonicalDate(it.date) == previousWorking }?.let(::latestFinalFor)
+    val cachedRelevantFinal = cachedFinal?.takeIf {
+        val d = canonicalDate(it.date)
+        when {
+            closedHoldDate != null -> d == cycleDate
+            !isWorkingDay(today) -> d == cycleDate
+            effectiveScheduleTime.isBefore(MORNING_REFERENCE) -> d == cycleDate
+            else -> d == cycleDate || d == previousWorking
+        }
+    }
+    val heldFinal = cycleFinal ?: previousWorkingFinal ?: cachedRelevantFinal
 
     if (feed == null) {
-        val cached = cachedFinal?.takeIf {
-            canonicalDate(it.date) == currentYangonDate()
-        }
-        return LiveResolution(null, cached, false, LiveStatus.WAITING, "", 0, age(p))
+        return LiveResolution(null, heldFinal, false, LiveStatus.WAITING, "", 0, age(p))
     }
 
-    val canShowLive = liveValid(p)
-    val morningFinal = finalValid(feed.morning, feed)
-    val eveningFinal = finalValid(feed.evening, feed)
+    val canShowLive = liveValid(p, today)
+    val morningFinal = finalValid(feed.morning, feed, today)
+    val eveningFinal = finalValid(feed.evening, feed, today)
 
     fun liveHero(): LiveHeroSnapshot? =
         if (canShowLive) {
@@ -257,24 +625,29 @@ internal fun resolveLiveState(
 
     fun finalHero(): LiveHeroSnapshot? = latestFinalFor(feed)
 
-    return when {
-        decisionTime.isBefore(MORNING_LIVE) -> {
-            // Luke may keep returning the latest completed day's feed after
-            // 09:30. Until today's 11:30 live boundary, that previous-day
-            // final remains valid for the LIVE hero only. Reference values
-            // are handled independently and may already belong to today.
-            val previousDayFinal = if (
-                effectiveScheduleTime.isBefore(MORNING_LIVE) &&
-                canonicalDate(feed.date) == currentYangonDate().minusDays(1)
-            ) {
-                latestFinalFor(feed)
-            } else {
-                cachedFinal?.takeIf { canonicalDate(it.date) == currentYangonDate() }
-            }
+    // The app clock controls the daily phase. Luke's date/current_time are
+    // provider data only and must never advance the app into another phase.
+    val phaseTime = effectiveScheduleTime
 
+    // Saturday/Sunday and a Luke-confirmed Live-only closed day hold the
+    // last working-day snapshot for the whole closed interval.
+    if (closedHoldDate != null || !isWorkingDay(today)) {
+        return LiveResolution(
+            feed,
+            heldFinal,
+            false,
+            LiveStatus.WAITING,
+            "",
+            1,
+            age(p),
+        )
+    }
+
+    return when {
+        phaseTime.isBefore(MORNING_LIVE) -> {
             LiveResolution(
                 feed,
-                previousDayFinal,
+                heldFinal,
                 false,
                 LiveStatus.WAITING,
                 "",
@@ -283,28 +656,28 @@ internal fun resolveLiveState(
             )
         }
 
-        decisionTime.isBefore(MORNING_CLOSE) -> {
-            val hero = liveHero()
+        phaseTime.isBefore(MORNING_CLOSE) -> {
+            val hero = liveHero() ?: finalHero() ?: heldFinal
             LiveResolution(
                 feed,
-                hero ?: finalHero(),
-                hero != null,
-                if (hero != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
+                hero,
+                liveHero() != null,
+                if (liveHero() != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
             )
         }
 
-        decisionTime.isBefore(LocalTime.of(13, 0)) -> {
-            val hero = if (morningFinal) finalHero() else liveHero()
+        phaseTime.isBefore(LocalTime.of(13, 0)) -> {
+            val hero = if (morningFinal) finalHero() else liveHero() ?: heldFinal
             LiveResolution(
                 feed,
                 hero,
-                !morningFinal && hero != null,
+                !morningFinal && liveHero() != null,
                 when {
                     morningFinal -> LiveStatus.FINAL_CONFIRMED
-                    hero != null -> LiveStatus.LIVE_CONFIRMED
+                    canShowLive -> LiveStatus.LIVE_CONFIRMED
                     else -> LiveStatus.WAITING
                 },
                 "",
@@ -313,13 +686,17 @@ internal fun resolveLiveState(
             )
         }
 
-        decisionTime.isBefore(EVENING_CLOSE) -> {
-            val hero = liveHero() ?: finalHero()
+        phaseTime.isBefore(EVENING_LIVE) -> {
+            // 13:00–16:00 is a frozen/reference phase. A one-time Luke
+            // startup/reference response may still contain a live value, but
+            // that value must never become the active LIVE hero outside the
+            // scheduled evening LIVE window.
+            val hero = finalHero() ?: heldFinal
             LiveResolution(
                 feed,
                 hero,
-                liveHero() != null,
-                if (liveHero() != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.FINAL_CONFIRMED,
+                false,
+                if (hero != null) LiveStatus.FINAL_CONFIRMED else LiveStatus.WAITING,
                 "",
                 1,
                 age(p),
@@ -327,7 +704,7 @@ internal fun resolveLiveState(
         }
 
         else -> {
-            val hero = if (eveningFinal) finalHero() else liveHero() ?: finalHero()
+            val hero = if (eveningFinal) finalHero() else liveHero() ?: finalHero() ?: heldFinal
             LiveResolution(
                 feed,
                 hero,
@@ -345,15 +722,45 @@ internal fun resolveLiveState(
     }
 }
 
+internal fun isCurrentCycleReferenceObservation(
+    feed: LiveFeedData,
+    cycleDate: LocalDate,
+): Boolean {
+    val epoch = feed.serverTimeEpochMs
+    // Unit fixtures and some legacy provider responses may omit a real epoch
+    // and use a tiny sentinel. Treat those as "no absolute server date" so
+    // #403's split history-date/current-reference behavior stays valid.
+    if (epoch == null || epoch < 946684800000L) return true
+
+    val serverDate = Instant.ofEpochMilli(epoch)
+        .atZone(YANGON)
+        .toLocalDate()
+
+    // Some Luke responses carry the current reference values while the
+    // provider's result-date field still names the previous completed day.
+    // When an absolute server timestamp is available, require that timestamp
+    // to belong to the current working-day cycle so stale snapshots cannot
+    // complete a reference retry.
+    return serverDate == cycleDate
+}
+
 internal class LiveCollector(
     private val scope: CoroutineScope,
     private val fetcher: suspend () -> LiveFeedData?,
     private val secondaryFetcher: (suspend () -> LiveFeedData?)? = null,
     private val clock: () -> LocalTime = { LocalTime.now(YANGON) },
+    private val dateProvider: () -> LocalDate = { currentYangonDate() },
     cacheLoader: () -> LiveHeroSnapshot? = { null },
     private val cacheSaver: (LiveHeroSnapshot) -> Unit = {},
     private val cacheFeedLoader: () -> LiveFeedData? = { null },
     private val cacheFeedSaver: (LiveFeedData) -> Unit = {},
+    private val liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
+    private val closedDayFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
+    private val closedDayDateLoader: () -> LocalDate? = { null },
+    private val closedDayDateSaver: (LocalDate) -> Unit = {},
+    private val closedDayDateClearer: () -> Unit = {},
+    private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
+    private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -367,32 +774,126 @@ internal class LiveCollector(
 
     private var schedulerJob: Job? = null
     private var reference930Cycle: Job? = null
+    private var reference930CycleDate: LocalDate? = null
     private var reference200Cycle: Job? = null
+    private var reference200CycleDate: LocalDate? = null
     private var reference930CompleteDate: LocalDate? = null
     private var reference200CompleteDate: LocalDate? = null
     private var referenceResetDate: LocalDate? = null
     private var reference930: Pair<String, String>? = null
+    private var reference930Date: LocalDate? = null
     private var reference200: Pair<String, String>? = null
+    private var reference200Date: LocalDate? = null
     private var reference930PendingDate: LocalDate? = null
     private var reference200PendingDate: LocalDate? = null
 
+    // A successful reference request is also a valid current-cycle display
+    // baseline even when the normal LIVE fetch is empty. Keep that feed
+    // separate from the raw primary so 09:30/14:00 can render deterministically.
+    private var referenceFeed: LiveFeedData? = null
+    private var referenceFeedDate: LocalDate? = null
+
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
+    /**
+     * Last Luke-confirmed closed calendar date. Live-only state; never written
+     * to the user's Room ClosedDayRepository.
+     */
+    private var closedDayDate: LocalDate? = null
     private var lastFinal: LiveHeroSnapshot? = null
+    private var lastRoomSyncSignature: String? = null
+
+    private fun nextWorkingDayAfter(date: LocalDate): LocalDate {
+        var next = date.plusDays(1)
+        while (!isWorkingDay(next)) next = next.plusDays(1)
+        return next
+    }
+
+    /**
+     * Luke-confirmed closed days behave like weekends for Live display only.
+     * The previous working-day hold spans intervening weekend dates until the
+     * next working day's 09:30 boundary.
+     */
+    private fun closedHoldDate(today: LocalDate, now: LocalTime): LocalDate? {
+        val closed = closedDayDate ?: return null
+        if (closed == today) return closed
+
+        if (today.isAfter(closed)) {
+            val nextWorking = nextWorkingDayAfter(closed)
+            if (
+                today.isBefore(nextWorking) ||
+                (today == nextWorking && now.isBefore(MORNING_REFERENCE))
+            ) {
+                return closed
+            }
+        }
+        return null
+    }
+
+    private fun clearExpiredClosedDayBeforeMorningBoundary(
+        today: LocalDate,
+        now: LocalTime,
+    ) {
+        val closed = closedDayDate ?: return
+        if (
+            !now.isBefore(MORNING_REFERENCE) &&
+            today == nextWorkingDayAfter(closed)
+        ) {
+            synchronized(stateLock) {
+                if (closedDayDate == closed) {
+                    closedDayDate = null
+                    closedDayDateClearer()
+                }
+            }
+        }
+    }
+
+    private fun currentClosedDayForNotice(today: LocalDate): Boolean =
+        closedDayDate == today
+
+    private fun isLiveDisplayableFeed(
+        feed: LiveFeedData,
+        scheduleTime: LocalTime,
+        today: LocalDate,
+    ): Boolean {
+        val holdDate = closedHoldDate(today, scheduleTime)
+        if (holdDate != null) {
+            val feedDate = canonicalDate(feed.date) ?: return false
+            return feedDate == previousWorkingDay(holdDate)
+        }
+        return isDisplayableFeedForSchedule(feed, scheduleTime, today)
+    }
 
     init {
         val scheduleTime = clock()
+        val today = dateProvider()
+
+        val persistedClosed = closedDayDateLoader()
+        if (persistedClosed != null) {
+            val nextWorking = nextWorkingDayAfter(persistedClosed)
+            val stillRelevant =
+                persistedClosed == today ||
+                    today.isBefore(nextWorking) ||
+                    (today == nextWorking && scheduleTime.isBefore(MORNING_REFERENCE))
+            if (stillRelevant) {
+                closedDayDate = persistedClosed
+            } else {
+                closedDayDateClearer()
+            }
+        }
         val cachedFeed = cacheFeedLoader()
-            ?.takeIf { isDisplayableFeedForSchedule(it, scheduleTime) }
+            ?.takeIf { isLiveDisplayableFeed(it, scheduleTime, today) }
 
         if (cachedFeed != null) {
             val startedAt = monotonicMs()
             primary = SourceObservation(cachedFeed, startedAt, startedAt, 0L)
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
+            syncLiveRoom(cachedFeed)
         } else {
+            val bootstrap = freshInstallBootstrapPlan(today, scheduleTime)
             val cached = cacheLoader()
-                ?.takeIf { canonicalDate(it.date) == currentYangonDate() }
+                ?.takeIf { canonicalDate(it.date) in bootstrap.allowedCacheDates }
 
             if (cached != null) {
                 lastFinal = cached
@@ -417,14 +918,34 @@ internal class LiveCollector(
             }
             val finishedAt = monotonicMs()
 
-            if (feed == null || !isUsableLukeSnapshot(feed)) return@launch
+            if (feed == null) return@launch
 
             synchronized(stateLock) {
+                val previousHeldFinal = lastFinal
+                captureHeldFinalLocked(feed)
+                if (!isUsableLukeSnapshot(feed)) {
+                    if (lastFinal != previousHeldFinal) {
+                        publishLocked()
+                    }
+                    return@synchronized
+                }
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
                 val incomingTime = parseDecisionInstant(feed)
                 val previousTime = previous?.let(::parseDecisionInstant)
+
+                // Preserve the last completed working-day final before a
+                // newer provider snapshot replaces the primary feed. A
+                // Monday reference response can be today's feed while LIVE
+                // is still pending; it must not erase Friday's held hero.
+                previous?.let(::latestFinalFor)?.let { previousFinal ->
+                    val cycleDate = dailyCycleDate(dateProvider(), clock())
+                    val previousWorking = previousWorkingDay(cycleDate)
+                    if (canonicalDate(previousFinal.date) == previousWorking) {
+                        lastFinal = previousFinal
+                    }
+                }
 
                 if (
                     incomingTime != null &&
@@ -442,8 +963,89 @@ internal class LiveCollector(
                     startedAt,
                     finishedAt - startedAt,
                 )
+
+                // Keep the latest completed result from the previous day in
+                // memory as a hero fallback when today's Luke feed arrives
+                // without today's LIVE value yet. This is display state only;
+                // it never participates in betting or ledger calculations.
+                val incomingFinal = latestFinalFor(protected)
+                val today = dateProvider()
+                if (
+                    incomingFinal != null &&
+                    canonicalDate(incomingFinal.date) != today
+                ) {
+                    lastFinal = incomingFinal
+                }
+
                 cacheFeedSaver(protected)
                 publishLocked()
+                syncLiveRoom(protected)
+            }
+        }
+    }
+
+    private fun captureHeldFinalLocked(feed: LiveFeedData) {
+        val final = latestFinalFor(feed) ?: return
+        val finalDate = canonicalDate(final.date) ?: return
+
+        val today = dateProvider()
+        val now = clock()
+        val cycleDate = dailyCycleDate(today, now)
+        val previousWorking = previousWorkingDay(cycleDate)
+
+        // A previous-working-day completed result is valid as the temporary
+        // hero while the new cycle is still at reference/pending/live stages.
+        // It must not become the primary feed or affect financial data.
+        if (finalDate == cycleDate || finalDate == previousWorking) {
+            val existingDate = canonicalDate(lastFinal?.date.orEmpty())
+            if (
+                existingDate == null ||
+                existingDate == previousWorking ||
+                finalDate == cycleDate
+            ) {
+                lastFinal = final
+            }
+        }
+    }
+
+    private fun syncLiveRoom(feed: LiveFeedData) {
+        val saver = liveRoomSaver ?: return
+        val patches = buildLiveDailyResultPatches(feed, dateProvider(), clock())
+        if (patches.isEmpty()) return
+
+        // Skip repeated 3-second observations when persisted facts did not
+        // change. The Room repository remains idempotent and independently
+        // protects each field group by source time.
+        val signature = patches.joinToString("||") { p ->
+            listOf(
+                p.date,
+                p.modern930,
+                p.internet930,
+                p.modern200,
+                p.internet200,
+                p.morning2d,
+                p.morningSet,
+                p.morningValue,
+                p.evening2d,
+                p.eveningSet,
+                p.eveningValue,
+            ).joinToString("|")
+        }
+
+        synchronized(stateLock) {
+            if (signature == lastRoomSyncSignature) return
+            lastRoomSyncSignature = signature
+        }
+
+        scope.launch {
+            try {
+                saver(patches)
+            } catch (_: Exception) {
+                synchronized(stateLock) {
+                    if (lastRoomSyncSignature == signature) {
+                        lastRoomSyncSignature = null
+                    }
+                }
             }
         }
     }
@@ -452,7 +1054,8 @@ internal class LiveCollector(
         previous: LiveFeedData?,
         incoming: LiveFeedData,
     ): LiveFeedData {
-        if (previous == null || !currentDay(previous) || !currentDay(incoming)) {
+        val today = dateProvider()
+        if (previous == null || !currentDay(previous, today) || !currentDay(incoming, today)) {
             return incoming
         }
 
@@ -471,7 +1074,7 @@ internal class LiveCollector(
     }
 
     private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
-        if (!isDisplayableFeedForSchedule(feed, clock())) return false
+        if (!isLiveDisplayableFeed(feed, clock(), dateProvider())) return false
         if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
 
         val hasLive =
@@ -479,8 +1082,9 @@ internal class LiveCollector(
                 validMoney(feed.liveSet) &&
                 validMoney(feed.liveVal)
 
-        val hasMorningFinal = finalValid(feed.morning, feed)
-        val hasEveningFinal = finalValid(feed.evening, feed)
+        val today = dateProvider()
+        val hasMorningFinal = finalValid(feed.morning, feed, today)
+        val hasEveningFinal = finalValid(feed.evening, feed, today)
 
         return hasLive ||
             hasMorningFinal ||
@@ -501,19 +1105,35 @@ internal class LiveCollector(
             isValidLive2d(internet)
 
     private fun mergeReferenceIntoFeed(base: LiveFeedData?): LiveFeedData? {
-        if (base == null) return null
+        val today = dateProvider()
+        val t = clock()
+        val cycleDate = dailyCycleDate(today, t)
 
-        var out = base
+        // The reference fetch has its own lifecycle. When it succeeds before
+        // the main poll returns a usable snapshot, use that successful feed as
+        // the display baseline instead of waiting for primary.
+        val effectiveBase = base ?: referenceFeed?.takeIf {
+            referenceFeedDate == cycleDate
+        }
 
+        if (effectiveBase == null) return null
+
+        if (closedHoldDate(today, t) != null) return effectiveBase
+
+        var out = effectiveBase
+
+        // 09:30 starts the new cycle. A successful pair is applied directly;
+        // after a failed attempt, pending masks the provider's previous-day
+        // values. The 14:00 slot is also reset at 09:30.
         when {
-            reference930 != null -> {
+            reference930Date == cycleDate && reference930 != null -> {
                 val pair = reference930!!
                 out = out.copy(
                     modern930 = pair.first,
                     internet930 = pair.second,
                 )
             }
-            reference930PendingDate == currentYangonDate() -> {
+            reference930PendingDate == cycleDate -> {
                 out = out.copy(
                     modern930 = LIVE_PENDING,
                     internet930 = LIVE_PENDING,
@@ -522,14 +1142,24 @@ internal class LiveCollector(
         }
 
         when {
-            reference200 != null -> {
+            reference200Date == cycleDate && reference200 != null -> {
                 val pair = reference200!!
                 out = out.copy(
                     modern200 = pair.first,
                     internet200 = pair.second,
                 )
             }
-            reference200PendingDate == currentYangonDate() -> {
+            reference200PendingDate == cycleDate -> {
+                out = out.copy(
+                    modern200 = LIVE_PENDING,
+                    internet200 = LIVE_PENDING,
+                )
+            }
+            isWorkingDay(today) &&
+                !t.isBefore(MORNING_REFERENCE) &&
+                reference200Date != cycleDate -> {
+                // The 14:00 slot belongs to the new working-day cycle from
+                // 09:30 onward, even before its independent retry cycle starts.
                 out = out.copy(
                     modern200 = LIVE_PENDING,
                     internet200 = LIVE_PENDING,
@@ -537,35 +1167,76 @@ internal class LiveCollector(
             }
         }
 
-        // A successful 09:30 reference resets the two session cards only
-        // while we are still before the 11:30 live boundary. This prevents
-        // old values from flashing through the new reference cycle, but does
-        // not allow the reset to overwrite LIVE polling after 11:30.
-        // Reset today's session cards for the new reference cycle, but never
-        // erase a previous-day final that is intentionally being shown on a
-        // fresh install before today's 11:30 live boundary.
+        val pendingSessions = LiveSessionData(
+            LIVE_PENDING,
+            LIVE_PENDING,
+            LIVE_PENDING,
+            false,
+        )
+
+        val workingToday = isWorkingDay(today)
+
+        // A successful 09:30 reference resets the session cards immediately.
+        // When 09:30 has not succeeded yet, old cards may remain temporarily.
         if (
-            referenceResetDate == currentYangonDate() &&
-            clock().isBefore(MORNING_LIVE) &&
-            currentDay(out)
+            workingToday &&
+            referenceResetDate == cycleDate &&
+            !t.isBefore(MORNING_REFERENCE) &&
+            t.isBefore(MORNING_LIVE)
         ) {
             out = out.copy(
-                morning = LiveSessionData(
-                    LIVE_PENDING,
-                    LIVE_PENDING,
-                    LIVE_PENDING,
-                    false,
-                ),
-                evening = LiveSessionData(
-                    LIVE_PENDING,
-                    LIVE_PENDING,
-                    LIVE_PENDING,
-                    false,
-                ),
+                morning = pendingSessions,
+                evening = pendingSessions,
+            )
+        } else if (
+            workingToday &&
+            !t.isBefore(MORNING_LIVE) &&
+            (
+                t.isBefore(MORNING_CLOSE) ||
+                    !currentDay(out, today)
+            )
+        ) {
+            // On a working day, 11:30 is a hard display reset. This does not
+            // mutate the raw provider snapshot, so the existing LIVE/final
+            // engine and its protections remain untouched. After 12:01 a
+            // verified current-day morning final may render normally.
+            out = out.copy(
+                morning = pendingSessions,
+                evening = pendingSessions,
             )
         }
 
+        if (
+            workingToday &&
+            !t.isBefore(EVENING_LIVE) &&
+            t.isBefore(EVENING_CLOSE) &&
+            currentDay(out, today)
+        ) {
+            // Evening starts a new session at 16:00. Preserve the verified
+            // morning final, but project the evening card to Pending until
+            // the 16:30 final is confirmed.
+            out = out.copy(evening = pendingSessions)
+        }
+
         return out
+    }
+
+    private fun referenceRetryWindowOpen(
+        cycleDate: LocalDate,
+        currentDate: LocalDate,
+        now: LocalTime,
+    ): Boolean {
+        if (closedHoldDate(currentDate, now) != null) return false
+        if (currentDate == cycleDate) {
+            // Friday's state becomes the weekend-held snapshot after the
+            // evening final; no late reference fetch may mutate it.
+            return !(cycleDate.dayOfWeek == DayOfWeek.FRIDAY && !now.isBefore(EVENING_CLOSE))
+        }
+
+        val nextDate = cycleDate.plusDays(1)
+        return currentDate == nextDate &&
+            isWorkingDay(nextDate) &&
+            now.isBefore(MORNING_REFERENCE)
     }
 
     private suspend fun fetchReferencePair(
@@ -578,49 +1249,108 @@ internal class LiveCollector(
             null
         }
 
+        val closedSnapshot = isMorning &&
+            feed != null &&
+            feed.isCloseDay &&
+            isCurrentCycleReferenceObservation(feed, cycleDate)
+
+        if (closedSnapshot) {
+            val holdDate = previousWorkingDay(cycleDate)
+            val heldFeed = runCatching {
+                closedDayFeedFetcher?.invoke(holdDate)
+            }.getOrNull()
+
+            synchronized(stateLock) {
+                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
+
+                closedDayDate = cycleDate
+                closedDayDateSaver(cycleDate)
+
+                reference930 = null
+                reference930Date = null
+                reference930PendingDate = null
+                reference930CompleteDate = null
+                reference200 = null
+                reference200Date = null
+                reference200PendingDate = null
+                reference200CompleteDate = null
+                referenceResetDate = null
+                referenceFeed = null
+                referenceFeedDate = null
+                lastLive = null
+
+                if (heldFeed != null) {
+                    val startedAt = monotonicMs()
+                    primary = SourceObservation(heldFeed, startedAt, startedAt, 0L)
+                    latestFinalFor(heldFeed)?.let { lastFinal = it }
+                    cacheFeedSaver(heldFeed)
+                }
+
+                publishLocked()
+            }
+            return true
+        }
+
         synchronized(stateLock) {
-            if (currentYangonDate() != cycleDate) return false
+            if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return false
 
             if (isMorning) {
-                val valid = validReferencePair(
-                    feed,
-                    feed?.modern930 ?: LIVE_PENDING,
-                    feed?.internet930 ?: LIVE_PENDING,
-                )
+                val valid =
+                    feed != null &&
+                        isCurrentCycleReferenceObservation(feed, cycleDate) &&
+                        validReferencePair(
+                            feed,
+                            feed.modern930,
+                            feed.internet930,
+                        )
 
                 if (valid) {
                     reference930 =
                         feed!!.modern930 to feed.internet930
+                    reference930Date = cycleDate
                     reference930PendingDate = null
                     reference930CompleteDate = cycleDate
                     referenceResetDate = cycleDate
+                    referenceFeed = feed
+                    referenceFeedDate = cycleDate
                 } else {
                     // Do not clear before the first request. If the first
                     // request succeeds, the UI transitions old -> new
                     // directly. Only after an invalid/failed attempt do we
                     // enter the explicit pending state.
                     reference930 = null
+                    reference930Date = null
                     reference930PendingDate = cycleDate
                 }
             } else {
-                val valid = validReferencePair(
-                    feed,
-                    feed?.modern200 ?: LIVE_PENDING,
-                    feed?.internet200 ?: LIVE_PENDING,
-                )
+                val valid =
+                    feed != null &&
+                        isCurrentCycleReferenceObservation(feed, cycleDate) &&
+                        validReferencePair(
+                            feed,
+                            feed.modern200,
+                            feed.internet200,
+                        )
 
                 if (valid) {
                     reference200 =
                         feed!!.modern200 to feed.internet200
+                    reference200Date = cycleDate
                     reference200PendingDate = null
                     reference200CompleteDate = cycleDate
+                    referenceFeed = feed
+                    referenceFeedDate = cycleDate
                 } else {
                     reference200 = null
+                    reference200Date = cycleDate
                     reference200PendingDate = cycleDate
                 }
             }
 
             publishLocked()
+            if (feed != null) {
+                syncLiveRoom(feed)
+            }
         }
 
         return if (isMorning) {
@@ -631,20 +1361,25 @@ internal class LiveCollector(
     }
 
     private fun fetchReference930Cycle() {
-        val today = currentYangonDate()
-        if (reference930Cycle?.isActive == true || reference930CompleteDate == today) {
+        val today = dateProvider()
+        if (reference930CompleteDate == today) {
             return
         }
+        if (reference930Cycle?.isActive == true) {
+            if (reference930CycleDate == today) return
+            reference930Cycle?.cancel()
+            reference930Cycle = null
+        }
 
+        reference930CycleDate = today
         reference930Cycle = scope.launch {
             val cycleDate = today
 
             while (isActive) {
                 val now = clock()
+                val nowDate = dateProvider()
 
-                // Keep retrying across midnight. The prior 09:30 cycle owns
-                // the retry window until the next 09:30 boundary.
-                if (currentYangonDate() != cycleDate && !now.isBefore(MORNING_REFERENCE)) {
+                if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) {
                     return@launch
                 }
 
@@ -656,23 +1391,29 @@ internal class LiveCollector(
     }
 
     private fun fetchReference200Cycle() {
-        val today = currentYangonDate()
-        if (reference200Cycle?.isActive == true || reference200CompleteDate == today) {
+        val today = dateProvider()
+        if (reference200CompleteDate == today) {
             return
         }
+        if (reference200Cycle?.isActive == true) {
+            if (reference200CycleDate == today) return
+            reference200Cycle?.cancel()
+            reference200Cycle = null
+        }
 
+        reference200CycleDate = today
         reference200Cycle = scope.launch {
             val cycleDate = today
 
             while (isActive) {
                 val now = clock()
+                val nowDate = dateProvider()
 
-                // The 14:00 cycle is independent and keeps retrying through
-                // midnight until the next day's 09:29:59 boundary.
-                if (currentYangonDate() != cycleDate && !now.isBefore(MORNING_REFERENCE)) {
+                if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) {
                     return@launch
                 }
-                if (currentYangonDate() == cycleDate && now.isBefore(AFTERNOON_REFERENCE)) {
+
+                if (nowDate == cycleDate && now.isBefore(AFTERNOON_REFERENCE)) {
                     return@launch
                 }
 
@@ -684,55 +1425,85 @@ internal class LiveCollector(
     }
 
     private fun maybeReferenceFetch(t: LocalTime) {
-        val today = currentYangonDate()
+        val today = dateProvider()
+        clearExpiredClosedDayBeforeMorningBoundary(today, t)
 
-        if (t >= MORNING_REFERENCE && reference930CompleteDate != today) {
-            fetchReference930Cycle()
+        if (closedHoldDate(today, t) != null) return
+        if (!isWorkingDay(today)) return
+
+        val cycleDate = dailyCycleDate(today, t)
+
+        val referenceRetryOpen = referenceRetryWindowOpen(cycleDate, today, t)
+
+        if (referenceRetryOpen && t >= MORNING_REFERENCE && reference930CompleteDate != cycleDate) {
+            synchronized(stateLock) {
+                // From 09:30 onward, previous-day 09:30/14:00 values are no
+                // longer valid for the new cycle. Mask both slots immediately
+                // while their independent current-day fetches are running.
+                // A successful fetch clears the pending marker and supplies
+                // today's value.
+                if (
+                    reference930CompleteDate != cycleDate &&
+                    reference930PendingDate != cycleDate
+                ) {
+                    reference930 = null
+                    reference930Date = null
+                    reference930PendingDate = cycleDate
+                }
+
+                if (
+                    reference200CompleteDate != cycleDate &&
+                    reference200PendingDate != cycleDate
+                ) {
+                    // The new working-day cycle owns the 14:00 reference slot
+                    // from 09:30 onward.
+                    reference200 = null
+                    reference200Date = null
+                    reference200PendingDate = cycleDate
+                }
+                publishLocked()
+            }
+
+            if (reference930CompleteDate != cycleDate) {
+                fetchReference930Cycle()
+            }
         }
 
-        if (t >= AFTERNOON_REFERENCE && reference200CompleteDate != today) {
+        if (
+            referenceRetryOpen &&
+            t >= AFTERNOON_REFERENCE &&
+            reference200CompleteDate != cycleDate
+        ) {
             fetchReference200Cycle()
         }
 
-        // If 09:30 has still not produced a valid pair by 11:30, reset
-        // Morning + Evening exactly once. A late 09:30 success updates the
-        // reference values but must not reset the cards a second time.
+        // If 09:30 has not succeeded by 11:30, force the session-card reset
+        // exactly once. This only changes the display projection; the raw
+        // provider snapshot and existing LIVE/final engine remain untouched.
         if (
             t >= MORNING_LIVE &&
-            reference930CompleteDate != today &&
-            referenceResetDate != today
+            reference930CompleteDate != cycleDate &&
+            referenceResetDate != cycleDate
         ) {
             synchronized(stateLock) {
-                if (reference930CompleteDate != today && referenceResetDate != today) {
-                    referenceResetDate = today
-                    val feed = primary?.feed
-                    if (feed != null && currentDay(feed)) {
-                        primary = primary?.copy(
-                            feed = feed.copy(
-                                morning = LiveSessionData(
-                                    LIVE_PENDING,
-                                    LIVE_PENDING,
-                                    LIVE_PENDING,
-                                    false,
-                                ),
-                                evening = LiveSessionData(
-                                    LIVE_PENDING,
-                                    LIVE_PENDING,
-                                    LIVE_PENDING,
-                                    false,
-                                ),
-                            )
-                        )
-                        publishLocked()
-                    }
+                if (
+                    reference930CompleteDate != cycleDate &&
+                    referenceResetDate != cycleDate
+                ) {
+                    referenceResetDate = cycleDate
+                    publishLocked()
                 }
             }
         }
     }
 
     private fun shouldPoll(t: LocalTime): Boolean {
+        val today = dateProvider()
+        if (closedHoldDate(today, t) != null) return false
+        if (!isWorkingDay(today)) return false
+
         val f = synchronized(stateLock) {
-            primary?.feed?.takeIf(::currentDay)
+            primary?.feed?.takeIf { currentDay(it, today) }
         }
 
         return when {
@@ -746,20 +1517,151 @@ internal class LiveCollector(
         }
     }
 
+    private suspend fun recoverPreviousWorkingDayFinal() {
+        val today = dateProvider()
+        val now = clock()
+        val bootstrap = freshInstallBootstrapPlan(today, now)
+        val closedHold = closedHoldDate(today, now)
+        val cycleDate = closedHold?.let(::previousWorkingDay) ?: bootstrap.cycleDate
+        val fallbackFeedDate = closedHold?.let(::previousWorkingDay) ?: bootstrap.fallbackDate
+
+        // First recover the exact cycle row represented by the app clock.
+        // Fresh-install policy owns only the date selection; the Daily Flow
+        // still decides what portions of that row are displayable.
+        val currentFeed = if (closedHold != null) {
+            runCatching {
+                closedDayFeedFetcher?.invoke(cycleDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == cycleDate
+            }
+        } else {
+            runCatching {
+                historicalFeedFetcher?.invoke(cycleDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == cycleDate
+            }
+        }
+
+        val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
+            runCatching {
+                historicalFeedFetcher?.invoke(fallbackFeedDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == fallbackFeedDate
+            }
+        } else {
+            null
+        }
+
+        val currentFinal = runCatching {
+            historicalFinalFetcher?.invoke(cycleDate)
+        }.getOrNull()?.takeIf {
+            canonicalDate(it.date) == cycleDate
+        }
+
+        val fallbackFinal = if (
+            currentFinal == null &&
+            fallbackFeedDate != null &&
+            fallbackFeedDate != cycleDate
+        ) {
+            runCatching {
+                historicalFinalFetcher?.invoke(fallbackFeedDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == fallbackFeedDate
+            }
+        } else {
+            null
+        }
+
+        val recoveredFeed = currentFeed ?: fallbackFeed
+
+        synchronized(stateLock) {
+            // A current-cycle final has priority over the previous working
+            // day's hero. When the current cycle is still pending, keep the
+            // previous working-day final as the temporary hero hold.
+            when {
+                currentFinal != null -> lastFinal = currentFinal
+                fallbackFinal != null -> lastFinal = fallbackFinal
+            }
+
+            if (recoveredFeed != null) {
+                val projected = recoveredFeed
+                val startedAt = monotonicMs()
+                primary = SourceObservation(projected, startedAt, startedAt, 0L)
+
+                // Historical data may fully reconstruct a completed held day:
+                // - any pre-09:30 start (cycleDate is already the held day), or
+                // - a same-day cold start after the evening final.
+                //
+                // Do not seed a working day's references during the active
+                // 09:30/14:00 retry windows. Those slots must still be fetched
+                // from Luke for the current cycle. Once the day is complete,
+                // its historical row is an authoritative display baseline.
+                val recoveredDate = canonicalDate(projected.date)
+                val completedHeldCycle =
+                    recoveredDate == cycleDate &&
+                        (
+                            cycleDate != today ||
+                                !now.isBefore(EVENING_CLOSE)
+                            )
+
+                if (completedHeldCycle) {
+                    val pair930 = projected.modern930 to projected.internet930
+                    if (validReferencePair(projected, pair930.first, pair930.second)) {
+                        reference930 = pair930
+                        reference930Date = cycleDate
+                        reference930CompleteDate = cycleDate
+                        reference930PendingDate = null
+                    }
+
+                    val pair200 = projected.modern200 to projected.internet200
+                    if (validReferencePair(projected, pair200.first, pair200.second)) {
+                        reference200 = pair200
+                        reference200Date = cycleDate
+                        reference200CompleteDate = cycleDate
+                        reference200PendingDate = null
+                    }
+                }
+
+                latestFinalFor(projected)?.let { historicalFinal ->
+                    if (
+                        currentFinal == null &&
+                        canonicalDate(historicalFinal.date) == recoveredDate
+                    ) {
+                        lastFinal = historicalFinal
+                    }
+                }
+
+                publishLocked()
+                return
+            }
+
+            publishLocked()
+        }
+    }
+
     private fun publishLocked() {
+        val today = dateProvider()
+        val scheduleTime = clock()
         val displayPrimary = primary?.let { observation ->
             mergeReferenceIntoFeed(observation.feed)?.let { merged ->
                 observation.copy(feed = merged)
             } ?: observation
-        }
+        }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
+            ?: mergeReferenceIntoFeed(null)?.let { feed ->
+                val now = monotonicMs()
+                SourceObservation(feed, now, now, 0L)
+            }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
 
+        val closedHold = closedHoldDate(today, scheduleTime)
         val resolution = resolveLiveState(
             p = displayPrimary,
             s = null,
             now = Instant.now(),
             lastLive = lastLive,
             cachedFinal = lastFinal,
-            scheduleTime = clock(),
+            scheduleTime = scheduleTime,
+            scheduleDate = today,
+            liveClosedDayDate = closedHold,
         )
 
         if (resolution.heroLive) {
@@ -770,7 +1672,7 @@ internal class LiveCollector(
         if (
             !resolution.heroLive &&
             hero != null &&
-            canonicalDate(hero.date) == currentYangonDate() &&
+            canonicalDate(hero.date) == today &&
             hero != lastFinal
         ) {
             lastFinal = hero
@@ -786,17 +1688,39 @@ internal class LiveCollector(
             sourceMessage = "",
             status = resolution.status,
             staleAgeMs = resolution.staleAgeMs,
+            closedDay = currentClosedDayForNotice(today),
         )
     }
 
     fun start() {
         if (!started.compareAndSet(false, true)) return
 
-        fetchCycle()
-
         schedulerJob = scope.launch {
+            recoverPreviousWorkingDayFinal()
+
+            // Reference catch-up remains separate from normal LIVE polling.
+            // When a closed-day hold is already known, skip the startup fetch
+            // and keep the previous working-day snapshot.
+            maybeReferenceFetch(clock())
+            val startupToday = dateProvider()
+            val startupTime = clock()
+            if (closedHoldDate(startupToday, startupTime) == null) {
+                fetchCycle()
+            }
+
+            var lastSchedulerDate = startupToday
+
             while (isActive) {
+                val currentDate = dateProvider()
                 val t = clock()
+
+                // Publish once at the calendar boundary so a current-day-only
+                // Closed Day notice disappears as soon as the new date starts.
+                if (currentDate != lastSchedulerDate) {
+                    lastSchedulerDate = currentDate
+                    publishLocked()
+                }
+
                 maybeReferenceFetch(t)
 
                 if (shouldPoll(t)) {
@@ -815,7 +1739,10 @@ internal class LiveCollector(
         val instance: LiveCollector
             get() = shared ?: error("LiveCollector not started")
 
-        fun startOnce(context: Context) {
+        fun startOnce(
+            context: Context,
+            liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
+        ) {
             if (shared != null) return
 
             synchronized(this) {
@@ -836,11 +1763,80 @@ internal class LiveCollector(
                     cacheSaver = { LiveCacheStore.save(context, it) },
                     cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
+                    liveRoomSaver = liveRoomSaver,
+                    closedDayFeedFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let(::historyRowToFeed)
+                    },
+                    closedDayDateLoader = {
+                        LiveClosedDayStore.load(context)
+                    },
+                    closedDayDateSaver = { date ->
+                        LiveClosedDayStore.save(context, date)
+                    },
+                    closedDayDateClearer = {
+                        LiveClosedDayStore.clear(context)
+                    },
+                    historicalFinalFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let { row ->
+                                historyRowToFinal(
+                                    row,
+                                    LocalTime.now(YANGON),
+                                )
+                            }
+                    },
+                    historicalFeedFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let { row ->
+                                historyRowToFeed(
+                                    row,
+                                    currentYangonDate(),
+                                    LocalTime.now(YANGON),
+                                )
+                            }
+                    },
                 )
 
                 shared = collector
                 collector.start()
             }
+        }
+    }
+}
+
+internal object LiveClosedDayStore {
+    private const val PREFS_NAME = "live_display_cache"
+    private const val KEY = "observed_closed_day"
+
+    fun load(context: Context): LocalDate? = runCatching {
+        val raw = context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY, null)
+            ?: return null
+        LocalDate.parse(raw)
+    }.getOrNull()
+
+    fun save(context: Context, date: LocalDate) {
+        runCatching {
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY, date.toString())
+                .apply()
+        }
+    }
+
+    fun clear(context: Context) {
+        runCatching {
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY)
+                .apply()
         }
     }
 }
@@ -868,8 +1864,12 @@ internal object LiveCacheStore {
                 date = o.getString("date"),
             )
 
+            val today = currentYangonDate()
+            val cycleDate = dailyCycleDate(today, LocalTime.now(YANGON))
+            val previousWorking = previousWorkingDay(cycleDate)
             snapshot.takeIf {
-                canonicalDate(it.date) == currentYangonDate()
+                val d = canonicalDate(it.date)
+                d == cycleDate || d == previousWorking
             }
         } catch (_: Exception) {
             null
@@ -920,6 +1920,7 @@ internal object LiveCacheStore {
                 } else {
                     null
                 },
+                isCloseDay = o.optBoolean("isCloseDay", false),
             )
         }.getOrNull()
     }
@@ -951,6 +1952,7 @@ internal object LiveCacheStore {
                 .put("modern200", feed.modern200)
                 .put("internet200", feed.internet200)
                 .put("sourceTag", feed.sourceTag)
+                .put("isCloseDay", feed.isCloseDay)
                 .apply {
                     feed.serverTimeEpochMs?.let { put("serverTimeEpochMs", it) }
                 }
