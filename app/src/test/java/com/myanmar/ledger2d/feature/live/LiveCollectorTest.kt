@@ -910,20 +910,22 @@ class LiveCollectorTest {
             dateProvider = { monday },
         )
 
-        collector.start()
-        runCurrent()
+        try {
+            collector.start()
+            runCurrent()
 
-        val state = collector.state.value as LiveUiState.Data
-        assertEquals("25", state.hero?.result)
-        assertFalse(state.heroLive)
-        assertEquals("--", state.feed?.morning?.result)
-        assertEquals("--", state.feed?.evening?.result)
-        assertEquals("80", state.feed?.modern930)
-        assertEquals("33", state.feed?.internet930)
-        assertEquals("--", state.feed?.modern200)
-        assertEquals("--", state.feed?.internet200)
-
-        scope.cancel()
+            val state = collector.state.value as LiveUiState.Data
+            assertEquals("25", state.hero?.result)
+            assertFalse(state.heroLive)
+            assertEquals("--", state.feed?.morning?.result)
+            assertEquals("--", state.feed?.evening?.result)
+            assertEquals("80", state.feed?.modern930)
+            assertEquals("33", state.feed?.internet930)
+            assertEquals("--", state.feed?.modern200)
+            assertEquals("--", state.feed?.internet200)
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test fun eleven_thirty_current_day_live_keeps_live_engine_data_but_projection_resets_cards() = runTest {
@@ -1527,25 +1529,27 @@ class LiveCollectorTest {
             dateProvider = { monday },
         )
 
-        collector.start()
-        runCurrent()
+        try {
+            collector.start()
+            runCurrent()
 
-        assertTrue(calls >= 1)
-        val initialCalls = calls
-        val state = collector.state.value as LiveUiState.Data
-        assertEquals(monday.toString(), state.feed?.date)
-        assertEquals("80", state.feed?.modern930)
-        assertEquals("33", state.feed?.internet930)
-        assertEquals("98", state.feed?.modern200)
-        assertEquals("78", state.feed?.internet200)
-        assertEquals("77", state.hero?.result)
-        assertFalse(state.heroLive)
+            assertTrue(calls >= 1)
+            val initialCalls = calls
+            val state = collector.state.value as LiveUiState.Data
+            assertEquals(monday.toString(), state.feed?.date)
+            assertEquals("80", state.feed?.modern930)
+            assertEquals("33", state.feed?.internet930)
+            assertEquals("98", state.feed?.modern200)
+            assertEquals("78", state.feed?.internet200)
+            assertEquals("77", state.hero?.result)
+            assertFalse(state.heroLive)
 
-        advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
-        runCurrent()
-        assertEquals(initialCalls, calls)
-
-        scope.cancel()
+            advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 3)
+            runCurrent()
+            assertEquals(initialCalls, calls)
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
@@ -2066,7 +2070,10 @@ class LiveCollectorTest {
                 .toInstant()
                 .toEpochMilli(),
         )
+        // Keep the main snapshot usable; it may omit reference slots, but
+        // an entirely pending snapshot is correctly rejected before merging.
         val mainSnapshot = currentReference.copy(
+            live = "12",
             modern930 = "--",
             internet930 = "--",
         )
@@ -2082,17 +2089,19 @@ class LiveCollectorTest {
             dateProvider = { tuesday },
         )
 
-        collector.start()
-        runCurrent()
+        try {
+            collector.start()
+            runCurrent()
 
-        val state = collector.state.value as LiveUiState.Data
-        assertTrue(calls >= 2)
-        assertEquals("81", state.feed?.modern930)
-        assertEquals("17", state.feed?.internet930)
-        assertEquals("--", state.feed?.modern200)
-        assertEquals("--", state.feed?.internet200)
-
-        scope.cancel()
+            val state = collector.state.value as LiveUiState.Data
+            assertTrue(calls >= 2)
+            assertEquals("81", state.feed?.modern930)
+            assertEquals("17", state.feed?.internet930)
+            assertEquals("--", state.feed?.modern200)
+            assertEquals("--", state.feed?.internet200)
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test fun friday_after_1700_rejects_previous_working_day_primary_feed() {
