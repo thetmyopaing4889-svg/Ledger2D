@@ -75,6 +75,17 @@ internal enum class LiveWindowAction {
     FINALIZING,
 }
 
+internal enum class LiveSession {
+    MORNING,
+    EVENING,
+}
+
+internal fun liveSessionForTime(t: LocalTime): LiveSession? = when {
+    t >= MORNING_LIVE && t < MORNING_CLOSE -> LiveSession.MORNING
+    t >= EVENING_LIVE && t < EVENING_CLOSE -> LiveSession.EVENING
+    else -> null
+}
+
 enum class LiveStatus {
     WAITING,
     LIVE_CONFIRMED,
@@ -570,6 +581,7 @@ internal fun resolveLiveState(
     scheduleTime: LocalTime? = null,
     scheduleDate: LocalDate? = null,
     liveClosedDayDate: LocalDate? = null,
+    primaryLiveSession: LiveSession? = null,
 ): LiveResolution {
     val effectiveScheduleTime = scheduleTime ?: now.atZone(YANGON).toLocalTime()
     val today = scheduleDate ?: currentYangonDate()
@@ -606,7 +618,10 @@ internal fun resolveLiveState(
         return LiveResolution(null, heldFinal, false, LiveStatus.WAITING, "", 0, age(p))
     }
 
-    val canShowLive = liveValid(p, today)
+    val activeLiveSession = liveSessionForTime(effectiveScheduleTime)
+    val canShowLive =
+        liveValid(p, today) &&
+            (activeLiveSession == null || primaryLiveSession == activeLiveSession)
     val morningFinal = finalValid(feed.morning, feed, today)
     val eveningFinal = finalValid(feed.evening, feed, today)
 
@@ -794,7 +809,9 @@ internal class LiveCollector(
     private var referenceFeedDate: LocalDate? = null
 
     private var primary: SourceObservation? = null
+    private var primaryLiveSession: LiveSession? = null
     private var lastLive: LiveHeroSnapshot? = null
+    private var lastPhaseMarker: Pair<LiveWindowAction, LiveSession?>? = null
     /**
      * Last Luke-confirmed closed calendar date. Live-only state; never written
      * to the user's Room ClosedDayRepository.
@@ -887,6 +904,7 @@ internal class LiveCollector(
         if (cachedFeed != null) {
             val startedAt = monotonicMs()
             primary = SourceObservation(cachedFeed, startedAt, startedAt, 0L)
+            primaryLiveSession = inferLiveSessionFromSourceTime(cachedFeed)
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
             syncLiveRoom(cachedFeed)
@@ -955,14 +973,29 @@ internal class LiveCollector(
                     return@synchronized
                 }
 
-                val protected = protectFinalSessions(previous, feed)
+                val protectedFinals = protectFinalSessions(previous, feed)
+                val scheduleTime = clock()
+                val protected = preserveActiveLive(
+                    previous = previous,
+                    incoming = protectedFinals,
+                    scheduleTime = scheduleTime,
+                )
                 latestAppliedSequence.set(sequence)
-                primary = SourceObservation(
+                val observation = SourceObservation(
                     protected,
                     finishedAt,
                     startedAt,
                     finishedAt - startedAt,
                 )
+
+                val activeSession = liveSessionForTime(scheduleTime)
+                primaryLiveSession = when {
+                    activeSession != null && hasValidLive(protected) -> activeSession
+                    activeSession != null -> null
+                    else -> primaryLiveSession
+                }
+
+                primary = observation
 
                 // Keep the latest completed result from the previous day in
                 // memory as a hero fallback when today's Luke feed arrives
@@ -1047,6 +1080,41 @@ internal class LiveCollector(
                     }
                 }
             }
+        }
+    }
+
+    private fun preserveActiveLive(
+        previous: LiveFeedData?,
+        incoming: LiveFeedData,
+        scheduleTime: LocalTime,
+    ): LiveFeedData {
+        val activeSession = liveSessionForTime(scheduleTime) ?: return incoming
+        if (primaryLiveSession != activeSession || !hasValidLive(previous)) {
+            return incoming
+        }
+        if (hasValidLive(incoming)) {
+            return incoming
+        }
+
+        return incoming.copy(
+            live = previous!!.live,
+            liveSet = previous.liveSet,
+            liveVal = previous.liveVal,
+        )
+    }
+
+    private fun inferLiveSessionFromSourceTime(feed: LiveFeedData): LiveSession? {
+        val sourceTime = parseDecisionInstant(feed)
+            ?.atZone(YANGON)
+            ?.toLocalTime()
+            ?: return null
+
+        return when {
+            sourceTime >= MORNING_LIVE && sourceTime < MORNING_CATCHUP_END ->
+                LiveSession.MORNING
+            sourceTime >= EVENING_LIVE && sourceTime < EVENING_CATCHUP_END ->
+                LiveSession.EVENING
+            else -> null
         }
     }
 
@@ -1653,6 +1721,8 @@ internal class LiveCollector(
             }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
 
         val closedHold = closedHoldDate(today, scheduleTime)
+        lastPhaseMarker = liveWindowAction(scheduleTime) to liveSessionForTime(scheduleTime)
+
         val resolution = resolveLiveState(
             p = displayPrimary,
             s = null,
@@ -1662,6 +1732,7 @@ internal class LiveCollector(
             scheduleTime = scheduleTime,
             scheduleDate = today,
             liveClosedDayDate = closedHold,
+            primaryLiveSession = primaryLiveSession,
         )
 
         if (resolution.heroLive) {
@@ -1713,6 +1784,16 @@ internal class LiveCollector(
             while (isActive) {
                 val currentDate = dateProvider()
                 val t = clock()
+
+                // Re-publish when the Yangon app clock crosses a LIVE phase.
+                // This prevents a previous session's LIVE hero from leaking
+                // into the next session when the new request has not arrived yet.
+                synchronized(stateLock) {
+                    val phaseMarker = liveWindowAction(t) to liveSessionForTime(t)
+                    if (phaseMarker != lastPhaseMarker) {
+                        publishLocked()
+                    }
+                }
 
                 // Publish once at the calendar boundary so a current-day-only
                 // Closed Day notice disappears as soon as the new date starts.
