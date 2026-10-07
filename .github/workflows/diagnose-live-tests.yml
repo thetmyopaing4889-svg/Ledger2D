@@ -27,4 +27,9 @@ jobs:
       - name: Print test report details
         if: always()
         run: |
-          find app/build/test-results/testDebugUnitTest -type f -name '*.xml' -print -exec cat {} \\;
+          set +e
+          for f in $(find app/build/test-results/testDebugUnitTest -type f -name '*.xml' 2>/dev/null); do
+            echo "=== $f ==="
+            cat "$f"
+          done
+          exit 0
