@@ -1,0 +1,96 @@
+name: Diagnose LIVE test isolation
+
+on:
+  push:
+    branches: [fix/daily-flow-final-build]
+  workflow_dispatch:
+
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - daily_cycle_date_switches_at_0930_and_skips_weekend
+          - fresh_start_tuesday_before_0930_recovers_monday_not_friday
+          - fresh_start_tuesday_before_0930_rejects_friday_only_cached_hero
+          - history_row_reconstructs_complete_held_feed
+          - fresh_start_tuesday_before_0930_reconstructs_monday_full_held_state
+          - fresh_start_monday_before_0930_reconstructs_friday_full_held_state
+          - weekend_cold_start_reconstructs_friday_full_held_state
+          - fresh_start_monday_0830_enters_friday_held_phase_completely
+          - fresh_start_monday_1830_enters_monday_completed_phase_completely
+          - fresh_start_tuesday_0830_enters_monday_held_phase_completely
+          - fresh_start_tuesday_1130_enters_new_cycle_with_pending_sessions_and_live_gate
+          - fresh_start_tuesday_1730_enters_tuesday_completed_phase_completely
+          - app_clock_controls_phase_even_when_luke_reports_previous_day_time
+          - current_day_live_replaces_previous_day_fallback_without_rewriting_live_engine
+          - successful_0930_reference_starts_new_cycle_and_resets_cards
+          - failed_0930_reference_keeps_old_cards_until_1130_then_resets
+          - late_0930_success_after_1130_fills_reference_without_resetting_cards_again
+          - weekend_holds_friday_state_without_entering_live_phase
+          - sunday_also_holds_friday_state
+          - monday_before_0930_still_holds_friday_state
+          - weekend_collector_does_not_poll_live_or_references
+          - friday_after_evening_final_stops_reference_retries
+          - monday_0930_starts_new_working_day_cycle
+          - eleven_thirty_current_day_live_keeps_live_engine_data_but_projection_resets_cards
+          - monday_reference_response_keeps_friday_hero_until_morning_live
+          - fresh_install_monday_before_morning_live_recovers_previous_final_without_local_cache
+          - schedule_0930_is_reference
+          - schedule_1129_is_reference
+          - schedule_1130_starts_live
+          - schedule_1200_is_still_live
+          - schedule_1201_starts_final_catchup
+          - schedule_1400_is_reference
+          - schedule_1600_starts_evening_live
+          - schedule_1630_starts_evening_final_catchup
+          - previous_day_morning_response_shows_yesterdays_final_before_0930
+          - previous_day_feed_is_kept_until_0930
+          - previous_day_feed_remains_visible_after_0930_until_live_boundary
+          - yesterday_live_and_today_reference_can_coexist
+          - afternoon_reference_phase_does_not_promote_startup_luke_live_to_hero
+          - afternoon_hold_starts_at_1400_and_stays_non_live
+          - evening_live_resumes_exactly_at_1600
+          - morning_final_is_shown_immediately_after_final_response
+          - evening_final_is_shown_immediately_after_final_response
+          - fresh_start_0830_does_not_start_reference_or_live_polling
+          - fresh_start_0935_reference_failure_keeps_yesterday_cards_until_1130
+          - fresh_start_0935_fetches_todays_reference_instead_of_historical_reference
+          - fresh_start_1000_catches_up_0930_reference_without_live_polling
+          - fresh_start_1500_catches_up_both_reference_slots_without_live_polling
+          - fresh_start_1800_catches_up_reference_slots_without_starting_evening_live_polling
+          - request_failure_keeps_last_successful_snapshot
+          - slow_request_does_not_block_next_scheduled_request
+          - late_older_response_cannot_overwrite_newer_response
+          - final_result_cannot_regress_to_pending
+          - background_polling_works_without_opening_live_screen
+          - live_room_does_not_promote_previous_result_references_to_current_cycle
+          - live_room_does_not_persist_current_day_references_before_0930
+          - live_room_full_evening_snapshot_is_one_current_day_patch
+          - live_room_pending_patch_never_erases_existing_valid_values
+          - live_room_morning_correction_can_update_morning_without_blocking_later_reference_retry
+          - live_room_newer_provider_correction_updates_final_morning_result
+          - live_room_older_morning_observation_cannot_regress_newer_morning_result
+          - collector_persists_reference_snapshot_through_room_saver_without_changing_ui_flow
+          - stale_provider_reference_does_not_complete_current_cycle
+          - stale_provider_1400_reference_does_not_complete_current_cycle
+          - friday_1630_current_day_partial_snapshot_wins_over_previous_day
+          - stale_provider_reference_does_not_complete_afternoon_cycle
+          - main_poll_cannot_erase_successful_current_day_reference
+          - friday_after_1700_rejects_previous_working_day_primary_feed
+          - friday_after_1700_does_not_fallback_to_thursday_when_friday_feed_is_unavailable
+          - schedule_aware_history_projection_hides_future_evening_result
+          - schedule_aware_history_final_uses_morning_before_evening_close
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+      - name: Run one LIVE test
+        run: ./gradlew --no-daemon testDebugUnitTest --tests "com.myanmar.ledger2d.feature.live.LiveCollectorTest.${{ matrix.test }}" --console=plain
