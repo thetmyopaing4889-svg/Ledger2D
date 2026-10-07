@@ -664,6 +664,7 @@ class LiveCollectorTest {
             ),
             scheduleTime = LocalTime.of(11, 40),
             scheduleDate = friday,
+            primaryLiveSession = LiveSession.MORNING,
         )
 
         assertTrue(result.heroLive)
@@ -1349,6 +1350,7 @@ class LiveCollectorTest {
             cachedFinal = null,
             scheduleTime = LocalTime.of(16, 0),
             scheduleDate = friday,
+            primaryLiveSession = LiveSession.EVENING,
         )
 
         assertTrue(result.heroLive)
@@ -2291,6 +2293,115 @@ class LiveCollectorTest {
         assertEquals("33", projected.internet930)
         assertEquals("--", projected.modern200)
         assertEquals("--", projected.internet200)
+    }
+
+
+    @Test fun successful_partial_morning_response_preserves_last_live_values() = runTest {
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) feed("38", "11:40:00") else feed("--", "11:41:00")
+            },
+            clock = { LocalTime.of(11, 40) },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("38", state.hero?.result)
+        assertEquals("38", state.feed?.live)
+        assertEquals("1600", state.hero?.set)
+        assertEquals("20000", state.hero?.value)
+        assertTrue(state.heroLive)
+    }
+
+    @Test fun successful_partial_evening_response_preserves_last_live_values() = runTest {
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) feed("38", "16:05:00") else feed("--", "16:06:00")
+            },
+            clock = { LocalTime.of(16, 5) },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("38", state.hero?.result)
+        assertEquals("38", state.feed?.live)
+        assertEquals("1600", state.hero?.set)
+        assertEquals("20000", state.hero?.value)
+        assertTrue(state.heroLive)
+    }
+
+    @Test fun morning_live_does_not_leak_into_evening_before_evening_live_arrives() = runTest {
+        var calls = 0
+        var schedule = LocalTime.of(11, 40)
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) feed("38", "11:40:00") else feed("--", "16:05:00")
+            },
+            clock = { schedule },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        schedule = LocalTime.of(16, 5)
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertNull(state.hero)
+        assertFalse(state.heroLive)
+        assertEquals("--", state.feed?.live)
+    }
+
+    @Test fun evening_phase_recomputes_ui_when_new_evening_request_fails() = runTest {
+        var schedule = LocalTime.of(11, 40)
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope,
+            fetcher = {
+                if (schedule.isBefore(LocalTime.of(16, 0))) {
+                    feed("38", "11:40:00")
+                } else {
+                    null
+                }
+            },
+            clock = { schedule },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        runCurrent()
+        assertEquals("38", (collector.state.value as LiveUiState.Data).hero?.result)
+        assertTrue((collector.state.value as LiveUiState.Data).heroLive)
+
+        schedule = LocalTime.of(16, 5)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS + 100L)
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertFalse(state.heroLive)
+        assertFalse(state.hero?.result == "38")
+
+        scope.cancel()
     }
 
 }
