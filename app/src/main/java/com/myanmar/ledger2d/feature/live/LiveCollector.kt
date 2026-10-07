@@ -75,6 +75,17 @@ internal enum class LiveWindowAction {
     FINALIZING,
 }
 
+internal enum class LiveSession {
+    MORNING,
+    EVENING,
+}
+
+internal fun liveSessionForTime(t: LocalTime): LiveSession? = when {
+    t >= MORNING_LIVE && t < MORNING_CLOSE -> LiveSession.MORNING
+    t >= EVENING_LIVE && t < EVENING_CLOSE -> LiveSession.EVENING
+    else -> null
+}
+
 enum class LiveStatus {
     WAITING,
     LIVE_CONFIRMED,
@@ -520,17 +531,22 @@ private fun age(o: SourceObservation?): Long =
     if (o == null) Long.MAX_VALUE
     else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
 
-private fun liveValid(
-    o: SourceObservation?,
+private fun hasValidLive(
+    feed: LiveFeedData?,
     date: LocalDate = currentYangonDate(),
 ): Boolean {
-    val f = o?.feed ?: return false
+    val f = feed ?: return false
     return currentDay(f, date) &&
         isValidLive2d(f.live) &&
         validMoney(f.liveSet) &&
         validMoney(f.liveVal) &&
         parseDecisionInstant(f) != null
 }
+
+private fun liveValid(
+    o: SourceObservation?,
+    date: LocalDate = currentYangonDate(),
+): Boolean = hasValidLive(o?.feed, date)
 
 private fun finalValid(
     session: LiveSessionData?,
@@ -570,6 +586,7 @@ internal fun resolveLiveState(
     scheduleTime: LocalTime? = null,
     scheduleDate: LocalDate? = null,
     liveClosedDayDate: LocalDate? = null,
+    primaryLiveSession: LiveSession? = null,
 ): LiveResolution {
     val effectiveScheduleTime = scheduleTime ?: now.atZone(YANGON).toLocalTime()
     val today = scheduleDate ?: currentYangonDate()
@@ -606,7 +623,11 @@ internal fun resolveLiveState(
         return LiveResolution(null, heldFinal, false, LiveStatus.WAITING, "", 0, age(p))
     }
 
-    val canShowLive = liveValid(p, today)
+    val activeLiveSession = liveSessionForTime(effectiveScheduleTime)
+    val canShowLive =
+        activeLiveSession != null &&
+            liveValid(p, today) &&
+            primaryLiveSession == activeLiveSession
     val morningFinal = finalValid(feed.morning, feed, today)
     val eveningFinal = finalValid(feed.evening, feed, today)
 
@@ -794,7 +815,9 @@ internal class LiveCollector(
     private var referenceFeedDate: LocalDate? = null
 
     private var primary: SourceObservation? = null
+    private var primaryLiveSession: LiveSession? = null
     private var lastLive: LiveHeroSnapshot? = null
+    private var lastPhaseMarker: Pair<LiveWindowAction, LiveSession?>? = null
     /**
      * Last Luke-confirmed closed calendar date. Live-only state; never written
      * to the user's Room ClosedDayRepository.
@@ -887,6 +910,9 @@ internal class LiveCollector(
         if (cachedFeed != null) {
             val startedAt = monotonicMs()
             primary = SourceObservation(cachedFeed, startedAt, startedAt, 0L)
+            if (hasValidLive(cachedFeed, today)) {
+                primaryLiveSession = inferLiveSessionFromSourceTime(cachedFeed)
+            }
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
             syncLiveRoom(cachedFeed)
@@ -955,7 +981,15 @@ internal class LiveCollector(
                     return@synchronized
                 }
 
-                val protected = protectFinalSessions(previous, feed)
+                val scheduleTime = clock()
+                val today = dateProvider()
+                val protectedFinals = protectFinalSessions(previous, feed)
+                val protected = preserveActiveLive(
+                    previous = previous,
+                    incoming = protectedFinals,
+                    scheduleTime = scheduleTime,
+                    scheduleDate = today,
+                )
                 latestAppliedSequence.set(sequence)
                 primary = SourceObservation(
                     protected,
@@ -963,6 +997,13 @@ internal class LiveCollector(
                     startedAt,
                     finishedAt - startedAt,
                 )
+
+                val activeSession = liveSessionForTime(scheduleTime)
+                primaryLiveSession = when {
+                    activeSession != null && hasValidLive(protected, today) -> activeSession
+                    activeSession != null -> null
+                    else -> primaryLiveSession
+                }
 
                 // Keep the latest completed result from the previous day in
                 // memory as a hero fallback when today's Luke feed arrives
@@ -981,6 +1022,42 @@ internal class LiveCollector(
                 publishLocked()
                 syncLiveRoom(protected)
             }
+        }
+    }
+
+    private fun preserveActiveLive(
+        previous: LiveFeedData?,
+        incoming: LiveFeedData,
+        scheduleTime: LocalTime,
+        scheduleDate: LocalDate,
+    ): LiveFeedData {
+        val activeSession = liveSessionForTime(scheduleTime) ?: return incoming
+        if (primaryLiveSession != activeSession || !hasValidLive(previous, scheduleDate)) {
+            return incoming
+        }
+        if (hasValidLive(incoming, scheduleDate)) {
+            return incoming
+        }
+
+        return incoming.copy(
+            live = previous!!.live,
+            liveSet = previous.liveSet,
+            liveVal = previous.liveVal,
+        )
+    }
+
+    private fun inferLiveSessionFromSourceTime(feed: LiveFeedData): LiveSession? {
+        val sourceTime = parseDecisionInstant(feed)
+            ?.atZone(YANGON)
+            ?.toLocalTime()
+            ?: return null
+
+        return when {
+            sourceTime >= MORNING_LIVE && sourceTime < MORNING_CATCHUP_END ->
+                LiveSession.MORNING
+            sourceTime >= EVENING_LIVE && sourceTime < EVENING_CATCHUP_END ->
+                LiveSession.EVENING
+            else -> null
         }
     }
 
@@ -1077,12 +1154,8 @@ internal class LiveCollector(
         if (!isLiveDisplayableFeed(feed, clock(), dateProvider())) return false
         if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
 
-        val hasLive =
-            isValidLive2d(feed.live) &&
-                validMoney(feed.liveSet) &&
-                validMoney(feed.liveVal)
-
         val today = dateProvider()
+        val hasLive = hasValidLive(feed, today)
         val hasMorningFinal = finalValid(feed.morning, feed, today)
         val hasEveningFinal = finalValid(feed.evening, feed, today)
 
@@ -1641,6 +1714,7 @@ internal class LiveCollector(
 
     private fun publishLocked() {
         val today = dateProvider()
+        lastPhaseMarker = liveWindowAction(clock()) to liveSessionForTime(clock())
         val scheduleTime = clock()
         val displayPrimary = primary?.let { observation ->
             mergeReferenceIntoFeed(observation.feed)?.let { merged ->
@@ -1662,6 +1736,7 @@ internal class LiveCollector(
             scheduleTime = scheduleTime,
             scheduleDate = today,
             liveClosedDayDate = closedHold,
+            primaryLiveSession = primaryLiveSession,
         )
 
         if (resolution.heroLive) {
@@ -1719,6 +1794,13 @@ internal class LiveCollector(
                 if (currentDate != lastSchedulerDate) {
                     lastSchedulerDate = currentDate
                     publishLocked()
+                }
+
+                synchronized(stateLock) {
+                    val phaseMarker = liveWindowAction(t) to liveSessionForTime(t)
+                    if (phaseMarker != lastPhaseMarker) {
+                        publishLocked()
+                    }
                 }
 
                 maybeReferenceFetch(t)
