@@ -2296,6 +2296,8 @@ class LiveCollectorTest {
     }
 
 
+    // These LIVE regressions pin the Yangon test date so #403's date-aware guards
+    // are exercised without depending on the machine's actual calendar date.
     @Test fun successful_partial_morning_response_preserves_last_live_values() = runTest {
         var calls = 0
         val collector = LiveCollector(
