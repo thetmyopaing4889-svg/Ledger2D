@@ -569,15 +569,24 @@ internal fun resolveLiveState(
     cachedFinal: LiveHeroSnapshot?,
     scheduleTime: LocalTime? = null,
     scheduleDate: LocalDate? = null,
+    liveClosedDayDate: LocalDate? = null,
 ): LiveResolution {
     val effectiveScheduleTime = scheduleTime ?: now.atZone(YANGON).toLocalTime()
     val today = scheduleDate ?: currentYangonDate()
-    val feed = p?.feed?.takeIf {
-        isDisplayableFeedForSchedule(it, effectiveScheduleTime, today)
+    val closedHoldDate = liveClosedDayDate
+    val cycleDate = if (closedHoldDate != null) {
+        previousWorkingDay(closedHoldDate)
+    } else {
+        dailyCycleDate(today, effectiveScheduleTime)
     }
-
-    val cycleDate = dailyCycleDate(today, effectiveScheduleTime)
     val previousWorking = previousWorkingDay(cycleDate)
+    val feed = p?.feed?.takeIf {
+        if (closedHoldDate != null) {
+            canonicalDate(it.date) == cycleDate
+        } else {
+            isDisplayableFeedForSchedule(it, effectiveScheduleTime, today)
+        }
+    }
     val cycleFinal =
         feed?.takeIf { canonicalDate(it.date) == cycleDate }?.let(::latestFinalFor)
     val previousWorkingFinal =
@@ -585,6 +594,7 @@ internal fun resolveLiveState(
     val cachedRelevantFinal = cachedFinal?.takeIf {
         val d = canonicalDate(it.date)
         when {
+            closedHoldDate != null -> d == cycleDate
             !isWorkingDay(today) -> d == cycleDate
             effectiveScheduleTime.isBefore(MORNING_REFERENCE) -> d == cycleDate
             else -> d == cycleDate || d == previousWorking
@@ -619,9 +629,9 @@ internal fun resolveLiveState(
     // provider data only and must never advance the app into another phase.
     val phaseTime = effectiveScheduleTime
 
-    // Saturday/Sunday are closed. Hold the last working-day snapshot for the
-    // whole weekend; never enter a weekday LIVE/final phase from clock time.
-    if (!isWorkingDay(today)) {
+    // Saturday/Sunday and a Luke-confirmed Live-only closed day hold the
+    // last working-day snapshot for the whole closed interval.
+    if (closedHoldDate != null || !isWorkingDay(today)) {
         return LiveResolution(
             feed,
             heldFinal,
@@ -745,6 +755,10 @@ internal class LiveCollector(
     private val cacheFeedLoader: () -> LiveFeedData? = { null },
     private val cacheFeedSaver: (LiveFeedData) -> Unit = {},
     private val liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
+    private val closedDayFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
+    private val closedDayDateLoader: () -> LocalDate? = { null },
+    private val closedDayDateSaver: (LocalDate) -> Unit = {},
+    private val closedDayDateClearer: () -> Unit = {},
     private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
     private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
 ) {
@@ -781,14 +795,94 @@ internal class LiveCollector(
 
     private var primary: SourceObservation? = null
     private var lastLive: LiveHeroSnapshot? = null
+    /**
+     * Last Luke-confirmed closed calendar date. Live-only state; never written
+     * to the user's Room ClosedDayRepository.
+     */
+    private var closedDayDate: LocalDate? = null
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
+
+    private fun nextWorkingDayAfter(date: LocalDate): LocalDate {
+        var next = date.plusDays(1)
+        while (!isWorkingDay(next)) next = next.plusDays(1)
+        return next
+    }
+
+    /**
+     * Luke-confirmed closed days behave like weekends for Live display only.
+     * The previous working-day hold spans intervening weekend dates until the
+     * next working day's 09:30 boundary.
+     */
+    private fun closedHoldDate(today: LocalDate, now: LocalTime): LocalDate? {
+        val closed = closedDayDate ?: return null
+        if (closed == today) return closed
+
+        if (today.isAfter(closed)) {
+            val nextWorking = nextWorkingDayAfter(closed)
+            if (
+                today.isBefore(nextWorking) ||
+                (today == nextWorking && now.isBefore(MORNING_REFERENCE))
+            ) {
+                return closed
+            }
+        }
+        return null
+    }
+
+    private fun clearExpiredClosedDayBeforeMorningBoundary(
+        today: LocalDate,
+        now: LocalTime,
+    ) {
+        val closed = closedDayDate ?: return
+        if (
+            !now.isBefore(MORNING_REFERENCE) &&
+            today == nextWorkingDayAfter(closed)
+        ) {
+            synchronized(stateLock) {
+                if (closedDayDate == closed) {
+                    closedDayDate = null
+                    closedDayDateClearer()
+                }
+            }
+        }
+    }
+
+    private fun currentClosedDayForNotice(today: LocalDate): Boolean =
+        closedDayDate == today
+
+    private fun isLiveDisplayableFeed(
+        feed: LiveFeedData,
+        scheduleTime: LocalTime,
+        today: LocalDate,
+    ): Boolean {
+        val holdDate = closedHoldDate(today, scheduleTime)
+        if (holdDate != null) {
+            val feedDate = canonicalDate(feed.date) ?: return false
+            return feedDate == previousWorkingDay(holdDate)
+        }
+        return isDisplayableFeedForSchedule(feed, scheduleTime, today)
+    }
 
     init {
         val scheduleTime = clock()
         val today = dateProvider()
+
+        val persistedClosed = closedDayDateLoader()
+        if (persistedClosed != null) {
+            val nextWorking = nextWorkingDayAfter(persistedClosed)
+            val stillRelevant =
+                persistedClosed == today ||
+                    today.isBefore(nextWorking) ||
+                    (today == nextWorking && scheduleTime.isBefore(MORNING_REFERENCE))
+            if (stillRelevant) {
+                closedDayDate = persistedClosed
+            } else {
+                closedDayDateClearer()
+            }
+        }
         val cachedFeed = cacheFeedLoader()
-            ?.takeIf { isDisplayableFeedForSchedule(it, scheduleTime, today) }
+            ?.takeIf { isLiveDisplayableFeed(it, scheduleTime, today) }
 
         if (cachedFeed != null) {
             val startedAt = monotonicMs()
@@ -980,7 +1074,7 @@ internal class LiveCollector(
     }
 
     private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
-        if (!isDisplayableFeedForSchedule(feed, clock(), dateProvider())) return false
+        if (!isLiveDisplayableFeed(feed, clock(), dateProvider())) return false
         if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
 
         val hasLive =
@@ -1023,6 +1117,8 @@ internal class LiveCollector(
         }
 
         if (effectiveBase == null) return null
+
+        if (closedHoldDate(today, t) != null) return effectiveBase
 
         var out = effectiveBase
 
@@ -1130,6 +1226,7 @@ internal class LiveCollector(
         currentDate: LocalDate,
         now: LocalTime,
     ): Boolean {
+        if (closedHoldDate(currentDate, now) != null) return false
         if (currentDate == cycleDate) {
             // Friday's state becomes the weekend-held snapshot after the
             // evening final; no late reference fetch may mutate it.
@@ -1150,6 +1247,47 @@ internal class LiveCollector(
             fetcher()
         } catch (_: Exception) {
             null
+        }
+
+        val closedSnapshot = feed != null &&
+            feed.isCloseDay &&
+            isCurrentCycleReferenceObservation(feed, cycleDate)
+
+        if (closedSnapshot) {
+            val holdDate = previousWorkingDay(cycleDate)
+            val heldFeed = runCatching {
+                closedDayFeedFetcher?.invoke(holdDate)
+            }.getOrNull()
+
+            synchronized(stateLock) {
+                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
+
+                closedDayDate = cycleDate
+                closedDayDateSaver(cycleDate)
+
+                reference930 = null
+                reference930Date = null
+                reference930PendingDate = null
+                reference930CompleteDate = null
+                reference200 = null
+                reference200Date = null
+                reference200PendingDate = null
+                reference200CompleteDate = null
+                referenceResetDate = null
+                referenceFeed = null
+                referenceFeedDate = null
+                lastLive = null
+
+                if (heldFeed != null) {
+                    val startedAt = monotonicMs()
+                    primary = SourceObservation(heldFeed, startedAt, startedAt, 0L)
+                    latestFinalFor(heldFeed)?.let { lastFinal = it }
+                    cacheFeedSaver(heldFeed)
+                }
+
+                publishLocked()
+            }
+            return true
         }
 
         synchronized(stateLock) {
@@ -1287,6 +1425,9 @@ internal class LiveCollector(
 
     private fun maybeReferenceFetch(t: LocalTime) {
         val today = dateProvider()
+        clearExpiredClosedDayBeforeMorningBoundary(today, t)
+
+        if (closedHoldDate(today, t) != null) return
         if (!isWorkingDay(today)) return
 
         val cycleDate = dailyCycleDate(today, t)
@@ -1357,6 +1498,7 @@ internal class LiveCollector(
 
     private fun shouldPoll(t: LocalTime): Boolean {
         val today = dateProvider()
+        if (closedHoldDate(today, t) != null) return false
         if (!isWorkingDay(today)) return false
 
         val f = synchronized(stateLock) {
@@ -1378,16 +1520,25 @@ internal class LiveCollector(
         val today = dateProvider()
         val now = clock()
         val bootstrap = freshInstallBootstrapPlan(today, now)
-        val cycleDate = bootstrap.cycleDate
-        val fallbackFeedDate = bootstrap.fallbackDate
+        val closedHold = closedHoldDate(today, now)
+        val cycleDate = closedHold?.let(::previousWorkingDay) ?: bootstrap.cycleDate
+        val fallbackFeedDate = closedHold?.let(::previousWorkingDay) ?: bootstrap.fallbackDate
 
         // First recover the exact cycle row represented by the app clock.
         // Fresh-install policy owns only the date selection; the Daily Flow
         // still decides what portions of that row are displayable.
-        val currentFeed = runCatching {
-            historicalFeedFetcher?.invoke(cycleDate)
-        }.getOrNull()?.takeIf {
-            canonicalDate(it.date) == cycleDate
+        val currentFeed = if (closedHold != null) {
+            runCatching {
+                closedDayFeedFetcher?.invoke(cycleDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == cycleDate
+            }
+        } else {
+            runCatching {
+                historicalFeedFetcher?.invoke(cycleDate)
+            }.getOrNull()?.takeIf {
+                canonicalDate(it.date) == cycleDate
+            }
         }
 
         val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
@@ -1488,23 +1639,28 @@ internal class LiveCollector(
     }
 
     private fun publishLocked() {
+        val today = dateProvider()
+        val scheduleTime = clock()
         val displayPrimary = primary?.let { observation ->
             mergeReferenceIntoFeed(observation.feed)?.let { merged ->
                 observation.copy(feed = merged)
             } ?: observation
-        } ?: mergeReferenceIntoFeed(null)?.let { feed ->
-            val startedAt = monotonicMs()
-            SourceObservation(feed, startedAt, startedAt, 0L)
-        }
+        }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
+            ?: mergeReferenceIntoFeed(null)?.let { feed ->
+                val now = monotonicMs()
+                SourceObservation(feed, now, now, 0L)
+            }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
 
+        val closedHold = closedHoldDate(today, scheduleTime)
         val resolution = resolveLiveState(
             p = displayPrimary,
             s = null,
             now = Instant.now(),
             lastLive = lastLive,
             cachedFinal = lastFinal,
-            scheduleTime = clock(),
-            scheduleDate = dateProvider(),
+            scheduleTime = scheduleTime,
+            scheduleDate = today,
+            liveClosedDayDate = closedHold,
         )
 
         if (resolution.heroLive) {
@@ -1515,7 +1671,7 @@ internal class LiveCollector(
         if (
             !resolution.heroLive &&
             hero != null &&
-            canonicalDate(hero.date) == dateProvider() &&
+            canonicalDate(hero.date) == today &&
             hero != lastFinal
         ) {
             lastFinal = hero
@@ -1531,6 +1687,7 @@ internal class LiveCollector(
             sourceMessage = "",
             status = resolution.status,
             staleAgeMs = resolution.staleAgeMs,
+            closedDay = currentClosedDayForNotice(today),
         )
     }
 
@@ -1540,14 +1697,29 @@ internal class LiveCollector(
         schedulerJob = scope.launch {
             recoverPreviousWorkingDayFinal()
 
-            // Reconstruct any reference slot that has already passed before
-            // the app starts. This is catch-up only; shouldPoll() still keeps
-            // LIVE network polling confined to the real LIVE windows.
+            // Reference catch-up remains separate from normal LIVE polling.
+            // When a closed-day hold is already known, skip the startup fetch
+            // and keep the previous working-day snapshot.
             maybeReferenceFetch(clock())
-            fetchCycle()
+            val startupToday = dateProvider()
+            val startupTime = clock()
+            if (closedHoldDate(startupToday, startupTime) == null) {
+                fetchCycle()
+            }
+
+            var lastSchedulerDate = startupToday
 
             while (isActive) {
+                val currentDate = dateProvider()
                 val t = clock()
+
+                // Publish once at the calendar boundary so a current-day-only
+                // Closed Day notice disappears as soon as the new date starts.
+                if (currentDate != lastSchedulerDate) {
+                    lastSchedulerDate = currentDate
+                    publishLocked()
+                }
+
                 maybeReferenceFetch(t)
 
                 if (shouldPoll(t)) {
@@ -1591,6 +1763,20 @@ internal class LiveCollector(
                     cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
                     liveRoomSaver = liveRoomSaver,
+                    closedDayFeedFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let(::historyRowToFeed)
+                    },
+                    closedDayDateLoader = {
+                        LiveClosedDayStore.load(context)
+                    },
+                    closedDayDateSaver = { date ->
+                        LiveClosedDayStore.save(context, date)
+                    },
+                    closedDayDateClearer = {
+                        LiveClosedDayStore.clear(context)
+                    },
                     historicalFinalFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()
@@ -1617,6 +1803,39 @@ internal class LiveCollector(
                 shared = collector
                 collector.start()
             }
+        }
+    }
+}
+
+internal object LiveClosedDayStore {
+    private const val PREFS_NAME = "live_display_cache"
+    private const val KEY = "observed_closed_day"
+
+    fun load(context: Context): LocalDate? = runCatching {
+        val raw = context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY, null)
+            ?: return null
+        LocalDate.parse(raw)
+    }.getOrNull()
+
+    fun save(context: Context, date: LocalDate) {
+        runCatching {
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY, date.toString())
+                .apply()
+        }
+    }
+
+    fun clear(context: Context) {
+        runCatching {
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY)
+                .apply()
         }
     }
 }
@@ -1700,6 +1919,7 @@ internal object LiveCacheStore {
                 } else {
                     null
                 },
+                isCloseDay = o.optBoolean("isCloseDay", false),
             )
         }.getOrNull()
     }
@@ -1731,6 +1951,7 @@ internal object LiveCacheStore {
                 .put("modern200", feed.modern200)
                 .put("internet200", feed.internet200)
                 .put("sourceTag", feed.sourceTag)
+                .put("isCloseDay", feed.isCloseDay)
                 .apply {
                     feed.serverTimeEpochMs?.let { put("serverTimeEpochMs", it) }
                 }

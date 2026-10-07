@@ -117,6 +117,8 @@ data class LiveFeedData(
     val internet200: String,
     val sourceTag: String = "LUKE",
     val serverTimeEpochMs: Long? = null,
+    /** Luke's current-day market-closed observation; never stored in Ledger Room. */
+    val isCloseDay: Boolean = false,
 )
 
 /** One result session (12:01 morning / 4:30 evening). */
@@ -149,6 +151,8 @@ sealed interface LiveUiState {
         val sourceMessage: String = "",
         val status: LiveStatus = LiveStatus.WAITING,
         val staleAgeMs: Long = 0L,
+        /** True only when Luke has confirmed today's 2D market is closed. */
+        val closedDay: Boolean = false,
     ) : LiveUiState
 
     /** No data yet and the latest fetch failed. */
@@ -196,6 +200,7 @@ internal object LiveApi {
                     internet200 = data.nonBlankString("internet_200"),
                     sourceTag = "LUKE",
                     serverTimeEpochMs = parseServerTimeEpoch(data.nonBlankString("current_time")),
+                    isCloseDay = data.optInt("is_close_day", 0) == 1,
                 )
             } finally {
                 connection.disconnect()
@@ -254,7 +259,7 @@ fun LiveScreen(
             )
             is LiveUiState.Data -> {
                 if (selectedTab == "live") {
-                    LiveContent(s.feed, s.hero, s.heroLive, Modifier.padding(padding))
+                    LiveContent(s.feed, s.hero, s.heroLive, s.closedDay, Modifier.padding(padding))
                 } else if (selectedDate != null) {
                     LiveCalendarDetail(
                         history = history.firstOrNull { it.date == selectedDate },
@@ -280,6 +285,7 @@ private fun LiveContent(
     feed: LiveFeedData?,
     hero: LiveHeroSnapshot?,
     heroLive: Boolean,
+    closedDay: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val l = LocalLanguage.current
@@ -287,6 +293,9 @@ private fun LiveContent(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (closedDay) {
+            ClosedDayNotice(l.text("ဒီနေ့ 2D ပိတ်ရက်ဖြစ်ပါသည်", "2D is closed today"))
+        }
         LiveHero(hero, heroLive, false)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
@@ -294,6 +303,32 @@ private fun LiveContent(
         }
         LiveReferenceTable(feed)
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable
+private fun ClosedDayNotice(text: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        border = BorderStroke(1.dp, AppColors.Stone),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+            Text(
+                text = text,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

@@ -30,6 +30,8 @@ class LiveCollectorTest {
     private fun feed(
         value: String,
         time: String,
+        date: java.time.LocalDate = friday,
+        isCloseDay: Boolean = false,
         morning: LiveSessionData = LiveSessionData("--", "--", "--", false),
         evening: LiveSessionData = LiveSessionData("--", "--", "--", false),
         modern930: String = "98",
@@ -37,7 +39,7 @@ class LiveCollectorTest {
         modern200: String = "40",
         internet200: String = "04",
     ) = LiveFeedData(
-        date = friday.toString(),
+        date = date.toString(),
         currentTime = time,
         live = value,
         liveSet = "1600",
@@ -49,11 +51,12 @@ class LiveCollectorTest {
         modern200 = modern200,
         internet200 = internet200,
         sourceTag = "LUKE",
-        serverTimeEpochMs = friday
+        serverTimeEpochMs = date
             .atTime(LocalTime.parse(time))
             .atZone(yangon)
             .toInstant()
             .toEpochMilli(),
+        isCloseDay = isCloseDay,
     )
 
     private fun finalMorning(value: String) = LiveSessionData(
@@ -306,6 +309,85 @@ class LiveCollectorTest {
         assertEquals("80", state.feed?.modern930)
         assertEquals("98", state.feed?.modern200)
         assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun luke_closed_day_holds_previous_working_day_and_exposes_notice_then_expires_next_day() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val thursday = wednesday.plusDays(1)
+        var now = LocalTime.of(9, 30)
+        var today = wednesday
+        var lukeCalls = 0
+
+        val closedFeed = feed(
+            value = "--",
+            time = "09:30:00",
+            date = wednesday,
+            isCloseDay = true,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val heldRow = historyRow(
+            date = tuesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                lukeCalls++
+                closedFeed
+            },
+            clock = { now },
+            dateProvider = { today },
+            closedDayFeedFetcher = { date ->
+                assertEquals(tuesday, date)
+                historyRowToFeed(heldRow)
+            },
+            historicalFinalFetcher = { date ->
+                if (date == tuesday) historyRowToFinal(heldRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        var state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        val callsAfterClose = lukeCalls
+        advanceTimeBy(15_000)
+        runCurrent()
+        assertEquals(callsAfterClose, lukeCalls)
+
+        // Closed notice is current-day-only; the frozen Live hold continues
+        // through midnight until the next working-day 09:30 boundary.
+        today = thursday
+        now = LocalTime.of(0, 1)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertFalse(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("57", state.hero?.result)
 
         scope.cancel()
     }
