@@ -5,6 +5,7 @@ import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
+import com.myanmar.ledger2d.feature.live.LiveRoomKeeperScheduler
 
 object LedgerApplicationContextHolder { lateinit var context: Application }
 
@@ -18,7 +19,17 @@ class LedgerApplication : Application() {
 
         // App-scoped 2D LIVE collector: window-gated polling that continues
         // during the scheduled LIVE windows even when the screen is closed.
-        LiveCollector.startOnce(this)
+        // Its cold-start historical fallback uses the existing HistorySync
+        // source inside LiveCollector; Room remains a write-only live record.
+        LiveCollector.startOnce(
+            this,
+            liveRoomSaver = { patches -> container.liveResults.apply(patches) },
+        )
+
+        // Historical coverage is independent of today's LIVE flow. WorkManager
+        // keeps the Room Keeper alive in the background and only runs it when
+        // network connectivity is available.
+        LiveRoomKeeperScheduler.enqueue(this)
     }
 }
 
@@ -29,6 +40,7 @@ class AppContainer(val database: LedgerDatabase) {
     val bets: BetRepository = RoomBetRepository(database)
     val winners: WinningNumberRepository = RoomWinningNumberRepository(database)
     val history: HistoryResultRepository = RoomHistoryResultRepository(database)
+    val liveResults: LiveDailyResultRepository = RoomLiveDailyResultRepository(database)
     val closedDays: ClosedDayRepository = RoomClosedDayRepository(database.closedDayDao())
     val closedNumbers: ClosedNumberRepository = RoomClosedNumberRepository(database.closedNumberDao())
     val limits: LimitRepository = RoomLimitRepository(database.limitDao())
