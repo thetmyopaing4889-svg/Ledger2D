@@ -19,6 +19,7 @@ import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
+    // Regression suite: current-day LIVE/final state must not inherit previous-day display state.
     private val yangon = ZoneId.of("Asia/Yangon")
     private val friday = java.time.LocalDate.of(2026, 10, 2)
     private val thursday = friday.minusDays(1)
