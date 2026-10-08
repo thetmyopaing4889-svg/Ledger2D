@@ -1174,6 +1174,19 @@ internal class LiveCollector(
         }
     }
 
+    private fun capturePreviousWorkingDayFinalLocked(feed: LiveFeedData) {
+        val final = latestFinalFor(feed) ?: return
+        val finalDate = canonicalDate(final.date) ?: return
+        val today = dateProvider()
+        val cycleDate = dailyCycleDate(today, clock())
+        val previousWorking = previousWorkingDay(cycleDate)
+        if (finalDate != previousWorking) return
+        val existingDate = canonicalDate(lastFinal?.date.orEmpty())
+        if (existingDate == null || existingDate == previousWorking) {
+            lastFinal = final
+        }
+    }
+
     private fun syncLiveRoom(feed: LiveFeedData) {
         val saver = liveRoomSaver ?: return
         val patches = buildLiveDailyResultPatches(feed, dateProvider(), clock())
