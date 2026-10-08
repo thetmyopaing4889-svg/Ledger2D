@@ -2832,4 +2832,96 @@ class LiveCollectorTest {
     }
 
 
+
+    @Test fun active_morning_cold_start_never_shows_previous_day_cached_final() = runTest {
+        val previousFinal = LiveHeroSnapshot(
+            result = "07",
+            set = "1600",
+            value = "20000",
+            sessionLabel = LIVE_SESSION_MORNING_LABEL,
+            date = thursday.toString(),
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(12, 3) },
+            dateProvider = { friday },
+            cacheLoader = { previousFinal },
+            historicalFeedFetcher = { null },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertNull(state.hero)
+        assertNull(state.feed)
+
+        scope.cancel()
+    }
+
+    @Test fun previous_day_luke_snapshot_is_rejected_during_current_morning_session() = runTest {
+        val stale = feed(
+            "61",
+            "12:03:00",
+            morning = finalMorning("07"),
+            date = thursday,
+        ).copy(serverTimeEpochMs = thursday.atTime(12, 3).atZone(yangon).toInstant().toEpochMilli())
+
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { stale },
+            clock = { LocalTime.of(12, 3) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertNull(state.feed)
+        assertNull(state.hero)
+
+        scope.cancel()
+    }
+
+    @Test fun morning_result_arrival_promotes_final_even_when_set_and_value_are_pending() = runTest {
+        val final = feed(
+            "60",
+            "12:01:03",
+            morning = LiveSessionData(
+                result = "61",
+                set = "--",
+                value = "--",
+                finalized = true,
+            ),
+            date = friday,
+        )
+
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { final },
+            clock = { LocalTime.of(12, 1, 3) },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("61", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("61", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.morning?.set)
+        assertEquals("--", state.feed?.morning?.value)
+        assertEquals(LiveStatus.FINAL_CONFIRMED, state.status)
+    }
+
 }
