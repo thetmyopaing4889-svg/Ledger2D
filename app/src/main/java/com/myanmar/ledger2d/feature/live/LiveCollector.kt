@@ -1021,6 +1021,7 @@ internal class LiveCollector(
 
             synchronized(stateLock) {
                 if (!isUsableLukeSnapshot(feed)) {
+                    capturePreviousWorkingDayFinalLocked(feed)
                     return@synchronized
                 }
 
