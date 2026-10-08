@@ -1021,11 +1021,30 @@ internal class LiveCollector(
                 if (!isUsableLukeSnapshot(feed)) {
                     return@synchronized
                 }
-                if (sequence <= latestAppliedSequence.get()) return@synchronized
 
                 val previous = primary?.feed
                 val incomingTime = parseDecisionInstant(feed)
                 val previousTime = previous?.let(::parseDecisionInstant)
+                val appliedSequence = latestAppliedSequence.get()
+
+                // Provider time is the source-of-truth ordering signal when it
+                // exists. Request sequence is only a tie-breaker for equal or
+                // unavailable provider times. This matters because start() and
+                // LiveScreen can issue overlapping immediate requests: an older
+                // request can legitimately finish after a newer request but
+                // carry a newer Luke timestamp/final result.
+                if (incomingTime != null && previousTime != null) {
+                    when {
+                        incomingTime.isBefore(previousTime) -> return@synchronized
+                        incomingTime == previousTime && sequence <= appliedSequence -> return@synchronized
+                    }
+                } else if (incomingTime == null && previousTime != null) {
+                    // Never replace a timestamped snapshot with one whose
+                    // provider time cannot be established.
+                    return@synchronized
+                } else if (incomingTime == null && sequence <= appliedSequence) {
+                    return@synchronized
+                }
 
                 // Preserve the last completed working-day final before a
                 // newer provider snapshot replaces the primary feed. A
@@ -1037,14 +1056,6 @@ internal class LiveCollector(
                     if (canonicalDate(previousFinal.date) == previousWorking) {
                         lastFinal = previousFinal
                     }
-                }
-
-                if (
-                    incomingTime != null &&
-                    previousTime != null &&
-                    incomingTime.isBefore(previousTime)
-                ) {
-                    return@synchronized
                 }
 
                 // Only an accepted, in-order snapshot may update the held-final
