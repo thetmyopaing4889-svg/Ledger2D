@@ -59,6 +59,11 @@ class LiveCollectorTest {
         isCloseDay = isCloseDay,
     )
 
+    private fun yesterdayFeedForLiveTests(): LiveFeedData =
+        feed("--", "17:00:00", evening = finalEvening("77"), date = thursday).copy(
+            serverTimeEpochMs = null,
+        )
+
     private fun finalMorning(value: String) = LiveSessionData(
         result = value, set = "1600", value = "20000", finalized = true, providerOpenTime = "12:01:00"
     )
@@ -1355,6 +1360,207 @@ class LiveCollectorTest {
 
         assertTrue(result.heroLive)
         assertEquals("44", result.hero?.result)
+    }
+
+    @Test fun morning_live_never_falls_back_to_previous_day_final() {
+        val yesterday = feed(
+            "--",
+            "17:00:00",
+            evening = finalEvening("77"),
+            date = thursday,
+        ).copy(serverTimeEpochMs = null)
+
+        val result = resolveLiveState(
+            p = SourceObservation(yesterday, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(11, 40),
+            scheduleDate = friday,
+            primaryLiveSession = null,
+        )
+
+        assertFalse(result.heroLive)
+        assertNull(result.hero)
+        assertEquals(thursday.toString(), result.displayFeed?.date)
+    }
+
+    @Test fun morning_finalizing_never_falls_back_to_previous_day_final() {
+        val yesterday = feed(
+            "--",
+            "17:00:00",
+            evening = finalEvening("77"),
+            date = thursday,
+        ).copy(serverTimeEpochMs = null)
+
+        val result = resolveLiveState(
+            p = SourceObservation(yesterday, 0L, 0L, 10L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(12, 5),
+            scheduleDate = friday,
+            primaryLiveSession = null,
+        )
+
+        assertFalse(result.heroLive)
+        assertNull(result.hero)
+    }
+
+    @Test fun morning_final_arrival_wins_immediately_even_inside_live_window() {
+        val f = feed(
+            "36",
+            "11:59:50",
+            morning = finalMorning("61"),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(f, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(11, 59, 51),
+            scheduleDate = friday,
+            primaryLiveSession = LiveSession.MORNING,
+        )
+
+        assertFalse(result.heroLive)
+        assertEquals("61", result.hero?.result)
+        assertEquals("61", result.displayFeed?.morning?.result)
+    }
+
+    @Test fun evening_live_never_falls_back_to_morning_final() {
+        val f = feed(
+            "--",
+            "16:05:00",
+            morning = finalMorning("36"),
+            evening = LiveSessionData("--", "--", "--", false),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(f, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 5),
+            scheduleDate = friday,
+            primaryLiveSession = null,
+        )
+
+        assertFalse(result.heroLive)
+        assertNull(result.hero)
+        assertEquals("36", result.displayFeed?.morning?.result)
+    }
+
+    @Test fun evening_finalizing_never_falls_back_to_morning_final() {
+        val f = feed(
+            "--",
+            "16:35:00",
+            morning = finalMorning("36"),
+            evening = LiveSessionData("--", "--", "--", false),
+        )
+
+        val result = resolveLiveState(
+            p = SourceObservation(f, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 35),
+            scheduleDate = friday,
+            primaryLiveSession = null,
+        )
+
+        assertFalse(result.heroLive)
+        assertNull(result.hero)
+    }
+
+    @Test fun morning_finalization_failure_keeps_last_valid_morning_live() = runTest {
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) feed("60", "12:00:59") else null
+            },
+            clock = { LocalTime.of(12, 5) },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("60", state.hero?.result)
+        assertTrue(state.heroLive)
+        assertEquals("60", state.feed?.live)
+    }
+
+    @Test fun live_cold_start_requests_luke_without_waiting_for_historical_recovery() = runTest {
+        var lukeCalls = 0
+        var historyCalls = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val liveFeed = feed("44", "11:35:00")
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                lukeCalls++
+                liveFeed
+            },
+            clock = { LocalTime.of(11, 35) },
+            dateProvider = { friday },
+            historicalFeedFetcher = {
+                historyCalls++
+                yesterdayFeedForLiveTests()
+            },
+            historicalFinalFetcher = {
+                historyCalls++
+                LiveHeroSnapshot("77", "1600", "20000", LIVE_SESSION_EVENING_LABEL, thursday.toString())
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(lukeCalls > 0)
+        assertEquals(0, historyCalls)
+        assertTrue(state.heroLive)
+        assertEquals("44", state.hero?.result)
+
+        scope.cancel()
+    }
+
+    @Test fun cold_start_same_session_live_cache_stays_live_when_first_luke_refresh_fails() = runTest {
+        val cachedLive = feed("55", "11:55:00")
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(11, 55) },
+            dateProvider = { friday },
+            cacheFeedLoader = { cachedLive },
+        )
+
+        val initial = collector.state.value as LiveUiState.Data
+        assertTrue(initial.heroLive)
+        assertEquals("55", initial.hero?.result)
+
+        collector.fetchCycle()
+        advanceUntilIdle()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.heroLive)
+        assertEquals("55", state.hero?.result)
+        assertEquals("55", state.feed?.live)
+
+        scope.cancel()
     }
 
     @Test fun live_session_owner_survives_morning_finalization_boundary() {
