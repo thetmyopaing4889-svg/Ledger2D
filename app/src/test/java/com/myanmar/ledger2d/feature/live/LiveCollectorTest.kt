@@ -544,7 +544,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun fresh_start_tuesday_1130_enters_new_cycle_with_pending_sessions_and_live_gate() = runTest {
+    @Test fun fresh_start_tuesday_1130_enters_new_cycle_without_old_hero_before_first_live() = runTest {
         val mondayRow = historyRow(monday, morning = "36", evening = "57")
         val tuesdayRow = historyRow(tuesday, morning = "44", evening = "66")
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
@@ -578,8 +578,10 @@ class LiveCollectorTest {
         assertEquals("33", state.feed?.internet930)
         assertEquals("--", state.feed?.modern200)
         assertEquals("--", state.feed?.internet200)
-        assertEquals("57", state.hero?.result)
-        assertEquals(tuesday.toString(), state.feed?.date)
+        // At an active LIVE cold start, the previous day's final must not be
+        // presented as today's LIVE hero. Wait for the first valid same-session
+        // Luke LIVE response instead.
+        assertNull(state.hero)
         assertFalse(state.heroLive)
 
         scope.cancel()
@@ -637,9 +639,10 @@ class LiveCollectorTest {
             scheduleDate = friday,
         )
 
+        // The app clock is in the morning LIVE session, but this response is
+        // yesterday's data. It must not be promoted to today's LIVE hero.
         assertFalse(result.heroLive)
-        assertEquals("25", result.hero?.result)
-        assertEquals(yesterday.toString(), result.hero?.date)
+        assertNull(result.hero)
     }
 
     @Test fun current_day_live_replaces_previous_day_fallback_without_rewriting_live_engine() {
@@ -766,7 +769,9 @@ class LiveCollectorTest {
         state = collector.state.value as LiveUiState.Data
         assertEquals("--", state.feed?.morning?.result)
         assertEquals("--", state.feed?.evening?.result)
-        assertEquals("25", state.hero?.result)
+        // After 11:30 the old working-day final is no longer an acceptable
+        // hero fallback while the morning LIVE session has no valid LIVE value.
+        assertNull(state.hero)
         assertFalse(state.heroLive)
 
         scope.cancel()
@@ -1760,7 +1765,9 @@ class LiveCollectorTest {
         state = collector.state.value as LiveUiState.Data
         assertEquals("--", state.feed?.morning?.result)
         assertEquals("--", state.feed?.evening?.result)
-        assertEquals("57", state.hero?.result)
+        // Once 11:30 begins, an unresolved LIVE session must not fall back to
+        // yesterday's final merely because Luke has not returned today's LIVE.
+        assertNull(state.hero)
         assertFalse(state.heroLive)
 
         scope.cancel()
@@ -2424,7 +2431,10 @@ class LiveCollectorTest {
         assertEquals(friday.toString(), result.displayFeed?.date)
         assertEquals("36", result.displayFeed?.morning?.result)
         assertEquals("--", result.displayFeed?.evening?.result)
-        assertEquals("36", result.hero?.result)
+        // At 16:30 this is the evening finalization session. A morning final
+        // may remain visible in its card, but it must not occupy the evening
+        // LIVE hero while the evening session is still unresolved.
+        assertNull(result.hero)
         assertFalse(result.heroLive)
     }
 
