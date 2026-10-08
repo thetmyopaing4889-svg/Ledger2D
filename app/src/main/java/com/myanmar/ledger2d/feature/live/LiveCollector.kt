@@ -1037,7 +1037,7 @@ internal class LiveCollector(
                 // carry a newer Luke timestamp/final result.
                 if (incomingTime != null && previousTime != null) {
                     when {
-                        incomingTime.isBefore(previousTime) -> return@synchronized
+                        incomingTime.isBefore(previousTime) -> { capturePreviousWorkingDayFinalLocked(feed); return@synchronized }
                         incomingTime == previousTime && sequence <= appliedSequence -> return@synchronized
                     }
                 } else if (incomingTime == null && previousTime != null) {
