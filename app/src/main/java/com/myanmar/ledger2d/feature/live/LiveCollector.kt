@@ -1442,7 +1442,7 @@ internal class LiveCollector(
         cycleDate: LocalDate,
     ): Boolean {
         val feed = try {
-            providerRequestMutex.withLock { fetcher() }
+            fetcher()
         } catch (_: Exception) {
             null
         }
