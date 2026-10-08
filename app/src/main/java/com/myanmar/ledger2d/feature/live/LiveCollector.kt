@@ -972,8 +972,25 @@ internal class LiveCollector(
             syncLiveRoom(cachedFeed)
         } else {
             val bootstrap = freshInstallBootstrapPlan(today, scheduleTime)
-            val cached = cacheLoader()
-                ?.takeIf { canonicalDate(it.date) in bootstrap.allowedCacheDates }
+            val activeSession = liveSessionForTime(scheduleTime)
+            val cached = cacheLoader()?.takeIf { snapshot ->
+                val cachedDate = canonicalDate(snapshot.date)
+                if (activeSession == null) {
+                    cachedDate in bootstrap.allowedCacheDates
+                } else {
+                    // During an active session, only a current-day cached final
+                    // for that same session may seed the initial hero. A prior
+                    // day's final, or the morning final during the evening
+                    // session, must never flash as today's active result.
+                    cachedDate == today &&
+                        when (activeSession) {
+                            LiveSession.MORNING ->
+                                snapshot.sessionLabel == LIVE_SESSION_MORNING_LABEL
+                            LiveSession.EVENING ->
+                                snapshot.sessionLabel == LIVE_SESSION_EVENING_LABEL
+                        }
+                }
+            }
 
             if (cached != null) {
                 lastFinal = cached
