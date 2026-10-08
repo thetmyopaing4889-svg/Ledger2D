@@ -479,8 +479,9 @@ private fun isDisplayableFeedForSchedule(
     return when {
         !isWorkingDay(today) -> feedDate == cycleDate
         scheduleTime.isBefore(MORNING_REFERENCE) -> feedDate == cycleDate
-        !scheduleTime.isBefore(EVENING_CLOSE) -> feedDate == cycleDate
-        else -> feedDate == cycleDate || feedDate == previousWorkingDay(cycleDate)
+        scheduleTime.isBefore(MORNING_LIVE) ->
+            feedDate == cycleDate || feedDate == previousWorkingDay(cycleDate)
+        else -> feedDate == cycleDate
     }
 }
 
@@ -558,10 +559,10 @@ private fun finalValid(
     feed: LiveFeedData?,
     date: LocalDate = currentYangonDate(),
 ): Boolean {
-    if (session == null || feed == null || !currentDay(feed, date) || !session.finalized) return false
-    return isValidLive2d(session.result) &&
-        validMoney(session.set) &&
-        validMoney(session.value)
+    if (session == null || feed == null || !currentDay(feed, date)) return false
+    // Luke's result_1200 / result_430 is the final-result trigger.
+    // SET/VALUE are supplementary metadata and may arrive slightly later.
+    return isValidLive2d(session.result)
 }
 
 private fun latestFinalFor(feed: LiveFeedData): LiveHeroSnapshot? = when {
@@ -625,6 +626,36 @@ internal fun resolveLiveState(
     val heldFinal = cycleFinal ?: previousWorkingFinal ?: cachedRelevantFinal
 
     if (feed == null) {
+        val activeSession = liveSessionForTime(effectiveScheduleTime)
+        val currentSessionLive = lastLive?.takeIf {
+            activeSession != null &&
+                primaryLiveSession == activeSession &&
+                canonicalDate(it.date) == cycleDate
+        }
+        if (currentSessionLive != null) {
+            return LiveResolution(
+                null,
+                currentSessionLive,
+                true,
+                LiveStatus.LIVE_CONFIRMED,
+                "",
+                0,
+                age(p),
+            )
+        }
+        // Never substitute a previous-day final while an active LIVE/finalization
+        // session is waiting for its first current-day Luke response.
+        if (activeSession != null) {
+            return LiveResolution(
+                null,
+                null,
+                false,
+                LiveStatus.WAITING,
+                "",
+                0,
+                age(p),
+            )
+        }
         return LiveResolution(null, heldFinal, false, LiveStatus.WAITING, "", 0, age(p))
     }
 
@@ -969,15 +1000,13 @@ internal class LiveCollector(
             if (feed == null) return@launch
 
             synchronized(stateLock) {
-                val previousHeldFinal = lastFinal
-                captureHeldFinalLocked(feed)
                 if (!isUsableLukeSnapshot(feed)) {
-                    if (lastFinal != previousHeldFinal) {
-                        publishLocked()
-                    }
                     return@synchronized
                 }
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
+
+                val previousHeldFinal = lastFinal
+                captureHeldFinalLocked(feed)
 
                 val previous = primary?.feed
                 val incomingTime = parseDecisionInstant(feed)
