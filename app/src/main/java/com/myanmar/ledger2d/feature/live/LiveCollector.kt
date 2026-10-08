@@ -983,6 +983,13 @@ internal class LiveCollector(
 
                 val scheduleTime = clock()
                 val today = dateProvider()
+
+                // A normal Luke snapshot can contain an already-valid
+                // current-cycle reference even when the dedicated reference
+                // request is still pending or previously failed. Promote those
+                // reference fields from the accepted snapshot immediately.
+                promoteCurrentCycleReferencesLocked(feed, today, scheduleTime)
+
                 val protectedFinals = protectFinalSessions(previous, feed)
                 val protected = preserveActiveLive(
                     previous = previous,
@@ -1175,6 +1182,42 @@ internal class LiveCollector(
         feed != null &&
             isValidLive2d(modern) &&
             isValidLive2d(internet)
+
+    private fun promoteCurrentCycleReferencesLocked(
+        feed: LiveFeedData,
+        today: LocalDate,
+        scheduleTime: LocalTime,
+    ) {
+        if (!isWorkingDay(today)) return
+        val cycleDate = dailyCycleDate(today, scheduleTime)
+        if (cycleDate != today) return
+        if (!isCurrentCycleReferenceObservation(feed, cycleDate)) return
+
+        if (
+            !scheduleTime.isBefore(MORNING_REFERENCE) &&
+            validReferencePair(feed, feed.modern930, feed.internet930)
+        ) {
+            reference930 = feed.modern930 to feed.internet930
+            reference930Date = cycleDate
+            reference930PendingDate = null
+            reference930CompleteDate = cycleDate
+            referenceResetDate = cycleDate
+            referenceFeed = feed
+            referenceFeedDate = cycleDate
+        }
+
+        if (
+            !scheduleTime.isBefore(AFTERNOON_REFERENCE) &&
+            validReferencePair(feed, feed.modern200, feed.internet200)
+        ) {
+            reference200 = feed.modern200 to feed.internet200
+            reference200Date = cycleDate
+            reference200PendingDate = null
+            reference200CompleteDate = cycleDate
+            referenceFeed = feed
+            referenceFeedDate = cycleDate
+        }
+    }
 
     private fun mergeReferenceIntoFeed(base: LiveFeedData?): LiveFeedData? {
         val today = dateProvider()
@@ -1385,11 +1428,10 @@ internal class LiveCollector(
                     referenceResetDate = cycleDate
                     referenceFeed = feed
                     referenceFeedDate = cycleDate
-                } else {
-                    // Do not clear before the first request. If the first
-                    // request succeeds, the UI transitions old -> new
-                    // directly. Only after an invalid/failed attempt do we
-                    // enter the explicit pending state.
+                } else if (reference930CompleteDate != cycleDate) {
+                    // A failed/stale dedicated retry must never regress a
+                    // reference that was already accepted from another valid
+                    // Luke observation.
                     reference930 = null
                     reference930Date = null
                     reference930PendingDate = cycleDate
@@ -1412,7 +1454,10 @@ internal class LiveCollector(
                     reference200CompleteDate = cycleDate
                     referenceFeed = feed
                     referenceFeedDate = cycleDate
-                } else {
+                } else if (reference200CompleteDate != cycleDate) {
+                    // A failed/stale dedicated retry must never regress a
+                    // reference that was already accepted from another valid
+                    // Luke observation.
                     reference200 = null
                     reference200Date = cycleDate
                     reference200PendingDate = cycleDate
