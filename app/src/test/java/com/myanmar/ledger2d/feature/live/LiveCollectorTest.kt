@@ -2161,6 +2161,48 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun normal_luke_snapshot_promotes_reference_after_dedicated_reference_failure() = runTest {
+        val currentReference = feed(
+            "--",
+            "09:35:00",
+            modern930 = "81",
+            internet930 = "17",
+            modern200 = "--",
+            internet200 = "--",
+        ).copy(
+            date = tuesday.toString(),
+            serverTimeEpochMs = tuesday
+                .atTime(9, 35)
+                .atZone(yangon)
+                .toInstant()
+                .toEpochMilli(),
+        )
+        var calls = 0
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                calls++
+                if (calls == 1) null else currentReference
+            },
+            clock = { LocalTime.of(9, 35) },
+            dateProvider = { tuesday },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(calls >= 2)
+        assertEquals("81", state.feed?.modern930)
+        assertEquals("17", state.feed?.internet930)
+        assertEquals(tuesday.toString(), state.feed?.date)
+
+        scope.cancel()
+    }
+
     @Test fun main_poll_cannot_erase_successful_current_day_reference() = runTest {
         val currentReference = feed(
             "--",
