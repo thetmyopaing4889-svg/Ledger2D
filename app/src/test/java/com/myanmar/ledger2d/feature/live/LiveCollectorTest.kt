@@ -1415,7 +1415,7 @@ class LiveCollectorTest {
         assertNull(result.hero)
     }
 
-    @Test fun morning_finalizing_cold_start_never_shows_previous_day_final() {
+    @Test fun morning_finalizing_cold_start_never_shows_previous_day_final() = runTest {
         val previousFinal = LiveHeroSnapshot(
             result = "07",
             set = "1600",
