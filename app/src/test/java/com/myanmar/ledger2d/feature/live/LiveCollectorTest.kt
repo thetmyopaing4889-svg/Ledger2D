@@ -712,6 +712,13 @@ class LiveCollectorTest {
             },
             clock = { LocalTime.of(9, 34) },
             dateProvider = { friday },
+            // The previous-day card/hero hold is historical display state,
+            // not a valid current-cycle Luke response. Keep that source
+            // separate so this test cannot accidentally require stale Luke
+            // snapshots to mutate primary/current-cycle state.
+            historicalFeedFetcher = { date ->
+                old.takeIf { date == yesterday }
+            },
         )
 
         collector.start()
@@ -747,9 +754,15 @@ class LiveCollectorTest {
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
+            // Luke is intentionally failing/stale for the new day's reference.
+            // Yesterday's cards come from the historical hold source, not from
+            // a stale provider snapshot.
             fetcher = { old },
             clock = { now },
             dateProvider = { friday },
+            historicalFeedFetcher = { date ->
+                old.takeIf { date == yesterday }
+            },
         )
 
         collector.start()
