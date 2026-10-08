@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.DayOfWeek
@@ -498,7 +500,9 @@ internal fun canonicalDate(raw: String): LocalDate? = runCatching {
 }
 
 internal fun parseDecisionInstant(f: LiveFeedData): Instant? {
-    f.serverTimeEpochMs?.let { return Instant.ofEpochMilli(it) }
+    f.serverTimeEpochMs
+        ?.takeIf { it >= 946684800000L }
+        ?.let { return Instant.ofEpochMilli(it) }
     val raw = f.currentTime.trim()
     if (raw.isBlank() || raw == LIVE_PENDING) return null
 
@@ -846,6 +850,7 @@ internal class LiveCollector(
     private val requestSequence = AtomicLong(0L)
     private val latestAppliedSequence = AtomicLong(0L)
     private val stateLock = Any()
+    private val providerRequestMutex = Mutex()
 
     private var schedulerJob: Job? = null
     private var reference930Cycle: Job? = null
@@ -1009,7 +1014,7 @@ internal class LiveCollector(
         scope.launch {
             val startedAt = monotonicMs()
             val feed = try {
-                fetcher()
+                providerRequestMutex.withLock { fetcher() }
             } catch (_: Exception) {
                 null
             }
@@ -1440,7 +1445,7 @@ internal class LiveCollector(
         cycleDate: LocalDate,
     ): Boolean {
         val feed = try {
-            fetcher()
+            providerRequestMutex.withLock { fetcher() }
         } catch (_: Exception) {
             null
         }
@@ -1850,6 +1855,10 @@ internal class LiveCollector(
                 val now = monotonicMs()
                 SourceObservation(feed, now, now, 0L)
             }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
+            ?: pendingDisplayFeed(primary?.feed, scheduleTime, today)?.let { feed ->
+                val now = monotonicMs()
+                SourceObservation(feed, now, now, 0L)
+            }
 
         val closedHold = closedHoldDate(today, scheduleTime)
         val resolution = resolveLiveState(
@@ -1890,6 +1899,53 @@ internal class LiveCollector(
             staleAgeMs = resolution.staleAgeMs,
             closedDay = currentClosedDayForNotice(today),
         )
+    }
+
+    private fun pendingDisplayFeed(
+        sourceFeed: LiveFeedData?,
+        scheduleTime: LocalTime,
+        today: LocalDate,
+    ): LiveFeedData? {
+        if (!isWorkingDay(today) || scheduleTime.isBefore(MORNING_REFERENCE)) return null
+
+        val pendingSession = LiveSessionData(
+            LIVE_PENDING,
+            LIVE_PENDING,
+            LIVE_PENDING,
+            false,
+        )
+
+        val source = sourceFeed ?: LiveFeedData(
+            date = today.toString(),
+            currentTime = scheduleTime.toString(),
+            live = LIVE_PENDING,
+            liveSet = LIVE_PENDING,
+            liveVal = LIVE_PENDING,
+            morning = pendingSession,
+            evening = pendingSession,
+            modern930 = LIVE_PENDING,
+            internet930 = LIVE_PENDING,
+            modern200 = LIVE_PENDING,
+            internet200 = LIVE_PENDING,
+            sourceTag = "LUKE",
+            serverTimeEpochMs = null,
+            isCloseDay = false,
+        )
+
+        // This is a display-only projection for the gap where the stored/raw
+        // provider feed belongs to a previous day or is unavailable. It never
+        // replaces primary, cache, Room history, or any financial state.
+        val projected = source.copy(
+            date = today.toString(),
+            currentTime = scheduleTime.toString(),
+            live = LIVE_PENDING,
+            liveSet = LIVE_PENDING,
+            liveVal = LIVE_PENDING,
+            morning = pendingSession,
+            evening = pendingSession,
+        )
+
+        return mergeReferenceIntoFeed(projected)
     }
 
     fun start() {
