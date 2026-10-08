@@ -1431,7 +1431,7 @@ class LiveCollectorTest {
             scope = scope,
             fetcher = {
                 feed(
-                    value = "55",
+                    value = "--",
                     time = "12:05:00",
                     morning = LiveSessionData("--", "--", "--", false),
                     date = friday,
@@ -2899,7 +2899,8 @@ class LiveCollectorTest {
 
         val state = collector.state.value as LiveUiState.Data
         assertNull(state.hero)
-        assertNull(state.feed)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
 
         scope.cancel()
     }
