@@ -2406,4 +2406,24 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    
+    @Test fun yangon_schedule_clock_controls_live_phase_not_luke_current_time() {
+        val f = feed("38", "10:00:00")
+        val result = resolveLiveState(
+            p = SourceObservation(f, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(11, 40),
+            scheduleDate = friday,
+            primaryLiveSession = LiveSession.MORNING,
+        )
+
+        assertEquals("38", result.hero?.result)
+        assertTrue(result.heroLive)
+        assertEquals(LiveStatus.LIVE_CONFIRMED, result.status)
+    }
+
+
 }
