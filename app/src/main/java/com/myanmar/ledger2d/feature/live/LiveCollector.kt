@@ -1526,6 +1526,7 @@ internal class LiveCollector(
                     referenceFeed = feed
                     referenceFeedDate = cycleDate
                 } else if (reference930CompleteDate != cycleDate) {
+                    capturePreviousWorkingDayFinalLocked(feed)
                     // A failed/stale dedicated retry must never regress a
                     // reference that was already accepted from another valid
                     // Luke observation.
@@ -1552,6 +1553,7 @@ internal class LiveCollector(
                     referenceFeed = feed
                     referenceFeedDate = cycleDate
                 } else if (reference200CompleteDate != cycleDate) {
+                    capturePreviousWorkingDayFinalLocked(feed)
                     // A failed/stale dedicated retry must never regress a
                     // reference that was already accepted from another valid
                     // Luke observation.
