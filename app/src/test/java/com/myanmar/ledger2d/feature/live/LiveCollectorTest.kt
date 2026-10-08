@@ -1357,6 +1357,95 @@ class LiveCollectorTest {
         assertEquals("44", result.hero?.result)
     }
 
+    @Test fun live_session_owner_survives_morning_finalization_boundary() {
+        assertEquals(LiveSession.MORNING, liveSessionForTime(LocalTime.of(12, 0, 59)))
+        assertEquals(LiveSession.MORNING, liveSessionForTime(LocalTime.of(12, 1, 0)))
+        assertEquals(LiveSession.MORNING, liveSessionForTime(LocalTime.of(12, 30, 59)))
+        assertNull(liveSessionForTime(LocalTime.of(12, 31, 0)))
+    }
+
+    @Test fun morning_live_remains_visible_until_morning_final_arrives() {
+        val liveFeed = feed("60", "12:00:59")
+        val liveState = resolveLiveState(
+            p = SourceObservation(liveFeed, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(12, 1, 0),
+            scheduleDate = friday,
+            primaryLiveSession = LiveSession.MORNING,
+        )
+
+        assertTrue(liveState.heroLive)
+        assertEquals("60", liveState.hero?.result)
+        assertEquals("60", liveState.displayFeed?.live)
+
+        val finalFeed = feed(
+            "61",
+            "12:01:03",
+            morning = finalMorning("61"),
+        )
+        val finalState = resolveLiveState(
+            p = SourceObservation(finalFeed, 200L, 100L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(12, 1, 3),
+            scheduleDate = friday,
+            primaryLiveSession = LiveSession.MORNING,
+        )
+
+        assertFalse(finalState.heroLive)
+        assertEquals("61", finalState.hero?.result)
+        assertEquals("61", finalState.displayFeed?.morning?.result)
+    }
+
+    @Test fun live_session_owner_survives_evening_finalization_boundary() {
+        assertEquals(LiveSession.EVENING, liveSessionForTime(LocalTime.of(16, 29, 59)))
+        assertEquals(LiveSession.EVENING, liveSessionForTime(LocalTime.of(16, 30, 0)))
+        assertEquals(LiveSession.EVENING, liveSessionForTime(LocalTime.of(16, 59, 59)))
+        assertNull(liveSessionForTime(LocalTime.of(17, 0, 0)))
+    }
+
+    @Test fun evening_live_remains_visible_until_evening_final_arrives() {
+        val liveFeed = feed("60", "16:29:59")
+        val liveState = resolveLiveState(
+            p = SourceObservation(liveFeed, 100L, 0L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 30, 0),
+            scheduleDate = friday,
+            primaryLiveSession = LiveSession.EVENING,
+        )
+
+        assertTrue(liveState.heroLive)
+        assertEquals("60", liveState.hero?.result)
+
+        val finalFeed = feed(
+            "61",
+            "16:30:03",
+            evening = finalEvening("61"),
+        )
+        val finalState = resolveLiveState(
+            p = SourceObservation(finalFeed, 200L, 100L, 100L),
+            s = null,
+            now = java.time.Instant.now(),
+            lastLive = null,
+            cachedFinal = null,
+            scheduleTime = LocalTime.of(16, 30, 3),
+            scheduleDate = friday,
+            primaryLiveSession = LiveSession.EVENING,
+        )
+
+        assertFalse(finalState.heroLive)
+        assertEquals("61", finalState.hero?.result)
+        assertEquals("61", finalState.displayFeed?.evening?.result)
+    }
+
     @Test fun morning_final_is_shown_immediately_after_final_response() {
         val f = feed("36", "12:03:00", morning = finalMorning("36"))
         val result = resolveLiveState(
