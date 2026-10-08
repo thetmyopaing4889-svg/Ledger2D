@@ -1021,7 +1021,6 @@ internal class LiveCollector(
 
             synchronized(stateLock) {
                 if (!isUsableLukeSnapshot(feed)) {
-                    feed?.let(::capturePreviousWorkingDayFinalLocked)
                     return@synchronized
                 }
 
@@ -1038,7 +1037,7 @@ internal class LiveCollector(
                 // carry a newer Luke timestamp/final result.
                 if (incomingTime != null && previousTime != null) {
                     when {
-                        incomingTime.isBefore(previousTime) -> { capturePreviousWorkingDayFinalLocked(feed); return@synchronized }
+                        incomingTime.isBefore(previousTime) -> return@synchronized
                         incomingTime == previousTime && sequence <= appliedSequence -> return@synchronized
                     }
                 } else if (incomingTime == null && previousTime != null) {
@@ -1175,19 +1174,6 @@ internal class LiveCollector(
         }
     }
 
-    private fun capturePreviousWorkingDayFinalLocked(feed: LiveFeedData) {
-        val final = latestFinalFor(feed) ?: return
-        val finalDate = canonicalDate(final.date) ?: return
-        val today = dateProvider()
-        val cycleDate = dailyCycleDate(today, clock())
-        val previousWorking = previousWorkingDay(cycleDate)
-        if (finalDate != previousWorking) return
-        val existingDate = canonicalDate(lastFinal?.date.orEmpty())
-        if (existingDate == null || existingDate == previousWorking) {
-            lastFinal = final
-        }
-    }
-
     private fun syncLiveRoom(feed: LiveFeedData) {
         val saver = liveRoomSaver ?: return
         val patches = buildLiveDailyResultPatches(feed, dateProvider(), clock())
@@ -1254,10 +1240,25 @@ internal class LiveCollector(
     }
 
     private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
-        if (!isLiveDisplayableFeed(feed, clock(), dateProvider())) return false
+        val scheduleTime = clock()
+        val today = dateProvider()
+
+        if (!isLiveDisplayableFeed(feed, scheduleTime, today)) return false
         if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
 
-        val today = dateProvider()
+        // Display fallback and provider acceptance are deliberately different
+        // contracts. From the 09:30 boundary onward, only today's Luke
+        // snapshot may mutate primary/current-cycle state. A previous-day
+        // snapshot may still be shown as the temporary held display before
+        // 11:30, but it must never race with or overwrite today's cycle.
+        if (
+            isWorkingDay(today) &&
+            !scheduleTime.isBefore(MORNING_REFERENCE) &&
+            canonicalDate(feed.date) != today
+        ) {
+            return false
+        }
+
         val hasLive = hasValidLive(feed, today)
         val hasMorningFinal = finalValid(feed.morning, feed, today)
         val hasEveningFinal = finalValid(feed.evening, feed, today)
@@ -1526,7 +1527,6 @@ internal class LiveCollector(
                     referenceFeed = feed
                     referenceFeedDate = cycleDate
                 } else if (reference930CompleteDate != cycleDate) {
-                    capturePreviousWorkingDayFinalLocked(feed)
                     // A failed/stale dedicated retry must never regress a
                     // reference that was already accepted from another valid
                     // Luke observation.
@@ -1553,7 +1553,6 @@ internal class LiveCollector(
                     referenceFeed = feed
                     referenceFeedDate = cycleDate
                 } else if (reference200CompleteDate != cycleDate) {
-                    capturePreviousWorkingDayFinalLocked(feed)
                     // A failed/stale dedicated retry must never regress a
                     // reference that was already accepted from another valid
                     // Luke observation.
