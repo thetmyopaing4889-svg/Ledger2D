@@ -14,8 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.DayOfWeek
@@ -850,7 +848,6 @@ internal class LiveCollector(
     private val requestSequence = AtomicLong(0L)
     private val latestAppliedSequence = AtomicLong(0L)
     private val stateLock = Any()
-    private val providerRequestMutex = Mutex()
 
     private var schedulerJob: Job? = null
     private var reference930Cycle: Job? = null
@@ -1014,7 +1011,7 @@ internal class LiveCollector(
         scope.launch {
             val startedAt = monotonicMs()
             val feed = try {
-                providerRequestMutex.withLock { fetcher() }
+                fetcher()
             } catch (_: Exception) {
                 null
             }
@@ -1906,7 +1903,8 @@ internal class LiveCollector(
         scheduleTime: LocalTime,
         today: LocalDate,
     ): LiveFeedData? {
-        if (!isWorkingDay(today) || scheduleTime.isBefore(MORNING_REFERENCE)) return null
+        val inPendingWindow = scheduleTime >= MORNING_REFERENCE && (scheduleTime.isBefore(MORNING_LIVE) || (scheduleTime >= MORNING_LIVE && scheduleTime < MORNING_CATCHUP_END) || (scheduleTime >= AFTERNOON_REFERENCE && scheduleTime < EVENING_CATCHUP_END))
+        if (!isWorkingDay(today) || !inPendingWindow) return null
 
         val pendingSession = LiveSessionData(
             LIVE_PENDING,
