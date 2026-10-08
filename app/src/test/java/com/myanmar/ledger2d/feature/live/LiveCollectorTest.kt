@@ -2925,4 +2925,53 @@ class LiveCollectorTest {
         assertEquals(LiveStatus.FINAL_CONFIRMED, state.status)
     }
 
+
+    @Test fun newer_luke_result_wins_even_when_its_request_started_first() = runTest {
+        val first = CompletableDeferred<LiveFeedData?>()
+        val second = CompletableDeferred<LiveFeedData?>()
+        var calls = 0
+
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) first.await() else second.await()
+            },
+            clock = { LocalTime.of(12, 1, 3) },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle() // sequence 1, delayed but newer provider time
+        collector.fetchCycle() // sequence 2, finishes first with older LIVE
+
+        second.complete(
+            feed(
+                "60",
+                "12:01:00",
+                date = friday,
+            )
+        )
+        runCurrent()
+
+        first.complete(
+            feed(
+                "60",
+                "12:01:03",
+                morning = LiveSessionData(
+                    result = "61",
+                    set = "--",
+                    value = "--",
+                    finalized = true,
+                ),
+                date = friday,
+            )
+        )
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("61", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("61", state.feed?.morning?.result)
+    }
+
 }
