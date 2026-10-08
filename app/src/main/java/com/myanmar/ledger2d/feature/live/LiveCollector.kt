@@ -683,12 +683,20 @@ internal fun resolveLiveState(
         }
 
         phaseTime.isBefore(MORNING_CLOSE) -> {
-            val hero = liveHero() ?: finalHero() ?: heldFinal
+            // 11:30–12:01 is one continuous MORNING session. A current-day
+            // final, when it appears early, wins immediately; otherwise only
+            // this session's validated LIVE value may occupy the hero.
+            val live = liveHero()
+            val hero = if (morningFinal) finalHero() else live
             LiveResolution(
                 feed,
                 hero,
-                liveHero() != null,
-                if (liveHero() != null) LiveStatus.LIVE_CONFIRMED else LiveStatus.WAITING,
+                !morningFinal && live != null,
+                when {
+                    morningFinal -> LiveStatus.FINAL_CONFIRMED
+                    live != null -> LiveStatus.LIVE_CONFIRMED
+                    else -> LiveStatus.WAITING
+                },
                 "",
                 1,
                 age(p),
@@ -696,14 +704,18 @@ internal fun resolveLiveState(
         }
 
         phaseTime.isBefore(LocalTime.of(13, 0)) -> {
-            val hero = if (morningFinal) finalHero() else liveHero() ?: heldFinal
+            // 12:01 onward remains the same morning LIVE session while Luke
+            // is still finalizing. Never fall back to yesterday's/morning-held
+            // final before today's 12:01 result is actually present.
+            val live = liveHero()
+            val hero = if (morningFinal) finalHero() else live
             LiveResolution(
                 feed,
                 hero,
-                !morningFinal && liveHero() != null,
+                !morningFinal && live != null,
                 when {
                     morningFinal -> LiveStatus.FINAL_CONFIRMED
-                    canShowLive -> LiveStatus.LIVE_CONFIRMED
+                    live != null -> LiveStatus.LIVE_CONFIRMED
                     else -> LiveStatus.WAITING
                 },
                 "",
@@ -730,14 +742,19 @@ internal fun resolveLiveState(
         }
 
         else -> {
-            val hero = if (eveningFinal) finalHero() else liveHero() ?: finalHero() ?: heldFinal
+            // 16:00–4:30 is one continuous EVENING session. Until today's
+            // evening final exists, only this session's validated LIVE value
+            // may occupy the hero; do not substitute the morning final or an
+            // older held final on a cold start.
+            val live = liveHero()
+            val hero = if (eveningFinal) finalHero() else live
             LiveResolution(
                 feed,
                 hero,
-                !eveningFinal && canShowLive,
+                !eveningFinal && live != null,
                 when {
                     eveningFinal -> LiveStatus.FINAL_CONFIRMED
-                    canShowLive -> LiveStatus.LIVE_CONFIRMED
+                    live != null -> LiveStatus.LIVE_CONFIRMED
                     else -> LiveStatus.WAITING
                 },
                 "",
@@ -1820,16 +1837,30 @@ internal class LiveCollector(
         if (!started.compareAndSet(false, true)) return
 
         schedulerJob = scope.launch {
-            recoverPreviousWorkingDayFinal()
-
-            // Reference catch-up remains separate from normal LIVE polling.
-            // When a closed-day hold is already known, skip the startup fetch
-            // and keep the previous working-day snapshot.
-            maybeReferenceFetch(clock())
             val startupToday = dateProvider()
             val startupTime = clock()
-            if (closedHoldDate(startupToday, startupTime) == null) {
+            val startupClosed = closedHoldDate(startupToday, startupTime)
+            val startupLiveSession = liveSessionForTime(startupTime)
+
+            if (startupLiveSession != null && startupClosed == null) {
+                // LIVE/finalization cold-start is latency-sensitive. Do not let
+                // historical reconstruction block the first Luke request, and
+                // do not allow a historical task to race and overwrite the
+                // current LIVE feed. The existing cached same-session LIVE, when
+                // available, is already restored by init().
                 fetchCycle()
+            } else {
+                // Outside an active LIVE session, historical recovery remains
+                // the source of held/fresh-start display state.
+                recoverPreviousWorkingDayFinal()
+
+                // Reference catch-up remains separate from normal LIVE polling.
+                // When a closed-day hold is already known, skip the startup fetch
+                // and keep the previous working-day snapshot.
+                maybeReferenceFetch(startupTime)
+                if (startupClosed == null) {
+                    fetchCycle()
+                }
             }
 
             var lastSchedulerDate = startupToday
