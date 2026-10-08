@@ -1415,6 +1415,45 @@ class LiveCollectorTest {
         assertNull(result.hero)
     }
 
+    @Test fun morning_finalizing_cold_start_never_shows_previous_day_final() {
+        val previousFinal = LiveHeroSnapshot(
+            result = "07",
+            set = "1600",
+            value = "20000",
+            sessionLabel = LIVE_SESSION_MORNING_LABEL,
+            date = thursday.toString(),
+        )
+
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                feed(
+                    value = "55",
+                    time = "12:05:00",
+                    morning = LiveSessionData("--", "--", "--", false),
+                    date = friday,
+                )
+            },
+            clock = { LocalTime.of(12, 5) },
+            dateProvider = { friday },
+            cacheLoader = { previousFinal },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertNull(state.hero)
+        assertFalse(state.heroLive)
+        assertEquals("--", state.feed?.morning?.result)
+
+        scope.cancel()
+    }
+
     @Test fun morning_final_arrival_wins_immediately_even_inside_live_window() {
         val f = feed(
             "36",
