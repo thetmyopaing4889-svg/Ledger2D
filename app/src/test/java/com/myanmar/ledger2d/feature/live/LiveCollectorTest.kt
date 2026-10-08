@@ -2927,7 +2927,8 @@ class LiveCollectorTest {
         runCurrent()
 
         val state = collector.state.value as LiveUiState.Data
-        assertNull(state.feed)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
         assertNull(state.hero)
 
         scope.cancel()
