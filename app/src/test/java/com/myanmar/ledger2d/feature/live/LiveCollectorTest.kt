@@ -1389,7 +1389,7 @@ class LiveCollectorTest {
 
         assertFalse(result.heroLive)
         assertNull(result.hero)
-        assertEquals(thursday.toString(), result.displayFeed?.date)
+        assertNull(result.displayFeed)
     }
 
     @Test fun morning_finalizing_never_falls_back_to_previous_day_final() {
