@@ -473,9 +473,10 @@ private fun isDisplayableFeedForSchedule(
     // turn Tuesday morning's Monday hold into Friday, Wednesday morning's
     // Tuesday hold into Monday, and so on.
     //
-    // After 09:30, the current working day owns the cycle and the previous
-    // working day remains a legitimate fallback while today's LIVE/final
-    // data has not arrived yet. Weekend hold is cycleDate (Friday) only.
+    // From 09:30 until 11:30, the previous working day may still seed the
+    // held display while today's LIVE cycle has not started. Once the
+    // morning LIVE session starts, only today's feed may remain displayable.
+    // Weekend hold is cycleDate (Friday) only.
     return when {
         !isWorkingDay(today) -> feedDate == cycleDate
         scheduleTime.isBefore(MORNING_REFERENCE) -> feedDate == cycleDate
@@ -1005,9 +1006,6 @@ internal class LiveCollector(
                 }
                 if (sequence <= latestAppliedSequence.get()) return@synchronized
 
-                val previousHeldFinal = lastFinal
-                captureHeldFinalLocked(feed)
-
                 val previous = primary?.feed
                 val incomingTime = parseDecisionInstant(feed)
                 val previousTime = previous?.let(::parseDecisionInstant)
@@ -1031,6 +1029,10 @@ internal class LiveCollector(
                 ) {
                     return@synchronized
                 }
+
+                // Only an accepted, in-order snapshot may update the held-final
+                // memory. A stale response must never mutate display fallback state.
+                captureHeldFinalLocked(feed)
 
                 val scheduleTime = clock()
                 val today = dateProvider()
