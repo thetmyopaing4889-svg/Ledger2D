@@ -1576,45 +1576,11 @@ internal class LiveCollector(
         scheduleTime: LocalTime,
         today: LocalDate,
     ): LiveFeedData? {
-        val inPendingWindow = scheduleTime >= MORNING_REFERENCE && (scheduleTime.isBefore(MORNING_LIVE) || (scheduleTime >= MORNING_LIVE && scheduleTime < MORNING_CATCHUP_END) || (scheduleTime >= AFTERNOON_REFERENCE && scheduleTime < EVENING_CATCHUP_END))
-        if (!isWorkingDay(today) || !inPendingWindow) return null
-
-        val pendingSession = LiveSessionData(
-            LIVE_PENDING,
-            LIVE_PENDING,
-            LIVE_PENDING,
-            false,
-        )
-
-        val source = sourceFeed ?: LiveFeedData(
-            date = today.toString(),
-            currentTime = scheduleTime.toString(),
-            live = LIVE_PENDING,
-            liveSet = LIVE_PENDING,
-            liveVal = LIVE_PENDING,
-            morning = pendingSession,
-            evening = pendingSession,
-            modern930 = LIVE_PENDING,
-            internet930 = LIVE_PENDING,
-            modern200 = LIVE_PENDING,
-            internet200 = LIVE_PENDING,
-            sourceTag = "LUKE",
-            serverTimeEpochMs = null,
-            isCloseDay = false,
-        )
-
-        // This is a display-only projection for the gap where the stored/raw
-        // provider feed belongs to a previous day or is unavailable. It never
-        // replaces primary, cache, Room history, or any financial state.
-        val projected = source.copy(
-            date = today.toString(),
-            currentTime = scheduleTime.toString(),
-            live = LIVE_PENDING,
-            liveSet = LIVE_PENDING,
-            liveVal = LIVE_PENDING,
-            morning = pendingSession,
-            evening = pendingSession,
-        )
+        val projected = projectPendingDisplayFeed(
+            sourceFeed = sourceFeed,
+            scheduleTime = scheduleTime,
+            today = today,
+        ) ?: return null
 
         return mergeReferenceIntoFeed(projected)
     }
