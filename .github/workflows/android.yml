@@ -1,5 +1,5 @@
 name: Android CI
-# Temporary trigger to verify Closed Day and cold-start state transitions.
+# Temporary trigger to verify held-final state reduction.
 on:
   push:
     branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan]
