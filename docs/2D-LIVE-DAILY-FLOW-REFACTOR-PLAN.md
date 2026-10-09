@@ -293,17 +293,19 @@ This checkpoint supersedes earlier readiness statements. It records targeted fix
 
 ### Added focused tests
 
-- `LiveSideEffectQueueTest.kt`: verifies queued work does not execute while the current thread holds the state lock, executes in order after the lock is released, and one failed effect does not discard later queued effects.
-- `LiveCancellationPolicyTest.kt`: verifies cancellation is propagated instead of being interpreted as a nullable fetch failure.
+- `LiveSideEffectQueueTest.kt`: confirms committed callbacks wait until the current thread has released the state lock, preserve enqueue order, and a failed callback does not drop later queued effects.
+- `LiveCancellationPolicyTest.kt`: confirms cancellation is propagated rather than returned as an ordinary nullable fetch failure.
+- `LiveRequestCoordinatorTest.kt`: added `date_change_cancels_the_old_reference_cycle_and_starts_the_new_cycle`, which proves a date change cancels the old 09:30 retry lifecycle and permits the new date's cycle to begin.
+- The existing `LiveCollectorTest.kt`, `LiveSchedulePolicyTest.kt`, `LiveReferenceStateReducerTest.kt`, and `LiveStateReducerTest.kt` cover the documented schedule windows, Fresh Install/held-history recovery, weekends, Luke-confirmed Closed Day, independent retry cycles, current-cycle reference promotion, late/out-of-order responses, partial feed preservation, final protection, and Room patch compatibility.
 
-The existing `LiveCollectorTest.kt` suite continues to cover the main schedule, Fresh Install, Closed Day, reference retry, overlapping/out-of-order LIVE request, final-protection and Room patch scenarios.
+### Verification status — updated 2026-10-09
 
-### Verification status for this checkpoint
+- CI run [#633](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37958306490) passed on application/test source revision `8794f47f1e942067ab72a3325d3173c3e93c1b2b`.
+- A follow-up lifecycle test was then added. CI run #634 exposed a test-source compilation error: the new test used `assertTrue` without importing it. That import was added; no production-code logic was changed to mask the failure.
+- CI run [#635](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37961531358) passed on source revision `8e7b7f5f9e04bc84caa9f83f7a9dc350c2dcd70c`. The job shows success for `testDebugUnitTest`, `lintDebug`, Debug APK assembly, Release APK verification/assembly, and both APK artifact uploads.
+- The final head after restoring the temporary validation-only workflow trigger is `09a7deba1384ab3e3e8f8b6268a7ff30583aee93`. Comparing it with the CI #635 tested revision shows only `.github/workflows/android.yml` changed. The workflow content now matches the chosen base exactly and is excluded from the refactor diff; no application or test source changed after #635.
+- The current PR file list contains only Daily Flow implementation files, focused tests, and this plan. No Room schema/repositories/Keeper, betting/financial calculations, parser, reports, or unrelated screen files are included.
+- Source-level parity checks against baseline #492 confirmed exact body matches for the moved `dailyCycleDate`, `liveSessionForTime`, `liveWindowAction`, `previousWorkingDay`, `isDisplayableFeedForSchedule`, `resolveLiveState`, both `historyRowToFeed` overloads, `historyRowToFinal`, `buildLiveDailyResultPatches`, Luke `fetch()`, and the `LiveScreen()` function. The moved data-model constructors were also compared for exact field/parameter parity. Their behavior is additionally covered by the passing regression suite.
+- Reviewed the remaining integration path: request execution is separate from state acceptance; LIVE and morning/afternoon references keep independent jobs and overlapping requests; state changes are committed under the existing lock; cache/Closed Day callbacks and Room work are queued/drained after leaving the critical section; suspend cancellation is rethrown; and captured app date/time is passed through Room patch building.
 
-- Full Android CI run [#633](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37958306490) completed successfully on application/test source revision `8794f47f1e942067ab72a3325d3173c3e93c1b2b`. The workflow passed `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleRelease`/release verification and both APK artifact uploads.
-- The current final refactor head is `8c0c2ef2193a9a8788ea74bce6902cd5d28baac2`. The full commit comparison from the CI-tested source revision to this head contains only `.github/workflows/android.yml` and this plan document. No application or test source changed after CI #633.
-- `.github/workflows/android.yml` has been restored to the exact base version and is excluded from the PR diff. The current PR file list contains only LIVE Daily Flow implementation files, focused tests, and this plan.
-- The existing regression suite covers the schedule boundaries, Fresh Install/held history, Luke-confirmed Closed Day, independent reference retries, late/out-of-order responses, partial feeds, final-result protection and Room patch compatibility. The newly added tests cover side-effect queue locking/order and cancellation propagation. The full test task passed in CI #633.
-- The earlier run #617 is historical; run #633 is the verification result for the follow-up code changes in this section.
-
-**Current state:** the identified side-effect/cancellation issues have been fixed, the focused tests are in place, and the application/test source passed full CI. The PR remains open and draft. Do not merge it or mark it ready without the user's explicit instruction.
+**Current state:** the source-level acceptance points recorded above have been checked, the missing date-change regression test is included, and the full verification run #635 passed. The refactor remains open, draft and unmerged. Do not merge it or mark it ready without the user's explicit instruction.
