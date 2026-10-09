@@ -308,7 +308,7 @@ internal class LiveCollector(
 
             sideEffects.dispatch { cacheFeedSaver(protected) }
             publishLocked()
-            sideEffects.dispatch { syncLiveRoom(protected) }
+            syncLiveRoom(protected)
         }
         sideEffects.drain()
     }
@@ -341,13 +341,19 @@ internal class LiveCollector(
             lastRoomSyncSignature = signature
         }
 
-        scope.launch {
-            try {
-                saver(patches)
-            } catch (_: Exception) {
-                synchronized(stateLock) {
-                    if (lastRoomSyncSignature == signature) {
-                        lastRoomSyncSignature = null
+        // The patch content and signature are captured now, using the app date/time
+        // at the accepted state transition. Only the actual persistence launch is
+        // deferred, so a scheduler boundary crossed while another callback runs
+        // cannot change which daily row this observation writes.
+        sideEffects.dispatch {
+            scope.launch {
+                try {
+                    saver(patches)
+                } catch (_: Exception) {
+                    synchronized(stateLock) {
+                        if (lastRoomSyncSignature == signature) {
+                            lastRoomSyncSignature = null
+                        }
                     }
                 }
             }
@@ -559,7 +565,7 @@ internal class LiveCollector(
 
             publishLocked()
             if (feed != null) {
-                sideEffects.dispatch { syncLiveRoom(feed) }
+                syncLiveRoom(feed)
             }
             transition.cycleComplete
         }
