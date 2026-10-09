@@ -1029,116 +1029,24 @@ internal class LiveCollector(
         val t = clock()
         val cycleDate = dailyCycleDate(today, t)
 
-        // The reference fetch has its own lifecycle. When it succeeds before
-        // the main poll returns a usable snapshot, use that successful feed as
-        // the display baseline instead of waiting for primary.
-        val effectiveBase = base ?: referenceFeed?.takeIf {
-            referenceFeedDate == cycleDate
-        }
-
-        if (effectiveBase == null) return null
-
-        if (closedHoldDate(today, t) != null) return effectiveBase
-
-        var out = effectiveBase
-
-        // 09:30 starts the new cycle. A successful pair is applied directly;
-        // after a failed attempt, pending masks the provider's previous-day
-        // values. The 14:00 slot is also reset at 09:30.
-        when {
-            reference930Date == cycleDate && reference930 != null -> {
-                val pair = reference930!!
-                out = out.copy(
-                    modern930 = pair.first,
-                    internet930 = pair.second,
-                )
-            }
-            reference930PendingDate == cycleDate -> {
-                out = out.copy(
-                    modern930 = LIVE_PENDING,
-                    internet930 = LIVE_PENDING,
-                )
-            }
-        }
-
-        when {
-            reference200Date == cycleDate && reference200 != null -> {
-                val pair = reference200!!
-                out = out.copy(
-                    modern200 = pair.first,
-                    internet200 = pair.second,
-                )
-            }
-            reference200PendingDate == cycleDate -> {
-                out = out.copy(
-                    modern200 = LIVE_PENDING,
-                    internet200 = LIVE_PENDING,
-                )
-            }
-            isWorkingDay(today) &&
-                !t.isBefore(MORNING_REFERENCE) &&
-                reference200Date != cycleDate -> {
-                // The 14:00 slot belongs to the new working-day cycle from
-                // 09:30 onward, even before its independent retry cycle starts.
-                out = out.copy(
-                    modern200 = LIVE_PENDING,
-                    internet200 = LIVE_PENDING,
-                )
-            }
-        }
-
-        val pendingSessions = LiveSessionData(
-            LIVE_PENDING,
-            LIVE_PENDING,
-            LIVE_PENDING,
-            false,
+        return projectReferenceFeed(
+            base = base,
+            snapshot = LiveReferenceProjectionSnapshot(
+                today = today,
+                scheduleTime = t,
+                cycleDate = cycleDate,
+                referenceFeed = referenceFeed,
+                referenceFeedDate = referenceFeedDate,
+                closedHold = closedHoldDate(today, t) != null,
+                reference930 = reference930,
+                reference930Date = reference930Date,
+                reference930PendingDate = reference930PendingDate,
+                reference200 = reference200,
+                reference200Date = reference200Date,
+                reference200PendingDate = reference200PendingDate,
+                referenceResetDate = referenceResetDate,
+            ),
         )
-
-        val workingToday = isWorkingDay(today)
-
-        // A successful 09:30 reference resets the session cards immediately.
-        // When 09:30 has not succeeded yet, old cards may remain temporarily.
-        if (
-            workingToday &&
-            referenceResetDate == cycleDate &&
-            !t.isBefore(MORNING_REFERENCE) &&
-            t.isBefore(MORNING_LIVE)
-        ) {
-            out = out.copy(
-                morning = pendingSessions,
-                evening = pendingSessions,
-            )
-        } else if (
-            workingToday &&
-            !t.isBefore(MORNING_LIVE) &&
-            (
-                t.isBefore(MORNING_CLOSE) ||
-                    !currentDay(out, today)
-            )
-        ) {
-            // On a working day, 11:30 is a hard display reset. This does not
-            // mutate the raw provider snapshot, so the existing LIVE/final
-            // engine and its protections remain untouched. After 12:01 a
-            // verified current-day morning final may render normally.
-            out = out.copy(
-                morning = pendingSessions,
-                evening = pendingSessions,
-            )
-        }
-
-        if (
-            workingToday &&
-            !t.isBefore(EVENING_LIVE) &&
-            t.isBefore(EVENING_CLOSE) &&
-            currentDay(out, today)
-        ) {
-            // Evening starts a new session at 16:00. Preserve the verified
-            // morning final, but project the evening card to Pending until
-            // the 16:30 final is confirmed.
-            out = out.copy(evening = pendingSessions)
-        }
-
-        return out
     }
 
     private fun referenceRetryWindowOpen(
