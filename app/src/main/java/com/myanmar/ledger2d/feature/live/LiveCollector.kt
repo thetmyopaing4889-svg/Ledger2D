@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -1053,19 +1052,12 @@ internal class LiveCollector(
         cycleDate: LocalDate,
         currentDate: LocalDate,
         now: LocalTime,
-    ): Boolean {
-        if (closedHoldDate(currentDate, now) != null) return false
-        if (currentDate == cycleDate) {
-            // Friday's state becomes the weekend-held snapshot after the
-            // evening final; no late reference fetch may mutate it.
-            return !(cycleDate.dayOfWeek == DayOfWeek.FRIDAY && !now.isBefore(EVENING_CLOSE))
-        }
-
-        val nextDate = cycleDate.plusDays(1)
-        return currentDate == nextDate &&
-            isWorkingDay(nextDate) &&
-            now.isBefore(MORNING_REFERENCE)
-    }
+    ): Boolean = isReferenceRetryWindowOpenAt(
+        cycleDate = cycleDate,
+        currentDate = currentDate,
+        now = now,
+        hasClosedHold = closedHoldDate(currentDate, now) != null,
+    )
 
     private suspend fun fetchReferencePair(
         isMorning: Boolean,
