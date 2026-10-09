@@ -300,8 +300,10 @@ The existing `LiveCollectorTest.kt` suite continues to cover the main schedule, 
 
 ### Verification status for this checkpoint
 
-- The previously recorded Android CI run [#617](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37943734669) passed tests, lint, Debug assembly and Release assembly on the earlier application source revision `7ded085cb612da3bf4705ba13ffb5eab47158c2c`.
-- The fixes listed in this section are newer than that tested source. A completed CI result for the exact latest source revision has **not** been verified here. Do not use run #617 as proof that these additional changes compile or pass.
-- The Daily Flow refactor must remain unfinalized until the current source passes `testDebugUnitTest`, `lintDebug`, `assembleDebug` and `assembleRelease`, and the new result is inspected. No unrelated app/financial/database/Keeper/UI changes are authorized by this checkpoint.
+- Full Android CI run [#633](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37958306490) completed successfully on application/test source revision `8794f47f1e942067ab72a3325d3173c3e93c1b2b`. The workflow passed `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleRelease`/release verification and both APK artifact uploads.
+- The current final refactor head is `8c0c2ef2193a9a8788ea74bce6902cd5d28baac2`. The full commit comparison from the CI-tested source revision to this head contains only `.github/workflows/android.yml` and this plan document. No application or test source changed after CI #633.
+- `.github/workflows/android.yml` has been restored to the exact base version and is excluded from the PR diff. The current PR file list contains only LIVE Daily Flow implementation files, focused tests, and this plan.
+- The existing regression suite covers the schedule boundaries, Fresh Install/held history, Luke-confirmed Closed Day, independent reference retries, late/out-of-order responses, partial feeds, final-result protection and Room patch compatibility. The newly added tests cover side-effect queue locking/order and cancellation propagation. The full test task passed in CI #633.
+- The earlier run #617 is historical; run #633 is the verification result for the follow-up code changes in this section.
 
-**Current state:** remaining code-level fixes and focused tests have been committed to the existing refactor work. The final test/build verification remains an open acceptance gate.
+**Current state:** the identified side-effect/cancellation issues have been fixed, the focused tests are in place, and the application/test source passed full CI. The PR remains open and draft. Do not merge it or mark it ready without the user's explicit instruction.
