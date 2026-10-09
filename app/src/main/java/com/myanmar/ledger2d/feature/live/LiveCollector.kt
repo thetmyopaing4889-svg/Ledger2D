@@ -360,6 +360,11 @@ internal class LiveCollector(
                 try {
                     saver(patches)
                 } catch (cancelled: CancellationException) {
+                    synchronized(stateLock) {
+                        if (lastRoomSyncSignature == signature) {
+                            lastRoomSyncSignature = null
+                        }
+                    }
                     throw cancelled
                 } catch (_: Exception) {
                     synchronized(stateLock) {
