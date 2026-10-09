@@ -1,6 +1,7 @@
 package com.myanmar.ledger2d.feature.live
 
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * The reference-related portion of canonical Daily Flow state.
@@ -28,9 +29,8 @@ internal data class LiveReferenceStateReduction(
 )
 
 /**
- * Pure transition logic for dedicated 09:30/14:00 reference completions.
- * Closed Day observations are deliberately handled by LiveCollector's
- * integration path because it must retrieve/save the held-day feed.
+ * Pure transition logic for 09:30/14:00 reference state. This class never
+ * writes cache/Room, publishes UI, fetches history, or performs network I/O.
  */
 internal object LiveReferenceStateReducer {
     fun reduce(
@@ -42,20 +42,15 @@ internal object LiveReferenceStateReducer {
         val isMorning = event.isMorning
 
         if (event.closedDayObservation || !retryWindowOpen) {
-            return LiveReferenceStateReduction(
-                state = state,
-                accepted = false,
-                cycleComplete = false,
-            )
+            return LiveReferenceStateReduction(state, accepted = false, cycleComplete = false)
         }
 
         val feed = event.feed
         val modern = if (isMorning) feed?.modern930 else feed?.modern200
         val internet = if (isMorning) feed?.internet930 else feed?.internet200
-        val valid = feed != null &&
-            isCurrentCycleReferenceObservation(feed, cycleDate) &&
-            isValidLive2d(modern.orEmpty()) &&
-            isValidLive2d(internet.orEmpty())
+        val valid = isValidReferencePair(feed, modern.orEmpty(), internet.orEmpty()) &&
+            feed != null &&
+            isCurrentCycleReferenceObservation(feed, cycleDate)
 
         val next = if (isMorning) {
             when {
@@ -100,10 +95,138 @@ internal object LiveReferenceStateReducer {
             next.reference200CompleteDate == cycleDate
         }
 
-        return LiveReferenceStateReduction(
-            state = next,
-            accepted = true,
-            cycleComplete = cycleComplete,
-        )
+        return LiveReferenceStateReduction(next, accepted = true, cycleComplete = cycleComplete)
     }
+
+    /** Begin a working-day cycle by masking only reference slots not yet completed. */
+    fun beginWorkingDayCycle(
+        state: LiveReferenceState,
+        cycleDate: LocalDate,
+    ): LiveReferenceState {
+        var next = state
+        if (
+            next.reference930CompleteDate != cycleDate &&
+            next.reference930PendingDate != cycleDate
+        ) {
+            next = next.copy(
+                reference930 = null,
+                reference930Date = null,
+                reference930PendingDate = cycleDate,
+            )
+        }
+        if (
+            next.reference200CompleteDate != cycleDate &&
+            next.reference200PendingDate != cycleDate
+        ) {
+            next = next.copy(
+                reference200 = null,
+                reference200Date = null,
+                reference200PendingDate = cycleDate,
+            )
+        }
+        return next
+    }
+
+    /** Promote current-cycle references from an otherwise accepted Luke snapshot. */
+    fun promoteFromLiveSnapshot(
+        state: LiveReferenceState,
+        feed: LiveFeedData,
+        today: LocalDate,
+        scheduleTime: LocalTime,
+    ): LiveReferenceState {
+        if (!isWorkingDay(today)) return state
+        val cycleDate = dailyCycleDate(today, scheduleTime)
+        if (cycleDate != today || !isCurrentCycleReferenceObservation(feed, cycleDate)) return state
+
+        var next = state
+        if (
+            !scheduleTime.isBefore(MORNING_REFERENCE) &&
+            isValidReferencePair(feed, feed.modern930, feed.internet930)
+        ) {
+            next = next.copy(
+                reference930 = feed.modern930 to feed.internet930,
+                reference930Date = cycleDate,
+                reference930PendingDate = null,
+                reference930CompleteDate = cycleDate,
+                referenceResetDate = cycleDate,
+                referenceFeed = feed,
+                referenceFeedDate = cycleDate,
+            )
+        }
+        if (
+            !scheduleTime.isBefore(AFTERNOON_REFERENCE) &&
+            isValidReferencePair(feed, feed.modern200, feed.internet200)
+        ) {
+            next = next.copy(
+                reference200 = feed.modern200 to feed.internet200,
+                reference200Date = cycleDate,
+                reference200PendingDate = null,
+                reference200CompleteDate = cycleDate,
+                referenceFeed = feed,
+                referenceFeedDate = cycleDate,
+            )
+        }
+        return next
+    }
+
+    /** Clear reference state when Luke has confirmed that the current day is closed. */
+    fun clearForClosedDay(state: LiveReferenceState): LiveReferenceState = state.copy(
+        reference930 = null,
+        reference930Date = null,
+        reference200 = null,
+        reference200Date = null,
+        reference930PendingDate = null,
+        reference200PendingDate = null,
+        reference930CompleteDate = null,
+        reference200CompleteDate = null,
+        referenceResetDate = null,
+        referenceFeed = null,
+        referenceFeedDate = null,
+    )
+
+    /** Restore reference values only for a completed historical held-day row. */
+    fun restoreCompletedHeldCycle(
+        state: LiveReferenceState,
+        feed: LiveFeedData,
+        cycleDate: LocalDate,
+    ): LiveReferenceState {
+        var next = state
+        if (isValidReferencePair(feed, feed.modern930, feed.internet930)) {
+            next = next.copy(
+                reference930 = feed.modern930 to feed.internet930,
+                reference930Date = cycleDate,
+                reference930CompleteDate = cycleDate,
+                reference930PendingDate = null,
+            )
+        }
+        if (isValidReferencePair(feed, feed.modern200, feed.internet200)) {
+            next = next.copy(
+                reference200 = feed.modern200 to feed.internet200,
+                reference200Date = cycleDate,
+                reference200CompleteDate = cycleDate,
+                reference200PendingDate = null,
+            )
+        }
+        return next
+    }
+
+    fun markMorningResetIfNeeded(
+        state: LiveReferenceState,
+        cycleDate: LocalDate,
+    ): LiveReferenceState =
+        if (
+            state.reference930CompleteDate != cycleDate &&
+            state.referenceResetDate != cycleDate
+        ) {
+            state.copy(referenceResetDate = cycleDate)
+        } else {
+            state
+        }
+
+    private fun isValidReferencePair(
+        feed: LiveFeedData?,
+        modern: String,
+        internet: String,
+    ): Boolean =
+        feed != null && isValidLive2d(modern) && isValidLive2d(internet)
 }
