@@ -229,8 +229,16 @@ This section records work completed after the design record above; it does not c
 - The temporary trigger-only edit to `.github/workflows/android.yml` has now been reverted to the baseline version on this working branch. This removes CI plumbing from the actual refactor diff. The successful CI run above validates the identical application source; the final housekeeping changes are limited to workflow cleanup and progress documentation.
 - Draft PR [#27](https://github.com/thetmyopaing4889-svg/Ledger2D/pull/27) remains unmerged and targets `fix/403-live-integration-root-cause-20261007`, the branch at the exact #492 baseline. This is deliberate because `main` has diverged. All writes in this work have targeted the dedicated refactor branch; `main` was not a write target.
 
+### Final diff-audit checkpoint — 2026-10-09
+
+- The exact current PR comparison was re-run after workflow cleanup: the branch is 45 commits ahead and 0 behind its chosen base; the base SHA is the exact baseline #492 commit `62b26751d8c0fa72bb5db42fc08e3d985ec83a1e`.
+- The final changed-file list contains 13 files, all within LIVE Daily Flow code, focused tests, and this plan. `.github/workflows/android.yml` is absent from the PR diff and its content matches the baseline workflow. No Room/DAO/repository/Keeper, parser/financial, reports or unrelated UI files are included.
+- All 12 application-source/test files in the PR were individually compared by Git blob SHA against the exact code revision tested by PR CI #564 (`020986ba45d47f8e644dcbbb7f69305ebd7ee3a1`). Every file is byte-identical to that CI-verified revision. The only post-CI changed files on the current head are the workflow file restored to baseline and this plan document.
+- API/model block parity, the full `LiveScreen()` implementation, key moved policy/projection functions, and request/reference state-effect ordering were inspected against the baseline. The selected moved function bodies match; the state effect order remains the same.
+- PR [#27](https://github.com/thetmyopaing4889-svg/Ledger2D/pull/27) remains open, draft and unmerged. All changes have been committed only to the refactor branch; `main` was not a write target.
+
 ### Remaining work
 
-1. Complete a final line-by-line review of the entire PR diff, especially the reference-cycle/state integration and the API/model extraction, and re-check that no excluded subsystem has entered the diff.
-2. Confirm the post-cleanup PR file list and base/head relationship. CI was green for the exact application-source revision before the final workflow/docs housekeeping; the restored baseline workflow no longer auto-triggers on this refactor branch or this PR's base, so a new run on the housekeeping-only head is not automatic.
-3. Do not merge or mark the PR ready for review until the final diff review is complete. Avoid additional source refactors unless a specific responsibility duplication is identified and can be changed with targeted regression coverage.
+1. **No further source extraction is justified by this audit.** Do not continue refactoring for the sake of moving more code; the next change should be made only if a concrete responsibility duplication is identified with regression coverage.
+2. The latest *application and test sources* are proven identical to the revision for which all CI steps passed. A new CI run on current housekeeping-only head `184af47134ebc692d03225183eb447956e767119` has not been run: the baseline workflow triggers were restored, so this branch/PR base combination will not auto-trigger it. This is explicitly a verification limitation, not an application-source change.
+3. Keep PR #27 in draft. Do not merge, change its base to `main`, or mark it ready without the user's explicit approval and a deliberate decision on whether another CI run is needed.
