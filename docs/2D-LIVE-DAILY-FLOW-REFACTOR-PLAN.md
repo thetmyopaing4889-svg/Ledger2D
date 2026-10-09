@@ -216,7 +216,7 @@ This section records work completed after the design record above; it does not c
 - Deterministic date/time policies, reference retry-window eligibility, and the LIVE-only Closed Day hold-date rule are in `LiveSchedulePolicy.kt`, with boundary tests for polling, Friday post-final retry cutoff, next-working-day retry, Closed Day suppression, and the Monday 09:30 hold expiry.
 - LIVE feed/UI models and Luke client have been moved to `LiveModels.kt` and `LiveApi.kt` without changing the screen entry/retry contract.
 - Display resolution is in `LiveDisplayProjector.kt`; UI-state mapping, reference/Pending-card overlay, and synthetic Pending-feed construction are pure projection helpers.
-- Normal LIVE request completion and dedicated reference completion carry typed events into the existing serialized state-acceptance methods: `LiveRequestResultEvent.kt` and `LiveReferenceResultEvent.kt`.
+- Normal LIVE request completion and dedicated reference completion carry typed events into the existing serialized state-acceptance methods: `LiveRequestResultEvent.kt` and `LiveReferenceResultEvent.kt`. Provider-time/sequence acceptance is isolated in `LiveRequestAcceptancePolicy.kt` with direct tests; network and state commit lifecycles remain separate.
 - `LiveCollector` still owns scheduling, shared mutable state, response acceptance, cache/Room integrations and their existing callbacks. `publishLocked` now names display resolution, remembered hero/final effects, and state publication as separate steps.
 - Added targeted tests for polling boundaries and display projection, including Closed Day hold, 09:30/reference reset, 11:30 session reset, evening-session reset, and synthetic Pending feed behavior.
 
