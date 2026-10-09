@@ -164,7 +164,7 @@ class LiveStateReducerTest {
 
     @Test
     fun confirmed_closed_day_uses_held_feed_and_its_final_without_mutating_input() {
-        val heldDate = today.minusDays(1)
+        val heldDate = previousWorkingDay(today)
         val heldFeed = feed(
             time = "16:30:00",
             morning = session("47"),
@@ -206,7 +206,7 @@ class LiveStateReducerTest {
 
     @Test
     fun closed_day_without_final_in_held_feed_preserves_last_known_final() {
-        val heldFeed = feed(time = "16:30:00").copy(date = today.minusDays(1).toString())
+        val heldFeed = feed(time = "16:30:00").copy(date = previousWorkingDay(today).toString())
         val previousFinal = LiveHeroSnapshot("74", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString())
         val reduced = LiveStateReducer.reduceConfirmedClosedDay(
             cycleDate = today.plusDays(1),
@@ -304,7 +304,7 @@ class LiveStateReducerTest {
             "47", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString()
         )
         val fallbackFinal = LiveHeroSnapshot(
-            "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.minusDays(1).toString()
+            "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, previousWorkingDay(today).toString()
         )
         val recoveredHeld = feed(
             time = "16:30:00",
@@ -314,7 +314,7 @@ class LiveStateReducerTest {
         val result = LiveStateReducer.reduceStartupRecovery(
             today = today,
             scheduleTime = LocalTime.of(8, 30),
-            cycleDate = today.minusDays(1),
+            cycleDate = previousWorkingDay(today),
             recoveredFeed = recoveredHeld,
             currentFinal = currentFinal,
             fallbackFinal = fallbackFinal,
@@ -346,7 +346,7 @@ class LiveStateReducerTest {
             evening = session("62"),
         ).copy(date = today.minusDays(1).toString())
         val fallbackFinal = LiveHeroSnapshot(
-            "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.minusDays(1).toString()
+            "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, previousWorkingDay(today).toString()
         )
         val result = LiveStateReducer.reduceStartupRecovery(
             today = today,
