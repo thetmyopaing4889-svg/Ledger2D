@@ -1,5 +1,5 @@
 name: Android CI
-# Temporary trigger to verify in-progress Daily Flow refactor work.
+# Temporary trigger to verify the request and reference state reducers.
 on:
   push:
     branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan]
