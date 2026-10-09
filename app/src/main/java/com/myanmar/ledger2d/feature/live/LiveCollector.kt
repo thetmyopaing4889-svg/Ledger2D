@@ -359,6 +359,8 @@ internal class LiveCollector(
             scope.launch {
                 try {
                     saver(patches)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (_: Exception) {
                     synchronized(stateLock) {
                         if (lastRoomSyncSignature == signature) {
