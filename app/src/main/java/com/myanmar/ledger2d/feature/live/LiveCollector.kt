@@ -719,22 +719,16 @@ internal class LiveCollector(
             val previousTime = previous?.let(::parseDecisionInstant)
             val appliedSequence = latestAppliedSequence.get()
 
-            // Provider time is the source-of-truth ordering signal when it
-            // exists. Request sequence is only a tie-breaker for equal or
-            // unavailable provider times. This matters because start() and
-            // LiveScreen can issue overlapping immediate requests: an older
-            // request can legitimately finish after a newer request but
-            // carry a newer Luke timestamp/final result.
-            if (incomingTime != null && previousTime != null) {
-                when {
-                    incomingTime.isBefore(previousTime) -> return@synchronized
-                    incomingTime == previousTime && sequence <= appliedSequence -> return@synchronized
-                }
-            } else if (incomingTime == null && previousTime != null) {
-                // Never replace a timestamped snapshot with one whose
-                // provider time cannot be established.
-                return@synchronized
-            } else if (incomingTime == null && sequence <= appliedSequence) {
+            // Provider timestamps remain authoritative; sequence is a tie-breaker only.
+            // Requests intentionally overlap, so do not replace this with a single in-flight guard.
+            if (
+                !shouldAcceptLiveSnapshotByOrdering(
+                    incomingTime = incomingTime,
+                    previousTime = previousTime,
+                    sequence = sequence,
+                    latestAppliedSequence = appliedSequence,
+                )
+            ) {
                 return@synchronized
             }
 
