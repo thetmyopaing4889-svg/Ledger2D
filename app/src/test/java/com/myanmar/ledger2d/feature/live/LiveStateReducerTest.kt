@@ -281,8 +281,7 @@ class LiveStateReducerTest {
             today = today,
             scheduleTime = LocalTime.of(14, 0),
             cycleDate = today,
-            recoveredFeed = feed(
-                time = "14:00:00",
+            recoveredFeed = feed(time = "14:00:00").copy(
                 modern930 = "12",
                 internet930 = "34",
                 modern200 = "56",
