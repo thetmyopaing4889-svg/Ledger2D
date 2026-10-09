@@ -264,3 +264,137 @@ internal fun projectLiveUiState(
     staleAgeMs = resolution.staleAgeMs,
     closedDay = closedDay,
 )
+
+/**
+ * Immutable reference overlay values for one display projection.
+ * This snapshot is display-only; applying it never writes collector state, caches, or Room.
+ */
+internal data class LiveReferenceProjectionSnapshot(
+    val today: LocalDate,
+    val scheduleTime: LocalTime,
+    val cycleDate: LocalDate,
+    val referenceFeed: LiveFeedData?,
+    val referenceFeedDate: LocalDate?,
+    val closedHold: Boolean,
+    val reference930: Pair<String, String>?,
+    val reference930Date: LocalDate?,
+    val reference930PendingDate: LocalDate?,
+    val reference200: Pair<String, String>?,
+    val reference200Date: LocalDate?,
+    val reference200PendingDate: LocalDate?,
+    val referenceResetDate: LocalDate?,
+)
+
+/**
+ * Apply current-cycle references and Pending session cards to a display feed.
+ * All mutable collector inputs are captured in [snapshot] before this pure projection runs.
+ */
+internal fun projectReferenceFeed(
+    base: LiveFeedData?,
+    snapshot: LiveReferenceProjectionSnapshot,
+): LiveFeedData? {
+    val today = snapshot.today
+    val t = snapshot.scheduleTime
+    val cycleDate = snapshot.cycleDate
+
+    // Prefer a successful independent reference feed when the main poll has no baseline.
+    val effectiveBase = base ?: snapshot.referenceFeed?.takeIf {
+        snapshot.referenceFeedDate == cycleDate
+    }
+
+    if (effectiveBase == null) return null
+    if (snapshot.closedHold) return effectiveBase
+
+    var out = effectiveBase
+
+    when {
+        snapshot.reference930Date == cycleDate && snapshot.reference930 != null -> {
+            val pair = snapshot.reference930
+            out = out.copy(
+                modern930 = pair.first,
+                internet930 = pair.second,
+            )
+        }
+        snapshot.reference930PendingDate == cycleDate -> {
+            out = out.copy(
+                modern930 = LIVE_PENDING,
+                internet930 = LIVE_PENDING,
+            )
+        }
+    }
+
+    when {
+        snapshot.reference200Date == cycleDate && snapshot.reference200 != null -> {
+            val pair = snapshot.reference200
+            out = out.copy(
+                modern200 = pair.first,
+                internet200 = pair.second,
+            )
+        }
+        snapshot.reference200PendingDate == cycleDate -> {
+            out = out.copy(
+                modern200 = LIVE_PENDING,
+                internet200 = LIVE_PENDING,
+            )
+        }
+        isWorkingDay(today) &&
+            !t.isBefore(MORNING_REFERENCE) &&
+            snapshot.reference200Date != cycleDate -> {
+            // The 14:00 slot belongs to the new cycle from 09:30, before its retry worker starts.
+            out = out.copy(
+                modern200 = LIVE_PENDING,
+                internet200 = LIVE_PENDING,
+            )
+        }
+    }
+
+    val pendingSessions = LiveSessionData(
+        LIVE_PENDING,
+        LIVE_PENDING,
+        LIVE_PENDING,
+        false,
+    )
+    val workingToday = isWorkingDay(today)
+
+    if (
+        workingToday &&
+        snapshot.referenceResetDate == cycleDate &&
+        !t.isBefore(MORNING_REFERENCE) &&
+        t.isBefore(MORNING_LIVE)
+    ) {
+        out = out.copy(
+            morning = pendingSessions,
+            evening = pendingSessions,
+        )
+    } else if (
+        workingToday &&
+        !t.isBefore(MORNING_LIVE) &&
+        (
+            t.isBefore(MORNING_CLOSE) ||
+                !isDisplayFeedForDay(out, today)
+        )
+    ) {
+        // 11:30 is a display reset only; the raw provider feed remains unchanged.
+        out = out.copy(
+            morning = pendingSessions,
+            evening = pendingSessions,
+        )
+    }
+
+    if (
+        workingToday &&
+        !t.isBefore(EVENING_LIVE) &&
+        t.isBefore(EVENING_CLOSE) &&
+        isDisplayFeedForDay(out, today)
+    ) {
+        // Preserve the morning final while the evening session is still pending.
+        out = out.copy(evening = pendingSessions)
+    }
+
+    return out
+}
+
+private fun isDisplayFeedForDay(
+    feed: LiveFeedData,
+    date: LocalDate,
+): Boolean = canonicalDate(feed.date) == date
