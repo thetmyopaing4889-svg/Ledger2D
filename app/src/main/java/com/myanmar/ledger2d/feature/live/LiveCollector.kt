@@ -16,15 +16,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
-
-private val YANGON = ZoneId.of("Asia/Yangon")
 
 private fun monotonicMs(): Long = runCatching {
     SystemClock.elapsedRealtime()
@@ -47,15 +43,6 @@ internal const val SOURCE_FRESHNESS_MS = 5_000L
 internal const val SOURCE_TIME_SKEW_MS = 2_000L
 internal const val LIVE_REFERENCE_FETCH_INTERVAL_MS = 60_000L
 
-private val MORNING_REFERENCE = LocalTime.of(9, 30)
-private val MORNING_LIVE = LocalTime.of(11, 30)
-private val MORNING_CLOSE = LocalTime.of(12, 1)
-private val MORNING_CATCHUP_END = LocalTime.of(12, 31)
-private val AFTERNOON_REFERENCE = LocalTime.of(14, 0)
-private val EVENING_LIVE = LocalTime.of(16, 0)
-private val EVENING_CLOSE = LocalTime.of(16, 30)
-private val EVENING_CATCHUP_END = LocalTime.of(17, 0)
-
 internal const val LIVE_PENDING = "--"
 internal const val LIVE_SESSION_MORNING_LABEL = "12:01 PM"
 internal const val LIVE_SESSION_EVENING_LABEL = "4:30 PM"
@@ -67,29 +54,6 @@ data class LiveHeroSnapshot(
     val sessionLabel: String,
     val date: String,
 )
-
-internal enum class LiveWindowAction {
-    NONE,
-    REFERENCE_ONLY,
-    LIVE_POLLING,
-    FINALIZING,
-}
-
-internal enum class LiveSession {
-    MORNING,
-    EVENING,
-}
-
-internal fun liveSessionForTime(t: LocalTime): LiveSession? = when {
-    // The session remains "live" through the finalization/catch-up window.
-    // At the exact final boundary the provider may still be carrying the
-    // last streaming value while it is preparing the verified final result.
-    // Keeping the same session owner lets preserveActiveLive() retain that
-    // last valid LIVE observation until the final result arrives.
-    t >= MORNING_LIVE && t < MORNING_CATCHUP_END -> LiveSession.MORNING
-    t >= EVENING_LIVE && t < EVENING_CATCHUP_END -> LiveSession.EVENING
-    else -> null
-}
 
 enum class LiveStatus {
     WAITING,
@@ -229,32 +193,6 @@ internal data class LiveResolution(
     val sourceCount: Int,
     val staleAgeMs: Long,
 )
-
-internal fun liveWindowAction(t: LocalTime): LiveWindowAction = when {
-    t.isBefore(MORNING_REFERENCE) -> LiveWindowAction.NONE
-    t.isBefore(MORNING_LIVE) -> LiveWindowAction.REFERENCE_ONLY
-    t.isBefore(MORNING_CLOSE) -> LiveWindowAction.LIVE_POLLING
-    t.isBefore(MORNING_CATCHUP_END) -> LiveWindowAction.FINALIZING
-    t.isBefore(AFTERNOON_REFERENCE) -> LiveWindowAction.NONE
-    t.isBefore(AFTERNOON_REFERENCE.plusMinutes(1)) -> LiveWindowAction.REFERENCE_ONLY
-    t.isBefore(EVENING_LIVE) -> LiveWindowAction.NONE
-    t.isBefore(EVENING_CLOSE) -> LiveWindowAction.LIVE_POLLING
-    t.isBefore(EVENING_CATCHUP_END) -> LiveWindowAction.FINALIZING
-    else -> LiveWindowAction.NONE
-}
-
-internal fun currentYangonDate(): LocalDate = LocalDate.now(YANGON)
-
-internal fun isWorkingDay(date: LocalDate): Boolean =
-    date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
-
-internal fun previousWorkingDay(date: LocalDate): LocalDate {
-    var d = date.minusDays(1)
-    while (!isWorkingDay(d)) {
-        d = d.minusDays(1)
-    }
-    return d
-}
 
 private fun historySession(
     result: String,
@@ -449,16 +387,6 @@ internal fun historyRowToFinal(
         date = row.date.toString(),
     )
 }
-
-internal fun dailyCycleDate(
-    date: LocalDate = currentYangonDate(),
-    time: LocalTime = LocalTime.now(YANGON),
-): LocalDate =
-    when {
-        !isWorkingDay(date) -> previousWorkingDay(date)
-        time.isBefore(MORNING_REFERENCE) -> previousWorkingDay(date)
-        else -> date
-    }
 
 private fun isDisplayableFeedForSchedule(
     feed: LiveFeedData,
