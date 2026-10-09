@@ -1012,18 +1012,24 @@ internal class LiveCollector(
             synchronized(stateLock) {
                 if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
 
-                closedDayDate = cycleDate
-                closedDayDateSaver(cycleDate)
-
-                applyReferenceStateLocked(
-                    LiveReferenceStateReducer.clearForClosedDay(referenceStateLocked())
+                val transition = LiveStateReducer.reduceConfirmedClosedDay(
+                    cycleDate = cycleDate,
+                    heldFeed = heldFeed,
+                    elapsedRealtimeMs = monotonicMs(),
+                    previousPrimary = primary,
+                    previousLastLive = lastLive,
+                    previousLastFinal = lastFinal,
+                    references = referenceStateLocked(),
                 )
-                lastLive = null
+
+                closedDayDate = transition.closedDayDate
+                closedDayDateSaver(cycleDate)
+                applyReferenceStateLocked(transition.references)
+                lastLive = transition.lastLive
 
                 if (heldFeed != null) {
-                    val startedAt = monotonicMs()
-                    primary = SourceObservation(heldFeed, startedAt, startedAt, 0L)
-                    latestFinalFor(heldFeed)?.let { lastFinal = it }
+                    primary = transition.primary
+                    lastFinal = transition.lastFinal
                     cacheFeedSaver(heldFeed)
                 }
 

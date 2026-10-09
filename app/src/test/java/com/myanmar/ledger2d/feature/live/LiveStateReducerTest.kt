@@ -121,4 +121,115 @@ class LiveStateReducerTest {
             LiveStateReducer.inferLiveSessionFromSourceTime(feed(time = LIVE_PENDING)),
         )
     }
+
+    @Test
+    fun confirmed_closed_day_clears_references_and_keeps_previous_primary_when_no_held_feed_exists() {
+        val oldFeed = feed(time = "16:30:00", live = "38")
+        val oldPrimary = SourceObservation(oldFeed, 100L, 50L, 50L)
+        val oldHero = LiveHeroSnapshot("38", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString())
+        val oldReferences = LiveReferenceState(
+            reference930 = "12" to "34",
+            reference930Date = today,
+            reference200 = "56" to "78",
+            reference200Date = today,
+            reference930PendingDate = null,
+            reference200PendingDate = null,
+            reference930CompleteDate = today,
+            reference200CompleteDate = today,
+            referenceResetDate = today,
+            referenceFeed = oldFeed,
+            referenceFeedDate = today,
+        )
+
+        val reduced = LiveStateReducer.reduceConfirmedClosedDay(
+            cycleDate = today.plusDays(1),
+            heldFeed = null,
+            elapsedRealtimeMs = 300L,
+            previousPrimary = oldPrimary,
+            previousLastLive = oldHero,
+            previousLastFinal = oldHero,
+            references = oldReferences,
+        )
+
+        assertEquals(today.plusDays(1), reduced.closedDayDate)
+        assertEquals(oldPrimary, reduced.primary)
+        assertNull(reduced.lastLive)
+        assertEquals(oldHero, reduced.lastFinal)
+        assertNull(reduced.references.reference930)
+        assertNull(reduced.references.reference200)
+        assertNull(reduced.references.referenceFeed)
+        assertNull(reduced.references.reference930CompleteDate)
+        assertNull(reduced.references.reference200CompleteDate)
+    }
+
+    @Test
+    fun confirmed_closed_day_uses_held_feed_and_its_final_without_mutating_input() {
+        val heldDate = today.minusDays(1)
+        val heldFeed = feed(
+            time = "16:30:00",
+            morning = session("47"),
+            evening = session("62"),
+        ).copy(date = heldDate.toString())
+        val oldHero = LiveHeroSnapshot("38", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString())
+        val refs = LiveReferenceState(
+            reference930 = "12" to "34",
+            reference930Date = today,
+            reference200 = null,
+            reference200Date = null,
+            reference930PendingDate = null,
+            reference200PendingDate = today,
+            reference930CompleteDate = today,
+            reference200CompleteDate = null,
+            referenceResetDate = today,
+            referenceFeed = heldFeed,
+            referenceFeedDate = heldDate,
+        )
+
+        val reduced = LiveStateReducer.reduceConfirmedClosedDay(
+            cycleDate = today.plusDays(1),
+            heldFeed = heldFeed,
+            elapsedRealtimeMs = 500L,
+            previousPrimary = null,
+            previousLastLive = oldHero,
+            previousLastFinal = oldHero,
+            references = refs,
+        )
+
+        assertEquals(heldFeed, reduced.primary?.feed)
+        assertEquals(500L, reduced.primary?.fetchedAtElapsedMs)
+        assertNull(reduced.lastLive)
+        assertEquals("62", reduced.lastFinal?.result)
+        assertEquals(heldDate.toString(), reduced.lastFinal?.date)
+        assertEquals("12" to "34", refs.reference930)
+        assertNull(reduced.references.reference930)
+    }
+
+    @Test
+    fun closed_day_without_final_in_held_feed_preserves_last_known_final() {
+        val heldFeed = feed(time = "16:30:00").copy(date = today.minusDays(1).toString())
+        val previousFinal = LiveHeroSnapshot("74", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString())
+        val reduced = LiveStateReducer.reduceConfirmedClosedDay(
+            cycleDate = today.plusDays(1),
+            heldFeed = heldFeed,
+            elapsedRealtimeMs = 700L,
+            previousPrimary = null,
+            previousLastLive = null,
+            previousLastFinal = previousFinal,
+            references = LiveReferenceState(
+                reference930 = null,
+                reference930Date = null,
+                reference200 = null,
+                reference200Date = null,
+                reference930PendingDate = null,
+                reference200PendingDate = null,
+                reference930CompleteDate = null,
+                reference200CompleteDate = null,
+                referenceResetDate = null,
+                referenceFeed = null,
+                referenceFeedDate = null,
+            ),
+        )
+
+        assertEquals(previousFinal, reduced.lastFinal)
+    }
 }

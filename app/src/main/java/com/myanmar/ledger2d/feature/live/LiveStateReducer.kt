@@ -16,6 +16,14 @@ internal data class LiveStateReduction(
     val primaryLiveSession: LiveSession?,
 )
 
+internal data class LiveClosedDayReduction(
+    val closedDayDate: LocalDate,
+    val primary: SourceObservation?,
+    val lastLive: LiveHeroSnapshot?,
+    val lastFinal: LiveHeroSnapshot?,
+    val references: LiveReferenceState,
+)
+
 internal object LiveStateReducer {
     fun reduceAcceptedLiveSnapshot(
         previous: LiveFeedData?,
@@ -43,6 +51,38 @@ internal object LiveStateReducer {
         return LiveStateReduction(
             feed = protectedFeed,
             primaryLiveSession = nextPrimaryLiveSession,
+        )
+    }
+
+    /**
+     * Decide the state changes for a Luke-confirmed Closed Day before the
+     * collector commits them and runs its existing persistence/UI effects.
+     */
+    fun reduceConfirmedClosedDay(
+        cycleDate: LocalDate,
+        heldFeed: LiveFeedData?,
+        elapsedRealtimeMs: Long,
+        previousPrimary: SourceObservation?,
+        previousLastLive: LiveHeroSnapshot?,
+        previousLastFinal: LiveHeroSnapshot?,
+        references: LiveReferenceState,
+    ): LiveClosedDayReduction {
+        val nextPrimary = heldFeed?.let {
+            SourceObservation(
+                feed = it,
+                fetchedAtElapsedMs = elapsedRealtimeMs,
+                requestStartedElapsedMs = elapsedRealtimeMs,
+                roundTripMs = 0L,
+            )
+        } ?: previousPrimary
+        val nextLastFinal = heldFeed?.let(::latestFinalFor) ?: previousLastFinal
+
+        return LiveClosedDayReduction(
+            closedDayDate = cycleDate,
+            primary = nextPrimary,
+            lastLive = null,
+            lastFinal = nextLastFinal,
+            references = LiveReferenceStateReducer.clearForClosedDay(references),
         )
     }
 
