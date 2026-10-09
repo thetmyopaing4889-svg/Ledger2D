@@ -308,7 +308,7 @@ internal class LiveCollector(
 
             sideEffects.dispatch { cacheFeedSaver(protected) }
             publishLocked()
-            syncLiveRoom(protected)
+            sideEffects.dispatch { syncLiveRoom(protected, today, scheduleTime) }
         }
         sideEffects.drain()
     }
@@ -317,9 +317,13 @@ internal class LiveCollector(
      * Call from the state-commit path; only the suspend saver launch is deferred so
      * crossing a schedule boundary while callbacks drain cannot retarget the patch.
      */
-    private fun syncLiveRoom(feed: LiveFeedData) {
+    private fun syncLiveRoom(
+        feed: LiveFeedData,
+        today: LocalDate = dateProvider(),
+        now: LocalTime = clock(),
+    ) {
         val saver = liveRoomSaver ?: return
-        val patches = buildLiveDailyResultPatches(feed, dateProvider(), clock())
+        val patches = buildLiveDailyResultPatches(feed, today, now)
         if (patches.isEmpty()) return
 
         // Skip repeated 3-second observations when persisted facts did not
@@ -555,13 +559,15 @@ internal class LiveCollector(
         }
 
         val cycleComplete = synchronized(stateLock) {
+            val acceptedDate = dateProvider()
+            val acceptedTime = clock()
             val transition = LiveReferenceStateReducer.reduce(
                 state = referenceStateLocked(),
                 event = event,
                 retryWindowOpen = referenceRetryWindowOpen(
                     cycleDate,
-                    dateProvider(),
-                    clock(),
+                    acceptedDate,
+                    acceptedTime,
                 ),
             )
             if (!transition.accepted) return false
@@ -570,7 +576,7 @@ internal class LiveCollector(
 
             publishLocked()
             if (feed != null) {
-                syncLiveRoom(feed)
+                sideEffects.dispatch { syncLiveRoom(feed, acceptedDate, acceptedTime) }
             }
             transition.cycleComplete
         }
