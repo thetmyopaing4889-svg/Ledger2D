@@ -4,10 +4,10 @@ import java.util.ArrayDeque
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Serializes synchronous persistence/display side effects after the caller's state lock is released.
+ * Queues synchronous cache/display persistence callbacks raised by state commits.
  *
- * Dispatching while the state lock is held only enqueues work. The caller must call [drain]
- * after leaving that critical section. Actions are drained in enqueue order and never overlap.
+ * [dispatch] only queues work. The collector drains the queue after leaving its
+ * state-lock critical section. Effects run serially in enqueue order.
  */
 internal class LiveSideEffectQueue(
     private val stateLockHeldByCurrentThread: () -> Boolean,
@@ -20,32 +20,32 @@ internal class LiveSideEffectQueue(
         synchronized(queueLock) {
             pending.addLast(effect)
         }
-        drain()
     }
 
     fun drain() {
         if (stateLockHeldByCurrentThread()) return
+        if (!draining.compareAndSet(false, true)) return
 
-        while (draining.compareAndSet(false, true)) {
-            try {
-                while (true) {
-                    val next = synchronized(queueLock) {
-                        if (pending.isEmpty()) null else pending.removeFirst()
-                    } ?: break
+        try {
+            while (!stateLockHeldByCurrentThread()) {
+                val next = synchronized(queueLock) {
+                    if (pending.isEmpty()) null else pending.removeFirst()
+                } ?: break
 
-                    // A persistence callback must not prevent later committed effects from running.
-                    try {
-                        next()
-                    } catch (_: Exception) {
-                        // Callers keep their existing best-effort persistence contract.
-                    }
+                // Retain best-effort persistence semantics without losing later effects.
+                try {
+                    next()
+                } catch (_: Exception) {
+                    // Continue draining effects already committed in sequence.
                 }
-            } finally {
-                draining.set(false)
             }
+        } finally {
+            draining.set(false)
+        }
 
-            val hasPending = synchronized(queueLock) { pending.isNotEmpty() }
-            if (!hasPending || stateLockHeldByCurrentThread()) return
+        // Close the enqueue-after-empty / before-drain-release race.
+        if (!stateLockHeldByCurrentThread() && synchronized(queueLock) { pending.isNotEmpty() }) {
+            drain()
         }
     }
 }
