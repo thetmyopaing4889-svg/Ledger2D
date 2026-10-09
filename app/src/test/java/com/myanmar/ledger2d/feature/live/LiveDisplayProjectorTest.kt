@@ -70,6 +70,69 @@ class LiveDisplayProjectorTest {
     )
 
     @Test
+    fun pending_feed_without_source_uses_today_and_only_pending_values() {
+        val projected = projectPendingDisplayFeed(
+            sourceFeed = null,
+            scheduleTime = LocalTime.of(9, 30),
+            today = monday,
+        )
+
+        assertNotNull(projected)
+        assertEquals(monday.toString(), projected!!.date)
+        assertEquals("09:30", projected.currentTime)
+        assertEquals(LIVE_PENDING, projected.live)
+        assertEquals(LIVE_PENDING, projected.liveSet)
+        assertEquals(LIVE_PENDING, projected.liveVal)
+        assertEquals(LIVE_PENDING, projected.morning.result)
+        assertEquals(LIVE_PENDING, projected.evening.result)
+        assertEquals(LIVE_PENDING, projected.modern930)
+        assertEquals(LIVE_PENDING, projected.internet930)
+        assertEquals(LIVE_PENDING, projected.modern200)
+        assertEquals(LIVE_PENDING, projected.internet200)
+        assertEquals("LUKE", projected.sourceTag)
+    }
+
+    @Test
+    fun pending_feed_relabels_previous_day_source_without_mutating_it() {
+        val previousDay = feed(date = monday.minusDays(1))
+        val projected = projectPendingDisplayFeed(
+            sourceFeed = previousDay,
+            scheduleTime = LocalTime.of(11, 30),
+            today = monday,
+        )
+
+        assertNotNull(projected)
+        assertEquals(monday.toString(), projected!!.date)
+        assertEquals("11:30", projected.currentTime)
+        assertEquals(LIVE_PENDING, projected.live)
+        assertEquals(LIVE_PENDING, projected.morning.result)
+        assertEquals(LIVE_PENDING, projected.evening.result)
+        assertEquals("98", projected.modern930)
+        assertEquals(monday.minusDays(1).toString(), previousDay.date)
+        assertEquals("77", previousDay.morning.result)
+    }
+
+    @Test
+    fun pending_feed_is_not_projected_outside_windows_or_on_weekends() {
+        assertEquals(
+            null,
+            projectPendingDisplayFeed(
+                sourceFeed = null,
+                scheduleTime = LocalTime.of(12, 45),
+                today = monday,
+            ),
+        )
+        assertEquals(
+            null,
+            projectPendingDisplayFeed(
+                sourceFeed = null,
+                scheduleTime = LocalTime.of(10, 0),
+                today = monday.plusDays(5),
+            ),
+        )
+    }
+
+    @Test
     fun successful_reference_feed_projects_current_values_and_pending_session_cards() {
         val rawFeed = feed()
         val projected = projectReferenceFeed(
