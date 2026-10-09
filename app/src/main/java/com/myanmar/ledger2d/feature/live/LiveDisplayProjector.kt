@@ -37,6 +37,23 @@ internal fun isDisplayableFeedForSchedule(
     }
 }
 
+/**
+ * Apply the LIVE-only Closed Day hold rule before normal schedule display eligibility.
+ * A held feed must belong to the previous working day; otherwise normal cycle eligibility applies.
+ */
+internal fun isLiveFeedDisplayableForSchedule(
+    feed: LiveFeedData,
+    scheduleTime: LocalTime,
+    today: LocalDate,
+    liveClosedDayDate: LocalDate?,
+): Boolean {
+    if (liveClosedDayDate != null) {
+        val feedDate = canonicalDate(feed.date) ?: return false
+        return feedDate == previousWorkingDay(liveClosedDayDate)
+    }
+    return isDisplayableFeedForSchedule(feed, scheduleTime, today)
+}
+
 internal fun resolveLiveState(
     p: SourceObservation?,
     s: SourceObservation?,
