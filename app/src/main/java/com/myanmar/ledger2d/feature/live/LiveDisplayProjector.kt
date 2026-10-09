@@ -249,3 +249,18 @@ internal fun resolveLiveState(
         }
     }
 }
+/** Build the screen-facing state from an already-resolved display result. */
+internal fun projectLiveUiState(
+    resolution: LiveResolution,
+    closedDay: Boolean,
+): LiveUiState.Data = LiveUiState.Data(
+    feed = resolution.displayFeed,
+    hero = resolution.hero,
+    heroLive = resolution.heroLive,
+    stale = false,
+    secondaryFeed = null,
+    sourceMessage = "",
+    status = resolution.status,
+    staleAgeMs = resolution.staleAgeMs,
+    closedDay = closedDay,
+)
