@@ -55,8 +55,8 @@ internal class LiveRequestCoordinator(
                 LiveRequestResultEvent(
                     sequence = sequence,
                     feed = feed,
-                    requestStartedElapsedMs = startedAt,
-                    requestFinishedElapsedMs = finishedAt,
+                    requestStartedAtElapsedMs = startedAt,
+                    requestFinishedAtElapsedMs = finishedAt,
                 )
             )
         }
