@@ -222,14 +222,15 @@ This section records work completed after the design record above; it does not c
 
 ### Verification and current readiness
 
-- Last confirmed successful full CI run is build #500 on the prior UI-state mapping extraction: [run 37915036515](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37915036515).
-- Later projection extractions and their new regression tests are present on this branch, but their CI result has not yet been verified in this checkpoint. Do not treat the branch as merge-ready until a full CI pass is observed and the final diff is reviewed.
-- The draft review is [PR #27](https://github.com/thetmyopaing4889-svg/Ledger2D/pull/27), targeting `fix/403-live-integration-root-cause-20261007`, the branch whose tip is the exact #492 baseline. This is deliberate: current `main` has diverged from that baseline. Keep the PR draft and do not merge it as part of the refactor work.
-- `.github/workflows/android.yml` has temporary trigger-only edits on this working branch to attempt branch CI. Restore those workflow trigger edits before final handoff, unless a separate approved CI design replaces them. The workflow on `main` and the base branch has not been changed by this refactor.
+- The latest verified app-source commit is `020986ba45d47f8e644dcbbb7f69305ebd7ee3a1`. PR CI run [#564](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37918339223) succeeded: `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and `assembleRelease` all completed successfully.
+- Earlier runs #493 and #494 failed compilation because the `DayOfWeek` import was removed while schedule code was extracted. The import was restored before later checks; subsequent full runs, including #564, succeeded.
+- The refactor remains based on exact baseline #492 (`62b26751d8c0fa72bb5db42fc08e3d985ec83a1e`) on the dedicated branch. The source diff consists of Daily Flow boundary moves, the matching focused tests, and this plan; Room schema/repositories/Keeper, betting/financial behavior, parser, reports and unrelated UI are not part of the PR diff.
+- A source-level parity check found the moved bodies of `resolveLiveState()`, `isDisplayableFeedForSchedule()`, `liveSessionForTime()`, `liveWindowAction()`, `dailyCycleDate()`, and `previousWorkingDay()` unchanged from the baseline. The LIVE result commit ordering and reference-result state-application order were also compared; the changes isolate policies/events/projections without changing those state-effect sequences.
+- The temporary trigger-only edit to `.github/workflows/android.yml` has now been reverted to the baseline version on this working branch. This removes CI plumbing from the actual refactor diff. The successful CI run above validates the identical application source; the final housekeeping changes are limited to workflow cleanup and progress documentation.
+- Draft PR [#27](https://github.com/thetmyopaing4889-svg/Ledger2D/pull/27) remains unmerged and targets `fix/403-live-integration-root-cause-20261007`, the branch at the exact #492 baseline. This is deliberate because `main` has diverged. All writes in this work have targeted the dedicated refactor branch; `main` was not a write target.
 
-### Current remaining work
+### Remaining work
 
-1. Obtain and inspect CI for the latest source changes; fix any actual failures before proceeding.
-2. Continue only low-risk extractions with tests and preserve the exact request/retry/state/cache/Room callback ordering.
-3. Review the complete PR diff against #492 and confirm no excluded subsystems are touched.
-4. Revert temporary workflow trigger edits on this branch, verify the final diff/base, and keep the PR unmerged until all completion criteria in section 9 are met.
+1. Complete a final line-by-line review of the entire PR diff, especially the reference-cycle/state integration and the API/model extraction, and re-check that no excluded subsystem has entered the diff.
+2. Confirm the post-cleanup PR file list and base/head relationship. CI was green for the exact application-source revision before the final workflow/docs housekeeping; the restored baseline workflow no longer auto-triggers on this refactor branch or this PR's base, so a new run on the housekeeping-only head is not automatic.
+3. Do not merge or mark the PR ready for review until the final diff review is complete. Avoid additional source refactors unless a specific responsibility duplication is identified and can be changed with targeted regression coverage.
