@@ -1042,75 +1042,51 @@ internal class LiveCollector(
             return true
         }
 
-        synchronized(stateLock) {
-            if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return false
+        val cycleComplete = synchronized(stateLock) {
+            val transition = LiveReferenceStateReducer.reduce(
+                state = LiveReferenceState(
+                    reference930 = reference930,
+                    reference930Date = reference930Date,
+                    reference200 = reference200,
+                    reference200Date = reference200Date,
+                    reference930PendingDate = reference930PendingDate,
+                    reference200PendingDate = reference200PendingDate,
+                    reference930CompleteDate = reference930CompleteDate,
+                    reference200CompleteDate = reference200CompleteDate,
+                    referenceResetDate = referenceResetDate,
+                    referenceFeed = referenceFeed,
+                    referenceFeedDate = referenceFeedDate,
+                ),
+                event = event,
+                retryWindowOpen = referenceRetryWindowOpen(
+                    cycleDate,
+                    dateProvider(),
+                    clock(),
+                ),
+            )
+            if (!transition.accepted) return false
 
-            if (isMorning) {
-                val valid =
-                    feed != null &&
-                        isCurrentCycleReferenceObservation(feed, cycleDate) &&
-                        validReferencePair(
-                            feed,
-                            feed.modern930,
-                            feed.internet930,
-                        )
-
-                if (valid) {
-                    reference930 =
-                        feed!!.modern930 to feed.internet930
-                    reference930Date = cycleDate
-                    reference930PendingDate = null
-                    reference930CompleteDate = cycleDate
-                    referenceResetDate = cycleDate
-                    referenceFeed = feed
-                    referenceFeedDate = cycleDate
-                } else if (reference930CompleteDate != cycleDate) {
-                    // A failed/stale dedicated retry must never regress a
-                    // reference that was already accepted from another valid
-                    // Luke observation.
-                    reference930 = null
-                    reference930Date = null
-                    reference930PendingDate = cycleDate
-                }
-            } else {
-                val valid =
-                    feed != null &&
-                        isCurrentCycleReferenceObservation(feed, cycleDate) &&
-                        validReferencePair(
-                            feed,
-                            feed.modern200,
-                            feed.internet200,
-                        )
-
-                if (valid) {
-                    reference200 =
-                        feed!!.modern200 to feed.internet200
-                    reference200Date = cycleDate
-                    reference200PendingDate = null
-                    reference200CompleteDate = cycleDate
-                    referenceFeed = feed
-                    referenceFeedDate = cycleDate
-                } else if (reference200CompleteDate != cycleDate) {
-                    // A failed/stale dedicated retry must never regress a
-                    // reference that was already accepted from another valid
-                    // Luke observation.
-                    reference200 = null
-                    reference200Date = cycleDate
-                    reference200PendingDate = cycleDate
-                }
-            }
+            val next = transition.state
+            reference930 = next.reference930
+            reference930Date = next.reference930Date
+            reference200 = next.reference200
+            reference200Date = next.reference200Date
+            reference930PendingDate = next.reference930PendingDate
+            reference200PendingDate = next.reference200PendingDate
+            reference930CompleteDate = next.reference930CompleteDate
+            reference200CompleteDate = next.reference200CompleteDate
+            referenceResetDate = next.referenceResetDate
+            referenceFeed = next.referenceFeed
+            referenceFeedDate = next.referenceFeedDate
 
             publishLocked()
             if (feed != null) {
                 syncLiveRoom(feed)
             }
+            transition.cycleComplete
         }
 
-        return if (isMorning) {
-            reference930CompleteDate == cycleDate
-        } else {
-            reference200CompleteDate == cycleDate
-        }
+        return cycleComplete
     }
     private fun maybeReferenceFetch(t: LocalTime) {
         val today = dateProvider()
