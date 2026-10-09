@@ -638,7 +638,7 @@ internal class LiveCollector(
             val startedAt = monotonicMs()
             primary = SourceObservation(cachedFeed, startedAt, startedAt, 0L)
             if (hasValidLive(cachedFeed, today)) {
-                primaryLiveSession = inferLiveSessionFromSourceTime(cachedFeed)
+                primaryLiveSession = LiveStateReducer.inferLiveSessionFromSourceTime(cachedFeed)
             }
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
@@ -757,13 +757,14 @@ internal class LiveCollector(
             // reference fields from the accepted snapshot immediately.
             promoteCurrentCycleReferencesLocked(feed, today, scheduleTime)
 
-            val protectedFinals = protectFinalSessions(previous, feed)
-            val protected = preserveActiveLive(
+            val reduction = LiveStateReducer.reduceAcceptedLiveSnapshot(
                 previous = previous,
-                incoming = protectedFinals,
-                scheduleTime = scheduleTime,
+                incoming = feed,
                 scheduleDate = today,
+                scheduleTime = scheduleTime,
+                previousPrimaryLiveSession = primaryLiveSession,
             )
+            val protected = reduction.feed
             latestAppliedSequence.set(sequence)
             primary = SourceObservation(
                 protected,
@@ -772,12 +773,7 @@ internal class LiveCollector(
                 finishedAt - startedAt,
             )
 
-            val activeSession = liveSessionForTime(scheduleTime)
-            primaryLiveSession = when {
-                activeSession != null && hasValidLive(protected, today) -> activeSession
-                activeSession != null -> null
-                else -> primaryLiveSession
-            }
+            primaryLiveSession = reduction.primaryLiveSession
 
             // Keep the latest completed result from the previous day in
             // memory as a hero fallback when today's Luke feed arrives
@@ -796,42 +792,6 @@ internal class LiveCollector(
             syncLiveRoom(protected)
         }
     }
-    private fun preserveActiveLive(
-        previous: LiveFeedData?,
-        incoming: LiveFeedData,
-        scheduleTime: LocalTime,
-        scheduleDate: LocalDate,
-    ): LiveFeedData {
-        val activeSession = liveSessionForTime(scheduleTime) ?: return incoming
-        if (primaryLiveSession != activeSession || !hasValidLive(previous, scheduleDate)) {
-            return incoming
-        }
-        if (hasValidLive(incoming, scheduleDate)) {
-            return incoming
-        }
-
-        return incoming.copy(
-            live = previous!!.live,
-            liveSet = previous.liveSet,
-            liveVal = previous.liveVal,
-        )
-    }
-
-    private fun inferLiveSessionFromSourceTime(feed: LiveFeedData): LiveSession? {
-        val sourceTime = parseDecisionInstant(feed)
-            ?.atZone(YANGON)
-            ?.toLocalTime()
-            ?: return null
-
-        return when {
-            sourceTime >= MORNING_LIVE && sourceTime < MORNING_CATCHUP_END ->
-                LiveSession.MORNING
-            sourceTime >= EVENING_LIVE && sourceTime < EVENING_CATCHUP_END ->
-                LiveSession.EVENING
-            else -> null
-        }
-    }
-
     private fun captureHeldFinalLocked(feed: LiveFeedData) {
         val final = latestFinalFor(feed) ?: return
         val finalDate = canonicalDate(final.date) ?: return
@@ -896,29 +856,6 @@ internal class LiveCollector(
                 }
             }
         }
-    }
-
-    private fun protectFinalSessions(
-        previous: LiveFeedData?,
-        incoming: LiveFeedData,
-    ): LiveFeedData {
-        val today = dateProvider()
-        if (previous == null || !currentDay(previous, today) || !currentDay(incoming, today)) {
-            return incoming
-        }
-
-        return incoming.copy(
-            morning = if (previous.morning.finalized && !incoming.morning.finalized) {
-                previous.morning
-            } else {
-                incoming.morning
-            },
-            evening = if (previous.evening.finalized && !incoming.evening.finalized) {
-                previous.evening
-            } else {
-                incoming.evening
-            },
-        )
     }
 
     private fun isUsableLukeSnapshot(feed: LiveFeedData): Boolean {
