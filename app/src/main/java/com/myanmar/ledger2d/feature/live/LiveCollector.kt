@@ -623,14 +623,12 @@ internal class LiveCollector(
         feed: LiveFeedData,
         scheduleTime: LocalTime,
         today: LocalDate,
-    ): Boolean {
-        val holdDate = closedHoldDate(today, scheduleTime)
-        if (holdDate != null) {
-            val feedDate = canonicalDate(feed.date) ?: return false
-            return feedDate == previousWorkingDay(holdDate)
-        }
-        return isDisplayableFeedForSchedule(feed, scheduleTime, today)
-    }
+    ): Boolean = isLiveFeedDisplayableForSchedule(
+        feed = feed,
+        scheduleTime = scheduleTime,
+        today = today,
+        liveClosedDayDate = closedHoldDate(today, scheduleTime),
+    )
 
     init {
         val scheduleTime = clock()
