@@ -16,6 +16,13 @@ internal data class LiveStateReduction(
     val primaryLiveSession: LiveSession?,
 )
 
+
+internal data class LiveStartupRecoveryReduction(
+    val primary: SourceObservation?,
+    val lastFinal: LiveHeroSnapshot?,
+    val references: LiveReferenceState,
+)
+
 internal data class LiveClosedDayReduction(
     val closedDayDate: LocalDate,
     val primary: SourceObservation?,
@@ -58,6 +65,66 @@ internal object LiveStateReducer {
      * Decide the state changes for a Luke-confirmed Closed Day before the
      * collector commits them and runs its existing persistence/UI effects.
      */
+
+    /**
+     * Resolve only the in-memory state transition for a completed cold-start
+     * recovery. Fetching history stays in LiveCollector; this method performs
+     * no I/O, cache writes, Room writes, or UI publication.
+     */
+    fun reduceStartupRecovery(
+        today: LocalDate,
+        scheduleTime: LocalTime,
+        cycleDate: LocalDate,
+        recoveredFeed: LiveFeedData?,
+        currentFinal: LiveHeroSnapshot?,
+        fallbackFinal: LiveHeroSnapshot?,
+        previousPrimary: SourceObservation?,
+        previousLastFinal: LiveHeroSnapshot?,
+        references: LiveReferenceState,
+        elapsedRealtimeMs: Long,
+    ): LiveStartupRecoveryReduction {
+        var nextLastFinal = currentFinal ?: fallbackFinal ?: previousLastFinal
+        var nextPrimary = previousPrimary
+        var nextReferences = references
+
+        if (recoveredFeed != null) {
+            nextPrimary = SourceObservation(
+                feed = recoveredFeed,
+                fetchedAtElapsedMs = elapsedRealtimeMs,
+                requestStartedElapsedMs = elapsedRealtimeMs,
+                roundTripMs = 0L,
+            )
+
+            val recoveredDate = canonicalDate(recoveredFeed.date)
+            val completedHeldCycle =
+                recoveredDate == cycleDate &&
+                    (cycleDate != today || !scheduleTime.isBefore(EVENING_CLOSE))
+
+            if (completedHeldCycle) {
+                nextReferences = LiveReferenceStateReducer.restoreCompletedHeldCycle(
+                    state = nextReferences,
+                    feed = recoveredFeed,
+                    cycleDate = cycleDate,
+                )
+            }
+
+            latestFinalFor(recoveredFeed)?.let { historicalFinal ->
+                if (
+                    currentFinal == null &&
+                    canonicalDate(historicalFinal.date) == recoveredDate
+                ) {
+                    nextLastFinal = historicalFinal
+                }
+            }
+        }
+
+        return LiveStartupRecoveryReduction(
+            primary = nextPrimary,
+            lastFinal = nextLastFinal,
+            references = nextReferences,
+        )
+    }
+
     fun reduceConfirmedClosedDay(
         cycleDate: LocalDate,
         heldFeed: LiveFeedData?,

@@ -1200,56 +1200,26 @@ internal class LiveCollector(
         val recoveredFeed = currentFeed ?: fallbackFeed
 
         synchronized(stateLock) {
-            // A current-cycle final has priority over the previous working
-            // day's hero. When the current cycle is still pending, keep the
-            // previous working-day final as the temporary hero hold.
-            when {
-                currentFinal != null -> lastFinal = currentFinal
-                fallbackFinal != null -> lastFinal = fallbackFinal
-            }
+            // The reducer preserves the original priority: a current-cycle
+            // final wins over fallback history; if the recovered row is a
+            // completed held cycle, its valid reference pairs may be restored.
+            val transition = LiveStateReducer.reduceStartupRecovery(
+                today = today,
+                scheduleTime = now,
+                cycleDate = cycleDate,
+                recoveredFeed = recoveredFeed,
+                currentFinal = currentFinal,
+                fallbackFinal = fallbackFinal,
+                previousPrimary = primary,
+                previousLastFinal = lastFinal,
+                references = referenceStateLocked(),
+                elapsedRealtimeMs = monotonicMs(),
+            )
 
+            lastFinal = transition.lastFinal
             if (recoveredFeed != null) {
-                val projected = recoveredFeed
-                val startedAt = monotonicMs()
-                primary = SourceObservation(projected, startedAt, startedAt, 0L)
-
-                // Historical data may fully reconstruct a completed held day:
-                // - any pre-09:30 start (cycleDate is already the held day), or
-                // - a same-day cold start after the evening final.
-                //
-                // Do not seed a working day's references during the active
-                // 09:30/14:00 retry windows. Those slots must still be fetched
-                // from Luke for the current cycle. Once the day is complete,
-                // its historical row is an authoritative display baseline.
-                val recoveredDate = canonicalDate(projected.date)
-                val completedHeldCycle =
-                    recoveredDate == cycleDate &&
-                        (
-                            cycleDate != today ||
-                                !now.isBefore(EVENING_CLOSE)
-                            )
-
-                if (completedHeldCycle) {
-                    applyReferenceStateLocked(
-                        LiveReferenceStateReducer.restoreCompletedHeldCycle(
-                            state = referenceStateLocked(),
-                            feed = projected,
-                            cycleDate = cycleDate,
-                        )
-                    )
-                }
-
-                latestFinalFor(projected)?.let { historicalFinal ->
-                    if (
-                        currentFinal == null &&
-                        canonicalDate(historicalFinal.date) == recoveredDate
-                    ) {
-                        lastFinal = historicalFinal
-                    }
-                }
-
-                publishLocked()
-                return
+                primary = transition.primary
+                applyReferenceStateLocked(transition.references)
             }
 
             publishLocked()

@@ -232,4 +232,184 @@ class LiveStateReducerTest {
 
         assertEquals(previousFinal, reduced.lastFinal)
     }
+
+    @Test
+    fun startup_recovery_restores_references_only_for_a_completed_held_cycle() {
+        val heldDate = today.minusDays(1)
+        val heldFeed = feed(
+            time = "16:30:00",
+            morning = session("47"),
+            evening = session("62"),
+        ).copy(
+            date = heldDate.toString(),
+            modern930 = "12",
+            internet930 = "34",
+            modern200 = "56",
+            internet200 = "78",
+        )
+        val initialRefs = LiveReferenceState(
+            reference930 = null,
+            reference930Date = null,
+            reference200 = null,
+            reference200Date = null,
+            reference930PendingDate = today,
+            reference200PendingDate = today,
+            reference930CompleteDate = null,
+            reference200CompleteDate = null,
+            referenceResetDate = null,
+            referenceFeed = null,
+            referenceFeedDate = null,
+        )
+
+        val held = LiveStateReducer.reduceStartupRecovery(
+            today = today,
+            scheduleTime = LocalTime.of(8, 30),
+            cycleDate = heldDate,
+            recoveredFeed = heldFeed,
+            currentFinal = null,
+            fallbackFinal = null,
+            previousPrimary = null,
+            previousLastFinal = null,
+            references = initialRefs,
+            elapsedRealtimeMs = 1000L,
+        )
+        assertEquals("12" to "34", held.references.reference930)
+        assertEquals("56" to "78", held.references.reference200)
+        assertEquals(heldFeed, held.primary?.feed)
+
+        val currentCycle = LiveStateReducer.reduceStartupRecovery(
+            today = today,
+            scheduleTime = LocalTime.of(14, 0),
+            cycleDate = today,
+            recoveredFeed = feed(
+                time = "14:00:00",
+                modern930 = "12",
+                internet930 = "34",
+                modern200 = "56",
+                internet200 = "78",
+            ),
+            currentFinal = null,
+            fallbackFinal = null,
+            previousPrimary = null,
+            previousLastFinal = null,
+            references = initialRefs,
+            elapsedRealtimeMs = 2000L,
+        )
+        assertEquals(initialRefs, currentCycle.references)
+    }
+
+    @Test
+    fun startup_recovery_keeps_current_cycle_final_ahead_of_historical_held_final() {
+        val currentFinal = LiveHeroSnapshot(
+            "47", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString()
+        )
+        val fallbackFinal = LiveHeroSnapshot(
+            "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.minusDays(1).toString()
+        )
+        val recoveredHeld = feed(
+            time = "16:30:00",
+            evening = session("62"),
+        ).copy(date = today.minusDays(1).toString())
+
+        val result = LiveStateReducer.reduceStartupRecovery(
+            today = today,
+            scheduleTime = LocalTime.of(8, 30),
+            cycleDate = today.minusDays(1),
+            recoveredFeed = recoveredHeld,
+            currentFinal = currentFinal,
+            fallbackFinal = fallbackFinal,
+            previousPrimary = null,
+            previousLastFinal = null,
+            references = LiveReferenceState(
+                reference930 = null,
+                reference930Date = null,
+                reference200 = null,
+                reference200Date = null,
+                reference930PendingDate = null,
+                reference200PendingDate = null,
+                reference930CompleteDate = null,
+                reference200CompleteDate = null,
+                referenceResetDate = null,
+                referenceFeed = null,
+                referenceFeedDate = null,
+            ),
+            elapsedRealtimeMs = 3000L,
+        )
+
+        assertEquals(currentFinal, result.lastFinal)
+    }
+
+    @Test
+    fun startup_recovery_uses_recovered_final_when_no_current_final_exists() {
+        val recovered = feed(
+            time = "16:30:00",
+            evening = session("62"),
+        ).copy(date = today.minusDays(1).toString())
+        val fallbackFinal = LiveHeroSnapshot(
+            "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.minusDays(1).toString()
+        )
+        val result = LiveStateReducer.reduceStartupRecovery(
+            today = today,
+            scheduleTime = LocalTime.of(8, 30),
+            cycleDate = today.minusDays(1),
+            recoveredFeed = recovered,
+            currentFinal = null,
+            fallbackFinal = fallbackFinal,
+            previousPrimary = null,
+            previousLastFinal = null,
+            references = LiveReferenceState(
+                reference930 = null,
+                reference930Date = null,
+                reference200 = null,
+                reference200Date = null,
+                reference930PendingDate = null,
+                reference200PendingDate = null,
+                reference930CompleteDate = null,
+                reference200CompleteDate = null,
+                referenceResetDate = null,
+                referenceFeed = null,
+                referenceFeedDate = null,
+            ),
+            elapsedRealtimeMs = 4000L,
+        )
+
+        assertEquals("62", result.lastFinal?.result)
+    }
+
+    @Test
+    fun startup_recovery_without_feed_preserves_existing_primary_and_hero() {
+        val currentFeed = feed(time = "09:29:00")
+        val primary = SourceObservation(currentFeed, 100L, 100L, 0L)
+        val hero = LiveHeroSnapshot("35", "1200", "19000", LIVE_SESSION_MORNING_LABEL, today.toString())
+        val references = LiveReferenceState(
+            reference930 = null,
+            reference930Date = null,
+            reference200 = null,
+            reference200Date = null,
+            reference930PendingDate = today,
+            reference200PendingDate = today,
+            reference930CompleteDate = null,
+            reference200CompleteDate = null,
+            referenceResetDate = null,
+            referenceFeed = null,
+            referenceFeedDate = null,
+        )
+
+        val reduced = LiveStateReducer.reduceStartupRecovery(
+            today = today,
+            scheduleTime = LocalTime.of(9, 29),
+            cycleDate = today.minusDays(1),
+            recoveredFeed = null,
+            currentFinal = null,
+            fallbackFinal = null,
+            previousPrimary = primary,
+            previousLastFinal = hero,
+            references = references,
+            elapsedRealtimeMs = 5000L,
+        )
+
+        assertEquals(primary, reduced.primary)
+        assertEquals(hero, reduced.lastFinal)
+        assertEquals(references, reduced.references)
+    }
 }
