@@ -3,7 +3,7 @@ on:
   push:
     branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan]
   pull_request:
-    branches: [main]
+    branches: [main, fix/403-live-integration-root-cause-20261007]
   workflow_dispatch:
 permissions:
   contents: read
