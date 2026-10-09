@@ -571,32 +571,16 @@ internal class LiveCollector(
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
 
-    private fun nextWorkingDayAfter(date: LocalDate): LocalDate {
-        var next = date.plusDays(1)
-        while (!isWorkingDay(next)) next = next.plusDays(1)
-        return next
-    }
-
     /**
-     * Luke-confirmed closed days behave like weekends for Live display only.
-     * The previous working-day hold spans intervening weekend dates until the
-     * next working day's 09:30 boundary.
+     * Read the stored LIVE-only Closed Day date and resolve its display hold.
+     * The date/time rule itself is pure and owned by LiveSchedulePolicy.
      */
-    private fun closedHoldDate(today: LocalDate, now: LocalTime): LocalDate? {
-        val closed = closedDayDate ?: return null
-        if (closed == today) return closed
-
-        if (today.isAfter(closed)) {
-            val nextWorking = nextWorkingDayAfter(closed)
-            if (
-                today.isBefore(nextWorking) ||
-                (today == nextWorking && now.isBefore(MORNING_REFERENCE))
-            ) {
-                return closed
-            }
-        }
-        return null
-    }
+    private fun closedHoldDate(today: LocalDate, now: LocalTime): LocalDate? =
+        liveClosedDayHoldDate(
+            closedDate = closedDayDate,
+            today = today,
+            now = now,
+        )
 
     private fun clearExpiredClosedDayBeforeMorningBoundary(
         today: LocalDate,
