@@ -75,3 +75,31 @@ internal fun dailyCycleDate(
         time.isBefore(MORNING_REFERENCE) -> previousWorkingDay(date)
         else -> date
     }
+
+/**
+ * Pure Daily Flow polling decision. The collector supplies the current
+ * working-day/Closed Day context and the most recent accepted final state.
+ *
+ * Keep the LIVE windows and finalization catch-up windows distinct:
+ * polling in the main LIVE window is unconditional, while catch-up polling
+ * stops once that session's final result is confirmed.
+ */
+internal fun shouldPollLiveAt(
+    t: LocalTime,
+    isWorkingDay: Boolean,
+    hasClosedHold: Boolean,
+    morningFinalized: Boolean?,
+    eveningFinalized: Boolean?,
+): Boolean {
+    if (!isWorkingDay || hasClosedHold) return false
+
+    return when {
+        t >= MORNING_LIVE && t < MORNING_CLOSE -> true
+        t >= MORNING_CLOSE && t < MORNING_CATCHUP_END ->
+            morningFinalized != true
+        t >= EVENING_LIVE && t < EVENING_CLOSE -> true
+        t >= EVENING_CLOSE && t < EVENING_CATCHUP_END ->
+            eveningFinalized != true
+        else -> false
+    }
+}

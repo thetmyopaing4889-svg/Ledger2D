@@ -1404,22 +1404,26 @@ internal class LiveCollector(
 
     private fun shouldPoll(t: LocalTime): Boolean {
         val today = dateProvider()
-        if (closedHoldDate(today, t) != null) return false
-        if (!isWorkingDay(today)) return false
+        val hasClosedHold = closedHoldDate(today, t) != null
+        val isWorkingDayToday = isWorkingDay(today)
 
-        val f = synchronized(stateLock) {
-            primary?.feed?.takeIf { currentDay(it, today) }
+        // Preserve the previous short-circuit: don't inspect feed state when
+        // the market is closed or the current day is a weekend.
+        val f = if (hasClosedHold || !isWorkingDayToday) {
+            null
+        } else {
+            synchronized(stateLock) {
+                primary?.feed?.takeIf { currentDay(it, today) }
+            }
         }
 
-        return when {
-            t >= MORNING_LIVE && t < MORNING_CLOSE -> true
-            t >= MORNING_CLOSE && t < MORNING_CATCHUP_END ->
-                f?.morning?.finalized != true
-            t >= EVENING_LIVE && t < EVENING_CLOSE -> true
-            t >= EVENING_CLOSE && t < EVENING_CATCHUP_END ->
-                f?.evening?.finalized != true
-            else -> false
-        }
+        return shouldPollLiveAt(
+            t = t,
+            isWorkingDay = isWorkingDayToday,
+            hasClosedHold = hasClosedHold,
+            morningFinalized = f?.morning?.finalized,
+            eveningFinalized = f?.evening?.finalized,
+        )
     }
 
     private suspend fun recoverPreviousWorkingDayFinal() {
