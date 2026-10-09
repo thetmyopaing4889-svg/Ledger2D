@@ -48,7 +48,7 @@ internal fun isValidLive2d(v: String): Boolean =
 internal fun validMoney(v: String): Boolean =
     v.isNotBlank() && v != LIVE_PENDING
 
-private fun currentDay(
+internal fun currentDay(
     f: LiveFeedData,
     date: LocalDate = currentYangonDate(),
 ): Boolean =
