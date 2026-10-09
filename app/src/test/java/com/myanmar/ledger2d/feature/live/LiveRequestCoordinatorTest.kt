@@ -79,7 +79,7 @@ class LiveRequestCoordinatorTest {
     fun morning_and_afternoon_reference_retries_run_independently() = runTest {
         val attempts = mutableListOf<Boolean>()
         val requestCoordinator = coordinator(
-            scope = this,
+            scope = backgroundScope,
             fetcher = { null },
             onLiveResult = {},
             fetchReferencePair = { isMorning, _ ->
