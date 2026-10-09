@@ -372,7 +372,7 @@ internal fun projectReferenceFeed(
         (
             t.isBefore(MORNING_CLOSE) ||
                 !isDisplayFeedForDay(out, today)
-        )
+            )
     ) {
         // 11:30 is a display reset only; the raw provider feed remains unchanged.
         out = out.copy(
