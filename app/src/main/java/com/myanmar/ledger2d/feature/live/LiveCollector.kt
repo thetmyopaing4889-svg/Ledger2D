@@ -238,6 +238,7 @@ internal class LiveCollector(
                 _state.value = LiveUiState.Data(null, cached, false, false)
             }
         }
+        sideEffects.drain()
     }
 
     fun fetchCycle() {
@@ -313,9 +314,9 @@ internal class LiveCollector(
         sideEffects.drain()
     }
     /**
-     * Build the Room patch synchronously at the accepted observation's app-clock time.
-     * Call from the state-commit path; only the suspend saver launch is deferred so
-     * crossing a schedule boundary while callbacks drain cannot retarget the patch.
+     * Build the Room patch synchronously after the accepted state commit, using the
+     * captured app-clock values from that transition. Only persistence launch is
+     * queued, so callback delays cannot retarget which daily row this observation writes.
      */
     private fun syncLiveRoom(
         feed: LiveFeedData,
