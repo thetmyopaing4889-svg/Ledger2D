@@ -103,3 +103,25 @@ internal fun shouldPollLiveAt(
         else -> false
     }
 }
+
+/**
+ * Pure eligibility policy for one of the independent 09:30 / 14:00 reference retry cycles.
+ * Closed Day state is supplied by the collector so this helper does not read or mutate it.
+ */
+internal fun isReferenceRetryWindowOpenAt(
+    cycleDate: LocalDate,
+    currentDate: LocalDate,
+    now: LocalTime,
+    hasClosedHold: Boolean,
+): Boolean {
+    if (hasClosedHold) return false
+    if (currentDate == cycleDate) {
+        // Friday's state becomes the weekend-held snapshot after the evening final.
+        return !(cycleDate.dayOfWeek == DayOfWeek.FRIDAY && !now.isBefore(EVENING_CLOSE))
+    }
+
+    val nextDate = cycleDate.plusDays(1)
+    return currentDate == nextDate &&
+        isWorkingDay(nextDate) &&
+        now.isBefore(MORNING_REFERENCE)
+}
