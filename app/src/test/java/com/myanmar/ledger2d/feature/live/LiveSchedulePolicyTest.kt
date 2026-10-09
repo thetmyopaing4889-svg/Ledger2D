@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.feature.live
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.LocalTime
 
 class LiveSchedulePolicyTest {
@@ -19,6 +20,50 @@ class LiveSchedulePolicyTest {
         morningFinalized = morningFinalized,
         eveningFinalized = eveningFinalized,
     )
+
+    @Test
+    fun reference_retry_window_stays_open_on_cycle_day_except_friday_after_evening_close() {
+        val friday = LocalDate.of(2026, 10, 2)
+        val monday = friday.plusDays(3)
+
+        assertTrue(isReferenceRetryWindowOpenAt(friday, friday, LocalTime.of(9, 30), false))
+        assertTrue(isReferenceRetryWindowOpenAt(friday, friday, LocalTime.of(16, 29, 59), false))
+        assertFalse(isReferenceRetryWindowOpenAt(friday, friday, LocalTime.of(16, 30), false))
+        assertTrue(isReferenceRetryWindowOpenAt(monday, monday, LocalTime.of(16, 45), false))
+    }
+
+    @Test
+    fun reference_retry_window_allows_only_next_working_day_before_0930() {
+        val monday = LocalDate.of(2026, 10, 5)
+        val tuesday = monday.plusDays(1)
+        val saturday = monday.plusDays(5)
+
+        assertTrue(isReferenceRetryWindowOpenAt(monday, tuesday, LocalTime.of(9, 29, 59), false))
+        assertFalse(isReferenceRetryWindowOpenAt(monday, tuesday, LocalTime.of(9, 30), false))
+        assertFalse(isReferenceRetryWindowOpenAt(monday, saturday, LocalTime.of(9, 0), false))
+        assertFalse(isReferenceRetryWindowOpenAt(monday, monday.plusDays(2), LocalTime.of(9, 0), false))
+    }
+
+    @Test
+    fun closed_day_hold_disables_reference_retries() {
+        val monday = LocalDate.of(2026, 10, 5)
+        assertFalse(
+            isReferenceRetryWindowOpenAt(
+                cycleDate = monday,
+                currentDate = monday,
+                now = LocalTime.of(11, 45),
+                hasClosedHold = true,
+            ),
+        )
+        assertFalse(
+            isReferenceRetryWindowOpenAt(
+                cycleDate = monday,
+                currentDate = monday.plusDays(1),
+                now = LocalTime.of(8, 45),
+                hasClosedHold = true,
+            ),
+        )
+    }
 
     @Test
     fun morning_live_window_includes_1130_and_stops_before_1201() {
