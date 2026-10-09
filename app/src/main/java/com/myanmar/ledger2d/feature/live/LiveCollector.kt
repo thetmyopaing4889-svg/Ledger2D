@@ -119,11 +119,7 @@ internal class LiveCollector(
             referenceRetryWindowOpen(cycleDate, currentDate, now)
         },
         referenceComplete = { isMorning, cycleDate ->
-            if (isMorning) {
-                reference930CompleteDate == cycleDate
-            } else {
-                reference200CompleteDate == cycleDate
-            }
+            isReferenceComplete(isMorning, cycleDate)
         },
         fetchReferencePair = { isMorning, cycleDate ->
             fetchReferencePair(isMorning, cycleDate)
@@ -136,17 +132,28 @@ internal class LiveCollector(
      * The date/time rule itself is pure and owned by LiveSchedulePolicy.
      */
     private fun closedHoldDate(today: LocalDate, now: LocalTime): LocalDate? =
-        liveClosedDayHoldDate(
-            closedDate = closedDayDate,
-            today = today,
-            now = now,
-        )
+        synchronized(stateLock) {
+            liveClosedDayHoldDate(
+                closedDate = closedDayDate,
+                today = today,
+                now = now,
+            )
+        }
+
+    private fun isReferenceComplete(isMorning: Boolean, cycleDate: LocalDate): Boolean =
+        synchronized(stateLock) {
+            if (isMorning) reference930CompleteDate == cycleDate
+            else reference200CompleteDate == cycleDate
+        }
+
+    private fun isMorningResetMarked(cycleDate: LocalDate): Boolean =
+        synchronized(stateLock) { referenceResetDate == cycleDate }
 
     private fun clearExpiredClosedDayBeforeMorningBoundary(
         today: LocalDate,
         now: LocalTime,
     ) {
-        val closed = closedDayDate ?: return
+        val closed = synchronized(stateLock) { closedDayDate } ?: return
         if (
             !now.isBefore(MORNING_REFERENCE) &&
             today == nextWorkingDayAfter(closed)
@@ -162,7 +169,7 @@ internal class LiveCollector(
     }
 
     private fun currentClosedDayForNotice(today: LocalDate): Boolean =
-        closedDayDate == today
+        synchronized(stateLock) { closedDayDate == today }
 
     private fun isLiveDisplayableFeed(
         feed: LiveFeedData,
@@ -571,7 +578,7 @@ internal class LiveCollector(
 
         val referenceRetryOpen = referenceRetryWindowOpen(cycleDate, today, t)
 
-        if (referenceRetryOpen && t >= MORNING_REFERENCE && reference930CompleteDate != cycleDate) {
+        if (referenceRetryOpen && t >= MORNING_REFERENCE && !isReferenceComplete(true, cycleDate)) {
             synchronized(stateLock) {
                 applyReferenceStateLocked(
                     LiveReferenceStateReducer.beginWorkingDayCycle(
@@ -583,7 +590,7 @@ internal class LiveCollector(
             }
             sideEffects.drain()
 
-            if (reference930CompleteDate != cycleDate) {
+            if (!isReferenceComplete(true, cycleDate)) {
                 requestCoordinator.startMorningReferenceCycle()
             }
         }
@@ -591,7 +598,7 @@ internal class LiveCollector(
         if (
             referenceRetryOpen &&
             t >= AFTERNOON_REFERENCE &&
-            reference200CompleteDate != cycleDate
+            !isReferenceComplete(false, cycleDate)
         ) {
             requestCoordinator.startAfternoonReferenceCycle()
         }
@@ -601,8 +608,8 @@ internal class LiveCollector(
         // provider snapshot and existing LIVE/final engine remain untouched.
         if (
             t >= MORNING_LIVE &&
-            reference930CompleteDate != cycleDate &&
-            referenceResetDate != cycleDate
+            !isReferenceComplete(true, cycleDate) &&
+            !isMorningResetMarked(cycleDate)
         ) {
             synchronized(stateLock) {
                 val current = referenceStateLocked()
