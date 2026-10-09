@@ -275,3 +275,33 @@ This checkpoint supersedes the earlier “13 files / implementation complete” 
 - Re-run the full test/lint/build workflow after any source change. Update this plan again with the concrete audit result; do not claim completion until the acceptance points have been checked.
 
 **Current state:** structural extractions and a full successful CI run are in place. The final behavior-parity audit remains open; do not treat the earlier “no source-code changes remain pending” sentence above as the current conclusion.
+
+
+---
+
+## 12. Follow-up correctness fixes — 2026-10-09
+
+This checkpoint supersedes earlier readiness statements. It records targeted fixes made after the Section 11 audit; it does not claim the final CI acceptance gate has passed on this exact source revision.
+
+### Changes made
+
+- Added `LiveSideEffectQueue.kt` so cache/display persistence callbacks from state transitions are queued and drained after the caller releases `stateLock`. The queue preserves enqueue order and continues draining if one synchronous callback fails.
+- Updated the LIVE commit path so cache-feed writes and Room patch preparation are deferred until after the state commit. The patch builder receives the app date/time captured for the accepted observation, preventing a delayed callback from retargeting an observation to a different daily row.
+- Applied the same captured-date/time approach to accepted reference observations. Startup cache/recovery publication drains queued effects after initialization/commit. Scheduler publication now uses the state lock consistently before draining effects.
+- Made suspend fetch/recovery wrappers rethrow `CancellationException` instead of converting cancellation into a normal failed result. Applied the same rule to normal LIVE fetches, reference fetches, historical recovery callbacks and the asynchronous Room saver. A cancelled Room save releases its deduplication signature before cancellation is rethrown.
+- Restored `.github/workflows/android.yml` to the existing base version; it is not intended to be part of the Daily Flow source diff.
+
+### Added focused tests
+
+- `LiveSideEffectQueueTest.kt`: verifies queued work does not execute while the current thread holds the state lock, executes in order after the lock is released, and one failed effect does not discard later queued effects.
+- `LiveCancellationPolicyTest.kt`: verifies cancellation is propagated instead of being interpreted as a nullable fetch failure.
+
+The existing `LiveCollectorTest.kt` suite continues to cover the main schedule, Fresh Install, Closed Day, reference retry, overlapping/out-of-order LIVE request, final-protection and Room patch scenarios.
+
+### Verification status for this checkpoint
+
+- The previously recorded Android CI run [#617](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37943734669) passed tests, lint, Debug assembly and Release assembly on the earlier application source revision `7ded085cb612da3bf4705ba13ffb5eab47158c2c`.
+- The fixes listed in this section are newer than that tested source. A completed CI result for the exact latest source revision has **not** been verified here. Do not use run #617 as proof that these additional changes compile or pass.
+- The Daily Flow refactor must remain unfinalized until the current source passes `testDebugUnitTest`, `lintDebug`, `assembleDebug` and `assembleRelease`, and the new result is inspected. No unrelated app/financial/database/Keeper/UI changes are authorized by this checkpoint.
+
+**Current state:** remaining code-level fixes and focused tests have been committed to the existing refactor work. The final test/build verification remains an open acceptance gate.
