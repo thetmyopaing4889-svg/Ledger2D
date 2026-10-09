@@ -1610,30 +1610,30 @@ internal class LiveCollector(
         scheduleTime: LocalTime,
     ): LiveResolution {
         val displayPrimary = primary?.let { observation ->
-        mergeReferenceIntoFeed(observation.feed)?.let { merged ->
-        observation.copy(feed = merged)
-        } ?: observation
+            mergeReferenceIntoFeed(observation.feed)?.let { merged ->
+                observation.copy(feed = merged)
+            } ?: observation
         }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
-        ?: mergeReferenceIntoFeed(null)?.let { feed ->
-        val now = monotonicMs()
-        SourceObservation(feed, now, now, 0L)
-        }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
-        ?: pendingDisplayFeed(primary?.feed, scheduleTime, today)?.let { feed ->
-        val now = monotonicMs()
-        SourceObservation(feed, now, now, 0L)
-        }
-        
+            ?: mergeReferenceIntoFeed(null)?.let { feed ->
+                val now = monotonicMs()
+                SourceObservation(feed, now, now, 0L)
+            }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
+            ?: pendingDisplayFeed(primary?.feed, scheduleTime, today)?.let { feed ->
+                val now = monotonicMs()
+                SourceObservation(feed, now, now, 0L)
+            }
+
         val closedHold = closedHoldDate(today, scheduleTime)
         return resolveLiveState(
-        p = displayPrimary,
-        s = null,
-        now = Instant.now(),
-        lastLive = lastLive,
-        cachedFinal = lastFinal,
-        scheduleTime = scheduleTime,
-        scheduleDate = today,
-        liveClosedDayDate = closedHold,
-        primaryLiveSession = primaryLiveSession,
+            p = displayPrimary,
+            s = null,
+            now = Instant.now(),
+            lastLive = lastLive,
+            cachedFinal = lastFinal,
+            scheduleTime = scheduleTime,
+            scheduleDate = today,
+            liveClosedDayDate = closedHold,
+            primaryLiveSession = primaryLiveSession,
         )
     }
 
@@ -1647,18 +1647,18 @@ internal class LiveCollector(
         today: LocalDate,
     ) {
         if (resolution.heroLive) {
-        lastLive = resolution.hero
+            lastLive = resolution.hero
         }
-        
+
         val hero = resolution.hero
         if (
-        !resolution.heroLive &&
-        hero != null &&
-        canonicalDate(hero.date) == today &&
-        hero != lastFinal
+            !resolution.heroLive &&
+            hero != null &&
+            canonicalDate(hero.date) == today &&
+            hero != lastFinal
         ) {
-        lastFinal = hero
-        cacheSaver(hero)
+            lastFinal = hero
+            cacheSaver(hero)
         }
     }
 
