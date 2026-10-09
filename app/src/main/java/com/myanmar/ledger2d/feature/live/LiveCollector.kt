@@ -885,49 +885,19 @@ internal class LiveCollector(
             feed.internet200 != LIVE_PENDING
     }
 
-    private fun validReferencePair(
-        feed: LiveFeedData?,
-        modern: String,
-        internet: String,
-    ): Boolean =
-        feed != null &&
-            isValidLive2d(modern) &&
-            isValidLive2d(internet)
-
     private fun promoteCurrentCycleReferencesLocked(
         feed: LiveFeedData,
         today: LocalDate,
         scheduleTime: LocalTime,
     ) {
-        if (!isWorkingDay(today)) return
-        val cycleDate = dailyCycleDate(today, scheduleTime)
-        if (cycleDate != today) return
-        if (!isCurrentCycleReferenceObservation(feed, cycleDate)) return
-
-        if (
-            !scheduleTime.isBefore(MORNING_REFERENCE) &&
-            validReferencePair(feed, feed.modern930, feed.internet930)
-        ) {
-            reference930 = feed.modern930 to feed.internet930
-            reference930Date = cycleDate
-            reference930PendingDate = null
-            reference930CompleteDate = cycleDate
-            referenceResetDate = cycleDate
-            referenceFeed = feed
-            referenceFeedDate = cycleDate
-        }
-
-        if (
-            !scheduleTime.isBefore(AFTERNOON_REFERENCE) &&
-            validReferencePair(feed, feed.modern200, feed.internet200)
-        ) {
-            reference200 = feed.modern200 to feed.internet200
-            reference200Date = cycleDate
-            reference200PendingDate = null
-            reference200CompleteDate = cycleDate
-            referenceFeed = feed
-            referenceFeedDate = cycleDate
-        }
+        applyReferenceStateLocked(
+            LiveReferenceStateReducer.promoteFromLiveSnapshot(
+                state = referenceStateLocked(),
+                feed = feed,
+                today = today,
+                scheduleTime = scheduleTime,
+            )
+        )
     }
 
     private fun mergeReferenceIntoFeed(base: LiveFeedData?): LiveFeedData? {
@@ -1003,8 +973,36 @@ internal class LiveCollector(
         )
     }
 
+    private fun referenceStateLocked(): LiveReferenceState = LiveReferenceState(
+        reference930 = reference930,
+        reference930Date = reference930Date,
+        reference200 = reference200,
+        reference200Date = reference200Date,
+        reference930PendingDate = reference930PendingDate,
+        reference200PendingDate = reference200PendingDate,
+        reference930CompleteDate = reference930CompleteDate,
+        reference200CompleteDate = reference200CompleteDate,
+        referenceResetDate = referenceResetDate,
+        referenceFeed = referenceFeed,
+        referenceFeedDate = referenceFeedDate,
+    )
+
+    /** Commit a pure reference-state reduction. Call only within stateLock. */
+    private fun applyReferenceStateLocked(state: LiveReferenceState) {
+        reference930 = state.reference930
+        reference930Date = state.reference930Date
+        reference200 = state.reference200
+        reference200Date = state.reference200Date
+        reference930PendingDate = state.reference930PendingDate
+        reference200PendingDate = state.reference200PendingDate
+        reference930CompleteDate = state.reference930CompleteDate
+        reference200CompleteDate = state.reference200CompleteDate
+        referenceResetDate = state.referenceResetDate
+        referenceFeed = state.referenceFeed
+        referenceFeedDate = state.referenceFeedDate
+    }
+
     private fun applyReferenceResult(event: LiveReferenceResultEvent): Boolean {
-        val isMorning = event.isMorning
         val cycleDate = event.cycleDate
         val feed = event.feed
         val closedSnapshot = event.closedDayObservation
@@ -1017,17 +1015,9 @@ internal class LiveCollector(
                 closedDayDate = cycleDate
                 closedDayDateSaver(cycleDate)
 
-                reference930 = null
-                reference930Date = null
-                reference930PendingDate = null
-                reference930CompleteDate = null
-                reference200 = null
-                reference200Date = null
-                reference200PendingDate = null
-                reference200CompleteDate = null
-                referenceResetDate = null
-                referenceFeed = null
-                referenceFeedDate = null
+                applyReferenceStateLocked(
+                    LiveReferenceStateReducer.clearForClosedDay(referenceStateLocked())
+                )
                 lastLive = null
 
                 if (heldFeed != null) {
@@ -1044,19 +1034,7 @@ internal class LiveCollector(
 
         val cycleComplete = synchronized(stateLock) {
             val transition = LiveReferenceStateReducer.reduce(
-                state = LiveReferenceState(
-                    reference930 = reference930,
-                    reference930Date = reference930Date,
-                    reference200 = reference200,
-                    reference200Date = reference200Date,
-                    reference930PendingDate = reference930PendingDate,
-                    reference200PendingDate = reference200PendingDate,
-                    reference930CompleteDate = reference930CompleteDate,
-                    reference200CompleteDate = reference200CompleteDate,
-                    referenceResetDate = referenceResetDate,
-                    referenceFeed = referenceFeed,
-                    referenceFeedDate = referenceFeedDate,
-                ),
+                state = referenceStateLocked(),
                 event = event,
                 retryWindowOpen = referenceRetryWindowOpen(
                     cycleDate,
@@ -1066,18 +1044,7 @@ internal class LiveCollector(
             )
             if (!transition.accepted) return false
 
-            val next = transition.state
-            reference930 = next.reference930
-            reference930Date = next.reference930Date
-            reference200 = next.reference200
-            reference200Date = next.reference200Date
-            reference930PendingDate = next.reference930PendingDate
-            reference200PendingDate = next.reference200PendingDate
-            reference930CompleteDate = next.reference930CompleteDate
-            reference200CompleteDate = next.reference200CompleteDate
-            referenceResetDate = next.referenceResetDate
-            referenceFeed = next.referenceFeed
-            referenceFeedDate = next.referenceFeedDate
+            applyReferenceStateLocked(transition.state)
 
             publishLocked()
             if (feed != null) {
@@ -1101,30 +1068,12 @@ internal class LiveCollector(
 
         if (referenceRetryOpen && t >= MORNING_REFERENCE && reference930CompleteDate != cycleDate) {
             synchronized(stateLock) {
-                // From 09:30 onward, previous-day 09:30/14:00 values are no
-                // longer valid for the new cycle. Mask both slots immediately
-                // while their independent current-day fetches are running.
-                // A successful fetch clears the pending marker and supplies
-                // today's value.
-                if (
-                    reference930CompleteDate != cycleDate &&
-                    reference930PendingDate != cycleDate
-                ) {
-                    reference930 = null
-                    reference930Date = null
-                    reference930PendingDate = cycleDate
-                }
-
-                if (
-                    reference200CompleteDate != cycleDate &&
-                    reference200PendingDate != cycleDate
-                ) {
-                    // The new working-day cycle owns the 14:00 reference slot
-                    // from 09:30 onward.
-                    reference200 = null
-                    reference200Date = null
-                    reference200PendingDate = cycleDate
-                }
+                applyReferenceStateLocked(
+                    LiveReferenceStateReducer.beginWorkingDayCycle(
+                        state = referenceStateLocked(),
+                        cycleDate = cycleDate,
+                    )
+                )
                 publishLocked()
             }
 
@@ -1150,11 +1099,13 @@ internal class LiveCollector(
             referenceResetDate != cycleDate
         ) {
             synchronized(stateLock) {
-                if (
-                    reference930CompleteDate != cycleDate &&
-                    referenceResetDate != cycleDate
-                ) {
-                    referenceResetDate = cycleDate
+                val current = referenceStateLocked()
+                val next = LiveReferenceStateReducer.markMorningResetIfNeeded(
+                    state = current,
+                    cycleDate = cycleDate,
+                )
+                if (next != current) {
+                    applyReferenceStateLocked(next)
                     publishLocked()
                 }
             }
@@ -1273,21 +1224,13 @@ internal class LiveCollector(
                             )
 
                 if (completedHeldCycle) {
-                    val pair930 = projected.modern930 to projected.internet930
-                    if (validReferencePair(projected, pair930.first, pair930.second)) {
-                        reference930 = pair930
-                        reference930Date = cycleDate
-                        reference930CompleteDate = cycleDate
-                        reference930PendingDate = null
-                    }
-
-                    val pair200 = projected.modern200 to projected.internet200
-                    if (validReferencePair(projected, pair200.first, pair200.second)) {
-                        reference200 = pair200
-                        reference200Date = cycleDate
-                        reference200CompleteDate = cycleDate
-                        reference200PendingDate = null
-                    }
+                    applyReferenceStateLocked(
+                        LiveReferenceStateReducer.restoreCompletedHeldCycle(
+                            state = referenceStateLocked(),
+                            feed = projected,
+                            cycleDate = cycleDate,
+                        )
+                    )
                 }
 
                 latestFinalFor(projected)?.let { historicalFinal ->
