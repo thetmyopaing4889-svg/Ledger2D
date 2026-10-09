@@ -1592,52 +1592,74 @@ internal class LiveCollector(
         val today = dateProvider()
         lastPhaseMarker = liveWindowAction(clock()) to liveSessionForTime(clock())
         val scheduleTime = clock()
-        val displayPrimary = primary?.let { observation ->
-            mergeReferenceIntoFeed(observation.feed)?.let { merged ->
-                observation.copy(feed = merged)
-            } ?: observation
-        }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
-            ?: mergeReferenceIntoFeed(null)?.let { feed ->
-                val now = monotonicMs()
-                SourceObservation(feed, now, now, 0L)
-            }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
-            ?: pendingDisplayFeed(primary?.feed, scheduleTime, today)?.let { feed ->
-                val now = monotonicMs()
-                SourceObservation(feed, now, now, 0L)
-            }
-
-        val closedHold = closedHoldDate(today, scheduleTime)
-        val resolution = resolveLiveState(
-            p = displayPrimary,
-            s = null,
-            now = Instant.now(),
-            lastLive = lastLive,
-            cachedFinal = lastFinal,
-            scheduleTime = scheduleTime,
-            scheduleDate = today,
-            liveClosedDayDate = closedHold,
-            primaryLiveSession = primaryLiveSession,
-        )
-
-        if (resolution.heroLive) {
-            lastLive = resolution.hero
-        }
-
-        val hero = resolution.hero
-        if (
-            !resolution.heroLive &&
-            hero != null &&
-            canonicalDate(hero.date) == today &&
-            hero != lastFinal
-        ) {
-            lastFinal = hero
-            cacheSaver(hero)
-        }
+        val resolution = resolveDisplayLocked(today, scheduleTime)
+        applyResolutionEffectsLocked(resolution, today)
 
         _state.value = toLiveUiState(
             resolution = resolution,
             closedDay = currentClosedDayForNotice(today),
         )
+    }
+
+    /**
+     * Resolve the current display without remembering a new hero/final or writing cache.
+     * This stays under the existing state-lock call path so the observed state is consistent.
+     */
+    private fun resolveDisplayLocked(
+        today: LocalDate,
+        scheduleTime: LocalTime,
+    ): LiveResolution {
+        val displayPrimary = primary?.let { observation ->
+        mergeReferenceIntoFeed(observation.feed)?.let { merged ->
+        observation.copy(feed = merged)
+        } ?: observation
+        }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
+        ?: mergeReferenceIntoFeed(null)?.let { feed ->
+        val now = monotonicMs()
+        SourceObservation(feed, now, now, 0L)
+        }?.takeIf { isLiveDisplayableFeed(it.feed, scheduleTime, today) }
+        ?: pendingDisplayFeed(primary?.feed, scheduleTime, today)?.let { feed ->
+        val now = monotonicMs()
+        SourceObservation(feed, now, now, 0L)
+        }
+        
+        val closedHold = closedHoldDate(today, scheduleTime)
+        return resolveLiveState(
+        p = displayPrimary,
+        s = null,
+        now = Instant.now(),
+        lastLive = lastLive,
+        cachedFinal = lastFinal,
+        scheduleTime = scheduleTime,
+        scheduleDate = today,
+        liveClosedDayDate = closedHold,
+        primaryLiveSession = primaryLiveSession,
+        )
+    }
+
+    /**
+     * Apply the state/cache effects of an already-computed display resolution.
+     * Keep this ordering aligned with the baseline: update lastLive first, then
+     * remember/cache a newly resolved current-day final.
+     */
+    private fun applyResolutionEffectsLocked(
+        resolution: LiveResolution,
+        today: LocalDate,
+    ) {
+        if (resolution.heroLive) {
+        lastLive = resolution.hero
+        }
+        
+        val hero = resolution.hero
+        if (
+        !resolution.heroLive &&
+        hero != null &&
+        canonicalDate(hero.date) == today &&
+        hero != lastFinal
+        ) {
+        lastFinal = hero
+        cacheSaver(hero)
+        }
     }
 
 
