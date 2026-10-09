@@ -1,5 +1,5 @@
 name: Android CI
-# Temporary trigger to verify held-final state reduction.
+# Temporary trigger to verify extracted LIVE helper boundaries.
 on:
   push:
     branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan]
