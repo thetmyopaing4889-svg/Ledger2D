@@ -32,7 +32,8 @@ private suspend fun <T> runSuspendCatchingCancellable(block: suspend () -> T): T
         block()
     } catch (cancelled: CancellationException) {
         throw cancelled
-    } catch (_: Exception) {
+    } catch (_: Throwable) {
+        // Match the previous runCatching contract while allowing cancellation to propagate.
         null
     }
 
@@ -677,10 +678,22 @@ internal class LiveCollector(
             null
         }
 
-        val currentFinal = runSuspendCatchingCancellable {
-            historicalFinalFetcher?.invoke(cycleDate)
-        }?.takeIf {
-            canonicalDate(it.date) == cycleDate
+        // Before today's morning session has finalized, the current-day history
+        // row is not an eligible final source yet. Keep the previous working-day
+        // hero as the fallback instead of probing a result that cannot exist.
+        // Once the morning catch-up window has ended, current-cycle final recovery
+        // is valid again. A held cycle (weekend / pre-09:30 / Luke Closed Day) is
+        // always eligible because its cycleDate differs from today's app date.
+        val currentFinal = if (
+            cycleDate != today || !now.isBefore(MORNING_CATCHUP_END)
+        ) {
+            runSuspendCatchingCancellable {
+                historicalFinalFetcher?.invoke(cycleDate)
+            }?.takeIf {
+                canonicalDate(it.date) == cycleDate
+            }
+        } else {
+            null
         }
 
         val fallbackFinal = if (
