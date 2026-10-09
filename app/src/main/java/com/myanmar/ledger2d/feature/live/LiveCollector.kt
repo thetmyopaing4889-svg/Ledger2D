@@ -27,7 +27,7 @@ internal fun monotonicMs(): Long = runCatching {
     System.nanoTime() / 1_000_000L
 }
 
-private suspend fun <T> runSuspendCatchingCancellable(block: suspend () -> T): T? =
+internal suspend fun <T> runSuspendCatchingCancellable(block: suspend () -> T): T? =
     try {
         block()
     } catch (cancelled: CancellationException) {
@@ -210,7 +210,7 @@ internal class LiveCollector(
             }
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
-            syncLiveRoom(cachedFeed)
+            sideEffects.dispatch { syncLiveRoom(cachedFeed) }
         } else {
             val bootstrap = freshInstallBootstrapPlan(today, scheduleTime)
             val activeSession = liveSessionForTime(scheduleTime)
