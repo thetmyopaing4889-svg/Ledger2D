@@ -14,6 +14,7 @@ import java.time.LocalTime
 internal data class LiveStateReduction(
     val feed: LiveFeedData,
     val primaryLiveSession: LiveSession?,
+    val lastFinal: LiveHeroSnapshot?,
 )
 
 
@@ -38,7 +39,32 @@ internal object LiveStateReducer {
         scheduleDate: LocalDate,
         scheduleTime: LocalTime,
         previousPrimaryLiveSession: LiveSession?,
+        previousLastFinal: LiveHeroSnapshot? = null,
     ): LiveStateReduction {
+        val cycleDate = dailyCycleDate(scheduleDate, scheduleTime)
+        val previousWorking = previousWorkingDay(cycleDate)
+        var nextLastFinal = previousLastFinal
+
+        previous?.let(::latestFinalFor)?.let { previousFinal ->
+            if (canonicalDate(previousFinal.date) == previousWorking) {
+                nextLastFinal = previousFinal
+            }
+        }
+
+        latestFinalFor(incoming)?.let { incomingFinal ->
+            val finalDate = canonicalDate(incomingFinal.date)
+            if (finalDate == cycleDate || finalDate == previousWorking) {
+                val existingDate = canonicalDate(nextLastFinal?.date.orEmpty())
+                if (
+                    existingDate == null ||
+                    existingDate == previousWorking ||
+                    finalDate == cycleDate
+                ) {
+                    nextLastFinal = incomingFinal
+                }
+            }
+        }
+
         val protectedFinals = protectFinalSessions(previous, incoming, scheduleDate)
         val protectedFeed = preserveActiveLive(
             previous = previous,
@@ -55,9 +81,16 @@ internal object LiveStateReducer {
             else -> previousPrimaryLiveSession
         }
 
+        latestFinalFor(protectedFeed)?.let { incomingFinal ->
+            if (canonicalDate(incomingFinal.date) != scheduleDate) {
+                nextLastFinal = incomingFinal
+            }
+        }
+
         return LiveStateReduction(
             feed = protectedFeed,
             primaryLiveSession = nextPrimaryLiveSession,
+            lastFinal = nextLastFinal,
         )
     }
 

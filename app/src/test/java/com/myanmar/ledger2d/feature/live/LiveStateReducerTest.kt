@@ -411,4 +411,54 @@ class LiveStateReducerTest {
         assertEquals(hero, reduced.lastFinal)
         assertEquals(references, reduced.references)
     }
+
+    @Test
+    fun reducer_preserves_previous_working_day_final_as_current_cycle_hero_hold() {
+        val heldDate = previousWorkingDay(today)
+        val heldFeed = feed(
+            time = "16:30:00",
+            evening = session("62"),
+        ).copy(date = heldDate.toString())
+        val currentFeed = feed(time = "09:35:00")
+
+        val reduced = LiveStateReducer.reduceAcceptedLiveSnapshot(
+            previous = heldFeed,
+            incoming = currentFeed,
+            scheduleDate = today,
+            scheduleTime = LocalTime.of(9, 35),
+            previousPrimaryLiveSession = null,
+            previousLastFinal = null,
+        )
+
+        assertEquals("62", reduced.lastFinal?.result)
+        assertEquals(heldDate.toString(), reduced.lastFinal?.date)
+    }
+
+    @Test
+    fun reducer_prefers_current_cycle_final_over_held_previous_working_day_final() {
+        val heldDate = previousWorkingDay(today)
+        val heldFeed = feed(
+            time = "16:30:00",
+            evening = session("62"),
+        ).copy(date = heldDate.toString())
+        val currentFinalFeed = feed(
+            time = "12:05:00",
+            morning = session("47"),
+        )
+        val heldHero = LiveHeroSnapshot(
+            "62", "1600", "20000", LIVE_SESSION_EVENING_LABEL, heldDate.toString()
+        )
+
+        val reduced = LiveStateReducer.reduceAcceptedLiveSnapshot(
+            previous = heldFeed,
+            incoming = currentFinalFeed,
+            scheduleDate = today,
+            scheduleTime = LocalTime.of(12, 5),
+            previousPrimaryLiveSession = LiveSession.MORNING,
+            previousLastFinal = heldHero,
+        )
+
+        assertEquals("47", reduced.lastFinal?.result)
+        assertEquals(today.toString(), reduced.lastFinal?.date)
+    }
 }

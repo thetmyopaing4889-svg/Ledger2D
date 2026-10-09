@@ -726,22 +726,6 @@ internal class LiveCollector(
                 return@synchronized
             }
 
-            // Preserve the last completed working-day final before a
-            // newer provider snapshot replaces the primary feed. A
-            // Monday reference response can be today's feed while LIVE
-            // is still pending; it must not erase Friday's held hero.
-            previous?.let(::latestFinalFor)?.let { previousFinal ->
-                val cycleDate = dailyCycleDate(dateProvider(), clock())
-                val previousWorking = previousWorkingDay(cycleDate)
-                if (canonicalDate(previousFinal.date) == previousWorking) {
-                    lastFinal = previousFinal
-                }
-            }
-
-            // Only an accepted, in-order snapshot may update the held-final
-            // memory. A stale response must never mutate display fallback state.
-            captureHeldFinalLocked(feed)
-
             val scheduleTime = clock()
             val today = dateProvider()
 
@@ -757,6 +741,7 @@ internal class LiveCollector(
                 scheduleDate = today,
                 scheduleTime = scheduleTime,
                 previousPrimaryLiveSession = primaryLiveSession,
+                previousLastFinal = lastFinal,
             )
             val protected = reduction.feed
             latestAppliedSequence.set(sequence)
@@ -768,48 +753,13 @@ internal class LiveCollector(
             )
 
             primaryLiveSession = reduction.primaryLiveSession
-
-            // Keep the latest completed result from the previous day in
-            // memory as a hero fallback when today's Luke feed arrives
-            // without today's LIVE value yet. This is display state only;
-            // it never participates in betting or ledger calculations.
-            val incomingFinal = latestFinalFor(protected)
-            if (
-                incomingFinal != null &&
-                canonicalDate(incomingFinal.date) != today
-            ) {
-                lastFinal = incomingFinal
-            }
+            lastFinal = reduction.lastFinal
 
             cacheFeedSaver(protected)
             publishLocked()
             syncLiveRoom(protected)
         }
     }
-    private fun captureHeldFinalLocked(feed: LiveFeedData) {
-        val final = latestFinalFor(feed) ?: return
-        val finalDate = canonicalDate(final.date) ?: return
-
-        val today = dateProvider()
-        val now = clock()
-        val cycleDate = dailyCycleDate(today, now)
-        val previousWorking = previousWorkingDay(cycleDate)
-
-        // A previous-working-day completed result is valid as the temporary
-        // hero while the new cycle is still at reference/pending/live stages.
-        // It must not become the primary feed or affect financial data.
-        if (finalDate == cycleDate || finalDate == previousWorking) {
-            val existingDate = canonicalDate(lastFinal?.date.orEmpty())
-            if (
-                existingDate == null ||
-                existingDate == previousWorking ||
-                finalDate == cycleDate
-            ) {
-                lastFinal = final
-            }
-        }
-    }
-
     private fun syncLiveRoom(feed: LiveFeedData) {
         val saver = liveRoomSaver ?: return
         val patches = buildLiveDailyResultPatches(feed, dateProvider(), clock())
