@@ -312,6 +312,11 @@ internal class LiveCollector(
         }
         sideEffects.drain()
     }
+    /**
+     * Build the Room patch synchronously at the accepted observation's app-clock time.
+     * Call from the state-commit path; only the suspend saver launch is deferred so
+     * crossing a schedule boundary while callbacks drain cannot retarget the patch.
+     */
     private fun syncLiveRoom(feed: LiveFeedData) {
         val saver = liveRoomSaver ?: return
         val patches = buildLiveDailyResultPatches(feed, dateProvider(), clock())
