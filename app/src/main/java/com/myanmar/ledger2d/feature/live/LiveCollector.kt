@@ -534,15 +534,10 @@ internal class LiveCollector(
     val state: StateFlow<LiveUiState> = _state.asStateFlow()
 
     private val started = AtomicBoolean(false)
-    private val requestSequence = AtomicLong(0L)
     private val latestAppliedSequence = AtomicLong(0L)
     private val stateLock = Any()
 
     private var schedulerJob: Job? = null
-    private var reference930Cycle: Job? = null
-    private var reference930CycleDate: LocalDate? = null
-    private var reference200Cycle: Job? = null
-    private var reference200CycleDate: LocalDate? = null
     private var reference930CompleteDate: LocalDate? = null
     private var reference200CompleteDate: LocalDate? = null
     private var referenceResetDate: LocalDate? = null
@@ -570,6 +565,28 @@ internal class LiveCollector(
     private var closedDayDate: LocalDate? = null
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
+
+    private val requestCoordinator = LiveRequestCoordinator(
+        scope = scope,
+        fetcher = fetcher,
+        monotonicClockMs = { monotonicMs() },
+        clock = clock,
+        dateProvider = dateProvider,
+        referenceRetryWindowOpen = { cycleDate, currentDate, now ->
+            referenceRetryWindowOpen(cycleDate, currentDate, now)
+        },
+        referenceComplete = { isMorning, cycleDate ->
+            if (isMorning) {
+                reference930CompleteDate == cycleDate
+            } else {
+                reference200CompleteDate == cycleDate
+            }
+        },
+        fetchReferencePair = { isMorning, cycleDate ->
+            fetchReferencePair(isMorning, cycleDate)
+        },
+        onLiveResult = ::applyLiveRequestResult,
+    )
 
     /**
      * Read the stored LIVE-only Closed Day date and resolve its display hold.
@@ -677,30 +694,7 @@ internal class LiveCollector(
     }
 
     private fun launchRequest() {
-        val sequence = requestSequence.incrementAndGet()
-
-        scope.launch {
-            val startedAt = monotonicMs()
-            val feed = try {
-                fetcher()
-            } catch (_: Exception) {
-                null
-            }
-            val finishedAt = monotonicMs()
-
-            if (feed == null) return@launch
-
-            // Network work completes before the immutable result event enters
-            // the state-acceptance path. Each request keeps its own lifecycle.
-            applyLiveRequestResult(
-                LiveRequestResultEvent(
-                    sequence = sequence,
-                    feed = feed,
-                    requestStartedAtElapsedMs = startedAt,
-                    requestFinishedAtElapsedMs = finishedAt,
-                )
-            )
-        }
+        requestCoordinator.launchLiveRequest()
     }
 
     private fun applyLiveRequestResult(event: LiveRequestResultEvent) {
@@ -1118,70 +1112,6 @@ internal class LiveCollector(
             reference200CompleteDate == cycleDate
         }
     }
-    private fun fetchReference930Cycle() {
-        val today = dateProvider()
-        if (reference930CompleteDate == today) {
-            return
-        }
-        if (reference930Cycle?.isActive == true) {
-            if (reference930CycleDate == today) return
-            reference930Cycle?.cancel()
-            reference930Cycle = null
-        }
-
-        reference930CycleDate = today
-        reference930Cycle = scope.launch {
-            val cycleDate = today
-
-            while (isActive) {
-                val now = clock()
-                val nowDate = dateProvider()
-
-                if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) {
-                    return@launch
-                }
-
-                if (fetchReferencePair(true, cycleDate)) return@launch
-
-                delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-            }
-        }
-    }
-
-    private fun fetchReference200Cycle() {
-        val today = dateProvider()
-        if (reference200CompleteDate == today) {
-            return
-        }
-        if (reference200Cycle?.isActive == true) {
-            if (reference200CycleDate == today) return
-            reference200Cycle?.cancel()
-            reference200Cycle = null
-        }
-
-        reference200CycleDate = today
-        reference200Cycle = scope.launch {
-            val cycleDate = today
-
-            while (isActive) {
-                val now = clock()
-                val nowDate = dateProvider()
-
-                if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) {
-                    return@launch
-                }
-
-                if (nowDate == cycleDate && now.isBefore(AFTERNOON_REFERENCE)) {
-                    return@launch
-                }
-
-                if (fetchReferencePair(false, cycleDate)) return@launch
-
-                delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
-            }
-        }
-    }
-
     private fun maybeReferenceFetch(t: LocalTime) {
         val today = dateProvider()
         clearExpiredClosedDayBeforeMorningBoundary(today, t)
@@ -1223,7 +1153,7 @@ internal class LiveCollector(
             }
 
             if (reference930CompleteDate != cycleDate) {
-                fetchReference930Cycle()
+                requestCoordinator.startMorningReferenceCycle()
             }
         }
 
@@ -1232,7 +1162,7 @@ internal class LiveCollector(
             t >= AFTERNOON_REFERENCE &&
             reference200CompleteDate != cycleDate
         ) {
-            fetchReference200Cycle()
+            requestCoordinator.startAfternoonReferenceCycle()
         }
 
         // If 09:30 has not succeeded by 11:30, force the session-card reset
