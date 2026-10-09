@@ -207,6 +207,24 @@ class LiveDisplayProjectorTest {
     }
 
     @Test
+    fun stale_reference_feed_is_not_used_for_another_cycle() {
+        val yesterday = monday.minusDays(1)
+        val projected = projectReferenceFeed(
+            base = null,
+            snapshot = snapshot(
+                today = monday,
+                cycleDate = monday,
+                referenceFeed = feed(date = yesterday),
+                referenceFeedDate = yesterday,
+                reference930 = "12" to "34",
+                reference930Date = monday,
+            ),
+        )
+
+        assertEquals(null, projected)
+    }
+
+    @Test
     fun closed_day_hold_returns_the_held_feed_without_reference_overlay() {
         val heldFeed = feed(date = monday)
         val projected = projectReferenceFeed(
@@ -239,7 +257,9 @@ class LiveDisplayProjectorTest {
         )
 
         assertNotNull(projected)
-        assertEquals(LIVE_PENDING, projected!!.morning.result)
+        assertEquals(LIVE_PENDING, projected!!.modern930)
+        assertEquals(LIVE_PENDING, projected.internet930)
+        assertEquals(LIVE_PENDING, projected.morning.result)
         assertEquals(LIVE_PENDING, projected.evening.result)
     }
 
