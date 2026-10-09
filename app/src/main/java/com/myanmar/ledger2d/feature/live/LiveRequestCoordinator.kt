@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.live
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -44,6 +45,8 @@ internal class LiveRequestCoordinator(
             val startedAt = monotonicClockMs()
             val feed = try {
                 fetcher()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 null
             }
