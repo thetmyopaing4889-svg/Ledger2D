@@ -213,7 +213,7 @@ This section records work completed after the design record above; it does not c
 
 ### Extracted boundaries on the working branch
 
-- Deterministic date/time policies are in `LiveSchedulePolicy.kt`, with direct boundary tests.
+- Deterministic date/time policies and reference retry-window eligibility are in `LiveSchedulePolicy.kt`, with boundary tests for polling, Friday post-final retry cutoff, next-working-day retry, and Closed Day suppression.
 - LIVE feed/UI models and Luke client have been moved to `LiveModels.kt` and `LiveApi.kt` without changing the screen entry/retry contract.
 - Display resolution is in `LiveDisplayProjector.kt`; UI-state mapping, reference/Pending-card overlay, and synthetic Pending-feed construction are pure projection helpers.
 - Normal LIVE request completion and dedicated reference completion carry typed events into the existing serialized state-acceptance methods: `LiveRequestResultEvent.kt` and `LiveReferenceResultEvent.kt`.
