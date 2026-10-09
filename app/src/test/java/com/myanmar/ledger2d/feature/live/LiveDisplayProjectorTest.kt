@@ -94,7 +94,7 @@ class LiveDisplayProjectorTest {
 
     @Test
     fun pending_feed_relabels_previous_day_source_without_mutating_it() {
-        val previousDay = feed(date = monday.minusDays(1))
+        val previousDay = feed(date = monday.minusDays(3))
         val projected = projectPendingDisplayFeed(
             sourceFeed = previousDay,
             scheduleTime = LocalTime.of(11, 30),
@@ -108,7 +108,7 @@ class LiveDisplayProjectorTest {
         assertEquals(LIVE_PENDING, projected.morning.result)
         assertEquals(LIVE_PENDING, projected.evening.result)
         assertEquals("98", projected.modern930)
-        assertEquals(monday.minusDays(1).toString(), previousDay.date)
+        assertEquals(monday.minusDays(3).toString(), previousDay.date)
         assertEquals("77", previousDay.morning.result)
     }
 
