@@ -161,8 +161,7 @@ class LiveDisplayProjectorTest {
     fun normal_display_eligibility_still_accepts_previous_working_day_before_morning_live() {
         val fridayFeed = feed(date = monday.minusDays(3))
 
-        assertEquals(
-            true,
+        assertTrue(
             isLiveFeedDisplayableForSchedule(
                 feed = fridayFeed,
                 scheduleTime = LocalTime.of(10, 0),
@@ -170,8 +169,7 @@ class LiveDisplayProjectorTest {
                 liveClosedDayDate = null,
             ),
         )
-        assertEquals(
-            false,
+        assertFalse(
             isLiveFeedDisplayableForSchedule(
                 feed = fridayFeed,
                 scheduleTime = LocalTime.of(11, 30),
