@@ -206,3 +206,30 @@ The refactor is considered ready only when all conditions below are true:
 6. The final diff has been reviewed for unintended changes before proposing a merge.
 
 **Decision record:** preserve behavior first; improve separation second; no unrelated subsystem rewrites; no implementation on \`main\`.
+
+## 10. Implementation progress checkpoint — 2026-10-09
+
+This section records work completed after the design record above; it does not change the original baseline, scope, or acceptance criteria.
+
+### Extracted boundaries on the working branch
+
+- Deterministic date/time policies are in `LiveSchedulePolicy.kt`, with direct boundary tests.
+- LIVE feed/UI models and Luke client have been moved to `LiveModels.kt` and `LiveApi.kt` without changing the screen entry/retry contract.
+- Display resolution is in `LiveDisplayProjector.kt`; UI-state mapping, reference/Pending-card overlay, and synthetic Pending-feed construction are pure projection helpers.
+- Normal LIVE request completion and dedicated reference completion carry typed events into the existing serialized state-acceptance methods: `LiveRequestResultEvent.kt` and `LiveReferenceResultEvent.kt`.
+- `LiveCollector` still owns scheduling, shared mutable state, response acceptance, cache/Room integrations and their existing callbacks. `publishLocked` now names display resolution, remembered hero/final effects, and state publication as separate steps.
+- Added targeted tests for polling boundaries and display projection, including Closed Day hold, 09:30/reference reset, 11:30 session reset, evening-session reset, and synthetic Pending feed behavior.
+
+### Verification and current readiness
+
+- Last confirmed successful full CI run is build #500 on the prior UI-state mapping extraction: [run 37915036515](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37915036515).
+- Later projection extractions and their new regression tests are present on this branch, but their CI result has not yet been verified in this checkpoint. Do not treat the branch as merge-ready until a full CI pass is observed and the final diff is reviewed.
+- The draft review is [PR #27](https://github.com/thetmyopaing4889-svg/Ledger2D/pull/27), targeting `fix/403-live-integration-root-cause-20261007`, the branch whose tip is the exact #492 baseline. This is deliberate: current `main` has diverged from that baseline. Keep the PR draft and do not merge it as part of the refactor work.
+- `.github/workflows/android.yml` has temporary trigger-only edits on this working branch to attempt branch CI. Restore those workflow trigger edits before final handoff, unless a separate approved CI design replaces them. The workflow on `main` and the base branch has not been changed by this refactor.
+
+### Current remaining work
+
+1. Obtain and inspect CI for the latest source changes; fix any actual failures before proceeding.
+2. Continue only low-risk extractions with tests and preserve the exact request/retry/state/cache/Room callback ordering.
+3. Review the complete PR diff against #492 and confirm no excluded subsystems are touched.
+4. Revert temporary workflow trigger edits on this branch, verify the final diff/base, and keep the PR unmerged until all completion criteria in section 9 are met.
