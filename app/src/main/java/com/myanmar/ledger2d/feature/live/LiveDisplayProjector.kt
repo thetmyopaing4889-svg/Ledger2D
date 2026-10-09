@@ -309,7 +309,7 @@ internal fun projectReferenceFeed(
 
     when {
         snapshot.reference930Date == cycleDate && snapshot.reference930 != null -> {
-            val pair = snapshot.reference930
+            val pair = snapshot.reference930!!
             out = out.copy(
                 modern930 = pair.first,
                 internet930 = pair.second,
@@ -325,7 +325,7 @@ internal fun projectReferenceFeed(
 
     when {
         snapshot.reference200Date == cycleDate && snapshot.reference200 != null -> {
-            val pair = snapshot.reference200
+            val pair = snapshot.reference200!!
             out = out.copy(
                 modern200 = pair.first,
                 internet200 = pair.second,
