@@ -4,6 +4,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class LiveDisplayProjectorTest {
@@ -137,8 +139,7 @@ class LiveDisplayProjectorTest {
         val heldFeed = feed(date = monday)
         val currentDayFeed = feed(date = tuesday)
 
-        assertEquals(
-            true,
+        assertTrue(
             isLiveFeedDisplayableForSchedule(
                 feed = heldFeed,
                 scheduleTime = LocalTime.of(10, 0),
@@ -146,8 +147,7 @@ class LiveDisplayProjectorTest {
                 liveClosedDayDate = tuesday,
             ),
         )
-        assertEquals(
-            false,
+        assertFalse(
             isLiveFeedDisplayableForSchedule(
                 feed = currentDayFeed,
                 scheduleTime = LocalTime.of(10, 0),
