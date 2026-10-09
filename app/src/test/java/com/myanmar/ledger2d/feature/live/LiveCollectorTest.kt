@@ -2,6 +2,8 @@ package com.myanmar.ledger2d.feature.live
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -16,6 +18,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
@@ -2007,6 +2012,85 @@ class LiveCollectorTest {
         assertEquals(3, calls)
 
         scope.cancel()
+    }
+
+    @Test
+    fun blocked_cache_callback_does_not_hold_the_daily_flow_state_lock() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val fetchCalls = AtomicInteger(0)
+        val cacheCalls = AtomicInteger(0)
+        val cacheEntered = CountDownLatch(1)
+        val releaseCache = CountDownLatch(1)
+        val firstFeed = feed("36", "12:03:00", morning = finalMorning("36"), date = friday)
+        val secondFeed = feed("37", "12:04:00", morning = finalMorning("37"), date = friday)
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                if (fetchCalls.incrementAndGet() == 1) firstFeed else secondFeed
+            },
+            clock = { LocalTime.of(12, 5) },
+            dateProvider = { friday },
+            cacheFeedSaver = {
+                if (cacheCalls.incrementAndGet() == 1) {
+                    cacheEntered.countDown()
+                    releaseCache.await(5, TimeUnit.SECONDS)
+                }
+            },
+        )
+
+        try {
+            collector.fetchCycle()
+            assertTrue("first cache callback did not start", cacheEntered.await(2, TimeUnit.SECONDS))
+
+            // The first persistence callback is deliberately still blocked here.
+            // A second accepted Luke response must still commit and publish.
+            collector.fetchCycle()
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+            var heroResult: String? = null
+            while (System.nanoTime() < deadline) {
+                heroResult = (collector.state.value as? LiveUiState.Data)?.hero?.result
+                if (heroResult == "37") break
+                Thread.sleep(10)
+            }
+            assertEquals("37", heroResult)
+        } finally {
+            releaseCache.countDown()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun startup_recovery_cancellation_does_not_continue_with_fallback_history_calls() = runTest {
+        val historyGate = CompletableDeferred<LiveFeedData?>()
+        var historyCalls = 0
+        var finalCalls = 0
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            dateProvider = { monday },
+            historicalFeedFetcher = {
+                historyCalls++
+                historyGate.await()
+            },
+            historicalFinalFetcher = {
+                finalCalls++
+                null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+        assertEquals(1, historyCalls)
+
+        scope.cancel()
+        runCurrent()
+
+        assertEquals("cancelled recovery must not fall through to another history call", 1, historyCalls)
+        assertEquals("cancelled recovery must not continue into final recovery", 0, finalCalls)
     }
 
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
