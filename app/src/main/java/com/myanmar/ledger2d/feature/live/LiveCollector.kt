@@ -1634,18 +1634,27 @@ internal class LiveCollector(
             cacheSaver(hero)
         }
 
-        _state.value = LiveUiState.Data(
-            feed = resolution.displayFeed,
-            hero = resolution.hero,
-            heroLive = resolution.heroLive,
-            stale = false,
-            secondaryFeed = null,
-            sourceMessage = "",
-            status = resolution.status,
-            staleAgeMs = resolution.staleAgeMs,
+        _state.value = toLiveUiState(
+            resolution = resolution,
             closedDay = currentClosedDayForNotice(today),
         )
     }
+
+
+    private fun toLiveUiState(
+        resolution: LiveResolution,
+        closedDay: Boolean,
+    ): LiveUiState.Data = LiveUiState.Data(
+        feed = resolution.displayFeed,
+        hero = resolution.hero,
+        heroLive = resolution.heroLive,
+        stale = false,
+        secondaryFeed = null,
+        sourceMessage = "",
+        status = resolution.status,
+        staleAgeMs = resolution.staleAgeMs,
+        closedDay = closedDay,
+    )
 
     private fun pendingDisplayFeed(
         sourceFeed: LiveFeedData?,
