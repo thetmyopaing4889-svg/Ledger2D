@@ -65,3 +65,51 @@ sealed interface LiveUiState {
     /** No data yet and the latest fetch failed. */
     data class Error(val retrying: Boolean) : LiveUiState
 }
+
+// Shared LIVE display and state models/constants. These are not Room entities.
+
+internal const val LIVE_PENDING = "--"
+internal const val LIVE_SESSION_MORNING_LABEL = "12:01 PM"
+internal const val LIVE_SESSION_EVENING_LABEL = "4:30 PM"
+
+data class LiveHeroSnapshot(
+    val result: String,
+    val set: String,
+    val value: String,
+    val sessionLabel: String,
+    val date: String,
+)
+
+enum class LiveStatus {
+    WAITING,
+    LIVE_CONFIRMED,
+    LIVE_DEGRADED,
+    WAITING_FOR_ALIGNMENT,
+    LIVE_CONFLICT,
+    STALE,
+    FINALIZING,
+    WAITING_FOR_PRIMARY,
+    DRAW_FREEZE,
+    RESULT_AVAILABLE,
+    FINAL_CONFIRMED,
+    DEGRADED_FINAL,
+    FINAL_CONFLICT,
+    STALE_PRIMARY,
+}
+
+internal data class SourceObservation(
+    val feed: LiveFeedData,
+    val fetchedAtElapsedMs: Long,
+    val requestStartedElapsedMs: Long,
+    val roundTripMs: Long,
+)
+
+internal data class LiveResolution(
+    val displayFeed: LiveFeedData?,
+    val hero: LiveHeroSnapshot?,
+    val heroLive: Boolean,
+    val status: LiveStatus,
+    val message: String,
+    val sourceCount: Int,
+    val staleAgeMs: Long,
+)
