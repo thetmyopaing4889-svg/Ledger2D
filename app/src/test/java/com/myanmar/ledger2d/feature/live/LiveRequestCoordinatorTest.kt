@@ -118,4 +118,45 @@ class LiveRequestCoordinatorTest {
 
         assertEquals(emptyList<LiveRequestResultEvent>(), events)
     }
+    @Test
+    fun date_change_cancels_the_old_reference_cycle_and_starts_the_new_cycle() = runTest {
+        val monday = today
+        val tuesday = today.plusDays(1)
+        var currentDate = monday
+        val oldCycleGate = CompletableDeferred<Unit>()
+        val oldCycleCancelled = CompletableDeferred<Unit>()
+        val attemptedDates = mutableListOf<LocalDate>()
+
+        val requestCoordinator = coordinator(
+            scope = backgroundScope,
+            fetcher = { null },
+            onLiveResult = {},
+            dateProvider = { currentDate },
+            fetchReferencePair = { _, cycleDate ->
+                attemptedDates += cycleDate
+                if (cycleDate == monday) {
+                    try {
+                        oldCycleGate.await()
+                    } finally {
+                        oldCycleCancelled.complete(Unit)
+                    }
+                    false
+                } else {
+                    true
+                }
+            },
+        )
+
+        requestCoordinator.startMorningReferenceCycle()
+        runCurrent()
+        assertEquals(listOf(monday), attemptedDates)
+
+        currentDate = tuesday
+        requestCoordinator.startMorningReferenceCycle()
+        runCurrent()
+
+        assertEquals(listOf(monday, tuesday), attemptedDates)
+        assertTrue(oldCycleCancelled.isCompleted)
+    }
+
 }
