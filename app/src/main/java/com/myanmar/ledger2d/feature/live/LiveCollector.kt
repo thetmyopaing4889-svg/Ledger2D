@@ -709,101 +709,118 @@ internal class LiveCollector(
 
             if (feed == null) return@launch
 
-            synchronized(stateLock) {
-                if (!isUsableLukeSnapshot(feed)) {
-                    return@synchronized
-                }
-
-                val previous = primary?.feed
-                val incomingTime = parseDecisionInstant(feed)
-                val previousTime = previous?.let(::parseDecisionInstant)
-                val appliedSequence = latestAppliedSequence.get()
-
-                // Provider time is the source-of-truth ordering signal when it
-                // exists. Request sequence is only a tie-breaker for equal or
-                // unavailable provider times. This matters because start() and
-                // LiveScreen can issue overlapping immediate requests: an older
-                // request can legitimately finish after a newer request but
-                // carry a newer Luke timestamp/final result.
-                if (incomingTime != null && previousTime != null) {
-                    when {
-                        incomingTime.isBefore(previousTime) -> return@synchronized
-                        incomingTime == previousTime && sequence <= appliedSequence -> return@synchronized
-                    }
-                } else if (incomingTime == null && previousTime != null) {
-                    // Never replace a timestamped snapshot with one whose
-                    // provider time cannot be established.
-                    return@synchronized
-                } else if (incomingTime == null && sequence <= appliedSequence) {
-                    return@synchronized
-                }
-
-                // Preserve the last completed working-day final before a
-                // newer provider snapshot replaces the primary feed. A
-                // Monday reference response can be today's feed while LIVE
-                // is still pending; it must not erase Friday's held hero.
-                previous?.let(::latestFinalFor)?.let { previousFinal ->
-                    val cycleDate = dailyCycleDate(dateProvider(), clock())
-                    val previousWorking = previousWorkingDay(cycleDate)
-                    if (canonicalDate(previousFinal.date) == previousWorking) {
-                        lastFinal = previousFinal
-                    }
-                }
-
-                // Only an accepted, in-order snapshot may update the held-final
-                // memory. A stale response must never mutate display fallback state.
-                captureHeldFinalLocked(feed)
-
-                val scheduleTime = clock()
-                val today = dateProvider()
-
-                // A normal Luke snapshot can contain an already-valid
-                // current-cycle reference even when the dedicated reference
-                // request is still pending or previously failed. Promote those
-                // reference fields from the accepted snapshot immediately.
-                promoteCurrentCycleReferencesLocked(feed, today, scheduleTime)
-
-                val protectedFinals = protectFinalSessions(previous, feed)
-                val protected = preserveActiveLive(
-                    previous = previous,
-                    incoming = protectedFinals,
-                    scheduleTime = scheduleTime,
-                    scheduleDate = today,
+            // Network work completes before the immutable result event enters
+            // the state-acceptance path. Each request keeps its own lifecycle.
+            applyLiveRequestResult(
+                LiveRequestResultEvent(
+                    sequence = sequence,
+                    feed = feed,
+                    requestStartedAtElapsedMs = startedAt,
+                    requestFinishedAtElapsedMs = finishedAt,
                 )
-                latestAppliedSequence.set(sequence)
-                primary = SourceObservation(
-                    protected,
-                    finishedAt,
-                    startedAt,
-                    finishedAt - startedAt,
-                )
-
-                val activeSession = liveSessionForTime(scheduleTime)
-                primaryLiveSession = when {
-                    activeSession != null && hasValidLive(protected, today) -> activeSession
-                    activeSession != null -> null
-                    else -> primaryLiveSession
-                }
-
-                // Keep the latest completed result from the previous day in
-                // memory as a hero fallback when today's Luke feed arrives
-                // without today's LIVE value yet. This is display state only;
-                // it never participates in betting or ledger calculations.
-                val incomingFinal = latestFinalFor(protected)
-                if (
-                    incomingFinal != null &&
-                    canonicalDate(incomingFinal.date) != today
-                ) {
-                    lastFinal = incomingFinal
-                }
-
-                cacheFeedSaver(protected)
-                publishLocked()
-                syncLiveRoom(protected)
-            }
+            )
         }
     }
 
+    private fun applyLiveRequestResult(event: LiveRequestResultEvent) {
+        val sequence = event.sequence
+        val feed = event.feed
+        val startedAt = event.requestStartedAtElapsedMs
+        val finishedAt = event.requestFinishedAtElapsedMs
+
+        synchronized(stateLock) {
+            if (!isUsableLukeSnapshot(feed)) {
+                return@synchronized
+            }
+
+            val previous = primary?.feed
+            val incomingTime = parseDecisionInstant(feed)
+            val previousTime = previous?.let(::parseDecisionInstant)
+            val appliedSequence = latestAppliedSequence.get()
+
+            // Provider time is the source-of-truth ordering signal when it
+            // exists. Request sequence is only a tie-breaker for equal or
+            // unavailable provider times. This matters because start() and
+            // LiveScreen can issue overlapping immediate requests: an older
+            // request can legitimately finish after a newer request but
+            // carry a newer Luke timestamp/final result.
+            if (incomingTime != null && previousTime != null) {
+                when {
+                    incomingTime.isBefore(previousTime) -> return@synchronized
+                    incomingTime == previousTime && sequence <= appliedSequence -> return@synchronized
+                }
+            } else if (incomingTime == null && previousTime != null) {
+                // Never replace a timestamped snapshot with one whose
+                // provider time cannot be established.
+                return@synchronized
+            } else if (incomingTime == null && sequence <= appliedSequence) {
+                return@synchronized
+            }
+
+            // Preserve the last completed working-day final before a
+            // newer provider snapshot replaces the primary feed. A
+            // Monday reference response can be today's feed while LIVE
+            // is still pending; it must not erase Friday's held hero.
+            previous?.let(::latestFinalFor)?.let { previousFinal ->
+                val cycleDate = dailyCycleDate(dateProvider(), clock())
+                val previousWorking = previousWorkingDay(cycleDate)
+                if (canonicalDate(previousFinal.date) == previousWorking) {
+                    lastFinal = previousFinal
+                }
+            }
+
+            // Only an accepted, in-order snapshot may update the held-final
+            // memory. A stale response must never mutate display fallback state.
+            captureHeldFinalLocked(feed)
+
+            val scheduleTime = clock()
+            val today = dateProvider()
+
+            // A normal Luke snapshot can contain an already-valid
+            // current-cycle reference even when the dedicated reference
+            // request is still pending or previously failed. Promote those
+            // reference fields from the accepted snapshot immediately.
+            promoteCurrentCycleReferencesLocked(feed, today, scheduleTime)
+
+            val protectedFinals = protectFinalSessions(previous, feed)
+            val protected = preserveActiveLive(
+                previous = previous,
+                incoming = protectedFinals,
+                scheduleTime = scheduleTime,
+                scheduleDate = today,
+            )
+            latestAppliedSequence.set(sequence)
+            primary = SourceObservation(
+                protected,
+                finishedAt,
+                startedAt,
+                finishedAt - startedAt,
+            )
+
+            val activeSession = liveSessionForTime(scheduleTime)
+            primaryLiveSession = when {
+                activeSession != null && hasValidLive(protected, today) -> activeSession
+                activeSession != null -> null
+                else -> primaryLiveSession
+            }
+
+            // Keep the latest completed result from the previous day in
+            // memory as a hero fallback when today's Luke feed arrives
+            // without today's LIVE value yet. This is display state only;
+            // it never participates in betting or ledger calculations.
+            val incomingFinal = latestFinalFor(protected)
+            if (
+                incomingFinal != null &&
+                canonicalDate(incomingFinal.date) != today
+            ) {
+                lastFinal = incomingFinal
+            }
+
+            cacheFeedSaver(protected)
+            publishLocked()
+            syncLiveRoom(protected)
+        }
+    }
     private fun preserveActiveLive(
         previous: LiveFeedData?,
         incoming: LiveFeedData,
