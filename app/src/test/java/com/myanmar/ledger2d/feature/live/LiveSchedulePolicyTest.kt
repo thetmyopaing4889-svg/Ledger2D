@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.live
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +21,30 @@ class LiveSchedulePolicyTest {
         morningFinalized = morningFinalized,
         eveningFinalized = eveningFinalized,
     )
+
+    @Test
+    fun live_closed_day_hold_spans_weekend_until_monday_0930() {
+        val friday = LocalDate.of(2026, 10, 2)
+        val saturday = friday.plusDays(1)
+        val sunday = friday.plusDays(2)
+        val monday = friday.plusDays(3)
+
+        assertEquals(friday, liveClosedDayHoldDate(friday, friday, LocalTime.of(17, 0)))
+        assertEquals(friday, liveClosedDayHoldDate(friday, saturday, LocalTime.of(12, 0)))
+        assertEquals(friday, liveClosedDayHoldDate(friday, sunday, LocalTime.of(12, 0)))
+        assertEquals(friday, liveClosedDayHoldDate(friday, monday, LocalTime.of(9, 29, 59)))
+        assertEquals(null, liveClosedDayHoldDate(friday, monday, LocalTime.of(9, 30)))
+    }
+
+    @Test
+    fun live_closed_day_hold_expires_after_next_working_day_reference_boundary() {
+        val tuesday = LocalDate.of(2026, 10, 6)
+        val wednesday = tuesday.plusDays(1)
+
+        assertEquals(tuesday, liveClosedDayHoldDate(tuesday, wednesday, LocalTime.of(9, 29, 59)))
+        assertEquals(null, liveClosedDayHoldDate(tuesday, wednesday, LocalTime.of(9, 30)))
+        assertEquals(null, liveClosedDayHoldDate(null, tuesday, LocalTime.of(12, 0)))
+    }
 
     @Test
     fun reference_retry_window_stays_open_on_cycle_day_except_friday_after_evening_close() {
