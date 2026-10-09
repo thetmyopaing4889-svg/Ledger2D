@@ -16,6 +16,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.concurrent.CountDownLatch
@@ -1157,6 +1158,7 @@ class LiveCollectorTest {
             serverTimeEpochMs = monday.atTime(10, 27).atZone(yangon).toInstant().toEpochMilli(),
         )
 
+        val finalRecoveryDates = mutableListOf<LocalDate>()
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
@@ -1164,14 +1166,19 @@ class LiveCollectorTest {
             clock = { LocalTime.of(10, 27) },
             dateProvider = { monday },
             historicalFinalFetcher = { date ->
-                assertEquals(friday, date)
-                LiveHeroSnapshot("25", "1,571.62", "71,085.86", LIVE_SESSION_EVENING_LABEL, friday.toString())
+                finalRecoveryDates += date
+                if (date == friday) {
+                    LiveHeroSnapshot("25", "1,571.62", "71,085.86", LIVE_SESSION_EVENING_LABEL, friday.toString())
+                } else {
+                    null
+                }
             },
         )
 
         collector.start()
         runCurrent()
 
+        assertEquals("Current-day final history must not be queried before the morning result window", listOf(friday), finalRecoveryDates)
         val state = collector.state.value as LiveUiState.Data
         assertEquals("25", state.hero?.result)
         assertFalse(state.heroLive)
