@@ -156,4 +156,138 @@ class LiveReferenceStateReducerTest {
         assertEquals(cycleDate, result.state.reference200Date)
         assertEquals(cycleDate, result.state.reference200PendingDate)
     }
+
+    @Test
+    fun closed_day_clears_all_reference_cycle_memory() {
+        val populated = state(
+            reference930 = "12" to "34",
+            reference930Date = cycleDate,
+            reference200 = "56" to "78",
+            reference200Date = cycleDate,
+            reference930PendingDate = cycleDate,
+            reference200PendingDate = cycleDate,
+            reference930CompleteDate = cycleDate,
+            reference200CompleteDate = cycleDate,
+            referenceResetDate = cycleDate,
+            referenceFeed = feed(modern930 = "12", internet930 = "34"),
+            referenceFeedDate = cycleDate,
+        )
+
+        val cleared = LiveReferenceStateReducer.clearForClosedDay(populated)
+
+        assertEquals(null, cleared.reference930)
+        assertEquals(null, cleared.reference930Date)
+        assertEquals(null, cleared.reference200)
+        assertEquals(null, cleared.reference200Date)
+        assertEquals(null, cleared.reference930PendingDate)
+        assertEquals(null, cleared.reference200PendingDate)
+        assertEquals(null, cleared.reference930CompleteDate)
+        assertEquals(null, cleared.reference200CompleteDate)
+        assertEquals(null, cleared.referenceResetDate)
+        assertEquals(null, cleared.referenceFeed)
+        assertEquals(null, cleared.referenceFeedDate)
+    }
+
+    @Test
+    fun new_cycle_keeps_completed_reference_and_masks_uncompleted_slot() {
+        val yesterday = cycleDate.minusDays(1)
+        val initial = state(
+            reference930 = "12" to "34",
+            reference930Date = cycleDate,
+            reference930PendingDate = null,
+            reference930CompleteDate = cycleDate,
+            reference200 = "56" to "78",
+            reference200Date = yesterday,
+            reference200PendingDate = yesterday,
+            reference200CompleteDate = yesterday,
+        )
+
+        val next = LiveReferenceStateReducer.beginWorkingDayCycle(initial, cycleDate)
+
+        assertEquals("12" to "34", next.reference930)
+        assertEquals(cycleDate, next.reference930CompleteDate)
+        assertEquals(null, next.reference200)
+        assertEquals(null, next.reference200Date)
+        assertEquals(cycleDate, next.reference200PendingDate)
+        assertEquals(yesterday, next.reference200CompleteDate)
+    }
+
+    @Test
+    fun normal_luke_snapshot_promotes_both_references_at_their_boundaries() {
+        val acceptedFeed = feed(
+            time = "14:01:00",
+            modern930 = "12",
+            internet930 = "34",
+            modern200 = "56",
+            internet200 = "78",
+        )
+        val next = LiveReferenceStateReducer.promoteFromLiveSnapshot(
+            state = state(),
+            feed = acceptedFeed,
+            today = cycleDate,
+            scheduleTime = LocalTime.of(14, 1),
+        )
+
+        assertEquals("12" to "34", next.reference930)
+        assertEquals(cycleDate, next.reference930CompleteDate)
+        assertEquals("56" to "78", next.reference200)
+        assertEquals(cycleDate, next.reference200CompleteDate)
+        assertEquals(acceptedFeed, next.referenceFeed)
+    }
+
+    @Test
+    fun normal_luke_snapshot_before_reference_boundary_does_not_promote_reference() {
+        val initial = state()
+        val acceptedFeed = feed(
+            time = "09:29:00",
+            modern930 = "12",
+            internet930 = "34",
+            modern200 = "56",
+            internet200 = "78",
+        )
+        val next = LiveReferenceStateReducer.promoteFromLiveSnapshot(
+            state = initial,
+            feed = acceptedFeed,
+            today = cycleDate,
+            scheduleTime = LocalTime.of(9, 29),
+        )
+
+        assertEquals(initial, next)
+    }
+
+    @Test
+    fun completed_held_history_restores_only_valid_reference_pairs() {
+        val heldFeed = feed(
+            date = cycleDate.minusDays(1),
+            time = "16:30:00",
+            modern930 = "12",
+            internet930 = "34",
+            modern200 = LIVE_PENDING,
+            internet200 = "78",
+        )
+        val next = LiveReferenceStateReducer.restoreCompletedHeldCycle(
+            state = state(),
+            feed = heldFeed,
+            cycleDate = cycleDate.minusDays(1),
+        )
+
+        assertEquals("12" to "34", next.reference930)
+        assertEquals(cycleDate.minusDays(1), next.reference930CompleteDate)
+        assertEquals(null, next.reference200)
+        assertEquals(null, next.reference200CompleteDate)
+    }
+
+    @Test
+    fun morning_card_reset_is_marked_only_once_until_cycle_changes() {
+        val first = LiveReferenceStateReducer.markMorningResetIfNeeded(state(), cycleDate)
+        val second = LiveReferenceStateReducer.markMorningResetIfNeeded(first, cycleDate)
+        val completed = LiveReferenceStateReducer.markMorningResetIfNeeded(
+            state(reference930CompleteDate = cycleDate),
+            cycleDate,
+        )
+
+        assertEquals(cycleDate, first.referenceResetDate)
+        assertEquals(first, second)
+        assertEquals(null, completed.referenceResetDate)
+    }
 }
