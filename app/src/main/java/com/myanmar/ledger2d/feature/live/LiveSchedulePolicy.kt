@@ -66,6 +66,37 @@ internal fun previousWorkingDay(date: LocalDate): LocalDate {
     return d
 }
 
+internal fun nextWorkingDayAfter(date: LocalDate): LocalDate {
+    var next = date.plusDays(1)
+    while (!isWorkingDay(next)) next = next.plusDays(1)
+    return next
+}
+
+/**
+ * Resolve the LIVE-only hold date for a Luke-confirmed Closed Day.
+ * The hold includes the closed date and continues through non-working days
+ * until the next working day's 09:30 cycle boundary.
+ */
+internal fun liveClosedDayHoldDate(
+    closedDate: LocalDate?,
+    today: LocalDate,
+    now: LocalTime,
+): LocalDate? {
+    val closed = closedDate ?: return null
+    if (closed == today) return closed
+
+    if (today.isAfter(closed)) {
+        val nextWorking = nextWorkingDayAfter(closed)
+        if (
+            today.isBefore(nextWorking) ||
+            (today == nextWorking && now.isBefore(MORNING_REFERENCE))
+        ) {
+            return closed
+        }
+    }
+    return null
+}
+
 internal fun dailyCycleDate(
     date: LocalDate = currentYangonDate(),
     time: LocalTime = LocalTime.now(YANGON),
