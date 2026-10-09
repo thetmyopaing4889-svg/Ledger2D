@@ -164,7 +164,7 @@ class LiveStateReducerTest {
 
     @Test
     fun confirmed_closed_day_uses_held_feed_and_its_final_without_mutating_input() {
-        val heldDate = previousWorkingDay(today)
+        val heldDate = previousWorkingDay(today.plusDays(1))
         val heldFeed = feed(
             time = "16:30:00",
             morning = session("47"),
@@ -206,7 +206,7 @@ class LiveStateReducerTest {
 
     @Test
     fun closed_day_without_final_in_held_feed_preserves_last_known_final() {
-        val heldFeed = feed(time = "16:30:00").copy(date = previousWorkingDay(today).toString())
+        val heldFeed = feed(time = "16:30:00").copy(date = previousWorkingDay(today.plusDays(1)).toString())
         val previousFinal = LiveHeroSnapshot("74", "1600", "20000", LIVE_SESSION_EVENING_LABEL, today.toString())
         val reduced = LiveStateReducer.reduceConfirmedClosedDay(
             cycleDate = today.plusDays(1),
@@ -235,7 +235,7 @@ class LiveStateReducerTest {
 
     @Test
     fun startup_recovery_restores_references_only_for_a_completed_held_cycle() {
-        val heldDate = today.minusDays(1)
+        val heldDate = previousWorkingDay(today)
         val heldFeed = feed(
             time = "16:30:00",
             morning = session("47"),
@@ -309,7 +309,7 @@ class LiveStateReducerTest {
         val recoveredHeld = feed(
             time = "16:30:00",
             evening = session("62"),
-        ).copy(date = today.minusDays(1).toString())
+        ).copy(date = previousWorkingDay(today).toString())
 
         val result = LiveStateReducer.reduceStartupRecovery(
             today = today,
@@ -344,14 +344,14 @@ class LiveStateReducerTest {
         val recovered = feed(
             time = "16:30:00",
             evening = session("62"),
-        ).copy(date = today.minusDays(1).toString())
+        ).copy(date = previousWorkingDay(today).toString())
         val fallbackFinal = LiveHeroSnapshot(
             "28", "1600", "20000", LIVE_SESSION_EVENING_LABEL, previousWorkingDay(today).toString()
         )
         val result = LiveStateReducer.reduceStartupRecovery(
             today = today,
             scheduleTime = LocalTime.of(8, 30),
-            cycleDate = today.minusDays(1),
+            cycleDate = previousWorkingDay(today),
             recoveredFeed = recovered,
             currentFinal = null,
             fallbackFinal = fallbackFinal,
@@ -398,7 +398,7 @@ class LiveStateReducerTest {
         val reduced = LiveStateReducer.reduceStartupRecovery(
             today = today,
             scheduleTime = LocalTime.of(9, 29),
-            cycleDate = today.minusDays(1),
+            cycleDate = previousWorkingDay(today),
             recoveredFeed = null,
             currentFinal = null,
             fallbackFinal = null,
