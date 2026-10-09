@@ -4,6 +4,7 @@ import android.content.Context
 import com.myanmar.ledger2d.core.database.LiveDailyResultPatch
 import com.myanmar.ledger2d.core.repository.HistorySync
 import android.os.SystemClock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,6 +26,15 @@ internal fun monotonicMs(): Long = runCatching {
 }.getOrElse {
     System.nanoTime() / 1_000_000L
 }
+
+private suspend fun <T> runSuspendCatchingCancellable(block: suspend () -> T): T? =
+    try {
+        block()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
 
 /**
  * Luke-only Phase 1:
@@ -67,6 +77,7 @@ internal class LiveCollector(
     private val started = AtomicBoolean(false)
     private val latestAppliedSequence = AtomicLong(0L)
     private val stateLock = Any()
+    private val sideEffects = LiveSideEffectQueue { Thread.holdsLock(stateLock) }
 
     private var schedulerJob: Job? = null
     private var reference930CompleteDate: LocalDate? = null
@@ -142,9 +153,10 @@ internal class LiveCollector(
             synchronized(stateLock) {
                 if (closedDayDate == closed) {
                     closedDayDate = null
-                    closedDayDateClearer()
+                    sideEffects.dispatch { closedDayDateClearer() }
                 }
             }
+            sideEffects.drain()
         }
     }
 
@@ -176,7 +188,7 @@ internal class LiveCollector(
             if (stillRelevant) {
                 closedDayDate = persistedClosed
             } else {
-                closedDayDateClearer()
+                sideEffects.dispatch { closedDayDateClearer() }
             }
         }
         val cachedFeed = cacheFeedLoader()
@@ -286,10 +298,11 @@ internal class LiveCollector(
             primaryLiveSession = reduction.primaryLiveSession
             lastFinal = reduction.lastFinal
 
-            cacheFeedSaver(protected)
+            sideEffects.dispatch { cacheFeedSaver(protected) }
             publishLocked()
-            syncLiveRoom(protected)
+            sideEffects.dispatch { syncLiveRoom(protected) }
         }
+        sideEffects.drain()
     }
     private fun syncLiveRoom(feed: LiveFeedData) {
         val saver = liveRoomSaver ?: return
@@ -423,6 +436,8 @@ internal class LiveCollector(
     ): Boolean {
         val feed = try {
             fetcher()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             null
         }
@@ -436,9 +451,9 @@ internal class LiveCollector(
         // completed I/O is carried with the reference result event.
         val heldFeed = if (closedSnapshot) {
             val holdDate = previousWorkingDay(cycleDate)
-            runCatching {
+            runSuspendCatchingCancellable {
                 closedDayFeedFetcher?.invoke(holdDate)
-            }.getOrNull()
+            }
         } else {
             null
         }
@@ -504,18 +519,19 @@ internal class LiveCollector(
                 )
 
                 closedDayDate = transition.closedDayDate
-                closedDayDateSaver(cycleDate)
+                sideEffects.dispatch { closedDayDateSaver(cycleDate) }
                 applyReferenceStateLocked(transition.references)
                 lastLive = transition.lastLive
 
                 if (heldFeed != null) {
                     primary = transition.primary
                     lastFinal = transition.lastFinal
-                    cacheFeedSaver(heldFeed)
+                    sideEffects.dispatch { cacheFeedSaver(heldFeed) }
                 }
 
                 publishLocked()
             }
+            sideEffects.drain()
             return true
         }
 
@@ -535,10 +551,11 @@ internal class LiveCollector(
 
             publishLocked()
             if (feed != null) {
-                syncLiveRoom(feed)
+                sideEffects.dispatch { syncLiveRoom(feed) }
             }
             transition.cycleComplete
         }
+        sideEffects.drain()
 
         return cycleComplete
     }
@@ -563,6 +580,7 @@ internal class LiveCollector(
                 )
                 publishLocked()
             }
+            sideEffects.drain()
 
             if (reference930CompleteDate != cycleDate) {
                 requestCoordinator.startMorningReferenceCycle()
@@ -596,6 +614,7 @@ internal class LiveCollector(
                     publishLocked()
                 }
             }
+            sideEffects.drain()
         }
     }
 
@@ -635,32 +654,32 @@ internal class LiveCollector(
         // Fresh-install policy owns only the date selection; the Daily Flow
         // still decides what portions of that row are displayable.
         val currentFeed = if (closedHold != null) {
-            runCatching {
+            runSuspendCatchingCancellable {
                 closedDayFeedFetcher?.invoke(cycleDate)
-            }.getOrNull()?.takeIf {
+            }?.takeIf {
                 canonicalDate(it.date) == cycleDate
             }
         } else {
-            runCatching {
+            runSuspendCatchingCancellable {
                 historicalFeedFetcher?.invoke(cycleDate)
-            }.getOrNull()?.takeIf {
+            }?.takeIf {
                 canonicalDate(it.date) == cycleDate
             }
         }
 
         val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
-            runCatching {
+            runSuspendCatchingCancellable {
                 historicalFeedFetcher?.invoke(fallbackFeedDate)
-            }.getOrNull()?.takeIf {
+            }?.takeIf {
                 canonicalDate(it.date) == fallbackFeedDate
             }
         } else {
             null
         }
 
-        val currentFinal = runCatching {
+        val currentFinal = runSuspendCatchingCancellable {
             historicalFinalFetcher?.invoke(cycleDate)
-        }.getOrNull()?.takeIf {
+        }?.takeIf {
             canonicalDate(it.date) == cycleDate
         }
 
@@ -669,9 +688,9 @@ internal class LiveCollector(
             fallbackFeedDate != null &&
             fallbackFeedDate != cycleDate
         ) {
-            runCatching {
+            runSuspendCatchingCancellable {
                 historicalFinalFetcher?.invoke(fallbackFeedDate)
-            }.getOrNull()?.takeIf {
+            }?.takeIf {
                 canonicalDate(it.date) == fallbackFeedDate
             }
         } else {
@@ -705,6 +724,7 @@ internal class LiveCollector(
 
             publishLocked()
         }
+        sideEffects.drain()
     }
 
     private fun publishLocked() {
@@ -777,7 +797,7 @@ internal class LiveCollector(
             hero != lastFinal
         ) {
             lastFinal = hero
-            cacheSaver(hero)
+            sideEffects.dispatch { cacheSaver(hero) }
         }
     }
 
@@ -836,7 +856,10 @@ internal class LiveCollector(
                 // Closed Day notice disappears as soon as the new date starts.
                 if (currentDate != lastSchedulerDate) {
                     lastSchedulerDate = currentDate
-                    publishLocked()
+                    synchronized(stateLock) {
+                        publishLocked()
+                    }
+                    sideEffects.drain()
                 }
 
                 synchronized(stateLock) {
@@ -845,6 +868,7 @@ internal class LiveCollector(
                         publishLocked()
                     }
                 }
+                sideEffects.drain()
 
                 maybeReferenceFetch(t)
 
