@@ -210,7 +210,7 @@ internal class LiveCollector(
             }
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
-            sideEffects.dispatch { syncLiveRoom(cachedFeed) }
+            sideEffects.dispatch { syncLiveRoom(cachedFeed, today, scheduleTime) }
         } else {
             val bootstrap = freshInstallBootstrapPlan(today, scheduleTime)
             val activeSession = liveSessionForTime(scheduleTime)
