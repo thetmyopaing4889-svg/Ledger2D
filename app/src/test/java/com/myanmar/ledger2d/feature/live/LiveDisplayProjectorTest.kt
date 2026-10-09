@@ -133,6 +133,55 @@ class LiveDisplayProjectorTest {
     }
 
     @Test
+    fun closed_day_display_eligibility_accepts_only_the_held_previous_working_day() {
+        val heldFeed = feed(date = monday)
+        val currentDayFeed = feed(date = tuesday)
+
+        assertEquals(
+            true,
+            isLiveFeedDisplayableForSchedule(
+                feed = heldFeed,
+                scheduleTime = LocalTime.of(10, 0),
+                today = tuesday,
+                liveClosedDayDate = tuesday,
+            ),
+        )
+        assertEquals(
+            false,
+            isLiveFeedDisplayableForSchedule(
+                feed = currentDayFeed,
+                scheduleTime = LocalTime.of(10, 0),
+                today = tuesday,
+                liveClosedDayDate = tuesday,
+            ),
+        )
+    }
+
+    @Test
+    fun normal_display_eligibility_still_accepts_previous_working_day_before_morning_live() {
+        val fridayFeed = feed(date = monday.minusDays(3))
+
+        assertEquals(
+            true,
+            isLiveFeedDisplayableForSchedule(
+                feed = fridayFeed,
+                scheduleTime = LocalTime.of(10, 0),
+                today = monday,
+                liveClosedDayDate = null,
+            ),
+        )
+        assertEquals(
+            false,
+            isLiveFeedDisplayableForSchedule(
+                feed = fridayFeed,
+                scheduleTime = LocalTime.of(11, 30),
+                today = monday,
+                liveClosedDayDate = null,
+            ),
+        )
+    }
+
+    @Test
     fun successful_reference_feed_projects_current_values_and_pending_session_cards() {
         val rawFeed = feed()
         val projected = projectReferenceFeed(
