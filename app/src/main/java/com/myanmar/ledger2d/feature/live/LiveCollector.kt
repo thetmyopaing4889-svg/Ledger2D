@@ -1174,12 +1174,36 @@ internal class LiveCollector(
             feed.isCloseDay &&
             isCurrentCycleReferenceObservation(feed, cycleDate)
 
-        if (closedSnapshot) {
+        // Keep the previous-working-day lookup outside the state lock. The
+        // completed I/O is carried with the reference result event.
+        val heldFeed = if (closedSnapshot) {
             val holdDate = previousWorkingDay(cycleDate)
-            val heldFeed = runCatching {
+            runCatching {
                 closedDayFeedFetcher?.invoke(holdDate)
             }.getOrNull()
+        } else {
+            null
+        }
 
+        return applyReferenceResult(
+            LiveReferenceResultEvent(
+                isMorning = isMorning,
+                cycleDate = cycleDate,
+                feed = feed,
+                closedDayObservation = closedSnapshot,
+                heldFeed = heldFeed,
+            )
+        )
+    }
+
+    private fun applyReferenceResult(event: LiveReferenceResultEvent): Boolean {
+        val isMorning = event.isMorning
+        val cycleDate = event.cycleDate
+        val feed = event.feed
+        val closedSnapshot = event.closedDayObservation
+        val heldFeed = event.heldFeed
+
+        if (closedSnapshot) {
             synchronized(stateLock) {
                 if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
 
@@ -1281,7 +1305,6 @@ internal class LiveCollector(
             reference200CompleteDate == cycleDate
         }
     }
-
     private fun fetchReference930Cycle() {
         val today = dateProvider()
         if (reference930CompleteDate == today) {
