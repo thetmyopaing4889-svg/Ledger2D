@@ -245,3 +245,33 @@ This section records work completed after the design record above; it does not c
 - PR [#27](https://github.com/thetmyopaing4889-svg/Ledger2D/pull/27) remains **open, draft, and unmerged** by design. Do not merge it or mark it ready without the user's explicit instruction. The current base is the exact #492 SHA; do not retarget to `main`.
 
 **Next action:** no more source refactoring is required for this planned scope. The remaining decision is administrative: whether to require another CI run on the documentation-only final head before the PR is marked ready. Keep the PR draft until that decision is made.
+
+
+---
+
+## 11. Follow-up extraction checkpoint — 2026-10-09
+
+This checkpoint supersedes the earlier “13 files / implementation complete” statements in Section 10. The work continued after CI #564, so those earlier file counts and source-revision references are historical, not the current status.
+
+### Additional boundaries extracted after CI #564
+
+- `LiveRequestCoordinator.kt` now owns request execution, sequence allocation, and separate 09:30 / 14:00 reference retry jobs. It delivers typed results to the collector and does not commit shared state or perform persistence.
+- `LiveStateReducer.kt` contains pure decisions for accepted LIVE snapshots, startup recovery, and Luke-confirmed Closed Day transitions. `LiveReferenceStateReducer.kt` contains pure reference-state transitions including cycle start, result acceptance, promotion from accepted LIVE observations, and the one-time morning reset.
+- `LiveFeedPolicy.kt`, `LiveHistoryProjection.kt`, `LiveDailyResultPatchBuilder.kt`, and `LiveCacheStore.kt` separate feed decisions, history/display projection, Room patch construction, and cache persistence.
+- Focused tests were added for request coordination, reference transitions, Closed Day, startup recovery, and held-final protection.
+- `LiveCollector.kt` is reduced to 936 lines in the inspected current revision. It still owns scheduler orchestration, the canonical mutable state/lock, integration callbacks, and effect application; those remaining roles must be assessed for behavior parity rather than moved mechanically just to reduce line count.
+
+### Latest verification evidence
+
+- Full Android CI run [#617](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/37943734669) succeeded on application-source revision `7ded085cb612da3bf4705ba13ffb5eab47158c2c`. The workflow completed successfully for unit tests, lint, Debug assembly, and Release assembly/verification.
+- A commit comparison from that tested revision to the latest inspected revision `c91a4820c09c4c1e330305d9dd1321aa31f6fa03` shows only `.github/workflows/android.yml` changed. The application and test source files are identical between those revisions; the workflow was restored after the verification run.
+- The successful CI run is evidence that the current extracted code compiles and passes the repository's current test/lint/build checks. It does not replace the remaining source-level acceptance audit below.
+
+### Remaining work before calling the refactor finished
+
+- Reconcile the implemented code against the required Daily Flow contract: Yangon schedule boundaries, weekend hold, Luke-confirmed Closed Day hold, 09:30/14:00 independent retries, 11:30/12:01/12:31 and 16:00/16:30/17:00 transitions, out-of-order and partial responses, finals that cannot regress to Pending, cold-start recovery, and preservation of last-known valid values after failures.
+- Verify that request lifecycle separation still allows overlapping requests and that network/history/cache/Room callbacks remain outside state-lock waits where required.
+- Check the existing regression-test inventory against these acceptance points and add only missing focused tests or the smallest necessary fixes. Do not broaden scope into betting, financial calculations, database schema/repositories, Keeper, Calendar, History Result, or unrelated UI.
+- Re-run the full test/lint/build workflow after any source change. Update this plan again with the concrete audit result; do not claim completion until the acceptance points have been checked.
+
+**Current state:** structural extractions and a full successful CI run are in place. The final behavior-parity audit remains open; do not treat the earlier “no source-code changes remain pending” sentence above as the current conclusion.
