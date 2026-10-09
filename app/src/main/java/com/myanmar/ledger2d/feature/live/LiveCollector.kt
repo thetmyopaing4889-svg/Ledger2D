@@ -1595,7 +1595,7 @@ internal class LiveCollector(
         val resolution = resolveDisplayLocked(today, scheduleTime)
         applyResolutionEffectsLocked(resolution, today)
 
-        _state.value = toLiveUiState(
+        _state.value = projectLiveUiState(
             resolution = resolution,
             closedDay = currentClosedDayForNotice(today),
         )
@@ -1662,21 +1662,6 @@ internal class LiveCollector(
         }
     }
 
-
-    private fun toLiveUiState(
-        resolution: LiveResolution,
-        closedDay: Boolean,
-    ): LiveUiState.Data = LiveUiState.Data(
-        feed = resolution.displayFeed,
-        hero = resolution.hero,
-        heroLive = resolution.heroLive,
-        stale = false,
-        secondaryFeed = null,
-        sourceMessage = "",
-        status = resolution.status,
-        staleAgeMs = resolution.staleAgeMs,
-        closedDay = closedDay,
-    )
 
     private fun pendingDisplayFeed(
         sourceFeed: LiveFeedData?,
