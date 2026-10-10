@@ -1572,6 +1572,78 @@ class LiveCollectorTest {
         assertEquals("60", state.feed?.live)
     }
 
+    @Test fun slow_pre_0930_history_recovery_does_not_block_new_daily_cycle() = runTest {
+        var now = LocalTime.of(9, 29, 59)
+        var lukeCalls = 0
+        val historyStarted = CompletableDeferred<Unit>()
+        val releaseHistory = CompletableDeferred<LiveFeedData?>()
+        val todayReference = feed(
+            value = "--",
+            time = "09:30:00",
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "--",
+            internet200 = "--",
+            date = monday,
+        )
+        val oldHeldFeed = feed(
+            value = "--",
+            time = "17:00:00",
+            morning = finalMorning("36"),
+            evening = finalEvening("57"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+            date = friday,
+        ).copy(serverTimeEpochMs = null)
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                lukeCalls++
+                todayReference
+            },
+            clock = { now },
+            dateProvider = { monday },
+            historicalFeedFetcher = {
+                historyStarted.complete(Unit)
+                releaseHistory.await()
+            },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        // Cold-start history is deliberately blocked at the previous-day
+        // reconstruction. The Daily Flow scheduler must remain free to advance.
+        assertTrue(historyStarted.isCompleted)
+        now = LocalTime.of(9, 30)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+
+        var state = collector.state.value as LiveUiState.Data
+        assertTrue("the 09:30 reference request should run while history is blocked", lukeCalls >= 2)
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("11", state.feed?.modern930)
+        assertEquals("22", state.feed?.internet930)
+        assertEquals("--", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+
+        // When yesterday's slow recovery eventually completes, it must not
+        // replace the already-started current-day reference cycle.
+        releaseHistory.complete(oldHeldFeed)
+        runCurrent()
+
+        state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("11", state.feed?.modern930)
+        assertEquals("22", state.feed?.internet930)
+
+        scope.cancel()
+    }
+
     @Test fun live_cold_start_requests_luke_without_waiting_for_historical_recovery() = runTest {
         var lukeCalls = 0
         var historyCalls = 0
