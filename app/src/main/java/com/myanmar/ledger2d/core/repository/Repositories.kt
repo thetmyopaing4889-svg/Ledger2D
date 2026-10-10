@@ -148,7 +148,7 @@ internal object LiveDailyResultMerger {
         val reference930Backfill = patch.reference930SourceAt == null
         if (
             (patch.modern930 != null || patch.internet930 != null) &&
-            (reference930SourceAt == null || reference930Backfill || patch.reference930SourceAt >= reference930SourceAt)
+            (reference930SourceAt == null || patch.reference930SourceAt == null || patch.reference930SourceAt >= reference930SourceAt)
         ) {
             patch.modern930?.let {
                 if (!reference930Backfill || isMissingStoredValue(modern930)) modern930 = it
@@ -164,7 +164,7 @@ internal object LiveDailyResultMerger {
         val reference200Backfill = patch.reference200SourceAt == null
         if (
             (patch.modern200 != null || patch.internet200 != null) &&
-            (reference200SourceAt == null || reference200Backfill || patch.reference200SourceAt >= reference200SourceAt)
+            (reference200SourceAt == null || patch.reference200SourceAt == null || patch.reference200SourceAt >= reference200SourceAt)
         ) {
             patch.modern200?.let {
                 if (!reference200Backfill || isMissingStoredValue(modern200)) modern200 = it
@@ -180,7 +180,7 @@ internal object LiveDailyResultMerger {
         val morningBackfill = patch.morningSourceAt == null
         if (
             (patch.morning2d != null || patch.morningSet != null || patch.morningValue != null) &&
-            (morningSourceAt == null || morningBackfill || patch.morningSourceAt >= morningSourceAt)
+            (morningSourceAt == null || patch.morningSourceAt == null || patch.morningSourceAt >= morningSourceAt)
         ) {
             patch.morning2d?.let {
                 if (!morningBackfill || isMissingStoredValue(morning2d)) morning2d = it
@@ -199,7 +199,7 @@ internal object LiveDailyResultMerger {
         val eveningBackfill = patch.eveningSourceAt == null
         if (
             (patch.evening2d != null || patch.eveningSet != null || patch.eveningValue != null) &&
-            (eveningSourceAt == null || eveningBackfill || patch.eveningSourceAt >= eveningSourceAt)
+            (eveningSourceAt == null || patch.eveningSourceAt == null || patch.eveningSourceAt >= eveningSourceAt)
         ) {
             patch.evening2d?.let {
                 if (!eveningBackfill || isMissingStoredValue(evening2d)) evening2d = it
