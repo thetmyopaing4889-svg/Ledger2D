@@ -5,6 +5,23 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
+private val STORED_METRIC_REGEX =
+    Regex("^(?:\\d+|\\d{1,3}(?:,\\d{3})+)(?:\\.\\d+)?$")
+
+/** Validate only values written to Room; do not change broader LIVE UI acceptance. */
+private fun validStoredMetric(value: String): Boolean {
+    val normalized = value.trim()
+    if (
+        normalized.isEmpty() ||
+        normalized == LIVE_PENDING ||
+        normalized == "-" ||
+        normalized.equals("null", ignoreCase = true)
+    ) {
+        return false
+    }
+    return STORED_METRIC_REGEX.matches(normalized)
+}
+
 internal fun buildLiveDailyResultPatches(
     feed: LiveFeedData,
     today: LocalDate,
@@ -37,11 +54,11 @@ internal fun buildLiveDailyResultPatches(
         (providerDate == cycleDate || providerDate == previousWorkingDay(cycleDate))
     ) {
         val morning2d = feed.morning.result.takeIf(::isValidLive2d)
-        val morningSet = feed.morning.set.takeIf(::validMoney)
-        val morningValue = feed.morning.value.takeIf(::validMoney)
+        val morningSet = feed.morning.set.takeIf(::validStoredMetric)
+        val morningValue = feed.morning.value.takeIf(::validStoredMetric)
         val evening2d = feed.evening.result.takeIf(::isValidLive2d)
-        val eveningSet = feed.evening.set.takeIf(::validMoney)
-        val eveningValue = feed.evening.value.takeIf(::validMoney)
+        val eveningSet = feed.evening.set.takeIf(::validStoredMetric)
+        val eveningValue = feed.evening.value.takeIf(::validStoredMetric)
 
         if (morning2d != null || morningSet != null || morningValue != null) {
             mergePatch(providerDate) {
