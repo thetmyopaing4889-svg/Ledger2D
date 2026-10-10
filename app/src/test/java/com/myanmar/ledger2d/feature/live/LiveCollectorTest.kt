@@ -2,6 +2,8 @@ package com.myanmar.ledger2d.feature.live
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -14,8 +16,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveCollectorTest {
@@ -1152,6 +1158,7 @@ class LiveCollectorTest {
             serverTimeEpochMs = monday.atTime(10, 27).atZone(yangon).toInstant().toEpochMilli(),
         )
 
+        val finalRecoveryDates = mutableListOf<LocalDate>()
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
@@ -1159,14 +1166,19 @@ class LiveCollectorTest {
             clock = { LocalTime.of(10, 27) },
             dateProvider = { monday },
             historicalFinalFetcher = { date ->
-                assertEquals(friday, date)
-                LiveHeroSnapshot("25", "1,571.62", "71,085.86", LIVE_SESSION_EVENING_LABEL, friday.toString())
+                finalRecoveryDates += date
+                if (date == friday) {
+                    LiveHeroSnapshot("25", "1,571.62", "71,085.86", LIVE_SESSION_EVENING_LABEL, friday.toString())
+                } else {
+                    null
+                }
             },
         )
 
         collector.start()
         runCurrent()
 
+        assertEquals("Current-day final history must not be queried before the morning result window", listOf(friday), finalRecoveryDates)
         val state = collector.state.value as LiveUiState.Data
         assertEquals("25", state.hero?.result)
         assertFalse(state.heroLive)
@@ -2009,6 +2021,85 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test
+    fun blocked_cache_callback_does_not_hold_the_daily_flow_state_lock() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val fetchCalls = AtomicInteger(0)
+        val cacheCalls = AtomicInteger(0)
+        val cacheEntered = CountDownLatch(1)
+        val releaseCache = CountDownLatch(1)
+        val firstFeed = feed("36", "12:03:00", morning = finalMorning("36"), date = friday)
+        val secondFeed = feed("37", "12:04:00", morning = finalMorning("37"), date = friday)
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                if (fetchCalls.incrementAndGet() == 1) firstFeed else secondFeed
+            },
+            clock = { LocalTime.of(12, 5) },
+            dateProvider = { friday },
+            cacheFeedSaver = {
+                if (cacheCalls.incrementAndGet() == 1) {
+                    cacheEntered.countDown()
+                    releaseCache.await(5, TimeUnit.SECONDS)
+                }
+            },
+        )
+
+        try {
+            collector.fetchCycle()
+            assertTrue("first cache callback did not start", cacheEntered.await(2, TimeUnit.SECONDS))
+
+            // The first persistence callback is deliberately still blocked here.
+            // A second accepted Luke response must still commit and publish.
+            collector.fetchCycle()
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+            var heroResult: String? = null
+            while (System.nanoTime() < deadline) {
+                heroResult = (collector.state.value as? LiveUiState.Data)?.hero?.result
+                if (heroResult == "37") break
+                Thread.sleep(10)
+            }
+            assertEquals("37", heroResult)
+        } finally {
+            releaseCache.countDown()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun startup_recovery_cancellation_does_not_continue_with_fallback_history_calls() = runTest {
+        val historyGate = CompletableDeferred<LiveFeedData?>()
+        var historyCalls = 0
+        var finalCalls = 0
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 30) },
+            dateProvider = { monday },
+            historicalFeedFetcher = {
+                historyCalls++
+                historyGate.await()
+            },
+            historicalFinalFetcher = {
+                finalCalls++
+                null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+        assertEquals(1, historyCalls)
+
+        scope.cancel()
+        runCurrent()
+
+        assertEquals("cancelled recovery must not fall through to another history call", 1, historyCalls)
+        assertEquals("cancelled recovery must not continue into final recovery", 0, finalCalls)
+    }
+
     @Test fun request_failure_keeps_last_successful_snapshot() = runTest {
         var calls = 0
         val collector = LiveCollector(
@@ -2177,6 +2268,55 @@ class LiveCollectorTest {
         assertNull(patches.firstOrNull { it.date == friday })
     }
 
+    @Test
+    fun live_room_closed_day_observation_never_creates_room_patches() {
+        val closed = feed(
+            value = "25",
+            time = "18:00:00",
+            morning = finalMorning("36"),
+            evening = finalEvening("57"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+            date = friday,
+            isCloseDay = true,
+        )
+
+        val patches = buildLiveDailyResultPatches(
+            feed = closed,
+            today = friday,
+            now = LocalTime.of(18, 0),
+        )
+
+        assertTrue(patches.isEmpty())
+    }
+
+    @Test
+    fun live_room_rejects_missing_or_malformed_set_value_metrics() {
+        val f = feed(
+            value = "--",
+            time = "18:00:00",
+            morning = LiveSessionData(
+                result = "36",
+                set = "-",
+                value = "not-a-number",
+                finalized = true,
+            ),
+            date = friday,
+        )
+
+        val patch = buildLiveDailyResultPatches(
+            feed = f,
+            today = friday,
+            now = LocalTime.of(18, 0),
+        ).single()
+
+        assertEquals("36", patch.morning2d)
+        assertNull(patch.morningSet)
+        assertNull(patch.morningValue)
+    }
+
     @Test fun live_room_full_evening_snapshot_is_one_current_day_patch() {
         val f = feed(
             "25",
@@ -2238,6 +2378,53 @@ class LiveCollectorTest {
         )
 
         assertEquals(old, merged)
+    }
+
+    @Test
+    fun timestamp_free_backfill_only_fills_missing_room_fields() {
+        val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
+            id = 7L,
+            date = friday,
+            modern930 = "80",
+            internet930 = null,
+            modern200 = "98",
+            internet200 = "78",
+            morning2d = "36",
+            morningSet = null,
+            morningValue = "2,100",
+            evening2d = "57",
+            eveningSet = "3,000",
+            eveningValue = "4,000",
+            reference930SourceAt = 100L,
+            reference200SourceAt = 110L,
+            morningSourceAt = 130L,
+            eveningSourceAt = 140L,
+            updatedAt = 140L,
+        )
+        val backfill = com.myanmar.ledger2d.core.database.LiveDailyResultPatch(
+            date = friday,
+            modern930 = "99",
+            internet930 = "33",
+            morning2d = "35",
+            morningSet = "1,100",
+            morningValue = "2,000",
+        )
+
+        val merged = com.myanmar.ledger2d.core.repository.LiveDailyResultMerger.merge(
+            old = old,
+            patch = backfill,
+            updatedAt = 200L,
+        )
+
+        // Backfill may complete gaps, but cannot replace a field already
+        // populated by LIVE while the backfill was being prepared.
+        assertEquals("80", merged.modern930)
+        assertEquals("33", merged.internet930)
+        assertEquals(100L, merged.reference930SourceAt)
+        assertEquals("36", merged.morning2d)
+        assertEquals("1,100", merged.morningSet)
+        assertEquals("2,100", merged.morningValue)
+        assertEquals(130L, merged.morningSourceAt)
     }
 
     @Test fun live_room_morning_correction_can_update_morning_without_blocking_later_reference_retry() {
