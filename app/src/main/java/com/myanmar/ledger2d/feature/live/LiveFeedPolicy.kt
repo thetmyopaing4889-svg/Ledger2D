@@ -45,26 +45,8 @@ internal fun parseDecisionInstant(f: LiveFeedData): Instant? {
 internal fun isValidLive2d(v: String): Boolean =
     v.matches(Regex("^[0-9]{2}$"))
 
-private val LIVE_METRIC_REGEX =
-    Regex("^(?:\\d+|\\d{1,3}(?:,\\d{3})+)(?:\\.\\d+)?$")
-
-/**
- * SET/VALUE metrics are numeric provider fields. Reject missing sentinels and
- * malformed text instead of treating every non-blank API string as a value.
- * Supports plain digits, comma-grouped digits, and optional decimal fractions.
- */
-internal fun validMoney(v: String): Boolean {
-    val normalized = v.trim()
-    if (
-        normalized.isEmpty() ||
-        normalized == LIVE_PENDING ||
-        normalized == "-" ||
-        normalized.equals("null", ignoreCase = true)
-    ) {
-        return false
-    }
-    return LIVE_METRIC_REGEX.matches(normalized)
-}
+internal fun validMoney(v: String): Boolean =
+    v.isNotBlank() && v != LIVE_PENDING
 
 internal fun currentDay(
     f: LiveFeedData,
