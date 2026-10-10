@@ -745,35 +745,6 @@ internal class LiveCollector(
         val recoveredFeed = currentFeed ?: fallbackFeed
 
         synchronized(stateLock) {
-            // Recovery is intentionally asynchronous so a slow history request
-            // cannot delay the 09:30 scheduler boundary. If that boundary (or a
-            // current-day LIVE/reference result) has already established the new
-            // cycle while history was in flight, discard this stale recovery
-            // instead of allowing yesterday's held feed to overwrite it.
-            val currentToday = dateProvider()
-            val currentTime = clock()
-            val currentClosedHold = closedHoldDate(currentToday, currentTime)
-            val currentBootstrap = freshInstallBootstrapPlan(currentToday, currentTime)
-            val currentCycleDate = currentClosedHold?.let(::previousWorkingDay)
-                ?: currentBootstrap.cycleDate
-            val currentCycleHasFreshState =
-                currentCycleDate == currentToday &&
-                    isWorkingDay(currentToday) &&
-                    (
-                        reference930CompleteDate == currentCycleDate ||
-                            reference200CompleteDate == currentCycleDate ||
-                            referenceFeedDate == currentCycleDate ||
-                            primary?.feed?.let { canonicalDate(it.date) == currentCycleDate } == true
-                        )
-
-            if (
-                currentToday != today ||
-                currentCycleDate != cycleDate ||
-                currentCycleHasFreshState
-            ) {
-                return@synchronized
-            }
-
             // The reducer preserves the original priority: a current-cycle
             // final wins over fallback history; if the recovered row is a
             // completed held cycle, its valid reference pairs may be restored.
@@ -907,13 +878,9 @@ internal class LiveCollector(
                 // available, is already restored by init().
                 fetchCycle()
             } else {
-                // Historical reconstruction must never own the scheduler thread.
-                // It can involve multiple network calls and may cross 09:30; the
-                // current-day reference cycle and its retries must still start on
-                // schedule even while the held display is being recovered.
-                scope.launch {
-                    recoverPreviousWorkingDayFinal()
-                }
+                // Outside an active LIVE session, historical recovery remains
+                // the source of held/fresh-start display state.
+                recoverPreviousWorkingDayFinal()
 
                 // Reference catch-up remains separate from normal LIVE polling.
                 // When a closed-day hold is already known, skip the startup fetch
