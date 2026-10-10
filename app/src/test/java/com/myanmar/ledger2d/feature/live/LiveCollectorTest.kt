@@ -2268,6 +2268,55 @@ class LiveCollectorTest {
         assertNull(patches.firstOrNull { it.date == friday })
     }
 
+    @Test
+    fun live_room_closed_day_observation_never_creates_room_patches() {
+        val closed = feed(
+            value = "25",
+            time = "18:00:00",
+            morning = finalMorning("36"),
+            evening = finalEvening("57"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+            date = friday,
+            isCloseDay = true,
+        )
+
+        val patches = buildLiveDailyResultPatches(
+            feed = closed,
+            today = friday,
+            now = LocalTime.of(18, 0),
+        )
+
+        assertTrue(patches.isEmpty())
+    }
+
+    @Test
+    fun live_room_rejects_missing_or_malformed_set_value_metrics() {
+        val f = feed(
+            value = "--",
+            time = "18:00:00",
+            morning = LiveSessionData(
+                result = "36",
+                set = "-",
+                value = "not-a-number",
+                finalized = true,
+            ),
+            date = friday,
+        )
+
+        val patch = buildLiveDailyResultPatches(
+            feed = f,
+            today = friday,
+            now = LocalTime.of(18, 0),
+        ).single()
+
+        assertEquals("36", patch.morning2d)
+        assertNull(patch.morningSet)
+        assertNull(patch.morningValue)
+    }
+
     @Test fun live_room_full_evening_snapshot_is_one_current_day_patch() {
         val f = feed(
             "25",
