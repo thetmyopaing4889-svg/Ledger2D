@@ -48,8 +48,18 @@ internal object LiveReferenceStateReducer {
         val feed = event.feed
         val previousFeed = state.referenceFeed
             ?.takeIf { state.referenceFeedDate == cycleDate }
-        val incomingAt = feed?.let(::parseDecisionInstant)
-        val previousAt = previousFeed?.let(::parseDecisionInstant)
+        val sameProviderDate = feed != null &&
+            previousFeed != null &&
+            canonicalDate(feed.date) == canonicalDate(previousFeed.date)
+        val hasAbsoluteTimes = feed?.serverTimeEpochMs?.let { it >= 946684800000L } == true &&
+            previousFeed?.serverTimeEpochMs?.let { it >= 946684800000L } == true
+        // Some Luke responses carry current-cycle references while their date
+        // field still names the previous completed result day. Only compare
+        // timestamps across differing provider dates when both absolute server
+        // timestamps exist; otherwise compare same-provider-date clock times.
+        val canCompareTimes = sameProviderDate || hasAbsoluteTimes
+        val incomingAt = feed?.takeIf { canCompareTimes }?.let(::parseDecisionInstant)
+        val previousAt = previousFeed?.takeIf { canCompareTimes }?.let(::parseDecisionInstant)
 
         // A reference fetch can finish after a newer LIVE snapshot or another
         // reference response. Do not let an older same-cycle observation regress
