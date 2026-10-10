@@ -10,6 +10,10 @@ internal fun buildLiveDailyResultPatches(
     today: LocalDate,
     now: LocalTime,
 ): List<LiveDailyResultPatch> {
+    // Luke-confirmed closed-day observations are display/hold signals, not a
+    // result day. Never persist their payload under the closed calendar date.
+    if (feed.isCloseDay) return emptyList()
+
     val cycleDate = dailyCycleDate(today, now)
     val providerDate = canonicalDate(feed.date)
     val sourceAt = feed.serverTimeEpochMs
