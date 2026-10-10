@@ -46,6 +46,32 @@ internal object LiveReferenceStateReducer {
         }
 
         val feed = event.feed
+        val previousFeed = state.referenceFeed
+            ?.takeIf { state.referenceFeedDate == cycleDate }
+        val incomingAt = feed?.let(::parseDecisionInstant)
+        val previousAt = previousFeed?.let(::parseDecisionInstant)
+
+        // A reference fetch can finish after a newer LIVE snapshot or another
+        // reference response. Do not let an older same-cycle observation regress
+        // the accepted reference feed. If this slot was already complete, tell
+        // the retry coordinator it remains complete without applying stale data.
+        if (
+            incomingAt != null &&
+            previousAt != null &&
+            incomingAt.isBefore(previousAt)
+        ) {
+            val alreadyComplete = if (isMorning) {
+                state.reference930CompleteDate == cycleDate
+            } else {
+                state.reference200CompleteDate == cycleDate
+            }
+            return LiveReferenceStateReduction(
+                state = state,
+                accepted = true,
+                cycleComplete = alreadyComplete,
+            )
+        }
+
         val modern = if (isMorning) feed?.modern930 else feed?.modern200
         val internet = if (isMorning) feed?.internet930 else feed?.internet200
         val valid = isValidReferencePair(feed, modern.orEmpty(), internet.orEmpty()) &&
