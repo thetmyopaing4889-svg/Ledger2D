@@ -129,6 +129,46 @@ class LiveReferenceStateReducerTest {
     }
 
     @Test
+    fun older_same_cycle_reference_cannot_regress_newer_accepted_feed() {
+        val yangon = ZoneId.of("Asia/Yangon")
+        val newerTime = LocalTime.of(9, 35)
+        val olderTime = LocalTime.of(9, 34)
+        val newerEpoch = cycleDate.atTime(newerTime).atZone(yangon).toInstant().toEpochMilli()
+        val olderEpoch = cycleDate.atTime(olderTime).atZone(yangon).toInstant().toEpochMilli()
+        val newerFeed = feed(
+            time = newerTime.toString(),
+            modern930 = "80",
+            internet930 = "33",
+            epoch = newerEpoch,
+        )
+        val olderFeed = feed(
+            time = olderTime.toString(),
+            modern930 = "12",
+            internet930 = "34",
+            epoch = olderEpoch,
+        )
+        val initial = state(
+            reference930 = "80" to "33",
+            reference930Date = cycleDate,
+            reference930PendingDate = null,
+            reference930CompleteDate = cycleDate,
+            referenceResetDate = cycleDate,
+            referenceFeed = newerFeed,
+            referenceFeedDate = cycleDate,
+        )
+
+        val result = LiveReferenceStateReducer.reduce(
+            state = initial,
+            event = LiveReferenceResultEvent(true, cycleDate, olderFeed, false, null),
+            retryWindowOpen = true,
+        )
+
+        assertTrue(result.accepted)
+        assertTrue(result.cycleComplete)
+        assertEquals(initial, result.state)
+    }
+
+    @Test
     fun closed_retry_window_leaves_reference_state_unchanged() {
         val initial = state(reference930 = "12" to "34", reference930CompleteDate = cycleDate)
         val result = LiveReferenceStateReducer.reduce(
