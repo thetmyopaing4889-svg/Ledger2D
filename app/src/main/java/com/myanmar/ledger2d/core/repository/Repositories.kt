@@ -145,38 +145,74 @@ internal object LiveDailyResultMerger {
         var morningSourceAt = current.morningSourceAt
         var eveningSourceAt = current.eveningSourceAt
 
-        if ((patch.modern930 != null || patch.internet930 != null) &&
-            (reference930SourceAt == null || patch.reference930SourceAt == null || patch.reference930SourceAt >= reference930SourceAt)
+        val reference930Backfill = patch.reference930SourceAt == null
+        if (
+            (patch.modern930 != null || patch.internet930 != null) &&
+            (reference930SourceAt == null || reference930Backfill || patch.reference930SourceAt >= reference930SourceAt)
         ) {
-            patch.modern930?.let { modern930 = it }
-            patch.internet930?.let { internet930 = it }
-            patch.reference930SourceAt?.let { reference930SourceAt = maxOf(reference930SourceAt ?: Long.MIN_VALUE, it) }
+            patch.modern930?.let {
+                if (!reference930Backfill || isMissingStoredValue(modern930)) modern930 = it
+            }
+            patch.internet930?.let {
+                if (!reference930Backfill || isMissingStoredValue(internet930)) internet930 = it
+            }
+            patch.reference930SourceAt?.let {
+                reference930SourceAt = maxOf(reference930SourceAt ?: Long.MIN_VALUE, it)
+            }
         }
 
-        if ((patch.modern200 != null || patch.internet200 != null) &&
-            (reference200SourceAt == null || patch.reference200SourceAt == null || patch.reference200SourceAt >= reference200SourceAt)
+        val reference200Backfill = patch.reference200SourceAt == null
+        if (
+            (patch.modern200 != null || patch.internet200 != null) &&
+            (reference200SourceAt == null || reference200Backfill || patch.reference200SourceAt >= reference200SourceAt)
         ) {
-            patch.modern200?.let { modern200 = it }
-            patch.internet200?.let { internet200 = it }
-            patch.reference200SourceAt?.let { reference200SourceAt = maxOf(reference200SourceAt ?: Long.MIN_VALUE, it) }
+            patch.modern200?.let {
+                if (!reference200Backfill || isMissingStoredValue(modern200)) modern200 = it
+            }
+            patch.internet200?.let {
+                if (!reference200Backfill || isMissingStoredValue(internet200)) internet200 = it
+            }
+            patch.reference200SourceAt?.let {
+                reference200SourceAt = maxOf(reference200SourceAt ?: Long.MIN_VALUE, it)
+            }
         }
 
-        if ((patch.morning2d != null || patch.morningSet != null || patch.morningValue != null) &&
-            (morningSourceAt == null || patch.morningSourceAt == null || patch.morningSourceAt >= morningSourceAt)
+        val morningBackfill = patch.morningSourceAt == null
+        if (
+            (patch.morning2d != null || patch.morningSet != null || patch.morningValue != null) &&
+            (morningSourceAt == null || morningBackfill || patch.morningSourceAt >= morningSourceAt)
         ) {
-            patch.morning2d?.let { morning2d = it }
-            patch.morningSet?.let { morningSet = it }
-            patch.morningValue?.let { morningValue = it }
-            patch.morningSourceAt?.let { morningSourceAt = maxOf(morningSourceAt ?: Long.MIN_VALUE, it) }
+            patch.morning2d?.let {
+                if (!morningBackfill || isMissingStoredValue(morning2d)) morning2d = it
+            }
+            patch.morningSet?.let {
+                if (!morningBackfill || isMissingStoredValue(morningSet)) morningSet = it
+            }
+            patch.morningValue?.let {
+                if (!morningBackfill || isMissingStoredValue(morningValue)) morningValue = it
+            }
+            patch.morningSourceAt?.let {
+                morningSourceAt = maxOf(morningSourceAt ?: Long.MIN_VALUE, it)
+            }
         }
 
-        if ((patch.evening2d != null || patch.eveningSet != null || patch.eveningValue != null) &&
-            (eveningSourceAt == null || patch.eveningSourceAt == null || patch.eveningSourceAt >= eveningSourceAt)
+        val eveningBackfill = patch.eveningSourceAt == null
+        if (
+            (patch.evening2d != null || patch.eveningSet != null || patch.eveningValue != null) &&
+            (eveningSourceAt == null || eveningBackfill || patch.eveningSourceAt >= eveningSourceAt)
         ) {
-            patch.evening2d?.let { evening2d = it }
-            patch.eveningSet?.let { eveningSet = it }
-            patch.eveningValue?.let { eveningValue = it }
-            patch.eveningSourceAt?.let { eveningSourceAt = maxOf(eveningSourceAt ?: Long.MIN_VALUE, it) }
+            patch.evening2d?.let {
+                if (!eveningBackfill || isMissingStoredValue(evening2d)) evening2d = it
+            }
+            patch.eveningSet?.let {
+                if (!eveningBackfill || isMissingStoredValue(eveningSet)) eveningSet = it
+            }
+            patch.eveningValue?.let {
+                if (!eveningBackfill || isMissingStoredValue(eveningValue)) eveningValue = it
+            }
+            patch.eveningSourceAt?.let {
+                eveningSourceAt = maxOf(eveningSourceAt ?: Long.MIN_VALUE, it)
+            }
         }
 
         val candidate = current.copy(
@@ -203,6 +239,12 @@ internal object LiveDailyResultMerger {
             candidate
         }
     }
+
+    private fun isMissingStoredValue(value: String?): Boolean =
+        value.isNullOrBlank() ||
+            value == "-" ||
+            value == "--" ||
+            value.equals("null", ignoreCase = true)
 }
 
 class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResultRepository {
