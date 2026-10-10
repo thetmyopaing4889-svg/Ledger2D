@@ -2380,6 +2380,53 @@ class LiveCollectorTest {
         assertEquals(old, merged)
     }
 
+    @Test
+    fun timestamp_free_backfill_only_fills_missing_room_fields() {
+        val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
+            id = 7L,
+            date = friday,
+            modern930 = "80",
+            internet930 = null,
+            modern200 = "98",
+            internet200 = "78",
+            morning2d = "36",
+            morningSet = null,
+            morningValue = "2,100",
+            evening2d = "57",
+            eveningSet = "3,000",
+            eveningValue = "4,000",
+            reference930SourceAt = 100L,
+            reference200SourceAt = 110L,
+            morningSourceAt = 130L,
+            eveningSourceAt = 140L,
+            updatedAt = 140L,
+        )
+        val backfill = com.myanmar.ledger2d.core.database.LiveDailyResultPatch(
+            date = friday,
+            modern930 = "99",
+            internet930 = "33",
+            morning2d = "35",
+            morningSet = "1,100",
+            morningValue = "2,000",
+        )
+
+        val merged = com.myanmar.ledger2d.core.repository.LiveDailyResultMerger.merge(
+            old = old,
+            patch = backfill,
+            updatedAt = 200L,
+        )
+
+        // Backfill may complete gaps, but cannot replace a field already
+        // populated by LIVE while the backfill was being prepared.
+        assertEquals("80", merged.modern930)
+        assertEquals("33", merged.internet930)
+        assertEquals(100L, merged.reference930SourceAt)
+        assertEquals("36", merged.morning2d)
+        assertEquals("1,100", merged.morningSet)
+        assertEquals("2,100", merged.morningValue)
+        assertEquals(130L, merged.morningSourceAt)
+    }
+
     @Test fun live_room_morning_correction_can_update_morning_without_blocking_later_reference_retry() {
         val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
             id = 1L,
