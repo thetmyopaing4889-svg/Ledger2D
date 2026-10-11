@@ -320,6 +320,10 @@ internal class LiveCollector(
 
             val scheduleTime = clock()
             val today = dateProvider()
+            // Capture Room ownership while this snapshot is accepted under stateLock.
+            // A reset before its queued side effect runs invalidates this token.
+            val acceptedRoomGeneration = roomResetGeneration.get()
+            val acceptedRoomStartDate = roomTrackingStartDate
 
             // A normal Luke snapshot can contain an already-valid
             // current-cycle reference even when the dedicated reference
@@ -349,27 +353,35 @@ internal class LiveCollector(
 
             sideEffects.dispatch { cacheFeedSaver(protected) }
             publishLocked()
-            sideEffects.dispatch { syncLiveRoom(protected, today, scheduleTime) }
+            sideEffects.dispatch {
+                syncLiveRoom(
+                    feed = protected,
+                    today = today,
+                    now = scheduleTime,
+                    acceptedGeneration = acceptedRoomGeneration,
+                    acceptedStartDate = acceptedRoomStartDate,
+                )
+            }
         }
         sideEffects.drain()
     }
     /**
-     * Build the Room patch synchronously after the accepted state commit, using the
-     * captured app-clock values from that transition. Only persistence launch is
-     * queued, so callback delays cannot retarget which daily row this observation writes.
+     * Build Room patches from the accepted snapshot using the generation and
+     * tracking boundary captured before its side effect was queued. Delayed
+     * callbacks from pre-reset snapshots cannot acquire the new generation.
      */
     private fun syncLiveRoom(
         feed: LiveFeedData,
-        today: LocalDate = dateProvider(),
-        now: LocalTime = clock(),
+        today: LocalDate,
+        now: LocalTime,
+        acceptedGeneration: Long,
+        acceptedStartDate: LocalDate?,
     ) {
         val saver = liveRoomSaver ?: return
-        val (generation, trackingStartDate) = synchronized(stateLock) {
-            roomResetGeneration.get() to roomTrackingStartDate
-        }
+        if (acceptedGeneration != roomResetGeneration.get()) return
         val patches = restrictPatchesToRoomTrackingWindow(
             patches = buildLiveDailyResultPatches(feed, today, now),
-            startDate = trackingStartDate,
+            startDate = acceptedStartDate,
         )
         if (patches.isEmpty()) return
 
@@ -392,10 +404,10 @@ internal class LiveCollector(
 
         synchronized(stateLock) {
             // A reset may have happened while this patch was being built.
-            if (generation != roomResetGeneration.get()) return
-            if (signature == lastRoomSyncSignature && lastRoomSyncGeneration == generation) return
+            if (acceptedGeneration != roomResetGeneration.get()) return
+            if (signature == lastRoomSyncSignature && lastRoomSyncGeneration == acceptedGeneration) return
             lastRoomSyncSignature = signature
-            lastRoomSyncGeneration = generation
+            lastRoomSyncGeneration = acceptedGeneration
         }
 
         // Serialize Room writes with reset. A queued pre-reset write is dropped;
@@ -404,14 +416,14 @@ internal class LiveCollector(
             scope.launch {
                 try {
                     roomPersistenceMutex.withLock {
-                        if (generation != roomResetGeneration.get()) return@withLock
+                        if (acceptedGeneration != roomResetGeneration.get()) return@withLock
                         saver(patches)
                     }
                 } catch (cancelled: CancellationException) {
                     synchronized(stateLock) {
                         if (
-                            generation == roomResetGeneration.get() &&
-                            lastRoomSyncGeneration == generation &&
+                            acceptedGeneration == roomResetGeneration.get() &&
+                            lastRoomSyncGeneration == acceptedGeneration &&
                             lastRoomSyncSignature == signature
                         ) {
                             lastRoomSyncSignature = null
@@ -422,8 +434,8 @@ internal class LiveCollector(
                 } catch (_: Exception) {
                     synchronized(stateLock) {
                         if (
-                            generation == roomResetGeneration.get() &&
-                            lastRoomSyncGeneration == generation &&
+                            acceptedGeneration == roomResetGeneration.get() &&
+                            lastRoomSyncGeneration == acceptedGeneration &&
                             lastRoomSyncSignature == signature
                         ) {
                             lastRoomSyncSignature = null
