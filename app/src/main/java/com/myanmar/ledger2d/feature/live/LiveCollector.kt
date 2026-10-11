@@ -23,13 +23,6 @@ import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-internal fun restrictPatchesToRoomTrackingWindow(
-    patches: List<LiveDailyResultPatch>,
-    startDate: LocalDate?,
-): List<LiveDailyResultPatch> =
-    if (startDate == null) patches
-    else patches.filter { !it.date.isBefore(startDate) }
-
 internal fun monotonicMs(): Long = runCatching {
     SystemClock.elapsedRealtime()
 }.getOrElse {
@@ -78,8 +71,6 @@ internal class LiveCollector(
     private val closedDayDateClearer: () -> Unit = {},
     private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
     private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
-    roomTrackingStartDateLoader: () -> LocalDate? = { null },
-    private val roomTrackingStartDateSaver: (LocalDate) -> Unit = {},
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -92,8 +83,6 @@ internal class LiveCollector(
     private val sideEffects = LiveSideEffectQueue { Thread.holdsLock(stateLock) }
     private val roomPersistenceMutex = Mutex()
     private val roomResetGeneration = AtomicLong(0L)
-    @Volatile private var roomTrackingStartDate: LocalDate? =
-        runCatching { roomTrackingStartDateLoader() }.getOrNull()
 
     private var schedulerJob: Job? = null
     private var reference930CompleteDate: LocalDate? = null
@@ -267,14 +256,11 @@ internal class LiveCollector(
      * writes already in progress finish before the table is cleared.
      */
     suspend fun resetLiveRoom(resetStorage: suspend () -> Unit) {
-        val startDate = dateProvider()
         synchronized(stateLock) {
             roomResetGeneration.incrementAndGet()
-            roomTrackingStartDate = startDate
             lastRoomSyncSignature = null
             lastRoomSyncGeneration = null
         }
-        runCatching { roomTrackingStartDateSaver(startDate) }
 
         roomPersistenceMutex.withLock {
             resetStorage()
@@ -323,7 +309,6 @@ internal class LiveCollector(
             // Capture Room ownership while this snapshot is accepted under stateLock.
             // A reset before its queued side effect runs invalidates this token.
             val acceptedRoomGeneration = roomResetGeneration.get()
-            val acceptedRoomStartDate = roomTrackingStartDate
 
             // A normal Luke snapshot can contain an already-valid
             // current-cycle reference even when the dedicated reference
@@ -359,7 +344,6 @@ internal class LiveCollector(
                     today = today,
                     now = scheduleTime,
                     acceptedGeneration = acceptedRoomGeneration,
-                    acceptedStartDate = acceptedRoomStartDate,
                 )
             }
         }
@@ -375,14 +359,10 @@ internal class LiveCollector(
         today: LocalDate,
         now: LocalTime,
         acceptedGeneration: Long,
-        acceptedStartDate: LocalDate?,
     ) {
         val saver = liveRoomSaver ?: return
         if (acceptedGeneration != roomResetGeneration.get()) return
-        val patches = restrictPatchesToRoomTrackingWindow(
-            patches = buildLiveDailyResultPatches(feed, today, now),
-            startDate = acceptedStartDate,
-        )
+        val patches = buildLiveDailyResultPatches(feed, today, now)
         if (patches.isEmpty()) return
 
         // Skip repeated observations only within the same reset generation.
@@ -1006,8 +986,6 @@ internal class LiveCollector(
         fun startOnce(
             context: Context,
             liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
-            roomTrackingStartDateLoader: () -> LocalDate? = { null },
-            roomTrackingStartDateSaver: (LocalDate) -> Unit = {},
         ) {
             if (shared != null) return
 
@@ -1030,8 +1008,6 @@ internal class LiveCollector(
                     cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
                     liveRoomSaver = liveRoomSaver,
-                    roomTrackingStartDateLoader = roomTrackingStartDateLoader,
-                    roomTrackingStartDateSaver = roomTrackingStartDateSaver,
                     closedDayFeedFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()
