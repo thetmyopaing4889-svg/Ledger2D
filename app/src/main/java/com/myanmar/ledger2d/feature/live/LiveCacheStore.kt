@@ -5,6 +5,9 @@ import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalTime
 
+internal fun roomTrackingStartDateOrToday(stored: LocalDate?, today: LocalDate): LocalDate =
+    stored ?: today
+
 internal object LiveClosedDayStore {
     private const val PREFS_NAME = "live_display_cache"
     private const val KEY = "observed_closed_day"
@@ -51,6 +54,13 @@ internal object LiveRoomTrackingStartStore {
             .getString(KEY, null)
             ?.let { LocalDate.parse(it) }
     }.getOrNull()
+
+    fun loadOrInitialize(context: Context, today: LocalDate): LocalDate {
+        val stored = load(context)
+        val resolved = roomTrackingStartDateOrToday(stored, today)
+        if (stored == null) save(context, resolved)
+        return resolved
+    }
 
     fun save(context: Context, date: LocalDate) {
         runCatching {
