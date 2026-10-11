@@ -6,6 +6,9 @@ import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
 import com.myanmar.ledger2d.feature.live.LiveRoomKeeperScheduler
+import com.myanmar.ledger2d.feature.live.LiveRoomTrackingStartStore
+import java.time.LocalDate
+import java.time.ZoneId
 
 object LedgerApplicationContextHolder { lateinit var context: Application }
 
@@ -29,7 +32,12 @@ class LedgerApplication : Application() {
         LiveCollector.startOnce(
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },
-            roomTrackingStartDateLoader = { LiveRoomTrackingStartStore.load(this) },
+            roomTrackingStartDateLoader = {
+                LiveRoomTrackingStartStore.loadOrInitialize(
+                    this,
+                    LocalDate.now(ZoneId.of("Asia/Yangon")),
+                )
+            },
             roomTrackingStartDateSaver = { date -> LiveRoomTrackingStartStore.save(this, date) },
         )
     }
