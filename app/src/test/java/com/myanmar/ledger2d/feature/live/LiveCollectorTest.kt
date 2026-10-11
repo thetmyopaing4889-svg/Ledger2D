@@ -20,8 +20,10 @@ import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -2676,6 +2678,89 @@ class LiveCollectorTest {
             restrictPatchesToRoomTrackingWindow(patches, monday),
         )
         assertEquals(patches, restrictPatchesToRoomTrackingWindow(patches, null))
+    }
+
+    @Test fun room_tracking_start_date_is_initialized_once_and_preserves_existing_value() {
+        assertEquals(monday, roomTrackingStartDateOrToday(null, monday))
+        assertEquals(friday, roomTrackingStartDateOrToday(friday, monday))
+    }
+
+    @Test fun queued_pre_reset_snapshot_cannot_repopulate_room_after_reset() = runTest {
+        val persistedReferences = mutableListOf<String>()
+        val firstCacheEffectStarted = CountDownLatch(1)
+        val releaseFirstCacheEffect = CountDownLatch(1)
+        val freshSnapshotPersisted = CountDownLatch(1)
+        val cacheSaves = AtomicInteger(0)
+        val fetchCalls = AtomicInteger(0)
+
+        val oldSnapshot = feed(
+            "--",
+            "09:34:00",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+        val freshSnapshot = feed(
+            "--",
+            "09:34:01",
+            modern930 = "81",
+            internet930 = "17",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+
+        val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val liveScope = CoroutineScope(SupervisorJob() + dispatcher)
+        val collector = LiveCollector(
+            scope = liveScope,
+            fetcher = { if (fetchCalls.incrementAndGet() == 1) oldSnapshot else freshSnapshot },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { friday },
+            cacheFeedSaver = {
+                if (cacheSaves.incrementAndGet() == 1) {
+                    firstCacheEffectStarted.countDown()
+                    check(releaseFirstCacheEffect.await(5, TimeUnit.SECONDS)) {
+                        "Timed out waiting to release the queued Room sync race"
+                    }
+                }
+            },
+            liveRoomSaver = { patches ->
+                val references = patches.mapNotNull { it.modern930 }
+                synchronized(persistedReferences) { persistedReferences += references }
+                if ("81" in references) freshSnapshotPersisted.countDown()
+            },
+        )
+
+        try {
+            collector.fetchCycle()
+            assertTrue(
+                "The first snapshot must reach the queued cache side effect",
+                firstCacheEffectStarted.await(2, TimeUnit.SECONDS),
+            )
+
+            // Reset wins while the old accepted snapshot's Room side effect is still queued.
+            collector.resetLiveRoom {
+                synchronized(persistedReferences) { persistedReferences.clear() }
+            }
+
+            releaseFirstCacheEffect.countDown()
+            assertTrue(
+                "A new post-reset Luke snapshot should persist",
+                freshSnapshotPersisted.await(3, TimeUnit.SECONDS),
+            )
+
+            // A pre-reset callback must not contribute the old 09:30 value after reset.
+            synchronized(persistedReferences) {
+                assertEquals(listOf("81"), persistedReferences)
+            }
+        } finally {
+            releaseFirstCacheEffect.countDown()
+            liveScope.cancel()
+            dispatcher.close()
+        }
     }
 
     @Test fun stale_provider_reference_does_not_complete_current_cycle() = runTest {
