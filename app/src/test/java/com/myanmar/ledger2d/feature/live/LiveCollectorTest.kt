@@ -2694,19 +2694,21 @@ class LiveCollectorTest {
         val fetchCalls = AtomicInteger(0)
 
         val oldSnapshot = feed(
-            "--",
-            "09:34:00",
-            modern930 = "80",
-            internet930 = "33",
+            "35",
+            "12:04:00",
+            morning = finalMorning("35"),
+            modern930 = "--",
+            internet930 = "--",
             modern200 = "--",
             internet200 = "--",
             date = friday,
         )
         val freshSnapshot = feed(
-            "--",
-            "09:34:01",
-            modern930 = "81",
-            internet930 = "17",
+            "36",
+            "12:04:30",
+            morning = finalMorning("36"),
+            modern930 = "--",
+            internet930 = "--",
             modern200 = "--",
             internet200 = "--",
             date = friday,
@@ -2717,7 +2719,7 @@ class LiveCollectorTest {
         val collector = LiveCollector(
             scope = liveScope,
             fetcher = { if (fetchCalls.incrementAndGet() == 1) oldSnapshot else freshSnapshot },
-            clock = { LocalTime.of(9, 34) },
+            clock = { LocalTime.of(12, 5) },
             dateProvider = { friday },
             cacheFeedSaver = {
                 if (cacheSaves.incrementAndGet() == 1) {
@@ -2728,9 +2730,9 @@ class LiveCollectorTest {
                 }
             },
             liveRoomSaver = { patches ->
-                val references = patches.mapNotNull { it.modern930 }
-                synchronized(persistedReferences) { persistedReferences += references }
-                if ("81" in references) freshSnapshotPersisted.countDown()
+                val results = patches.mapNotNull { it.morning2d }
+                synchronized(persistedReferences) { persistedReferences += results }
+                if ("36" in results) freshSnapshotPersisted.countDown()
             },
         )
 
@@ -2752,9 +2754,9 @@ class LiveCollectorTest {
                 freshSnapshotPersisted.await(3, TimeUnit.SECONDS),
             )
 
-            // A pre-reset callback must not contribute the old 09:30 value after reset.
+            // A pre-reset callback must not contribute the old morning result after reset.
             synchronized(persistedReferences) {
-                assertEquals(listOf("81"), persistedReferences)
+                assertEquals(listOf("36"), persistedReferences)
             }
         } finally {
             releaseFirstCacheEffect.countDown()
