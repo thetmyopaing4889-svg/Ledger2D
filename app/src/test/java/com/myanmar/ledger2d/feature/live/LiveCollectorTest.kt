@@ -2582,7 +2582,6 @@ class LiveCollectorTest {
 
     @Test fun reset_clears_room_then_replays_unchanged_current_snapshot() = runTest {
         val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
-        var persistedStartDate: LocalDate? = null
         val current = feed(
             "--",
             "09:34:00",
@@ -2600,7 +2599,6 @@ class LiveCollectorTest {
             clock = { LocalTime.of(9, 34) },
             dateProvider = { friday },
             liveRoomSaver = { patches -> saved += patches },
-            roomTrackingStartDateSaver = { persistedStartDate = it },
         )
 
         collector.fetchCycle()
@@ -2610,7 +2608,6 @@ class LiveCollectorTest {
         collector.resetLiveRoom { saved.clear() }
         runCurrent()
 
-        assertEquals(friday, persistedStartDate)
         assertTrue("The same current-day snapshot must be persisted again after reset", saved.any {
             it.date == friday && it.modern930 == "80" && it.internet930 == "33"
         })
@@ -2665,24 +2662,6 @@ class LiveCollectorTest {
             it.date == friday && it.modern930 == "80"
         })
         scope.cancel()
-    }
-
-    @Test fun room_tracking_window_rejects_rows_before_its_start_date() {
-        val patches = listOf(
-            com.myanmar.ledger2d.core.database.LiveDailyResultPatch(date = friday),
-            com.myanmar.ledger2d.core.database.LiveDailyResultPatch(date = monday),
-        )
-
-        assertEquals(
-            listOf(patches.last()),
-            restrictPatchesToRoomTrackingWindow(patches, monday),
-        )
-        assertEquals(patches, restrictPatchesToRoomTrackingWindow(patches, null))
-    }
-
-    @Test fun room_tracking_start_date_is_initialized_once_and_preserves_existing_value() {
-        assertEquals(monday, roomTrackingStartDateOrToday(null, monday))
-        assertEquals(friday, roomTrackingStartDateOrToday(friday, monday))
     }
 
     @Test fun queued_pre_reset_snapshot_cannot_repopulate_room_after_reset() = runTest {
