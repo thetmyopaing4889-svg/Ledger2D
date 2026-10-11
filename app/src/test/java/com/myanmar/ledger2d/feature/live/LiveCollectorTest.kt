@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -2575,6 +2576,106 @@ class LiveCollectorTest {
         assertEquals("33", state.feed?.internet930)
 
         scope.cancel()
+    }
+
+    @Test fun reset_clears_room_then_replays_unchanged_current_snapshot() = runTest {
+        val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
+        var persistedStartDate: LocalDate? = null
+        val current = feed(
+            "--",
+            "09:34:00",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        ).copy(serverTimeEpochMs = friday.atTime(9, 34).atZone(yangon).toInstant().toEpochMilli())
+
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { current },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { friday },
+            liveRoomSaver = { patches -> saved += patches },
+            roomTrackingStartDateSaver = { persistedStartDate = it },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+        assertTrue(saved.any { it.date == friday && it.modern930 == "80" })
+
+        collector.resetLiveRoom { saved.clear() }
+        runCurrent()
+
+        assertEquals(friday, persistedStartDate)
+        assertTrue("The same current-day snapshot must be persisted again after reset", saved.any {
+            it.date == friday && it.modern930 == "80" && it.internet930 == "33"
+        })
+        scope.cancel()
+    }
+
+    @Test fun reset_serializes_against_in_flight_room_write_and_drops_old_rows() = runTest {
+        val persisted = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
+        val firstWriteStarted = CompletableDeferred<Unit>()
+        val releaseFirstWrite = CompletableDeferred<Unit>()
+        var firstWrite = true
+        val current = feed(
+            "--",
+            "09:34:00",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        ).copy(serverTimeEpochMs = friday.atTime(9, 34).atZone(yangon).toInstant().toEpochMilli())
+
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { current },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { friday },
+            liveRoomSaver = { patches ->
+                if (firstWrite) {
+                    firstWrite = false
+                    firstWriteStarted.complete(Unit)
+                    releaseFirstWrite.await()
+                }
+                persisted += patches
+            },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+        assertTrue(firstWriteStarted.isCompleted)
+
+        val resetJob = launch {
+            collector.resetLiveRoom { persisted.clear() }
+        }
+        runCurrent()
+        releaseFirstWrite.complete(Unit)
+        runCurrent()
+        resetJob.join()
+        runCurrent()
+
+        assertTrue("A fresh snapshot should repopulate Room after reset", persisted.any {
+            it.date == friday && it.modern930 == "80"
+        })
+        scope.cancel()
+    }
+
+    @Test fun room_tracking_window_rejects_rows_before_its_start_date() {
+        val patches = listOf(
+            com.myanmar.ledger2d.core.database.LiveDailyResultPatch(date = friday),
+            com.myanmar.ledger2d.core.database.LiveDailyResultPatch(date = monday),
+        )
+
+        assertEquals(
+            listOf(patches.last()),
+            restrictPatchesToRoomTrackingWindow(patches, monday),
+        )
+        assertEquals(patches, restrictPatchesToRoomTrackingWindow(patches, null))
     }
 
     @Test fun stale_provider_reference_does_not_complete_current_cycle() = runTest {

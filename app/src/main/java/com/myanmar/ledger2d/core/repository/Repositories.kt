@@ -30,6 +30,7 @@ interface LiveDailyResultRepository {
     fun observe(date: LocalDate): Flow<LiveDailyResultEntity?>
     suspend fun get(date: LocalDate): LiveDailyResultEntity?
     suspend fun apply(patches: List<LiveDailyResultPatch>): Int
+    suspend fun reset()
 }
 interface ClosedDayRepository { fun observeAll(): Flow<List<ClosedDayEntity>>; suspend fun isClosed(date: LocalDate): Boolean; suspend fun add(date: LocalDate): Long; suspend fun remove(value: ClosedDayEntity) }
 interface ClosedNumberRepository { fun observe(agentId: Long): Flow<List<ClosedNumberEntity>>; suspend fun getDigits(agentId: Long): Set<String>; suspend fun add(agentId: Long, digit: String): Long; suspend fun remove(value: ClosedNumberEntity) }
@@ -103,6 +104,12 @@ class RoomLiveDailyResultRepository(private val db: LedgerDatabase): LiveDailyRe
             }
             changed
         }
+
+    override suspend fun reset() {
+        db.withTransaction {
+            dao.deleteAll()
+        }
+    }
 }
 
 internal object LiveDailyResultMerger {

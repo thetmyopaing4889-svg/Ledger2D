@@ -11,6 +11,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +22,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+
+internal fun restrictPatchesToRoomTrackingWindow(
+    patches: List<LiveDailyResultPatch>,
+    startDate: LocalDate?,
+): List<LiveDailyResultPatch> =
+    if (startDate == null) patches
+    else patches.filter { !it.date.isBefore(startDate) }
 
 internal fun monotonicMs(): Long = runCatching {
     SystemClock.elapsedRealtime()
@@ -69,6 +78,8 @@ internal class LiveCollector(
     private val closedDayDateClearer: () -> Unit = {},
     private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
     private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
+    roomTrackingStartDateLoader: () -> LocalDate? = { null },
+    private val roomTrackingStartDateSaver: (LocalDate) -> Unit = {},
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -79,6 +90,10 @@ internal class LiveCollector(
     private val latestAppliedSequence = AtomicLong(0L)
     private val stateLock = Any()
     private val sideEffects = LiveSideEffectQueue { Thread.holdsLock(stateLock) }
+    private val roomPersistenceMutex = Mutex()
+    private val roomResetGeneration = AtomicLong(0L)
+    @Volatile private var roomTrackingStartDate: LocalDate? =
+        runCatching { roomTrackingStartDateLoader() }.getOrNull()
 
     private var schedulerJob: Job? = null
     private var reference930CompleteDate: LocalDate? = null
@@ -108,6 +123,7 @@ internal class LiveCollector(
     private var closedDayDate: LocalDate? = null
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
+    private var lastRoomSyncGeneration: Long? = null
 
     private val requestCoordinator = LiveRequestCoordinator(
         scope = scope,
@@ -245,6 +261,30 @@ internal class LiveCollector(
         launchRequest()
     }
 
+    /**
+     * Starts a new Room collection window without altering History Result or
+     * any other database table. Old queued writes are invalidated by generation;
+     * writes already in progress finish before the table is cleared.
+     */
+    suspend fun resetLiveRoom(resetStorage: suspend () -> Unit) {
+        val startDate = dateProvider()
+        synchronized(stateLock) {
+            roomResetGeneration.incrementAndGet()
+            roomTrackingStartDate = startDate
+            lastRoomSyncSignature = null
+            lastRoomSyncGeneration = null
+        }
+        runCatching { roomTrackingStartDateSaver(startDate) }
+
+        roomPersistenceMutex.withLock {
+            resetStorage()
+        }
+
+        // Request a fresh Luke snapshot after the Room reset. This also allows
+        // an unchanged current-day payload to be persisted under a fresh signature.
+        fetchCycle()
+    }
+
     private fun launchRequest() {
         requestCoordinator.launchLiveRequest()
     }
@@ -324,12 +364,16 @@ internal class LiveCollector(
         now: LocalTime = clock(),
     ) {
         val saver = liveRoomSaver ?: return
-        val patches = buildLiveDailyResultPatches(feed, today, now)
+        val (generation, trackingStartDate) = synchronized(stateLock) {
+            roomResetGeneration.get() to roomTrackingStartDate
+        }
+        val patches = restrictPatchesToRoomTrackingWindow(
+            patches = buildLiveDailyResultPatches(feed, today, now),
+            startDate = trackingStartDate,
+        )
         if (patches.isEmpty()) return
 
-        // Skip repeated 3-second observations when persisted facts did not
-        // change. The Room repository remains idempotent and independently
-        // protects each field group by source time.
+        // Skip repeated observations only within the same reset generation.
         val signature = patches.joinToString("||") { p ->
             listOf(
                 p.date,
@@ -347,29 +391,43 @@ internal class LiveCollector(
         }
 
         synchronized(stateLock) {
-            if (signature == lastRoomSyncSignature) return
+            // A reset may have happened while this patch was being built.
+            if (generation != roomResetGeneration.get()) return
+            if (signature == lastRoomSyncSignature && lastRoomSyncGeneration == generation) return
             lastRoomSyncSignature = signature
+            lastRoomSyncGeneration = generation
         }
 
-        // The patch content and signature are captured now, using the app date/time
-        // at the accepted state transition. Only the actual persistence launch is
-        // deferred, so a scheduler boundary crossed while another callback runs
-        // cannot change which daily row this observation writes.
+        // Serialize Room writes with reset. A queued pre-reset write is dropped;
+        // a write already underway completes before reset clears the table.
         sideEffects.dispatch {
             scope.launch {
                 try {
-                    saver(patches)
+                    roomPersistenceMutex.withLock {
+                        if (generation != roomResetGeneration.get()) return@withLock
+                        saver(patches)
+                    }
                 } catch (cancelled: CancellationException) {
                     synchronized(stateLock) {
-                        if (lastRoomSyncSignature == signature) {
+                        if (
+                            generation == roomResetGeneration.get() &&
+                            lastRoomSyncGeneration == generation &&
+                            lastRoomSyncSignature == signature
+                        ) {
                             lastRoomSyncSignature = null
+                            lastRoomSyncGeneration = null
                         }
                     }
                     throw cancelled
                 } catch (_: Exception) {
                     synchronized(stateLock) {
-                        if (lastRoomSyncSignature == signature) {
+                        if (
+                            generation == roomResetGeneration.get() &&
+                            lastRoomSyncGeneration == generation &&
+                            lastRoomSyncSignature == signature
+                        ) {
                             lastRoomSyncSignature = null
+                            lastRoomSyncGeneration = null
                         }
                     }
                 }
@@ -936,6 +994,8 @@ internal class LiveCollector(
         fun startOnce(
             context: Context,
             liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
+            roomTrackingStartDateLoader: () -> LocalDate? = { null },
+            roomTrackingStartDateSaver: (LocalDate) -> Unit = {},
         ) {
             if (shared != null) return
 
@@ -958,6 +1018,8 @@ internal class LiveCollector(
                     cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
                     liveRoomSaver = liveRoomSaver,
+                    roomTrackingStartDateLoader = roomTrackingStartDateLoader,
+                    roomTrackingStartDateSaver = roomTrackingStartDateSaver,
                     closedDayFeedFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()

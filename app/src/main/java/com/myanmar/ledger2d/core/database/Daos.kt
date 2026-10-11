@@ -72,6 +72,9 @@ import java.time.LocalDate
 
     @Upsert
     suspend fun upsert(value: LiveDailyResultEntity): Long
+
+    @Query("DELETE FROM live_daily_results")
+    suspend fun deleteAll()
 }
 
 @Dao interface ClosedDayDao {

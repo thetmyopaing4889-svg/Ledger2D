@@ -6,6 +6,7 @@ import com.myanmar.ledger2d.AppContainer
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.*
+import com.myanmar.ledger2d.feature.live.LiveCollector
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -32,7 +33,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     private val _historyUpdate=MutableStateFlow<HistoryUpdateState>(HistoryUpdateState.Idle)
     val historyUpdate:StateFlow<HistoryUpdateState> = _historyUpdate.asStateFlow()
     private fun changed(){ _revision.update { it + 1 } }
-    fun updateHistory(){if(_historyUpdate.value is HistoryUpdateState.Working)return;_historyUpdate.value=HistoryUpdateState.Working;viewModelScope.launch{runCatching{container.history.sync()}.onSuccess{_historyUpdate.value=HistoryUpdateState.Success("History "+it.startDate+" → "+it.endDate+" ("+it.updatedRows+" updates)");changed()}.onFailure{_historyUpdate.value=HistoryUpdateState.Error(it.message?:"History update မအောင်မြင်ပါ")}}}
+    fun updateHistory(){if(_historyUpdate.value is HistoryUpdateState.Working)return;_historyUpdate.value=HistoryUpdateState.Working;viewModelScope.launch{runCatching{LiveCollector.instance.resetLiveRoom{container.liveResults.reset()};container.history.sync()}.onSuccess{_historyUpdate.value=HistoryUpdateState.Success("History "+it.startDate+" → "+it.endDate+" ("+it.updatedRows+" updates)");changed()}.onFailure{_historyUpdate.value=HistoryUpdateState.Error(it.message?:"History update မအောင်မြင်ပါ")}}}
     private fun expandInput(raw: String, format: QuickFormat): ParseResult {
         val smart = engine.smartExpand(raw, format)
         val error = smart.lines.mapNotNull { it.result as? ParseResult.Error }.firstOrNull()

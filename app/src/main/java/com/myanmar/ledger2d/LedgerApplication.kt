@@ -15,6 +15,11 @@ class LedgerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         LedgerApplicationContextHolder.context = this
+
+        // Stop any unique Keeper work enqueued by an older installed version.
+        // The compatibility Worker is intentionally a no-op in this version.
+        LiveRoomKeeperScheduler.cancel(this)
+
         container = AppContainer(LedgerDatabase.create(this))
 
         // App-scoped 2D LIVE collector: window-gated polling that continues
@@ -24,12 +29,9 @@ class LedgerApplication : Application() {
         LiveCollector.startOnce(
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },
+            roomTrackingStartDateLoader = { LiveRoomTrackingStartStore.load(this) },
+            roomTrackingStartDateSaver = { date -> LiveRoomTrackingStartStore.save(this, date) },
         )
-
-        // Historical coverage is independent of today's LIVE flow. WorkManager
-        // keeps the Room Keeper alive in the background and only runs it when
-        // network connectivity is available.
-        LiveRoomKeeperScheduler.enqueue(this)
     }
 }
 

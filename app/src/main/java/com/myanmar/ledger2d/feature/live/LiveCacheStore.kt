@@ -38,6 +38,30 @@ internal object LiveClosedDayStore {
     }
 }
 
+/**
+ * Remembers the date from which the current Room collection window is allowed
+ * to persist data. This is a boundary marker, not a historical coverage checkpoint.
+ */
+internal object LiveRoomTrackingStartStore {
+    private const val PREFS_NAME = "live_display_cache"
+    private const val KEY = "room_tracking_start_date"
+
+    fun load(context: Context): LocalDate? = runCatching {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY, null)
+            ?.let { LocalDate.parse(it) }
+    }.getOrNull()
+
+    fun save(context: Context, date: LocalDate) {
+        runCatching {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY, date.toString())
+                .apply()
+        }
+    }
+}
+
 internal object LiveCacheStore {
     private const val PREFS_NAME = "live_display_cache"
     private const val KEY = "latest_final"
