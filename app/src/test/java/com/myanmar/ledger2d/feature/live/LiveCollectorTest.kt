@@ -1977,7 +1977,7 @@ class LiveCollectorTest {
         collector.start()
         runCurrent()
 
-        assertEquals(2, calls)
+        assertEquals("A valid response on the normal Daily Flow path completes 09:30 without a second request", 1, calls)
         val state = collector.state.value as LiveUiState.Data
         assertEquals("80", state.feed?.modern930)
         assertEquals("33", state.feed?.internet930)
@@ -1987,7 +1987,7 @@ class LiveCollectorTest {
 
         advanceTimeBy(NORMAL_POLL_INTERVAL_MS * 2)
         runCurrent()
-        assertEquals(2, calls)
+        assertEquals("No fallback request is needed after the normal response succeeds", 1, calls)
 
         scope.cancel()
     }
