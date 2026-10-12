@@ -129,7 +129,7 @@ class LiveRequestCoordinatorTest {
         var calls = 0
         var fallbackCalls = 0
         val requestCoordinator = coordinator(
-            scope = this,
+            scope = backgroundScope,
             fetcher = {
                 calls++
                 if (calls == 1) primaryGate.await() else feed("09:35:00")
