@@ -125,6 +125,9 @@ internal class LiveCollector(
             fetchReferencePair(isMorning, cycleDate)
         },
         onLiveResult = ::applyLiveRequestResult,
+        acceptReferenceFeed = { isMorning, cycleDate, feed ->
+            applyReferenceFeed(isMorning, cycleDate, feed)
+        },
     )
 
     /**
@@ -242,7 +245,25 @@ internal class LiveCollector(
     }
 
     fun fetchCycle() {
-        launchRequest()
+        val today = dateProvider()
+        val now = clock()
+        val cycleDate = dailyCycleDate(today, now)
+        val inMorningReferenceWindow =
+            isWorkingDay(today) &&
+                !now.isBefore(MORNING_REFERENCE) &&
+                now.isBefore(MORNING_LIVE) &&
+                closedHoldDate(today, now) == null
+
+        if (
+            inMorningReferenceWindow &&
+            !isReferenceComplete(true, cycleDate)
+        ) {
+            // UI entry joins the app-scoped 09:30 cycle instead of launching
+            // a second Luke request beside its normal-first attempt.
+            requestCoordinator.startMorningReferenceCycle(forceNow = true)
+        } else {
+            launchRequest()
+        }
     }
 
     private fun launchRequest() {
@@ -472,7 +493,19 @@ internal class LiveCollector(
         } catch (_: Exception) {
             null
         }
+        return applyReferenceFeed(isMorning, cycleDate, feed)
+    }
 
+    /**
+     * Evaluate a response already obtained by the normal LIVE route or by a
+     * fallback request. This keeps the first 09:30 response reusable instead
+     * of immediately requesting the same Luke payload a second time.
+     */
+    private suspend fun applyReferenceFeed(
+        isMorning: Boolean,
+        cycleDate: LocalDate,
+        feed: LiveFeedData?,
+    ): Boolean {
         val closedSnapshot = isMorning &&
             feed != null &&
             feed.isCloseDay &&
@@ -745,9 +778,14 @@ internal class LiveCollector(
         val recoveredFeed = currentFeed ?: fallbackFeed
 
         synchronized(stateLock) {
-            // The reducer preserves the original priority: a current-cycle
-            // final wins over fallback history; if the recovered row is a
-            // completed held cycle, its valid reference pairs may be restored.
+            // Historical I/O can finish after a current-day Luke request when
+            // the 09:30 flow runs independently. Preserve that newer primary
+            // observation, while still using recovered history to seed lastFinal.
+            val hasCurrentDayLukePrimary = primary?.feed?.let { existing ->
+                canonicalDate(existing.date) == today &&
+                    existing.sourceTag.equals("LUKE", ignoreCase = true)
+            } == true
+
             val transition = LiveStateReducer.reduceStartupRecovery(
                 today = today,
                 scheduleTime = now,
@@ -762,7 +800,7 @@ internal class LiveCollector(
             )
 
             lastFinal = transition.lastFinal
-            if (recoveredFeed != null) {
+            if (recoveredFeed != null && !hasCurrentDayLukePrimary) {
                 primary = transition.primary
                 applyReferenceStateLocked(transition.references)
             }
@@ -871,24 +909,31 @@ internal class LiveCollector(
             val startupLiveSession = liveSessionForTime(startupTime)
 
             if (startupLiveSession != null && startupClosed == null) {
-                // LIVE/finalization cold-start is latency-sensitive. Do not let
-                // historical reconstruction block the first Luke request, and
-                // do not allow a historical task to race and overwrite the
-                // current LIVE feed. The existing cached same-session LIVE, when
-                // available, is already restored by init().
+                // Active LIVE/finalization cold-start remains latency-sensitive.
+                // fetchCycle() joins an incomplete morning reference cycle when
+                // appropriate; otherwise it performs the usual LIVE request.
                 fetchCycle()
             } else {
-                // Outside an active LIVE session, historical recovery remains
-                // the source of held/fresh-start display state.
-                recoverPreviousWorkingDayFinal()
+                val startupCycleDate = dailyCycleDate(startupToday, startupTime)
+                val morningReferenceOwnsStartup =
+                    startupClosed == null &&
+                        isWorkingDay(startupToday) &&
+                        !startupTime.isBefore(MORNING_REFERENCE) &&
+                        startupTime.isBefore(MORNING_LIVE) &&
+                        !isReferenceComplete(true, startupCycleDate)
 
-                // Reference catch-up remains separate from normal LIVE polling.
-                // When a closed-day hold is already known, skip the startup fetch
-                // and keep the previous working-day snapshot.
-                maybeReferenceFetch(startupTime)
-                if (startupClosed == null) {
+                if (startupClosed == null && morningReferenceOwnsStartup) {
+                    // Start the normal-first 09:30 flow before any history I/O.
+                    // The history recovery below runs independently and cannot
+                    // delay the current day's first request.
+                    maybeReferenceFetch(startupTime)
+                } else if (startupClosed == null) {
                     fetchCycle()
                 }
+
+                // Historical recovery remains responsible for held-day Hero
+                // state, but it must not block the scheduler or 09:30 request.
+                launch { recoverPreviousWorkingDayFinal() }
             }
 
             var lastSchedulerDate = startupToday
