@@ -2,19 +2,31 @@ package com.myanmar.ledger2d.feature.live
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Owns request execution and the two independent current-cycle reference retry
- * lifecycles. Network waits happen in child coroutines; each completion is
- * delivered as an immutable event for LiveCollector to accept under its state
- * lock. This coordinator never mutates Daily Flow state or writes persistence.
+ * Owns ordinary LIVE requests and current-cycle reference retry lifecycles.
+ *
+ * The morning reference cycle gives the normal Daily Flow request first chance
+ * to supply the 09:30 pair. It waits for ordinary requests already in flight,
+ * then performs one normal request while the 09:30-to-11:30 reference window is
+ * active. The same response is offered to reference validation if normal LIVE
+ * acceptance did not already complete the pair. Only then can dedicated
+ * fallback requests begin.
+ *
+ * Requests outside the morning reference flow intentionally remain concurrent:
+ * the existing LIVE pipeline relies on late/out-of-order snapshot acceptance.
+ * This coordinator does not mutate Daily Flow state or write persistence.
  */
 internal class LiveRequestCoordinator(
     private val scope: CoroutineScope,
@@ -30,8 +42,20 @@ internal class LiveRequestCoordinator(
     private val referenceComplete: (isMorning: Boolean, cycleDate: LocalDate) -> Boolean,
     private val fetchReferencePair: suspend (isMorning: Boolean, cycleDate: LocalDate) -> Boolean,
     private val onLiveResult: (LiveRequestResultEvent) -> Unit,
+    private val acceptReferenceFeed: suspend (
+        isMorning: Boolean,
+        cycleDate: LocalDate,
+        feed: LiveFeedData,
+    ) -> Boolean = { _, _, _ -> false },
 ) {
     private val requestSequence = AtomicLong(0L)
+
+    private val liveRequestLock = Any()
+    private val liveRequestJobs = mutableSetOf<Job>()
+
+    private val morningRetrySignal = Channel<Unit>(Channel.CONFLATED)
+    @Volatile
+    private var morningReferenceWaitingForRetry = false
 
     private var reference930Cycle: Job? = null
     private var reference930CycleDate: LocalDate? = null
@@ -40,20 +64,32 @@ internal class LiveRequestCoordinator(
 
     fun launchLiveRequest() {
         val sequence = requestSequence.incrementAndGet()
-
-        scope.launch {
-            val startedAt = monotonicClockMs()
-            val feed = try {
-                fetcher()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                null
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            fetchAndPublishLiveRequest(sequence)
+        }
+        synchronized(liveRequestLock) {
+            liveRequestJobs += job
+        }
+        job.invokeOnCompletion {
+            synchronized(liveRequestLock) {
+                liveRequestJobs -= job
             }
-            val finishedAt = monotonicClockMs()
+        }
+        job.start()
+    }
 
-            if (feed == null) return@launch
+    private suspend fun fetchAndPublishLiveRequest(sequence: Long): LiveFeedData? {
+        val startedAt = monotonicClockMs()
+        val feed = try {
+            fetcher()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+        val finishedAt = monotonicClockMs()
 
+        if (feed != null) {
             onLiveResult(
                 LiveRequestResultEvent(
                     sequence = sequence,
@@ -63,27 +99,98 @@ internal class LiveRequestCoordinator(
                 )
             )
         }
+        return feed
     }
 
-    fun startMorningReferenceCycle() {
+    /**
+     * Start one coordinated morning cycle. Repeated scheduler/UI calls join the
+     * existing cycle rather than starting a parallel 09:30 reference request.
+     * A UI retry can wake a retry that is currently waiting for its next interval.
+     */
+    fun startMorningReferenceCycle(forceNow: Boolean = false) {
         val today = dateProvider()
         if (referenceComplete(true, today)) return
+
         if (reference930Cycle?.isActive == true) {
-            if (reference930CycleDate == today) return
+            if (reference930CycleDate == today) {
+                if (forceNow && morningReferenceWaitingForRetry) {
+                    morningRetrySignal.trySend(Unit)
+                }
+                return
+            }
             reference930Cycle?.cancel()
             reference930Cycle = null
         }
 
         reference930CycleDate = today
         reference930Cycle = scope.launch {
+            while (morningRetrySignal.tryReceive().isSuccess) {
+                // Discard a wake-up left over from a previous cycle.
+            }
+
             val cycleDate = today
+
+            // A request started just before 09:30 may still return a valid pair.
+            // Let those already-running normal requests finish before starting
+            // another one for the same reference cycle.
+            awaitExistingLiveRequests()
+            if (!isActive) return@launch
+            if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
+            if (referenceComplete(true, cycleDate)) return@launch
+
+            // Before 11:30 there is no normal LIVE polling window, so make the
+            // initial Daily Flow request here. Once normal LIVE polling is active,
+            // its request stream is already the primary path; only the fallback
+            // retry lane is started when reference data is still missing.
+            if (clock().isBefore(MORNING_LIVE)) {
+                val initialFeed = fetchAndPublishLiveRequest(requestSequence.incrementAndGet())
+                if (!isActive) return@launch
+                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) {
+                    return@launch
+                }
+
+                // Normal acceptance may already have promoted a valid pair.
+                // If not, evaluate this same response under the reference-specific
+                // rules before making another HTTP request.
+                if (
+                    initialFeed != null &&
+                    !referenceComplete(true, cycleDate) &&
+                    acceptReferenceFeed(true, cycleDate, initialFeed)
+                ) {
+                    return@launch
+                }
+            }
+
             while (isActive) {
                 val now = clock()
                 val nowDate = dateProvider()
                 if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) return@launch
+                if (referenceComplete(true, cycleDate)) return@launch
+
+                // First fallback follows immediately after the failed primary
+                // attempt. The interval applies only between fallback attempts.
                 if (fetchReferencePair(true, cycleDate)) return@launch
-                delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+                if (referenceComplete(true, cycleDate)) return@launch
+
+                morningReferenceWaitingForRetry = true
+                try {
+                    withTimeoutOrNull(LIVE_REFERENCE_FETCH_INTERVAL_MS) {
+                        morningRetrySignal.receive()
+                    }
+                } finally {
+                    morningReferenceWaitingForRetry = false
+                }
             }
+        }
+    }
+
+    private suspend fun awaitExistingLiveRequests() {
+        while (true) {
+            val pending = synchronized(liveRequestLock) {
+                liveRequestJobs.filter { it.isActive }
+            }
+            if (pending.isEmpty()) return
+            pending.joinAll()
         }
     }
 
