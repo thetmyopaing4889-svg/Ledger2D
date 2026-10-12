@@ -36,6 +36,8 @@ class LiveRequestCoordinatorTest {
         clock: () -> LocalTime = { LocalTime.of(14, 0) },
         dateProvider: () -> LocalDate = { today },
         fetchReferencePair: suspend (Boolean, LocalDate) -> Boolean = { _, _ -> false },
+        isReferenceComplete: (Boolean, LocalDate) -> Boolean = { _, _ -> false },
+        acceptReferenceFeed: suspend (Boolean, LocalDate, LiveFeedData) -> Boolean = { _, _, _ -> false },
     ) = LiveRequestCoordinator(
         scope = scope,
         fetcher = fetcher,
@@ -43,9 +45,10 @@ class LiveRequestCoordinatorTest {
         clock = clock,
         dateProvider = dateProvider,
         referenceRetryWindowOpen = { _, _, _ -> true },
-        referenceComplete = { _, _ -> false },
+        referenceComplete = isReferenceComplete,
         fetchReferencePair = fetchReferencePair,
         onLiveResult = onLiveResult,
+        acceptReferenceFeed = acceptReferenceFeed,
     )
 
     @Test
@@ -74,6 +77,128 @@ class LiveRequestCoordinatorTest {
         runCurrent()
 
         assertEquals(listOf(2L, 1L), events.map { it.sequence })
+    }
+
+    @Test
+    fun morning_primary_success_does_not_start_fallback_request() = runTest {
+        var calls = 0
+        var fallbackCalls = 0
+        var referenceComplete = false
+        val result = feed("09:34:00").copy(
+            modern930 = "35",
+            internet930 = "12",
+        )
+        val requestCoordinator = coordinator(
+            scope = this,
+            fetcher = {
+                calls++
+                result
+            },
+            onLiveResult = { event ->
+                if (
+                    event.feed.modern930 == "35" &&
+                    event.feed.internet930 == "12"
+                ) {
+                    referenceComplete = true
+                }
+            },
+            clock = { LocalTime.of(9, 34) },
+            isReferenceComplete = { isMorning, date ->
+                isMorning && date == today && referenceComplete
+            },
+            fetchReferencePair = { _, _ ->
+                fallbackCalls++
+                false
+            },
+            acceptReferenceFeed = { _, _, _ ->
+                fallbackCalls++
+                false
+            },
+        )
+
+        requestCoordinator.startMorningReferenceCycle()
+        runCurrent()
+
+        assertEquals("The normal Daily Flow request must be the only request when it supplies a valid pair", 1, calls)
+        assertEquals("Fallback must not run after normal acceptance completes the pair", 0, fallbackCalls)
+    }
+
+    @Test
+    fun morning_fallback_starts_only_after_normal_request_fails() = runTest {
+        val primaryGate = CompletableDeferred<LiveFeedData?>()
+        var calls = 0
+        var fallbackCalls = 0
+        val requestCoordinator = coordinator(
+            scope = this,
+            fetcher = {
+                calls++
+                if (calls == 1) primaryGate.await() else feed("09:35:00")
+            },
+            onLiveResult = {},
+            clock = { LocalTime.of(9, 34) },
+            fetchReferencePair = { isMorning, date ->
+                assertTrue(isMorning)
+                assertEquals(today, date)
+                fallbackCalls++
+                false
+            },
+        )
+
+        requestCoordinator.startMorningReferenceCycle()
+        runCurrent()
+
+        assertEquals(1, calls)
+        assertEquals("Fallback must wait while the normal request is still in flight", 0, fallbackCalls)
+
+        primaryGate.complete(null)
+        runCurrent()
+
+        assertEquals("The failed primary attempt must be followed by the fallback", 1, fallbackCalls)
+        assertEquals("The fallback must not start while the primary attempt is still running", 1, calls)
+    }
+
+    @Test
+    fun morning_cycle_waits_for_existing_normal_request_before_starting_another() = runTest {
+        val primaryGate = CompletableDeferred<LiveFeedData?>()
+        var calls = 0
+        var fallbackCalls = 0
+        var referenceComplete = false
+        val validPair = feed("09:34:30").copy(
+            modern930 = "36",
+            internet930 = "14",
+        )
+        val requestCoordinator = coordinator(
+            scope = this,
+            fetcher = {
+                calls++
+                primaryGate.await()
+            },
+            onLiveResult = { event ->
+                if (event.feed.modern930 == "36" && event.feed.internet930 == "14") {
+                    referenceComplete = true
+                }
+            },
+            clock = { LocalTime.of(9, 34) },
+            isReferenceComplete = { isMorning, _ -> isMorning && referenceComplete },
+            fetchReferencePair = { _, _ ->
+                fallbackCalls++
+                false
+            },
+        )
+
+        requestCoordinator.launchLiveRequest()
+        runCurrent()
+        requestCoordinator.startMorningReferenceCycle()
+        runCurrent()
+
+        assertEquals("The in-flight normal request should be reused, not duplicated", 1, calls)
+        assertEquals(0, fallbackCalls)
+
+        primaryGate.complete(validPair)
+        runCurrent()
+
+        assertEquals("No second primary or fallback request is needed after the in-flight response supplies the pair", 1, calls)
+        assertEquals(0, fallbackCalls)
     }
 
     @Test
