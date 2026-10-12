@@ -687,6 +687,63 @@ class LiveCollectorTest {
         assertEquals(todayLive.date, result.hero?.date)
     }
 
+    @Test
+    fun morning_reference_request_is_not_blocked_by_history_and_history_cannot_replace_luke_feed() = runTest {
+        var liveCalls = 0
+        val delayedFridayHistory = CompletableDeferred<LiveFeedData?>()
+        val currentLukeFeed = feed(
+            value = "--",
+            time = "09:34:00",
+            modern930 = "81",
+            internet930 = "17",
+            date = monday,
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                liveCalls++
+                currentLukeFeed
+            },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { monday },
+            historicalFeedFetcher = { date ->
+                when (date) {
+                    monday -> null
+                    friday -> delayedFridayHistory.await()
+                    else -> null
+                }
+            },
+            historicalFinalFetcher = { date ->
+                if (date == friday) historyRowToFinal(historyRow(friday)) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals("The normal 09:30 path should run without waiting for History", 1, liveCalls)
+        assertFalse("The previous-day History request is intentionally still pending", delayedFridayHistory.isCompleted)
+        var state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("81", state.feed?.modern930)
+        assertEquals("17", state.feed?.internet930)
+
+        delayedFridayHistory.complete(
+            historyRowToFeed(historyRow(friday), monday, LocalTime.of(9, 34))
+        )
+        runCurrent()
+
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("A late History response must not replace the accepted current-day Luke feed", monday.toString(), state.feed?.date)
+        assertEquals("81", state.feed?.modern930)
+        assertEquals("17", state.feed?.internet930)
+
+        scope.cancel()
+    }
+
     @Test fun successful_0930_reference_starts_new_cycle_and_resets_cards() = runTest {
         val yesterday = thursday
         val old = feed(
