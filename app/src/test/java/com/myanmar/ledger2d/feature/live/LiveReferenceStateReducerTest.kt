@@ -159,7 +159,7 @@ class LiveReferenceStateReducerTest {
 
         assertEquals(null, next.reference930)
         assertEquals(null, next.reference930CompleteDate)
-        assertEquals("09:29:59", next.referenceFeed?.currentTime ?: "09:29:59")
+        assertEquals(null, next.referenceFeed)
     }
 
     @Test
