@@ -8,6 +8,24 @@ import java.time.LocalTime
  * All values are immutable; the collector applies a reduction while holding
  * its existing state lock, then performs publication and persistence callbacks.
  */
+/**
+ * Do not let a provider snapshot taken before a reference slot opens satisfy
+ * the current day's slot just because it arrived after the app-clock boundary.
+ * Luke commonly returns current_time as HH:mm:ss without an absolute timestamp,
+ * so this guard must work without relying on serverTimeEpochMs.
+ */
+internal fun isReferenceObservationAtOrAfterBoundary(
+    feed: LiveFeedData,
+    isMorning: Boolean,
+): Boolean {
+    val raw = feed.currentTime.trim()
+    val sourceTime = runCatching { LocalTime.parse(raw.take(8)) }.getOrNull()
+        ?: parseDecisionInstant(feed)?.atZone(YANGON)?.toLocalTime()
+        ?: return false
+    val boundary = if (isMorning) MORNING_REFERENCE else AFTERNOON_REFERENCE
+    return !sourceTime.isBefore(boundary)
+}
+
 internal data class LiveReferenceState(
     val reference930: Pair<String, String>?,
     val reference930Date: LocalDate?,
@@ -50,7 +68,8 @@ internal object LiveReferenceStateReducer {
         val internet = if (isMorning) feed?.internet930 else feed?.internet200
         val valid = isValidReferencePair(feed, modern.orEmpty(), internet.orEmpty()) &&
             feed != null &&
-            isCurrentCycleReferenceObservation(feed, cycleDate)
+            isCurrentCycleReferenceObservation(feed, cycleDate) &&
+            isReferenceObservationAtOrAfterBoundary(feed, isMorning)
 
         val next = if (isMorning) {
             when {
@@ -141,6 +160,7 @@ internal object LiveReferenceStateReducer {
         var next = state
         if (
             !scheduleTime.isBefore(MORNING_REFERENCE) &&
+            isReferenceObservationAtOrAfterBoundary(feed, isMorning = true) &&
             isValidReferencePair(feed, feed.modern930, feed.internet930)
         ) {
             next = next.copy(
@@ -155,6 +175,7 @@ internal object LiveReferenceStateReducer {
         }
         if (
             !scheduleTime.isBefore(AFTERNOON_REFERENCE) &&
+            isReferenceObservationAtOrAfterBoundary(feed, isMorning = false) &&
             isValidReferencePair(feed, feed.modern200, feed.internet200)
         ) {
             next = next.copy(
