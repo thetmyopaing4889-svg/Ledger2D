@@ -131,10 +131,17 @@ internal class LiveRequestCoordinator(
 
             val cycleDate = today
 
-            // A request started just before 09:30 may still return a valid pair.
-            // Let those normal requests finish and reuse their responses before
-            // starting another request for the same reference cycle.
-            val existingFeeds = awaitExistingLiveRequests()
+            // The normal-first sequencing applies only to the 09:30 reference
+            // window. Once that window has passed, preserve the existing
+            // independent catch-up behavior for morning/afternoon reference slots.
+            val normalFirstWindow = clock().isBefore(MORNING_LIVE)
+            val existingFeeds = if (normalFirstWindow) {
+                // A request started just before 09:30 may still return a valid pair.
+                // Reuse its response before making any further request.
+                awaitExistingLiveRequests()
+            } else {
+                emptyList()
+            }
             if (!isActive) return@launch
             if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
             if (referenceComplete(true, cycleDate)) return@launch
@@ -151,11 +158,9 @@ internal class LiveRequestCoordinator(
             }
             if (referenceComplete(true, cycleDate)) return@launch
 
-            // Before 11:30 there is no normal LIVE polling window, so make the
-            // initial Daily Flow request here. Once normal LIVE polling is active,
-            // its request stream is already the primary path; only the fallback
-            // retry lane is started when reference data is still missing.
-            if (clock().isBefore(MORNING_LIVE)) {
+            // Before 11:30, the first attempt is the normal Daily Flow request.
+            // After 11:30, keep the existing retry-only catch-up behavior.
+            if (normalFirstWindow) {
                 val initialFeed = fetchAndPublishLiveRequest(requestSequence.incrementAndGet())
                 if (!isActive) return@launch
                 if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) {
