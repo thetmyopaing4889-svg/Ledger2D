@@ -709,6 +709,7 @@ internal class LiveCollector(
     }
 
     private suspend fun recoverPreviousWorkingDayFinal() {
+        val recoveryStartedElapsed = monotonicMs()
         val today = dateProvider()
         val now = clock()
         val bootstrap = freshInstallBootstrapPlan(today, now)
@@ -781,10 +782,19 @@ internal class LiveCollector(
             // Historical I/O can finish after a current-day Luke request when
             // the 09:30 flow runs independently. Preserve that newer primary
             // observation, while still using recovered history to seed lastFinal.
-            val hasCurrentDayLukePrimary = primary?.feed?.let { existing ->
-                canonicalDate(existing.date) == today &&
+            val primaryLukeArrivedDuringRecovery = primary?.let { observation ->
+                observation.feed.sourceTag.equals("LUKE", ignoreCase = true) &&
+                    observation.fetchedAtElapsedMs > recoveryStartedElapsed
+            } == true
+            val currentDayMorningLukePrimary = primary?.feed?.let { existing ->
+                isWorkingDay(today) &&
+                    !now.isBefore(MORNING_REFERENCE) &&
+                    now.isBefore(MORNING_LIVE) &&
+                    canonicalDate(existing.date) == today &&
                     existing.sourceTag.equals("LUKE", ignoreCase = true)
             } == true
+            val preserveNewerLukePrimary =
+                primaryLukeArrivedDuringRecovery || currentDayMorningLukePrimary
 
             val transition = LiveStateReducer.reduceStartupRecovery(
                 today = today,
@@ -800,7 +810,7 @@ internal class LiveCollector(
             )
 
             lastFinal = transition.lastFinal
-            if (recoveredFeed != null && !hasCurrentDayLukePrimary) {
+            if (recoveredFeed != null && !preserveNewerLukePrimary) {
                 primary = transition.primary
                 applyReferenceStateLocked(transition.references)
             }
@@ -911,37 +921,29 @@ internal class LiveCollector(
             if (startupLiveSession != null && startupClosed == null) {
                 // Active LIVE/finalization cold-start remains latency-sensitive.
                 fetchCycle()
-            } else if (
-                isWorkingDay(startupToday) &&
-                startupTime.isBefore(MORNING_LIVE)
-            ) {
-                // On a working-day morning, let the scheduler and 09:30 request
-                // run while historical recovery is in flight. History must not
-                // hold the clock boundary hostage.
+            } else {
                 val startupCycleDate = dailyCycleDate(startupToday, startupTime)
                 val morningReferenceOwnsStartup =
                     startupClosed == null &&
+                        isWorkingDay(startupToday) &&
                         !startupTime.isBefore(MORNING_REFERENCE) &&
+                        startupTime.isBefore(MORNING_LIVE) &&
                         !isReferenceComplete(true, startupCycleDate)
 
                 if (startupClosed == null && morningReferenceOwnsStartup) {
+                    // Start the normal-first 09:30 flow before any History I/O.
+                    // UI entry will join this cycle instead of issuing a duplicate.
                     maybeReferenceFetch(startupTime)
                 } else if (startupClosed == null) {
-                    // Before 09:30, preserve the initial normal feed request.
-                    // If it is still in flight when 09:30 arrives, the morning
-                    // coordinator waits for it before deciding the next step.
+                    // Start the ordinary request promptly; the reference coordinator
+                    // will wait for this request to finish before deciding on fallback.
                     fetchCycle()
                 }
 
+                // Keep startup History independent from networking and the scheduler.
+                // If Luke produces a newer observation while History is loading, the
+                // recovery commit preserves that Luke primary instead of overwriting it.
                 launch { recoverPreviousWorkingDayFinal() }
-            } else {
-                // Preserve the prior startup sequence for weekends and later
-                // phases. Those paths keep their existing history/final behavior.
-                recoverPreviousWorkingDayFinal()
-                maybeReferenceFetch(startupTime)
-                if (startupClosed == null) {
-                    fetchCycle()
-                }
             }
 
             var lastSchedulerDate = startupToday
