@@ -104,6 +104,65 @@ class LiveReferenceStateReducerTest {
     }
 
     @Test
+    fun pre_0930_provider_snapshot_cannot_complete_morning_reference() {
+        val staleFeed = feed(
+            time = "09:29:59",
+            modern930 = "12",
+            internet930 = "34",
+        )
+        val result = LiveReferenceStateReducer.reduce(
+            state = state(),
+            event = LiveReferenceResultEvent(true, cycleDate, staleFeed, false, null),
+            retryWindowOpen = true,
+        )
+
+        assertTrue(result.accepted)
+        assertFalse(result.cycleComplete)
+        assertEquals(null, result.state.reference930)
+        assertEquals(null, result.state.reference930CompleteDate)
+        assertEquals(cycleDate, result.state.reference930PendingDate)
+    }
+
+    @Test
+    fun pre_1400_provider_snapshot_cannot_complete_afternoon_reference() {
+        val staleFeed = feed(
+            time = "13:59:59",
+            modern200 = "56",
+            internet200 = "78",
+        )
+        val result = LiveReferenceStateReducer.reduce(
+            state = state(),
+            event = LiveReferenceResultEvent(false, cycleDate, staleFeed, false, null),
+            retryWindowOpen = true,
+        )
+
+        assertTrue(result.accepted)
+        assertFalse(result.cycleComplete)
+        assertEquals(null, result.state.reference200)
+        assertEquals(null, result.state.reference200CompleteDate)
+        assertEquals(cycleDate, result.state.reference200PendingDate)
+    }
+
+    @Test
+    fun primary_snapshot_received_after_0930_cannot_promote_pre_boundary_reference_values() {
+        val staleFeed = feed(
+            time = "09:29:59",
+            modern930 = "12",
+            internet930 = "34",
+        )
+        val next = LiveReferenceStateReducer.promoteFromLiveSnapshot(
+            state = state(),
+            feed = staleFeed,
+            today = cycleDate,
+            scheduleTime = LocalTime.of(9, 35),
+        )
+
+        assertEquals(null, next.reference930)
+        assertEquals(null, next.reference930CompleteDate)
+        assertEquals("09:29:59", next.referenceFeed?.currentTime ?: "09:29:59")
+    }
+
+    @Test
     fun stale_provider_reference_does_not_complete_current_cycle() {
         val yesterday = cycleDate.minusDays(1)
         val staleEpoch = yesterday.atTime(9, 30)
