@@ -3,7 +3,9 @@ package com.myanmar.ledger2d.feature.live
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -51,7 +53,7 @@ internal class LiveRequestCoordinator(
     private val requestSequence = AtomicLong(0L)
 
     private val liveRequestLock = Any()
-    private val liveRequestJobs = mutableSetOf<Job>()
+    private val liveRequestJobs = mutableSetOf<Deferred<LiveFeedData?>>()
 
     private val morningRetrySignal = Channel<Unit>(Channel.CONFLATED)
     @Volatile
@@ -64,18 +66,18 @@ internal class LiveRequestCoordinator(
 
     fun launchLiveRequest() {
         val sequence = requestSequence.incrementAndGet()
-        val job = scope.launch(start = CoroutineStart.LAZY) {
+        val request = scope.async(start = CoroutineStart.LAZY) {
             fetchAndPublishLiveRequest(sequence)
         }
         synchronized(liveRequestLock) {
-            liveRequestJobs += job
+            liveRequestJobs += request
         }
-        job.invokeOnCompletion {
+        request.invokeOnCompletion {
             synchronized(liveRequestLock) {
-                liveRequestJobs -= job
+                liveRequestJobs -= request
             }
         }
-        job.start()
+        request.start()
     }
 
     private suspend fun fetchAndPublishLiveRequest(sequence: Long): LiveFeedData? {
@@ -131,11 +133,23 @@ internal class LiveRequestCoordinator(
             val cycleDate = today
 
             // A request started just before 09:30 may still return a valid pair.
-            // Let those already-running normal requests finish before starting
-            // another one for the same reference cycle.
-            awaitExistingLiveRequests()
+            // Let those normal requests finish and reuse their responses before
+            // starting another request for the same reference cycle.
+            val existingFeeds = awaitExistingLiveRequests()
             if (!isActive) return@launch
             if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
+            if (referenceComplete(true, cycleDate)) return@launch
+
+            for (feed in existingFeeds) {
+                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
+                if (referenceComplete(true, cycleDate)) return@launch
+                if (
+                    feed != null &&
+                    acceptReferenceFeed(true, cycleDate, feed)
+                ) {
+                    return@launch
+                }
+            }
             if (referenceComplete(true, cycleDate)) return@launch
 
             // Before 11:30 there is no normal LIVE polling window, so make the
@@ -184,13 +198,25 @@ internal class LiveRequestCoordinator(
         }
     }
 
-    private suspend fun awaitExistingLiveRequests() {
+    private suspend fun awaitExistingLiveRequests(): List<LiveFeedData?> {
+        val observed = mutableSetOf<Deferred<LiveFeedData?>>()
+        val feeds = mutableListOf<LiveFeedData?>()
         while (true) {
             val pending = synchronized(liveRequestLock) {
-                liveRequestJobs.filter { it.isActive }
+                liveRequestJobs.filter { it.isActive && it !in observed }
             }
-            if (pending.isEmpty()) return
-            pending.joinAll()
+            if (pending.isEmpty()) return feeds
+
+            for (request in pending) {
+                observed += request
+                try {
+                    feeds += request.await()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    feeds += null
+                }
+            }
         }
     }
 
