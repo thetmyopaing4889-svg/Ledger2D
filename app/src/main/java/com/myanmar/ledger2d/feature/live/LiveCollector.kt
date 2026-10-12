@@ -937,14 +937,15 @@ internal class LiveCollector(
                 if (startupClosed == null && morningReferenceOwnsStartup) {
                     // Start the normal-first 09:30 flow before any History I/O.
                     maybeReferenceFetch(startupTime)
-                } else if (startupClosed == null) {
-                    // Before 09:30, preserve the initial normal feed request.
-                    // If it is still in flight when 09:30 arrives, the morning
-                    // coordinator waits for it before deciding the next step.
-                    fetchCycle()
+                    launch { recoverPreviousWorkingDayFinal() }
+                } else {
+                    // Keep the historical recovery first when it completes quickly,
+                    // as before, but do not await it before the scheduler can reach 09:30.
+                    launch { recoverPreviousWorkingDayFinal() }
+                    if (startupClosed == null) {
+                        fetchCycle()
+                    }
                 }
-
-                launch { recoverPreviousWorkingDayFinal() }
             } else {
                 // Preserve the prior startup sequence for weekends and later
                 // phases. Those paths keep their existing history/final behavior.
