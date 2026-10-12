@@ -121,7 +121,7 @@ internal class LiveRequestCoordinator(
             if (referenceComplete(true, today)) return@synchronized
 
             val active = reference930Cycle
-            if (active?.isActive == true && reference930CycleDate == today) {
+            if (active != null && !active.isCompleted && reference930CycleDate == today) {
                 shouldWakeCurrentCycle =
                     forceNow && morningReferenceWaitingForRetryDate == today
             } else {
@@ -245,7 +245,7 @@ internal class LiveRequestCoordinator(
             if (referenceComplete(false, today)) return@synchronized
 
             val active = reference200Cycle
-            if (active?.isActive == true && reference200CycleDate == today) {
+            if (active != null && !active.isCompleted && reference200CycleDate == today) {
                 return@synchronized
             }
 
