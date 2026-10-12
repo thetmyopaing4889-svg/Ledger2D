@@ -910,30 +910,38 @@ internal class LiveCollector(
 
             if (startupLiveSession != null && startupClosed == null) {
                 // Active LIVE/finalization cold-start remains latency-sensitive.
-                // fetchCycle() joins an incomplete morning reference cycle when
-                // appropriate; otherwise it performs the usual LIVE request.
                 fetchCycle()
-            } else {
+            } else if (
+                isWorkingDay(startupToday) &&
+                startupTime.isBefore(MORNING_LIVE)
+            ) {
+                // On a working-day morning, let the scheduler and 09:30 request
+                // run while historical recovery is in flight. History must not
+                // hold the clock boundary hostage.
                 val startupCycleDate = dailyCycleDate(startupToday, startupTime)
                 val morningReferenceOwnsStartup =
                     startupClosed == null &&
-                        isWorkingDay(startupToday) &&
                         !startupTime.isBefore(MORNING_REFERENCE) &&
-                        startupTime.isBefore(MORNING_LIVE) &&
                         !isReferenceComplete(true, startupCycleDate)
 
                 if (startupClosed == null && morningReferenceOwnsStartup) {
-                    // Start the normal-first 09:30 flow before any history I/O.
-                    // The history recovery below runs independently and cannot
-                    // delay the current day's first request.
                     maybeReferenceFetch(startupTime)
                 } else if (startupClosed == null) {
+                    // Before 09:30, preserve the initial normal feed request.
+                    // If it is still in flight when 09:30 arrives, the morning
+                    // coordinator waits for it before deciding the next step.
                     fetchCycle()
                 }
 
-                // Historical recovery remains responsible for held-day Hero
-                // state, but it must not block the scheduler or 09:30 request.
                 launch { recoverPreviousWorkingDayFinal() }
+            } else {
+                // Preserve the prior startup sequence for weekends and later
+                // phases. Those paths keep their existing history/final behavior.
+                recoverPreviousWorkingDayFinal()
+                maybeReferenceFetch(startupTime)
+                if (startupClosed == null) {
+                    fetchCycle()
+                }
             }
 
             var lastSchedulerDate = startupToday
