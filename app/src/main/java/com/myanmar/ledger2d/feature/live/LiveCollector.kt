@@ -509,7 +509,8 @@ internal class LiveCollector(
         val closedSnapshot = isMorning &&
             feed != null &&
             feed.isCloseDay &&
-            isCurrentCycleReferenceObservation(feed, cycleDate)
+            isCurrentCycleReferenceObservation(feed, cycleDate) &&
+            isReferenceObservationAtOrAfterBoundary(feed, isMorning = true)
 
         // Keep the previous-working-day lookup outside the state lock. The
         // completed I/O is carried with the reference result event.
