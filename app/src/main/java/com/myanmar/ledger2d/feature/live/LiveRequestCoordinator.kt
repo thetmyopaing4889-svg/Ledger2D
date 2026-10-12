@@ -53,10 +53,11 @@ internal class LiveRequestCoordinator(
 
     private val liveRequestLock = Any()
     private val liveRequestJobs = mutableSetOf<Deferred<LiveFeedData?>>()
+    private val referenceCycleLock = Any()
 
     private val morningRetrySignal = Channel<Unit>(Channel.CONFLATED)
     @Volatile
-    private var morningReferenceWaitingForRetry = false
+    private var morningReferenceWaitingForRetryDate: LocalDate? = null
 
     private var reference930Cycle: Job? = null
     private var reference930CycleDate: LocalDate? = null
@@ -110,96 +111,108 @@ internal class LiveRequestCoordinator(
      */
     fun startMorningReferenceCycle(forceNow: Boolean = false) {
         val today = dateProvider()
-        if (referenceComplete(true, today)) return
+        var jobToStart: Job? = null
+        var shouldWakeCurrentCycle = false
 
-        if (reference930Cycle?.isActive == true) {
-            if (reference930CycleDate == today) {
-                if (forceNow && morningReferenceWaitingForRetry) {
-                    morningRetrySignal.trySend(Unit)
-                }
-                return
-            }
-            reference930Cycle?.cancel()
-            reference930Cycle = null
-        }
+        // Scheduler ticks and LiveScreen entry can happen on different threads.
+        // Reserve the 09:30 cycle under one lock so they cannot launch two
+        // primary requests for the same date at the same time.
+        synchronized(referenceCycleLock) {
+            if (referenceComplete(true, today)) return@synchronized
 
-        reference930CycleDate = today
-        reference930Cycle = scope.launch {
-            while (morningRetrySignal.tryReceive().isSuccess) {
-                // Discard a wake-up left over from a previous cycle.
-            }
-
-            val cycleDate = today
-
-            // The normal-first sequencing applies only to the 09:30 reference
-            // window. Once that window has passed, preserve the existing
-            // independent catch-up behavior for morning/afternoon reference slots.
-            val normalFirstWindow = clock().isBefore(MORNING_LIVE)
-            val existingFeeds = if (normalFirstWindow) {
-                // A request started just before 09:30 may still return a valid pair.
-                // Reuse its response before making any further request.
-                awaitExistingLiveRequests()
+            val active = reference930Cycle
+            if (active?.isActive == true && reference930CycleDate == today) {
+                shouldWakeCurrentCycle =
+                    forceNow && morningReferenceWaitingForRetryDate == today
             } else {
-                emptyList()
-            }
-            if (!isActive) return@launch
-            if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
-            if (referenceComplete(true, cycleDate)) return@launch
-
-            for (feed in existingFeeds) {
-                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
-                if (referenceComplete(true, cycleDate)) return@launch
-                if (
-                    feed != null &&
-                    acceptReferenceFeed(true, cycleDate, feed)
-                ) {
-                    return@launch
+                active?.cancel()
+                while (morningRetrySignal.tryReceive().isSuccess) {
+                    // Remove a wake-up left over from an earlier cycle.
                 }
-            }
-            if (referenceComplete(true, cycleDate)) return@launch
+                morningReferenceWaitingForRetryDate = null
+                reference930CycleDate = today
 
-            // Before 11:30, the first attempt is the normal Daily Flow request.
-            // After 11:30, keep the existing retry-only catch-up behavior.
-            if (normalFirstWindow) {
-                val initialFeed = fetchAndPublishLiveRequest(requestSequence.incrementAndGet())
-                if (!isActive) return@launch
-                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) {
-                    return@launch
-                }
+                val created = scope.launch(start = CoroutineStart.LAZY) {
+                    val cycleDate = today
 
-                // Normal acceptance may already have promoted a valid pair.
-                // If not, evaluate this same response under the reference-specific
-                // rules before making another HTTP request.
-                if (
-                    initialFeed != null &&
-                    !referenceComplete(true, cycleDate) &&
-                    acceptReferenceFeed(true, cycleDate, initialFeed)
-                ) {
-                    return@launch
-                }
-            }
-
-            while (isActive) {
-                val now = clock()
-                val nowDate = dateProvider()
-                if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) return@launch
-                if (referenceComplete(true, cycleDate)) return@launch
-
-                // First fallback follows immediately after the failed primary
-                // attempt. The interval applies only between fallback attempts.
-                if (fetchReferencePair(true, cycleDate)) return@launch
-                if (referenceComplete(true, cycleDate)) return@launch
-
-                morningReferenceWaitingForRetry = true
-                try {
-                    withTimeoutOrNull(LIVE_REFERENCE_FETCH_INTERVAL_MS) {
-                        morningRetrySignal.receive()
+                    // The normal-first sequencing applies only to the 09:30
+                    // reference window. After 11:30, preserve the existing
+                    // independent catch-up behavior for reference slots.
+                    val normalFirstWindow = clock().isBefore(MORNING_LIVE)
+                    val existingFeeds = if (normalFirstWindow) {
+                        // Reuse any normal request that began just before 09:30;
+                        // do not issue a competing request while it is in flight.
+                        awaitExistingLiveRequests()
+                    } else {
+                        emptyList()
                     }
-                } finally {
-                    morningReferenceWaitingForRetry = false
+                    if (!isActive) return@launch
+                    if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
+                    if (referenceComplete(true, cycleDate)) return@launch
+
+                    for (feed in existingFeeds) {
+                        if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return@launch
+                        if (referenceComplete(true, cycleDate)) return@launch
+                        if (
+                            feed != null &&
+                            acceptReferenceFeed(true, cycleDate, feed)
+                        ) {
+                            return@launch
+                        }
+                    }
+                    if (referenceComplete(true, cycleDate)) return@launch
+
+                    // Before 11:30 there is no normal LIVE polling stream yet.
+                    // Make one normal Daily Flow request first, pass that same
+                    // response through normal acceptance and reference validation,
+                    // and only use the dedicated path if the pair is still absent.
+                    if (normalFirstWindow) {
+                        val primaryFeed = fetchAndPublishLiveRequest(requestSequence.incrementAndGet())
+                        if (!isActive) return@launch
+                        if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) {
+                            return@launch
+                        }
+                        if (referenceComplete(true, cycleDate)) return@launch
+                        if (
+                            primaryFeed != null &&
+                            acceptReferenceFeed(true, cycleDate, primaryFeed)
+                        ) {
+                            return@launch
+                        }
+                    }
+
+                    while (isActive) {
+                        val now = clock()
+                        val nowDate = dateProvider()
+                        if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) return@launch
+                        if (referenceComplete(true, cycleDate)) return@launch
+
+                        // First fallback follows immediately after primary failure;
+                        // the retry interval applies only between fallback attempts.
+                        if (fetchReferencePair(true, cycleDate)) return@launch
+                        if (referenceComplete(true, cycleDate)) return@launch
+
+                        morningReferenceWaitingForRetryDate = cycleDate
+                        try {
+                            withTimeoutOrNull(LIVE_REFERENCE_FETCH_INTERVAL_MS) {
+                                morningRetrySignal.receive()
+                            }
+                        } finally {
+                            if (morningReferenceWaitingForRetryDate == cycleDate) {
+                                morningReferenceWaitingForRetryDate = null
+                            }
+                        }
+                    }
                 }
+                reference930Cycle = created
+                jobToStart = created
             }
         }
+
+        if (shouldWakeCurrentCycle) {
+            morningRetrySignal.trySend(Unit)
+        }
+        jobToStart?.start()
     }
 
     private suspend fun awaitExistingLiveRequests(): List<LiveFeedData?> {
@@ -226,24 +239,32 @@ internal class LiveRequestCoordinator(
 
     fun startAfternoonReferenceCycle() {
         val today = dateProvider()
-        if (referenceComplete(false, today)) return
-        if (reference200Cycle?.isActive == true) {
-            if (reference200CycleDate == today) return
-            reference200Cycle?.cancel()
-            reference200Cycle = null
-        }
+        var jobToStart: Job? = null
 
-        reference200CycleDate = today
-        reference200Cycle = scope.launch {
-            val cycleDate = today
-            while (isActive) {
-                val now = clock()
-                val nowDate = dateProvider()
-                if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) return@launch
-                if (nowDate == cycleDate && now.isBefore(AFTERNOON_REFERENCE)) return@launch
-                if (fetchReferencePair(false, cycleDate)) return@launch
-                delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+        synchronized(referenceCycleLock) {
+            if (referenceComplete(false, today)) return@synchronized
+
+            val active = reference200Cycle
+            if (active?.isActive == true && reference200CycleDate == today) {
+                return@synchronized
             }
+
+            active?.cancel()
+            reference200CycleDate = today
+            val created = scope.launch(start = CoroutineStart.LAZY) {
+                val cycleDate = today
+                while (isActive) {
+                    val now = clock()
+                    val nowDate = dateProvider()
+                    if (!referenceRetryWindowOpen(cycleDate, nowDate, now)) return@launch
+                    if (nowDate == cycleDate && now.isBefore(AFTERNOON_REFERENCE)) return@launch
+                    if (fetchReferencePair(false, cycleDate)) return@launch
+                    delay(LIVE_REFERENCE_FETCH_INTERVAL_MS)
+                }
+            }
+            reference200Cycle = created
+            jobToStart = created
         }
+        jobToStart?.start()
     }
 }
