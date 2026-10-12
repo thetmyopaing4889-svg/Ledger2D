@@ -2709,7 +2709,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun late_failed_dedicated_reference_does_not_regress_normal_luke_reference() = runTest {
+    @Test fun morning_cycle_waits_for_normal_request_before_fallback_and_reuses_successful_pair() = runTest {
         val currentReference = feed(
             "--",
             "09:35:00",
@@ -2736,12 +2736,8 @@ class LiveCollectorTest {
             scope = scope,
             fetcher = {
                 calls++
-                if (calls == 1) {
-                    firstStarted.complete(Unit)
-                    firstResult.await()
-                } else {
-                    currentReference
-                }
+                firstStarted.complete(Unit)
+                firstResult.await()
             },
             clock = { LocalTime.of(9, 35) },
             dateProvider = { tuesday },
@@ -2752,17 +2748,23 @@ class LiveCollectorTest {
         firstStarted.await()
         runCurrent()
 
+        assertEquals(
+            "Fallback must not compete with a normal request that is still running",
+            1,
+            calls,
+        )
+
+        firstResult.complete(currentReference)
+        runCurrent()
+
         var state = collector.state.value as LiveUiState.Data
         assertEquals("81", state.feed?.modern930)
         assertEquals("17", state.feed?.internet930)
+        assertEquals("The successful normal response completes this reference cycle", 1, calls)
 
-        firstResult.complete(null)
+        advanceTimeBy(LIVE_REFERENCE_FETCH_INTERVAL_MS * 2)
         runCurrent()
-
-        state = collector.state.value as LiveUiState.Data
-        assertTrue(calls >= 2)
-        assertEquals("81", state.feed?.modern930)
-        assertEquals("17", state.feed?.internet930)
+        assertEquals("No fallback retry is needed after a valid pair arrives", 1, calls)
 
         scope.cancel()
     }
@@ -2800,6 +2802,11 @@ class LiveCollectorTest {
         )
 
         collector.start()
+        runCurrent()
+
+        // A later normal LIVE snapshot missing the reference pair must not erase
+        // the pair committed by the first successful response.
+        collector.fetchCycle()
         runCurrent()
         scope.cancel()
 
