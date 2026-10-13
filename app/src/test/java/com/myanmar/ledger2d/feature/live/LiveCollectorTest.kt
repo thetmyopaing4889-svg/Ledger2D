@@ -3385,4 +3385,39 @@ class LiveCollectorTest {
         assertEquals("61", state.feed?.morning?.result)
     }
 
+    @Test fun valid_final_is_not_lost_when_response_timestamp_is_older_than_live_snapshot() = runTest {
+        val first = CompletableDeferred<LiveFeedData?>()
+        val second = CompletableDeferred<LiveFeedData?>()
+        var calls = 0
+        val collector = LiveCollector(
+            CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = {
+                calls++
+                if (calls == 1) first.await() else second.await()
+            },
+            clock = { LocalTime.of(12, 1, 8) },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        collector.fetchCycle()
+
+        first.complete(feed("60", "12:01:06", date = friday))
+        runCurrent()
+        second.complete(
+            feed(
+                "60",
+                "12:01:03",
+                morning = finalMorning("61"),
+                date = friday,
+            )
+        )
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("61", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals("61", state.feed?.morning?.result)
+    }
+
 }

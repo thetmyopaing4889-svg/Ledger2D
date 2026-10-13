@@ -54,6 +54,14 @@ internal fun currentDay(
 ): Boolean =
     canonicalDate(f.date) == date
 
+/** Luke date may be a result-row date while current_time identifies the observation. */
+internal fun isCurrentCycleObservation(
+    f: LiveFeedData,
+    date: LocalDate,
+): Boolean =
+    canonicalDate(f.date) == date ||
+        parseDecisionInstant(f)?.atZone(YANGON)?.toLocalDate() == date
+
 internal fun age(o: SourceObservation?): Long =
     if (o == null) Long.MAX_VALUE
     else maxOf(0L, monotonicMs() - o.fetchedAtElapsedMs)
@@ -80,7 +88,7 @@ internal fun finalValid(
     feed: LiveFeedData?,
     date: LocalDate = currentYangonDate(),
 ): Boolean {
-    if (session == null || feed == null || !currentDay(feed, date)) return false
+    if (session == null || feed == null || !isCurrentCycleObservation(feed, date)) return false
     // Luke's result_1200 / result_430 is the final-result trigger.
     // SET/VALUE are supplementary metadata and may arrive slightly later.
     return isValidLive2d(session.result)
@@ -125,4 +133,3 @@ internal fun isCurrentCycleReferenceObservation(
     // complete a reference retry.
     return serverDate == cycleDate
 }
-

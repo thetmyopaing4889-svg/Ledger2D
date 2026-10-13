@@ -208,8 +208,8 @@ internal object LiveStateReducer {
     ): LiveFeedData {
         if (
             previous == null ||
-            canonicalDate(previous.date) != scheduleDate ||
-            canonicalDate(incoming.date) != scheduleDate
+            !isCurrentCycleObservation(previous, scheduleDate) ||
+            !isCurrentCycleObservation(incoming, scheduleDate)
         ) {
             return incoming
         }

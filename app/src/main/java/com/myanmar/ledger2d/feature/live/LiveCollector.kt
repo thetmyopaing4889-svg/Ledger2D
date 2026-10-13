@@ -309,6 +309,11 @@ internal class LiveCollector(
             val incomingTime = parseDecisionInstant(feed)
             val previousTime = previous?.let(::parseDecisionInstant)
             val appliedSequence = latestAppliedSequence.get()
+            val scheduleTime = clock()
+            val today = dateProvider()
+            val hasUnresolvedCandidate =
+                hasUnresolvedFinalCandidate(previous, feed, today) ||
+                    hasUnresolvedReferenceCandidate(feed, today, scheduleTime)
 
             // Provider timestamps remain authoritative; sequence is a tie-breaker only.
             // Requests intentionally overlap, so do not replace this with a single in-flight guard.
@@ -318,7 +323,7 @@ internal class LiveCollector(
                     previousTime = previousTime,
                     sequence = sequence,
                     latestAppliedSequence = appliedSequence,
-                )
+                ) && !hasUnresolvedCandidate
             ) {
                 LiveDiagnostics.warn(
                     "LIVE request rejected seq=$sequence reason=older-provider-snapshot " +
@@ -326,9 +331,6 @@ internal class LiveCollector(
                 )
                 return@synchronized
             }
-
-            val scheduleTime = clock()
-            val today = dateProvider()
 
             // A normal Luke snapshot can contain an already-valid
             // current-cycle reference even when the dedicated reference
@@ -448,7 +450,10 @@ internal class LiveCollector(
         val scheduleTime = clock()
         val today = dateProvider()
 
-        if (!isLiveDisplayableFeed(feed, scheduleTime, today)) {
+        val isCurrentCycleCandidate =
+            hasCurrentCycleFinalCandidate(feed, today) ||
+                hasCurrentCycleReferenceCandidate(feed, today, scheduleTime)
+        if (!isLiveDisplayableFeed(feed, scheduleTime, today) && !isCurrentCycleCandidate) {
             LiveDiagnostics.warn(
                 "LIVE snapshot rejected reason=not-displayable appDate=$today appTime=$scheduleTime " +
                     "feedDate=${feed.date} current_time=${feed.currentTime}",
@@ -471,7 +476,8 @@ internal class LiveCollector(
         if (
             isWorkingDay(today) &&
             !scheduleTime.isBefore(MORNING_REFERENCE) &&
-            canonicalDate(feed.date) != today
+            canonicalDate(feed.date) != today &&
+            !isCurrentCycleCandidate
         ) {
             LiveDiagnostics.warn(
                 "LIVE snapshot rejected reason=date-mismatch appDate=$today appTime=$scheduleTime " +
@@ -498,6 +504,53 @@ internal class LiveCollector(
             )
         }
         return usable
+    }
+
+    private fun hasCurrentCycleFinalCandidate(
+        feed: LiveFeedData,
+        today: LocalDate,
+    ): Boolean =
+        isCurrentCycleObservation(feed, today) &&
+            (isValidLive2d(feed.morning.result) || isValidLive2d(feed.evening.result))
+
+    private fun hasCurrentCycleReferenceCandidate(
+        feed: LiveFeedData,
+        today: LocalDate,
+        scheduleTime: LocalTime,
+    ): Boolean {
+        if (!isWorkingDay(today) || dailyCycleDate(today, scheduleTime) != today) return false
+        if (!isCurrentCycleReferenceObservation(feed, today)) return false
+        val morning = !scheduleTime.isBefore(MORNING_REFERENCE) &&
+            isValidLive2d(feed.modern930) && isValidLive2d(feed.internet930)
+        val afternoon = !scheduleTime.isBefore(AFTERNOON_REFERENCE) &&
+            isValidLive2d(feed.modern200) && isValidLive2d(feed.internet200)
+        return morning || afternoon
+    }
+
+    private fun hasUnresolvedFinalCandidate(
+        previous: LiveFeedData?,
+        incoming: LiveFeedData,
+        today: LocalDate,
+    ): Boolean {
+        if (!hasCurrentCycleFinalCandidate(incoming, today)) return false
+        val morningNew = isValidLive2d(incoming.morning.result) &&
+            !finalValid(previous?.morning, previous, today)
+        val eveningNew = isValidLive2d(incoming.evening.result) &&
+            !finalValid(previous?.evening, previous, today)
+        return morningNew || eveningNew
+    }
+
+    private fun hasUnresolvedReferenceCandidate(
+        incoming: LiveFeedData,
+        today: LocalDate,
+        scheduleTime: LocalTime,
+    ): Boolean {
+        if (!hasCurrentCycleReferenceCandidate(incoming, today, scheduleTime)) return false
+        val morningPending = !scheduleTime.isBefore(MORNING_REFERENCE) &&
+            !isReferenceComplete(true, today)
+        val afternoonPending = !scheduleTime.isBefore(AFTERNOON_REFERENCE) &&
+            !isReferenceComplete(false, today)
+        return morningPending || afternoonPending
     }
 
     private fun promoteCurrentCycleReferencesLocked(
@@ -1181,4 +1234,3 @@ internal class LiveCollector(
         }
     }
 }
-

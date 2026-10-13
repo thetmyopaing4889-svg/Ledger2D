@@ -12,6 +12,8 @@ internal fun buildLiveDailyResultPatches(
 ): List<LiveDailyResultPatch> {
     val cycleDate = dailyCycleDate(today, now)
     val providerDate = canonicalDate(feed.date)
+    val observationDate = parseDecisionInstant(feed)?.atZone(YANGON)?.toLocalDate()
+    val effectiveResultDate = if (observationDate == cycleDate) cycleDate else providerDate
     val sourceAt = feed.serverTimeEpochMs
         ?: parseDecisionInstant(feed)?.toEpochMilli()
         ?: Instant.now().toEpochMilli()
@@ -28,9 +30,9 @@ internal fun buildLiveDailyResultPatches(
     }
 
     if (
-        providerDate != null &&
-        isWorkingDay(providerDate) &&
-        (providerDate == cycleDate || providerDate == previousWorkingDay(cycleDate))
+        effectiveResultDate != null &&
+        isWorkingDay(effectiveResultDate) &&
+        (effectiveResultDate == cycleDate || effectiveResultDate == previousWorkingDay(cycleDate))
     ) {
         val morning2d = feed.morning.result.takeIf(::isValidLive2d)
         val morningSet = feed.morning.set.takeIf(::validMoney)
@@ -40,7 +42,7 @@ internal fun buildLiveDailyResultPatches(
         val eveningValue = feed.evening.value.takeIf(::validMoney)
 
         if (morning2d != null || morningSet != null || morningValue != null) {
-            mergePatch(providerDate) {
+            mergePatch(effectiveResultDate) {
                 copy(
                     morning2d = morning2d,
                     morningSet = morningSet,
@@ -50,7 +52,7 @@ internal fun buildLiveDailyResultPatches(
             }
         }
         if (evening2d != null || eveningSet != null || eveningValue != null) {
-            mergePatch(providerDate) {
+            mergePatch(effectiveResultDate) {
                 copy(
                     evening2d = evening2d,
                     eveningSet = eveningSet,
@@ -109,4 +111,3 @@ internal fun buildLiveDailyResultPatches(
             it.eveningValue != null
     }
 }
-
