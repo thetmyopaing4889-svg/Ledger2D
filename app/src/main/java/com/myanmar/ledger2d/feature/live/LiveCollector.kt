@@ -297,6 +297,11 @@ internal class LiveCollector(
         val startedAt = event.requestStartedAtElapsedMs
         val finishedAt = event.requestFinishedAtElapsedMs
 
+        // Room has its own current-day/checkpoint policy. Run it before UI
+        // display/ordering rejection so eligible early Luke fields are not lost.
+        // This does not alter the feed or the Daily Flow acceptance decision.
+        syncLiveRoom(feed, dateProvider(), clock())
+
         synchronized(stateLock) {
             if (!isUsableLukeSnapshot(feed)) {
                 LiveDiagnostics.warn(
@@ -383,15 +388,10 @@ internal class LiveCollector(
         sideEffects.drain()
     }
     /**
-     * Build the Room patch synchronously after the accepted state commit, using the
-     * captured app-clock values from that transition. Only persistence launch is
-     * queued, so callback delays cannot retarget which daily row this observation writes.
-     */
-    /**
-     * Persist only accepted, current-day Luke data. The captured date/time come
-     * from the accepted transition; a callback delayed across midnight is
-     * dropped instead of writing yesterday's observation into a stale Room row.
-     * These guards affect Room persistence only, not UI/Daily Flow acceptance.
+     * Persist a Luke observation through the Room-specific acceptance path.
+     * The Builder independently validates provider/app dates and each checkpoint;
+     * this method blocks weekends and the LIVE-only Closed Day hold. It must not
+     * mutate or relax UI/Daily Flow acceptance.
      */
     private fun syncLiveRoom(
         feed: LiveFeedData,
@@ -412,7 +412,7 @@ internal class LiveCollector(
             return
         }
 
-        val patches = buildLiveDailyResultPatches(feed, today)
+        val patches = buildLiveDailyResultPatches(feed, today, now)
         if (patches.isEmpty()) return
 
         // Skip repeated 3-second observations when persisted facts did not
@@ -431,6 +431,10 @@ internal class LiveCollector(
                 p.evening2d,
                 p.eveningSet,
                 p.eveningValue,
+                p.reference930SourceAt,
+                p.reference200SourceAt,
+                p.morningSourceAt,
+                p.eveningSourceAt,
             ).joinToString("|")
         }
 
@@ -645,6 +649,10 @@ internal class LiveCollector(
         cycleDate: LocalDate,
         feed: LiveFeedData?,
     ): Boolean {
+        // Dedicated reference fetches also feed Room independently of whether
+        // the reference reducer accepts them for the visible UI state.
+        if (feed != null) syncLiveRoom(feed, dateProvider(), clock())
+
         val closedSnapshot = isMorning &&
             feed != null &&
             feed.isCloseDay &&

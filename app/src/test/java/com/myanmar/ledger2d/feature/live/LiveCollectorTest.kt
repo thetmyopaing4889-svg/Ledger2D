@@ -1964,6 +1964,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_1000_catches_up_0930_reference_without_live_polling() = runTest {
         var calls = 0
+        val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
@@ -1982,12 +1983,14 @@ class LiveCollectorTest {
             },
             clock = { LocalTime.of(10, 0) },
             dateProvider = { friday },
+            liveRoomSaver = { patches -> saved += patches },
         )
 
         collector.start()
         runCurrent()
 
         assertEquals("A valid response on the normal Daily Flow path completes 09:30 without a second request", 1, calls)
+        assertTrue(saved.any { it.date == friday && it.modern930 == "80" && it.internet930 == "33" && it.modern200 == null && it.morning2d == null })
         val state = collector.state.value as LiveUiState.Data
         assertEquals("80", state.feed?.modern930)
         assertEquals("33", state.feed?.internet930)
@@ -2002,8 +2005,11 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    
+
     @Test fun fresh_start_1500_catches_up_both_reference_slots_without_live_polling() = runTest {
         var calls = 0
+        val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope,
@@ -2022,12 +2028,14 @@ class LiveCollectorTest {
             },
             clock = { LocalTime.of(15, 0) },
             dateProvider = { friday },
+            liveRoomSaver = { patches -> saved += patches },
         )
 
         collector.start()
         runCurrent()
 
         assertEquals(3, calls)
+        assertTrue(saved.any { it.date == friday && it.modern930 == "80" && it.internet930 == "33" && it.modern200 == "98" && it.internet200 == "78" && it.morning2d == "36" && it.evening2d == null })
         val state = collector.state.value as LiveUiState.Data
         assertEquals("80", state.feed?.modern930)
         assertEquals("33", state.feed?.internet930)
@@ -2042,6 +2050,8 @@ class LiveCollectorTest {
 
         scope.cancel()
     }
+
+    
 
     @Test fun fresh_start_1800_catches_up_reference_slots_without_starting_evening_live_polling() = runTest {
         var calls = 0
@@ -2293,10 +2303,12 @@ class LiveCollectorTest {
             date = thursday,
         )
 
-        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday, now = LocalTime.of(9, 34))
 
         assertTrue(patches.isEmpty())
     }
+
+    
 
     @Test fun live_room_persists_reference_from_early_luke_timestamp_for_today() {
         val f = feed(
@@ -2309,7 +2321,7 @@ class LiveCollectorTest {
             date = friday,
         )
 
-        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday, now = LocalTime.of(9, 29, 53))
 
         assertEquals(1, patches.size)
         val p = patches.single()
@@ -2318,6 +2330,77 @@ class LiveCollectorTest {
         assertEquals("67", p.internet930)
         assertNull(p.modern200)
         assertNull(p.internet200)
+    }
+
+    
+
+    @Test fun live_room_does_not_persist_future_checkpoints_early() {
+        val f = feed(
+            "--",
+            "09:29:53",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "54",
+            internet930 = "67",
+            modern200 = "98",
+            internet200 = "78",
+            date = friday,
+        )
+
+        val patch = buildLiveDailyResultPatches(
+            feed = f,
+            today = friday,
+            now = LocalTime.of(9, 29, 53),
+        ).single()
+
+        assertEquals("54", patch.modern930)
+        assertEquals("67", patch.internet930)
+        assertNull(patch.modern200)
+        assertNull(patch.internet200)
+        assertNull(patch.morning2d)
+        assertNull(patch.morningSet)
+        assertNull(patch.morningValue)
+        assertNull(patch.evening2d)
+        assertNull(patch.eveningSet)
+        assertNull(patch.eveningValue)
+    }
+
+    @Test fun live_room_rejects_provider_timestamp_ahead_of_app_clock() {
+        val f = feed(
+            "--",
+            "14:00:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            modern930 = "54",
+            internet930 = "67",
+            modern200 = "98",
+            internet200 = "78",
+            date = friday,
+        )
+
+        assertTrue(
+            buildLiveDailyResultPatches(
+                feed = f,
+                today = friday,
+                now = LocalTime.of(9, 30),
+            ).isEmpty()
+        )
+    }
+
+    @Test fun live_room_rejects_future_date_for_new_ingestion() {
+        val f = feed(
+            "--",
+            "09:34:00",
+            date = monday,
+        )
+
+        assertTrue(
+            buildLiveDailyResultPatches(
+                feed = f,
+                today = friday,
+                now = LocalTime.of(9, 34),
+            ).isEmpty()
+        )
     }
 
     @Test fun live_room_persists_morning_result_from_early_luke_timestamp() {
@@ -2332,7 +2415,7 @@ class LiveCollectorTest {
             date = friday,
         )
 
-        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday, now = LocalTime.of(12, 0, 53))
 
         assertEquals(1, patches.size)
         val p = patches.single()
@@ -2342,6 +2425,8 @@ class LiveCollectorTest {
         assertEquals("20000", p.morningValue)
         assertNull(p.evening2d)
     }
+
+    
 
     @Test fun live_room_persists_evening_result_from_early_luke_timestamp() {
         val f = feed(
@@ -2355,7 +2440,7 @@ class LiveCollectorTest {
             date = friday,
         )
 
-        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday, now = LocalTime.of(16, 29, 53))
 
         assertEquals(1, patches.size)
         val p = patches.single()
@@ -2365,6 +2450,8 @@ class LiveCollectorTest {
         assertEquals("20000", p.eveningValue)
         assertNull(p.morning2d)
     }
+
+    
 
     @Test fun live_room_rejects_weekend_and_luke_confirmed_closed_day() {
         val closed = feed(
@@ -2383,9 +2470,11 @@ class LiveCollectorTest {
             date = saturday,
         )
 
-        assertTrue(buildLiveDailyResultPatches(feed = closed, today = friday).isEmpty())
-        assertTrue(buildLiveDailyResultPatches(feed = weekend, today = saturday).isEmpty())
+        assertTrue(buildLiveDailyResultPatches(feed = closed, today = friday, now = LocalTime.of(16, 30)).isEmpty())
+        assertTrue(buildLiveDailyResultPatches(feed = weekend, today = saturday, now = LocalTime.of(9, 30)).isEmpty())
     }
+
+    
 
     @Test fun live_room_full_evening_snapshot_is_one_current_day_patch() {
         val f = feed(
@@ -2402,6 +2491,7 @@ class LiveCollectorTest {
         val patches = buildLiveDailyResultPatches(
             feed = f,
             today = friday,
+            now = LocalTime.of(18, 0),
         )
 
         assertEquals(1, patches.size)
@@ -2414,6 +2504,8 @@ class LiveCollectorTest {
         assertEquals("22", p.morning2d)
         assertEquals("25", p.evening2d)
     }
+
+    
 
     @Test fun live_room_pending_patch_never_erases_existing_valid_values() {
         val old = com.myanmar.ledger2d.core.database.LiveDailyResultEntity(
@@ -2566,6 +2658,39 @@ class LiveCollectorTest {
         assertEquals("36", merged.morning2d)
         assertEquals("1,100", merged.morningSet)
         assertEquals("2,100", merged.morningValue)
+    }
+
+    @Test fun room_ingestion_saves_early_reference_without_advancing_daily_flow_ui() = runTest {
+        val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
+        val f = feed(
+            "--",
+            "09:29:53",
+            morning = LiveSessionData("--", "--", "--", false),
+            evening = LiveSessionData("--", "--", "--", false),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { f },
+            clock = { LocalTime.of(9, 29, 53) },
+            dateProvider = { friday },
+            liveRoomSaver = { patches -> saved += patches },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+
+        assertTrue(saved.any { it.date == friday && it.modern930 == "80" && it.internet930 == "33" })
+        val state = collector.state.value as LiveUiState.Data
+        assertNull("Room's early-reference lane must not advance the UI before 09:30", state.feed)
+
+        scope.cancel()
     }
 
     @Test fun collector_persists_reference_snapshot_through_room_saver_without_changing_ui_flow() = runTest {

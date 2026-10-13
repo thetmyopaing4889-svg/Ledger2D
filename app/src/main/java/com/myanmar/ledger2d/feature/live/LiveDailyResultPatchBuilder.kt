@@ -2,56 +2,80 @@ package com.myanmar.ledger2d.feature.live
 
 import com.myanmar.ledger2d.core.database.LiveDailyResultPatch
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+
+/**
+ * A small early-arrival tolerance is needed because Luke can publish a
+ * checkpoint a few seconds before its scheduled boundary (for example,
+ * 09:29:53 for the 09:30 reference). It must not enable later checkpoints.
+ */
+private const val ROOM_CHECKPOINT_EARLY_GRACE_SECONDS = 10L
 
 /**
  * Build Room updates from a current-day Luke observation.
  *
- * The provider fields identify their own checkpoint (09:30 reference,
- * morning final, 14:00 reference, evening final). Eligibility is based on
- * the values actually present, not exact equality with the app clock:
- * Luke can publish a checkpoint a few seconds before its scheduled label.
- *
- * This is deliberately separate from the UI/Daily Flow cycle date. Historical
- * fallback and cached feeds must never be re-labelled as fresh Room data for
- * today.
+ * Room ingestion is independent from Daily Flow's cycle date and display
+ * acceptance. Both the provider's date/time and the app clock are checked:
+ * only fields whose own checkpoint is available are included in the patch.
  */
 internal fun buildLiveDailyResultPatches(
     feed: LiveFeedData,
     today: LocalDate,
+    now: LocalTime,
 ): List<LiveDailyResultPatch> {
     if (!isWorkingDay(today) || feed.isCloseDay) return emptyList()
 
     val providerDate = canonicalDate(feed.date) ?: return emptyList()
     val observationInstant = parseDecisionInstant(feed) ?: return emptyList()
-    val observationDate = observationInstant.atZone(YANGON).toLocalDate()
-
-    // Luke's live endpoint represents the current calendar date. Require both
-    // the payload date and observation date to match the app's Yangon date.
+    val observationDateTime = observationInstant.atZone(YANGON).toLocalDateTime()
+    val observationDate = observationDateTime.toLocalDate()
     if (providerDate != today || observationDate != today) return emptyList()
+
+    val appDateTime = LocalDateTime.of(today, now)
+    // Do not accept a provider snapshot whose timestamp is materially ahead of
+    // the app clock. A small difference is tolerated for clock/network jitter.
+    if (observationDateTime.isAfter(appDateTime.plusSeconds(ROOM_CHECKPOINT_EARLY_GRACE_SECONDS))) {
+        return emptyList()
+    }
+
+    val sourceTime = observationDateTime.toLocalTime()
+    fun checkpointAvailable(boundary: LocalTime): Boolean {
+        val earliest = boundary.minusSeconds(ROOM_CHECKPOINT_EARLY_GRACE_SECONDS)
+        return !sourceTime.isBefore(earliest) && !now.isBefore(earliest)
+    }
 
     val sourceAt = observationInstant.toEpochMilli()
 
-    // Reference values are one atomic pair. A partially available pair is
-    // not stored as a completed checkpoint.
+    // A reference checkpoint is complete only when Modern and Internet are
+    // both valid, and only after its own time boundary (with the small grace).
+    val reference930Available = checkpointAvailable(MORNING_REFERENCE)
     val modern930 = if (
-        isValidLive2d(feed.modern930) && isValidLive2d(feed.internet930)
+        reference930Available &&
+        isValidLive2d(feed.modern930) &&
+        isValidLive2d(feed.internet930)
     ) feed.modern930 else null
     val internet930 = if (modern930 != null) feed.internet930 else null
 
+    val reference200Available = checkpointAvailable(AFTERNOON_REFERENCE)
     val modern200 = if (
-        isValidLive2d(feed.modern200) && isValidLive2d(feed.internet200)
+        reference200Available &&
+        isValidLive2d(feed.modern200) &&
+        isValidLive2d(feed.internet200)
     ) feed.modern200 else null
     val internet200 = if (modern200 != null) feed.internet200 else null
 
-    // Result number and SET/VALUE can become available at slightly different
-    // times. Keep every valid field and let the repository merge later updates
-    // without clearing fields that are not present in this observation.
-    val morning2d = feed.morning.result.takeIf(::isValidLive2d)
-    val morningSet = feed.morning.set.takeIf(::validMoney)
-    val morningValue = feed.morning.value.takeIf(::validMoney)
-    val evening2d = feed.evening.result.takeIf(::isValidLive2d)
-    val eveningSet = feed.evening.set.takeIf(::validMoney)
-    val eveningValue = feed.evening.value.takeIf(::validMoney)
+    // Result fields can arrive progressively. Keep valid fields, but don't let
+    // populated morning/evening values leak into Room before their checkpoint.
+    val morningAvailable = checkpointAvailable(MORNING_CLOSE)
+    val morning2d = feed.morning.result.takeIf { morningAvailable && isValidLive2d(it) }
+    val morningSet = feed.morning.set.takeIf { morningAvailable && validMoney(it) }
+    val morningValue = feed.morning.value.takeIf { morningAvailable && validMoney(it) }
+
+    val eveningAvailable = checkpointAvailable(EVENING_CLOSE)
+    val evening2d = feed.evening.result.takeIf { eveningAvailable && isValidLive2d(it) }
+    val eveningSet = feed.evening.set.takeIf { eveningAvailable && validMoney(it) }
+    val eveningValue = feed.evening.value.takeIf { eveningAvailable && validMoney(it) }
 
     val patch = LiveDailyResultPatch(
         date = today,
