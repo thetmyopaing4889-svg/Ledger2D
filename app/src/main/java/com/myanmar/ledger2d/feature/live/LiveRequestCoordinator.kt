@@ -82,16 +82,28 @@ internal class LiveRequestCoordinator(
 
     private suspend fun fetchAndPublishLiveRequest(sequence: Long): LiveFeedData? {
         val startedAt = monotonicClockMs()
+        val startedAtWallMs = System.currentTimeMillis()
         val feed = try {
             fetcher()
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            LiveDiagnostics.warn(
+                "Luke fetcher threw seq=$sequence type=${error.javaClass.simpleName} startedAtMs=$startedAtWallMs",
+                error,
+            )
             null
         }
         val finishedAt = monotonicClockMs()
+        val finishedAtWallMs = System.currentTimeMillis()
+        val latencyMs = (finishedAt - startedAt).coerceAtLeast(0L)
 
         if (feed != null) {
+            LiveDiagnostics.info(
+                "LIVE request seq=$sequence startedAtMs=$startedAtWallMs finishedAtMs=$finishedAtWallMs " +
+                    "latencyMs=$latencyMs date=${feed.date} current_time=${feed.currentTime} " +
+                    "live=${feed.live} result_1200=${feed.morning.result} result_430=${feed.evening.result}",
+            )
             onLiveResult(
                 LiveRequestResultEvent(
                     sequence = sequence,
@@ -100,9 +112,15 @@ internal class LiveRequestCoordinator(
                     requestFinishedAtElapsedMs = finishedAt,
                 )
             )
+        } else {
+            LiveDiagnostics.warn(
+                "LIVE request returned null seq=$sequence startedAtMs=$startedAtWallMs " +
+                    "finishedAtMs=$finishedAtWallMs latencyMs=$latencyMs",
+            )
         }
         return feed
     }
+
 
     /**
      * Start one coordinated morning cycle. Repeated scheduler/UI calls join the

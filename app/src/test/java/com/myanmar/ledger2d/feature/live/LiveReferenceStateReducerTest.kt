@@ -104,62 +104,104 @@ class LiveReferenceStateReducerTest {
     }
 
     @Test
-    fun pre_0930_provider_snapshot_cannot_complete_morning_reference() {
-        val staleFeed = feed(
-            time = "09:29:59",
+    fun valid_morning_reference_is_accepted_when_app_clock_crosses_boundary_before_luke_time() {
+        val feed = feed(
+            time = "09:29:58",
             modern930 = "12",
             internet930 = "34",
         )
         val result = LiveReferenceStateReducer.reduce(
             state = state(),
-            event = LiveReferenceResultEvent(true, cycleDate, staleFeed, false, null),
+            event = LiveReferenceResultEvent(true, cycleDate, feed, false, null),
             retryWindowOpen = true,
+            appTime = LocalTime.of(9, 30, 2),
+        )
+
+        assertTrue(result.accepted)
+        assertTrue(result.cycleComplete)
+        assertEquals("12" to "34", result.state.reference930)
+        assertEquals(cycleDate, result.state.reference930CompleteDate)
+        assertEquals(feed, result.state.referenceFeed)
+    }
+
+    @Test
+    fun app_clock_before_0930_does_not_accept_reference_even_if_luke_time_is_after_boundary() {
+        val feed = feed(
+            time = "09:40:00",
+            modern930 = "12",
+            internet930 = "34",
+        )
+        val result = LiveReferenceStateReducer.reduce(
+            state = state(),
+            event = LiveReferenceResultEvent(true, cycleDate, feed, false, null),
+            retryWindowOpen = true,
+            appTime = LocalTime.of(9, 29, 59),
         )
 
         assertTrue(result.accepted)
         assertFalse(result.cycleComplete)
         assertEquals(null, result.state.reference930)
-        assertEquals(null, result.state.reference930CompleteDate)
         assertEquals(cycleDate, result.state.reference930PendingDate)
     }
 
     @Test
-    fun pre_1400_provider_snapshot_cannot_complete_afternoon_reference() {
-        val staleFeed = feed(
-            time = "13:59:59",
+    fun valid_afternoon_reference_is_accepted_when_app_clock_crosses_boundary_before_luke_time() {
+        val feed = feed(
+            time = "13:59:58",
             modern200 = "56",
             internet200 = "78",
         )
         val result = LiveReferenceStateReducer.reduce(
             state = state(),
-            event = LiveReferenceResultEvent(false, cycleDate, staleFeed, false, null),
+            event = LiveReferenceResultEvent(false, cycleDate, feed, false, null),
             retryWindowOpen = true,
+            appTime = LocalTime.of(14, 0, 2),
+        )
+
+        assertTrue(result.accepted)
+        assertTrue(result.cycleComplete)
+        assertEquals("56" to "78", result.state.reference200)
+        assertEquals(cycleDate, result.state.reference200CompleteDate)
+        assertEquals(feed, result.state.referenceFeed)
+    }
+
+    @Test
+    fun app_clock_before_1400_does_not_accept_reference_even_if_luke_time_is_after_boundary() {
+        val feed = feed(
+            time = "14:10:00",
+            modern200 = "56",
+            internet200 = "78",
+        )
+        val result = LiveReferenceStateReducer.reduce(
+            state = state(),
+            event = LiveReferenceResultEvent(false, cycleDate, feed, false, null),
+            retryWindowOpen = true,
+            appTime = LocalTime.of(13, 59, 59),
         )
 
         assertTrue(result.accepted)
         assertFalse(result.cycleComplete)
         assertEquals(null, result.state.reference200)
-        assertEquals(null, result.state.reference200CompleteDate)
         assertEquals(cycleDate, result.state.reference200PendingDate)
     }
 
     @Test
-    fun primary_snapshot_received_after_0930_cannot_promote_pre_boundary_reference_values() {
-        val staleFeed = feed(
-            time = "09:29:59",
+    fun primary_snapshot_after_0930_accepts_valid_reference_when_luke_time_lags_boundary() {
+        val feed = feed(
+            time = "09:29:58",
             modern930 = "12",
             internet930 = "34",
         )
         val next = LiveReferenceStateReducer.promoteFromLiveSnapshot(
             state = state(),
-            feed = staleFeed,
+            feed = feed,
             today = cycleDate,
-            scheduleTime = LocalTime.of(9, 35),
+            scheduleTime = LocalTime.of(9, 30, 2),
         )
 
-        assertEquals(null, next.reference930)
-        assertEquals(null, next.reference930CompleteDate)
-        assertEquals(null, next.referenceFeed)
+        assertEquals("12" to "34", next.reference930)
+        assertEquals(cycleDate, next.reference930CompleteDate)
+        assertEquals(feed, next.referenceFeed)
     }
 
     @Test
