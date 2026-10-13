@@ -682,7 +682,15 @@ internal class LiveCollector(
                 ),
                 appTime = acceptedTime,
             )
-            if (!transition.accepted) return false
+            if (!transition.accepted) {
+                LiveDiagnostics.warn(
+                    "Reference response rejected reason=retry-window-or-closed-state " +
+                        "session=${if (event.isMorning) "morning" else "afternoon"} " +
+                        "cycleDate=$cycleDate appDate=$acceptedDate appTime=$acceptedTime " +
+                        "feedDate=${feed?.date} current_time=${feed?.currentTime}",
+                )
+                return false
+            }
 
             applyReferenceStateLocked(transition.state)
 
@@ -692,13 +700,38 @@ internal class LiveCollector(
                     transition.cycleComplete &&
                     transition.state.referenceFeed == feed &&
                     transition.state.referenceFeedDate == cycleDate
+            val sessionName = if (event.isMorning) "morning" else "afternoon"
+            val boundary = if (event.isMorning) MORNING_REFERENCE else AFTERNOON_REFERENCE
+            if (transition.cycleComplete && feed != null) {
+                LiveDiagnostics.info(
+                    "Reference pair accepted session=$sessionName cycleDate=$cycleDate " +
+                        "appDate=$acceptedDate appTime=$acceptedTime feedDate=${feed.date} " +
+                        "current_time=${feed.currentTime} modern=${if (event.isMorning) feed.modern930 else feed.modern200} " +
+                        "internet=${if (event.isMorning) feed.internet930 else feed.internet200}",
+                )
+            } else if (feed != null) {
+                val modern = if (event.isMorning) feed.modern930 else feed.modern200
+                val internet = if (event.isMorning) feed.internet930 else feed.internet200
+                val reason = when {
+                    acceptedTime.isBefore(boundary) -> "app-clock-before-boundary"
+                    !isValidLive2d(modern) || !isValidLive2d(internet) -> "reference-pair-invalid"
+                    !isCurrentCycleReferenceObservation(feed, cycleDate) -> "stale-source-cycle"
+                    else -> "reference-policy-pending"
+                }
+                LiveDiagnostics.warn(
+                    "Reference pair not accepted reason=$reason session=$sessionName " +
+                        "cycleDate=$cycleDate appDate=$acceptedDate appTime=$acceptedTime " +
+                        "feedDate=${feed.date} current_time=${feed.currentTime} " +
+                        "modern=$modern internet=$internet",
+                )
+            }
             if (acceptedReferenceFeed && feed != null) {
                 sideEffects.dispatch { syncLiveRoom(feed, acceptedDate, acceptedTime) }
             } else if (feed != null) {
                 LiveDiagnostics.info(
                     "Reference response not synced to Room because pair was not accepted " +
-                        "session=${if (event.isMorning) "morning" else "afternoon"} " +
-                        "cycleDate=$cycleDate feedDate=${feed.date} current_time=${feed.currentTime}",
+                        "session=$sessionName cycleDate=$cycleDate feedDate=${feed.date} " +
+                        "current_time=${feed.currentTime}",
                 )
             }
             transition.cycleComplete
