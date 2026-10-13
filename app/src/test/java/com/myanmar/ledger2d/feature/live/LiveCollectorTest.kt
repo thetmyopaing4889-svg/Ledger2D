@@ -80,6 +80,11 @@ class LiveCollectorTest {
     )
 
 
+    @Test fun luke_http_timeouts_are_finite_and_allow_slow_responses() {
+        assertEquals(5_000, LIVE_CONNECT_TIMEOUT_MS)
+        assertEquals(8_000, LIVE_READ_TIMEOUT_MS)
+    }
+
     @Test fun daily_cycle_date_switches_at_0930_and_skips_weekend() {
         assertEquals(thursday, dailyCycleDate(friday, LocalTime.of(9, 29, 59)))
         assertEquals(friday, dailyCycleDate(friday, LocalTime.of(23, 59)))
@@ -1695,6 +1700,9 @@ class LiveCollectorTest {
         assertEquals(LiveSession.MORNING, liveSessionForTime(LocalTime.of(12, 1, 0)))
         assertEquals(LiveSession.MORNING, liveSessionForTime(LocalTime.of(12, 30, 59)))
         assertNull(liveSessionForTime(LocalTime.of(12, 31, 0)))
+        assertEquals(LiveSession.MORNING, liveSessionWhoseLiveIsFrozenAt(LocalTime.of(12, 1, 0)))
+        assertEquals(LiveSession.MORNING, liveSessionWhoseLiveIsFrozenAt(LocalTime.of(14, 5, 0)))
+        assertNull(liveSessionWhoseLiveIsFrozenAt(LocalTime.of(16, 0, 0)))
     }
 
     @Test fun morning_live_remains_visible_until_morning_final_arrives() {
@@ -1740,6 +1748,8 @@ class LiveCollectorTest {
         assertEquals(LiveSession.EVENING, liveSessionForTime(LocalTime.of(16, 30, 0)))
         assertEquals(LiveSession.EVENING, liveSessionForTime(LocalTime.of(16, 59, 59)))
         assertNull(liveSessionForTime(LocalTime.of(17, 0, 0)))
+        assertEquals(LiveSession.EVENING, liveSessionWhoseLiveIsFrozenAt(LocalTime.of(16, 30, 0)))
+        assertEquals(LiveSession.EVENING, liveSessionWhoseLiveIsFrozenAt(LocalTime.of(17, 15, 0)))
     }
 
     @Test fun evening_live_remains_visible_until_evening_final_arrives() {
@@ -2912,6 +2922,198 @@ class LiveCollectorTest {
     // Final LIVE session integration regressions, pinned to the Yangon test date.
     // These LIVE regressions pin the Yangon test date so #403's date-aware guards
     // are exercised without depending on the machine's actual calendar date.
+    @Test fun morning_live_freezes_at_1201_until_valid_final_arrives_and_survives_pending_response() = runTest {
+        var schedule = LocalTime.of(12, 0, 59)
+        val responses = listOf(
+            feed("36", "12:00:59"),
+            feed("41", "12:01:04"),
+            feed("41", "12:01:06", morning = finalMorning("62")),
+            feed("99", "12:01:09", morning = LiveSessionData("--", "--", "--", false)),
+        )
+        var index = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { responses[index++] },
+            clock = { schedule },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("36", (collector.state.value as LiveUiState.Data).hero?.result)
+
+        schedule = LocalTime.of(12, 1, 4)
+        collector.fetchCycle()
+        runCurrent()
+        var state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.live)
+        assertEquals("36", state.hero?.result)
+        assertTrue(state.heroLive)
+
+        schedule = LocalTime.of(12, 1, 6)
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.live)
+        assertEquals("62", state.feed?.morning?.result)
+        assertEquals("62", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals(LiveStatus.FINAL_CONFIRMED, state.status)
+
+        schedule = LocalTime.of(12, 1, 9)
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.live)
+        assertEquals("62", state.feed?.morning?.result)
+        assertEquals("62", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun evening_live_freezes_at_1630_until_valid_final_arrives_and_survives_pending_response() = runTest {
+        var schedule = LocalTime.of(16, 29, 59)
+        val responses = listOf(
+            feed("36", "16:29:59"),
+            feed("41", "16:30:04"),
+            feed("41", "16:30:06", evening = finalEvening("52")),
+            feed("99", "16:30:09", evening = LiveSessionData("--", "--", "--", false)),
+        )
+        var index = 0
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { responses[index++] },
+            clock = { schedule },
+            dateProvider = { friday },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("36", (collector.state.value as LiveUiState.Data).hero?.result)
+
+        schedule = LocalTime.of(16, 30, 4)
+        collector.fetchCycle()
+        runCurrent()
+        var state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.live)
+        assertEquals("36", state.hero?.result)
+        assertTrue(state.heroLive)
+
+        schedule = LocalTime.of(16, 30, 6)
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.live)
+        assertEquals("52", state.feed?.evening?.result)
+        assertEquals("52", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals(LiveStatus.FINAL_CONFIRMED, state.status)
+
+        schedule = LocalTime.of(16, 30, 9)
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("36", state.feed?.live)
+        assertEquals("52", state.feed?.evening?.result)
+        assertEquals("52", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun cold_start_uses_only_pre_boundary_cached_live_as_frozen_hero() = runTest {
+        val beforeClose = feed("36", "12:00:59")
+        val afterClose = feed("41", "12:01:04")
+
+        val safeScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val safeCollector = LiveCollector(
+            scope = safeScope,
+            fetcher = { null },
+            clock = { LocalTime.of(12, 2) },
+            dateProvider = { friday },
+            cacheFeedLoader = { beforeClose },
+        )
+        val safeState = safeCollector.state.value as LiveUiState.Data
+        assertEquals("36", safeState.hero?.result)
+        assertTrue(safeState.heroLive)
+        safeScope.cancel()
+
+        val maskedScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val maskedCollector = LiveCollector(
+            scope = maskedScope,
+            fetcher = { null },
+            clock = { LocalTime.of(12, 2) },
+            dateProvider = { friday },
+            cacheFeedLoader = { afterClose },
+        )
+        val maskedState = maskedCollector.state.value as LiveUiState.Data
+        assertNull(maskedState.hero)
+        assertFalse(maskedState.heroLive)
+        assertEquals(LIVE_PENDING, maskedState.feed?.live)
+        maskedScope.cancel()
+    }
+
+    @Test fun malformed_finalized_flag_does_not_stop_final_catchup_polling() = runTest {
+        var calls = 0
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                calls++
+                if (calls == 1) {
+                    feed(
+                        "41",
+                        "12:01:03",
+                        morning = LiveSessionData("X1", "--", "--", true),
+                    )
+                } else {
+                    feed("41", "12:01:06", morning = finalMorning("61"))
+                }
+            },
+            clock = { LocalTime.of(12, 1, 3) },
+            dateProvider = { friday },
+        )
+
+        collector.start()
+        runCurrent()
+        assertEquals(1, calls)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(calls >= 2)
+        assertEquals("61", state.hero?.result)
+        assertFalse(state.heroLive)
+        scope.cancel()
+    }
+
+    @Test fun room_sync_does_not_persist_a_partial_reference_pair() = runTest {
+        val partial = feed(
+            "38",
+            "09:34:00",
+            modern930 = "80",
+            internet930 = LIVE_PENDING,
+        )
+        val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { partial },
+            clock = { LocalTime.of(9, 34) },
+            dateProvider = { friday },
+            liveRoomSaver = { patches -> saved += patches },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+
+        assertFalse(saved.any { it.date == friday && (it.modern930 != null || it.internet930 != null) })
+        scope.cancel()
+    }
+
     @Test fun successful_partial_morning_response_preserves_last_live_values() = runTest {
         var calls = 0
         val collector = LiveCollector(
