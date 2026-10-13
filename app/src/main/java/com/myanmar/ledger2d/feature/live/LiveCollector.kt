@@ -185,6 +185,26 @@ internal class LiveCollector(
         liveClosedDayDate = closedHoldDate(today, scheduleTime),
     )
 
+    private fun sanitizeCachedFeedForFrozenLive(
+        feed: LiveFeedData,
+        scheduleTime: LocalTime,
+    ): LiveFeedData {
+        val frozenSession = liveSessionWhoseLiveIsFrozenAt(scheduleTime) ?: return feed
+        val boundary = if (frozenSession == LiveSession.MORNING) MORNING_CLOSE else EVENING_CLOSE
+        val sourceTime = parseDecisionInstant(feed)?.atZone(YANGON)?.toLocalTime()
+        if (sourceTime != null && sourceTime.isBefore(boundary)) return feed
+
+        LiveDiagnostics.warn(
+            "Cached LIVE fields masked after cutoff session=$frozenSession " +
+                "feedDate=${feed.date} current_time=${feed.currentTime} appTime=$scheduleTime",
+        )
+        return feed.copy(
+            live = LIVE_PENDING,
+            liveSet = LIVE_PENDING,
+            liveVal = LIVE_PENDING,
+        )
+    }
+
     init {
         val scheduleTime = clock()
         val today = dateProvider()
@@ -203,6 +223,7 @@ internal class LiveCollector(
             }
         }
         val cachedFeed = cacheFeedLoader()
+            ?.let { sanitizeCachedFeedForFrozenLive(it, scheduleTime) }
             ?.takeIf { isLiveDisplayableFeed(it, scheduleTime, today) }
 
         if (cachedFeed != null) {
@@ -278,6 +299,9 @@ internal class LiveCollector(
 
         synchronized(stateLock) {
             if (!isUsableLukeSnapshot(feed)) {
+                LiveDiagnostics.warn(
+                    "LIVE request rejected seq=$sequence reason=unusable date=${feed.date} current_time=${feed.currentTime}",
+                )
                 return@synchronized
             }
 
@@ -296,6 +320,10 @@ internal class LiveCollector(
                     latestAppliedSequence = appliedSequence,
                 )
             ) {
+                LiveDiagnostics.warn(
+                    "LIVE request rejected seq=$sequence reason=older-provider-snapshot " +
+                        "incomingTime=$incomingTime previousTime=$previousTime latestAppliedSequence=$appliedSequence",
+                )
                 return@synchronized
             }
 
@@ -317,6 +345,18 @@ internal class LiveCollector(
                 previousLastFinal = lastFinal,
             )
             val protected = reduction.feed
+            if (
+                feed.live != protected.live ||
+                feed.liveSet != protected.liveSet ||
+                feed.liveVal != protected.liveVal
+            ) {
+                LiveDiagnostics.info(
+                    "LIVE fields frozen seq=$sequence appTime=$scheduleTime " +
+                        "session=${liveSessionWhoseLiveIsFrozenAt(scheduleTime)} " +
+                        "incomingLive=${feed.live} retainedLive=${protected.live} " +
+                        "incomingSet=${feed.liveSet} retainedSet=${protected.liveSet}",
+                )
+            }
             latestAppliedSequence.set(sequence)
             primary = SourceObservation(
                 protected,
@@ -330,6 +370,12 @@ internal class LiveCollector(
 
             sideEffects.dispatch { cacheFeedSaver(protected) }
             publishLocked()
+            val displayed = _state.value as? LiveUiState.Data
+            LiveDiagnostics.info(
+                "LIVE UI published seq=$sequence acceptedAtMs=${System.currentTimeMillis()} " +
+                    "appDate=$today appTime=$scheduleTime hero=${displayed?.hero?.result} " +
+                    "heroLive=${displayed?.heroLive} status=${displayed?.status}",
+            )
             sideEffects.dispatch { syncLiveRoom(protected, today, scheduleTime) }
         }
         sideEffects.drain()
@@ -402,8 +448,20 @@ internal class LiveCollector(
         val scheduleTime = clock()
         val today = dateProvider()
 
-        if (!isLiveDisplayableFeed(feed, scheduleTime, today)) return false
-        if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) return false
+        if (!isLiveDisplayableFeed(feed, scheduleTime, today)) {
+            LiveDiagnostics.warn(
+                "LIVE snapshot rejected reason=not-displayable appDate=$today appTime=$scheduleTime " +
+                    "feedDate=${feed.date} current_time=${feed.currentTime}",
+            )
+            return false
+        }
+        if (feed.currentTime.isBlank() || parseDecisionInstant(feed) == null) {
+            LiveDiagnostics.warn(
+                "LIVE snapshot rejected reason=invalid-provider-time appTime=$scheduleTime " +
+                    "feedDate=${feed.date} current_time=${feed.currentTime}",
+            )
+            return false
+        }
 
         // Display fallback and provider acceptance are deliberately different
         // contracts. From the 09:30 boundary onward, only today's Luke
@@ -415,6 +473,10 @@ internal class LiveCollector(
             !scheduleTime.isBefore(MORNING_REFERENCE) &&
             canonicalDate(feed.date) != today
         ) {
+            LiveDiagnostics.warn(
+                "LIVE snapshot rejected reason=date-mismatch appDate=$today appTime=$scheduleTime " +
+                    "feedDate=${feed.date} current_time=${feed.currentTime}",
+            )
             return false
         }
 
@@ -422,13 +484,20 @@ internal class LiveCollector(
         val hasMorningFinal = finalValid(feed.morning, feed, today)
         val hasEveningFinal = finalValid(feed.evening, feed, today)
 
-        return hasLive ||
+        val usable = hasLive ||
             hasMorningFinal ||
             hasEveningFinal ||
             feed.modern930 != LIVE_PENDING ||
             feed.internet930 != LIVE_PENDING ||
             feed.modern200 != LIVE_PENDING ||
             feed.internet200 != LIVE_PENDING
+        if (!usable) {
+            LiveDiagnostics.warn(
+                "LIVE snapshot rejected reason=no-live-final-reference-field appDate=$today appTime=$scheduleTime " +
+                    "feedDate=${feed.date} current_time=${feed.currentTime}",
+            )
+        }
+        return usable
     }
 
     private fun promoteCurrentCycleReferencesLocked(
@@ -611,14 +680,26 @@ internal class LiveCollector(
                     acceptedDate,
                     acceptedTime,
                 ),
+                appTime = acceptedTime,
             )
             if (!transition.accepted) return false
 
             applyReferenceStateLocked(transition.state)
 
             publishLocked()
-            if (feed != null) {
+            val acceptedReferenceFeed =
+                feed != null &&
+                    transition.cycleComplete &&
+                    transition.state.referenceFeed == feed &&
+                    transition.state.referenceFeedDate == cycleDate
+            if (acceptedReferenceFeed && feed != null) {
                 sideEffects.dispatch { syncLiveRoom(feed, acceptedDate, acceptedTime) }
+            } else if (feed != null) {
+                LiveDiagnostics.info(
+                    "Reference response not synced to Room because pair was not accepted " +
+                        "session=${if (event.isMorning) "morning" else "afternoon"} " +
+                        "cycleDate=$cycleDate feedDate=${feed.date} current_time=${feed.currentTime}",
+                )
             }
             transition.cycleComplete
         }
@@ -704,8 +785,8 @@ internal class LiveCollector(
             t = t,
             isWorkingDay = isWorkingDayToday,
             hasClosedHold = hasClosedHold,
-            morningFinalized = f?.morning?.finalized,
-            eveningFinalized = f?.evening?.finalized,
+            morningFinalized = f?.let { finalValid(it.morning, it, today) },
+            eveningFinalized = f?.let { finalValid(it.evening, it, today) },
         )
     }
 

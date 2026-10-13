@@ -68,19 +68,19 @@ internal fun buildLiveDailyResultPatches(
         cycleDate == today &&
         isCurrentCycleReferenceObservation(feed, cycleDate)
     ) {
-        val modern930 = if (!now.isBefore(MORNING_REFERENCE)) {
-            feed.modern930.takeIf(::isValidLive2d)
-        } else null
-        val internet930 = if (!now.isBefore(MORNING_REFERENCE)) {
-            feed.internet930.takeIf(::isValidLive2d)
-        } else null
+        val modern930 = if (
+            !now.isBefore(MORNING_REFERENCE) &&
+            isValidLive2d(feed.modern930) &&
+            isValidLive2d(feed.internet930)
+        ) feed.modern930 else null
+        val internet930 = if (modern930 != null) feed.internet930 else null
 
-        val modern200 = if (!now.isBefore(AFTERNOON_REFERENCE)) {
-            feed.modern200.takeIf(::isValidLive2d)
-        } else null
-        val internet200 = if (!now.isBefore(AFTERNOON_REFERENCE)) {
-            feed.internet200.takeIf(::isValidLive2d)
-        } else null
+        val modern200 = if (
+            !now.isBefore(AFTERNOON_REFERENCE) &&
+            isValidLive2d(feed.modern200) &&
+            isValidLive2d(feed.internet200)
+        ) feed.modern200 else null
+        val internet200 = if (modern200 != null) feed.internet200 else null
 
         if (modern930 != null || internet930 != null || modern200 != null || internet200 != null) {
             mergePatch(today) {
