@@ -22,7 +22,7 @@ private fun historySession(
 
 /**
  * Reconstruct the complete held working-day display from the same historical
- * 2D source already used by the Room Keeper. This is display-only cold-start
+ * 2D source already used by History Result sync. This is display-only cold-start
  * state before the next working-day 09:30 boundary; it does not fabricate a
  * LIVE value.
  */
