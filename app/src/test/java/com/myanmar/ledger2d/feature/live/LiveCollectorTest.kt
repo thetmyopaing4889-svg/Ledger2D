@@ -2280,7 +2280,7 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun live_room_patches_split_previous_result_date_from_current_cycle_references() {
+    @Test fun live_room_rejects_previous_day_feed_for_today_only_ingestion() {
         val f = feed(
             "--",
             "09:34:00",
@@ -2290,49 +2290,101 @@ class LiveCollectorTest {
             internet930 = "33",
             modern200 = "98",
             internet200 = "78",
-        ).copy(date = thursday.toString(), serverTimeEpochMs = 1_000L)
-
-        val patches = buildLiveDailyResultPatches(
-            feed = f,
-            today = friday,
-            now = LocalTime.of(9, 34),
+            date = thursday,
         )
 
-        val yesterday = patches.single { it.date == thursday }
-        val todayPatch = patches.single { it.date == friday }
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
 
-        assertEquals("22", yesterday.morning2d)
-        assertEquals("25", yesterday.evening2d)
-        assertNull(yesterday.modern930)
-        assertEquals("80", todayPatch.modern930)
-        assertEquals("33", todayPatch.internet930)
-        assertNull(todayPatch.modern200)
-        assertNull(todayPatch.internet200)
-        assertNull(todayPatch.morning2d)
-        assertNull(todayPatch.evening2d)
+        assertTrue(patches.isEmpty())
     }
 
-    @Test fun live_room_does_not_persist_current_day_references_before_0930() {
+    @Test fun live_room_persists_reference_from_early_luke_timestamp_for_today() {
         val f = feed(
             "--",
-            "09:22:11",
-            morning = finalMorning("22"),
-            evening = finalEvening("25"),
-            modern930 = "80",
-            internet930 = "33",
-            modern200 = "98",
-            internet200 = "78",
-        ).copy(date = thursday.toString(), serverTimeEpochMs = 900L)
-
-        val patches = buildLiveDailyResultPatches(
-            feed = f,
-            today = friday,
-            now = LocalTime.of(9, 29, 59),
+            "09:29:53",
+            modern930 = "54",
+            internet930 = "67",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
         )
 
-        val yesterday = patches.single { it.date == thursday }
-        assertEquals("22", yesterday.morning2d)
-        assertNull(patches.firstOrNull { it.date == friday })
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+
+        assertEquals(1, patches.size)
+        val p = patches.single()
+        assertEquals(friday, p.date)
+        assertEquals("54", p.modern930)
+        assertEquals("67", p.internet930)
+        assertNull(p.modern200)
+        assertNull(p.internet200)
+    }
+
+    @Test fun live_room_persists_morning_result_from_early_luke_timestamp() {
+        val f = feed(
+            "--",
+            "12:00:53",
+            morning = finalMorning("22"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+
+        assertEquals(1, patches.size)
+        val p = patches.single()
+        assertEquals(friday, p.date)
+        assertEquals("22", p.morning2d)
+        assertEquals("1600", p.morningSet)
+        assertEquals("20000", p.morningValue)
+        assertNull(p.evening2d)
+    }
+
+    @Test fun live_room_persists_evening_result_from_early_luke_timestamp() {
+        val f = feed(
+            "--",
+            "16:29:53",
+            evening = finalEvening("25"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+
+        val patches = buildLiveDailyResultPatches(feed = f, today = friday)
+
+        assertEquals(1, patches.size)
+        val p = patches.single()
+        assertEquals(friday, p.date)
+        assertEquals("25", p.evening2d)
+        assertEquals("1600", p.eveningSet)
+        assertEquals("20000", p.eveningValue)
+        assertNull(p.morning2d)
+    }
+
+    @Test fun live_room_rejects_weekend_and_luke_confirmed_closed_day() {
+        val closed = feed(
+            "25",
+            "16:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            date = friday,
+            isCloseDay = true,
+        )
+        val weekend = feed(
+            "25",
+            "09:30:00",
+            morning = finalMorning("22"),
+            evening = finalEvening("25"),
+            date = saturday,
+        )
+
+        assertTrue(buildLiveDailyResultPatches(feed = closed, today = friday).isEmpty())
+        assertTrue(buildLiveDailyResultPatches(feed = weekend, today = saturday).isEmpty())
     }
 
     @Test fun live_room_full_evening_snapshot_is_one_current_day_patch() {
@@ -2350,7 +2402,6 @@ class LiveCollectorTest {
         val patches = buildLiveDailyResultPatches(
             feed = f,
             today = friday,
-            now = LocalTime.of(18, 0),
         )
 
         assertEquals(1, patches.size)
@@ -2521,7 +2572,7 @@ class LiveCollectorTest {
         val saved = mutableListOf<com.myanmar.ledger2d.core.database.LiveDailyResultPatch>()
         val f = feed(
             "--",
-            "09:34:00",
+            "09:29:53",
             modern930 = "80",
             internet930 = "33",
             modern200 = "--",
@@ -2532,7 +2583,7 @@ class LiveCollectorTest {
         val collector = LiveCollector(
             scope = scope,
             fetcher = { f },
-            clock = { LocalTime.of(9, 34) },
+            clock = { LocalTime.of(9, 30) },
             dateProvider = { friday },
             liveRoomSaver = { patches -> saved += patches },
         )

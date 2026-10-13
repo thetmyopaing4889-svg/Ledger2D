@@ -387,13 +387,32 @@ internal class LiveCollector(
      * captured app-clock values from that transition. Only persistence launch is
      * queued, so callback delays cannot retarget which daily row this observation writes.
      */
+    /**
+     * Persist only accepted, current-day Luke data. The captured date/time come
+     * from the accepted transition; a callback delayed across midnight is
+     * dropped instead of writing yesterday's observation into a stale Room row.
+     * These guards affect Room persistence only, not UI/Daily Flow acceptance.
+     */
     private fun syncLiveRoom(
         feed: LiveFeedData,
         today: LocalDate = dateProvider(),
         now: LocalTime = clock(),
     ) {
         val saver = liveRoomSaver ?: return
-        val patches = buildLiveDailyResultPatches(feed, today, now)
+        if (
+            today != dateProvider() ||
+            !isWorkingDay(today) ||
+            feed.isCloseDay ||
+            closedHoldDate(today, now) != null
+        ) {
+            LiveDiagnostics.info(
+                "Room sync skipped appDate=$today feedDate=${feed.date} " +
+                    "closeDay=${feed.isCloseDay} appTime=$now",
+            )
+            return
+        }
+
+        val patches = buildLiveDailyResultPatches(feed, today)
         if (patches.isEmpty()) return
 
         // Skip repeated 3-second observations when persisted facts did not
@@ -420,10 +439,8 @@ internal class LiveCollector(
             lastRoomSyncSignature = signature
         }
 
-        // The patch content and signature are captured now, using the app date/time
-        // at the accepted state transition. Only the actual persistence launch is
-        // deferred, so a scheduler boundary crossed while another callback runs
-        // cannot change which daily row this observation writes.
+        // Patch contents are captured synchronously here. Only persistence
+        // launch is queued, so callback delays cannot change the target date.
         sideEffects.dispatch {
             scope.launch {
                 try {

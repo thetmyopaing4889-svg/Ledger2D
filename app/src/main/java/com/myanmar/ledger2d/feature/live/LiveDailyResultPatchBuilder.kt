@@ -1,113 +1,90 @@
 package com.myanmar.ledger2d.feature.live
 
 import com.myanmar.ledger2d.core.database.LiveDailyResultPatch
-import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 
+/**
+ * Build Room updates from a current-day Luke observation.
+ *
+ * The provider fields identify their own checkpoint (09:30 reference,
+ * morning final, 14:00 reference, evening final). Eligibility is based on
+ * the values actually present, not exact equality with the app clock:
+ * Luke can publish a checkpoint a few seconds before its scheduled label.
+ *
+ * This is deliberately separate from the UI/Daily Flow cycle date. Historical
+ * fallback and cached feeds must never be re-labelled as fresh Room data for
+ * today.
+ */
 internal fun buildLiveDailyResultPatches(
     feed: LiveFeedData,
     today: LocalDate,
-    now: LocalTime,
 ): List<LiveDailyResultPatch> {
-    val cycleDate = dailyCycleDate(today, now)
-    val providerDate = canonicalDate(feed.date)
-    val observationDate = parseDecisionInstant(feed)?.atZone(YANGON)?.toLocalDate()
-    val effectiveResultDate = if (observationDate == cycleDate) cycleDate else providerDate
-    val sourceAt = feed.serverTimeEpochMs
-        ?: parseDecisionInstant(feed)?.toEpochMilli()
-        ?: Instant.now().toEpochMilli()
+    if (!isWorkingDay(today) || feed.isCloseDay) return emptyList()
 
-    val byDate = linkedMapOf<LocalDate, LiveDailyResultPatch>()
+    val providerDate = canonicalDate(feed.date) ?: return emptyList()
+    val observationInstant = parseDecisionInstant(feed) ?: return emptyList()
+    val observationDate = observationInstant.atZone(YANGON).toLocalDate()
 
-    fun mergePatch(
-        date: LocalDate,
-        update: LiveDailyResultPatch.() -> LiveDailyResultPatch,
-    ) {
-        val old = byDate[date]
-        val base = old ?: LiveDailyResultPatch(date = date)
-        byDate[date] = base.update()
-    }
+    // Luke's live endpoint represents the current calendar date. Require both
+    // the payload date and observation date to match the app's Yangon date.
+    if (providerDate != today || observationDate != today) return emptyList()
 
-    if (
-        effectiveResultDate != null &&
-        isWorkingDay(effectiveResultDate) &&
-        (effectiveResultDate == cycleDate || effectiveResultDate == previousWorkingDay(cycleDate))
-    ) {
-        val morning2d = feed.morning.result.takeIf(::isValidLive2d)
-        val morningSet = feed.morning.set.takeIf(::validMoney)
-        val morningValue = feed.morning.value.takeIf(::validMoney)
-        val evening2d = feed.evening.result.takeIf(::isValidLive2d)
-        val eveningSet = feed.evening.set.takeIf(::validMoney)
-        val eveningValue = feed.evening.value.takeIf(::validMoney)
+    val sourceAt = observationInstant.toEpochMilli()
 
-        if (morning2d != null || morningSet != null || morningValue != null) {
-            mergePatch(effectiveResultDate) {
-                copy(
-                    morning2d = morning2d,
-                    morningSet = morningSet,
-                    morningValue = morningValue,
-                    morningSourceAt = sourceAt,
-                )
-            }
-        }
-        if (evening2d != null || eveningSet != null || eveningValue != null) {
-            mergePatch(effectiveResultDate) {
-                copy(
-                    evening2d = evening2d,
-                    eveningSet = eveningSet,
-                    eveningValue = eveningValue,
-                    eveningSourceAt = sourceAt,
-                )
-            }
-        }
-    }
+    // Reference values are one atomic pair. A partially available pair is
+    // not stored as a completed checkpoint.
+    val modern930 = if (
+        isValidLive2d(feed.modern930) && isValidLive2d(feed.internet930)
+    ) feed.modern930 else null
+    val internet930 = if (modern930 != null) feed.internet930 else null
 
-    // References belong to the app's current working-day cycle, not Luke's
-    // completed-result date. Never persist them before their display boundary.
-    if (
-        isWorkingDay(today) &&
-        cycleDate == today &&
-        isCurrentCycleReferenceObservation(feed, cycleDate)
-    ) {
-        val modern930 = if (
-            !now.isBefore(MORNING_REFERENCE) &&
-            isValidLive2d(feed.modern930) &&
-            isValidLive2d(feed.internet930)
-        ) feed.modern930 else null
-        val internet930 = if (modern930 != null) feed.internet930 else null
+    val modern200 = if (
+        isValidLive2d(feed.modern200) && isValidLive2d(feed.internet200)
+    ) feed.modern200 else null
+    val internet200 = if (modern200 != null) feed.internet200 else null
 
-        val modern200 = if (
-            !now.isBefore(AFTERNOON_REFERENCE) &&
-            isValidLive2d(feed.modern200) &&
-            isValidLive2d(feed.internet200)
-        ) feed.modern200 else null
-        val internet200 = if (modern200 != null) feed.internet200 else null
+    // Result number and SET/VALUE can become available at slightly different
+    // times. Keep every valid field and let the repository merge later updates
+    // without clearing fields that are not present in this observation.
+    val morning2d = feed.morning.result.takeIf(::isValidLive2d)
+    val morningSet = feed.morning.set.takeIf(::validMoney)
+    val morningValue = feed.morning.value.takeIf(::validMoney)
+    val evening2d = feed.evening.result.takeIf(::isValidLive2d)
+    val eveningSet = feed.evening.set.takeIf(::validMoney)
+    val eveningValue = feed.evening.value.takeIf(::validMoney)
 
-        if (modern930 != null || internet930 != null || modern200 != null || internet200 != null) {
-            mergePatch(today) {
-                copy(
-                    modern930 = modern930,
-                    internet930 = internet930,
-                    modern200 = modern200,
-                    internet200 = internet200,
-                    reference930SourceAt = if (modern930 != null || internet930 != null) sourceAt else null,
-                    reference200SourceAt = if (modern200 != null || internet200 != null) sourceAt else null,
-                )
-            }
-        }
-    }
+    val patch = LiveDailyResultPatch(
+        date = today,
+        modern930 = modern930,
+        internet930 = internet930,
+        modern200 = modern200,
+        internet200 = internet200,
+        morning2d = morning2d,
+        morningSet = morningSet,
+        morningValue = morningValue,
+        evening2d = evening2d,
+        eveningSet = eveningSet,
+        eveningValue = eveningValue,
+        reference930SourceAt = sourceAt.takeIf { modern930 != null },
+        reference200SourceAt = sourceAt.takeIf { modern200 != null },
+        morningSourceAt = sourceAt.takeIf {
+            morning2d != null || morningSet != null || morningValue != null
+        },
+        eveningSourceAt = sourceAt.takeIf {
+            evening2d != null || eveningSet != null || eveningValue != null
+        },
+    )
 
-    return byDate.values.filter {
-        it.modern930 != null ||
-            it.internet930 != null ||
-            it.modern200 != null ||
-            it.internet200 != null ||
-            it.morning2d != null ||
-            it.morningSet != null ||
-            it.morningValue != null ||
-            it.evening2d != null ||
-            it.eveningSet != null ||
-            it.eveningValue != null
-    }
+    val hasData = modern930 != null ||
+        internet930 != null ||
+        modern200 != null ||
+        internet200 != null ||
+        morning2d != null ||
+        morningSet != null ||
+        morningValue != null ||
+        evening2d != null ||
+        eveningSet != null ||
+        eveningValue != null
+
+    return if (hasData) listOf(patch) else emptyList()
 }
