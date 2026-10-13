@@ -215,12 +215,18 @@ internal object LiveStateReducer {
         }
 
         return incoming.copy(
-            morning = if (previous.morning.finalized && !incoming.morning.finalized) {
+            morning = if (
+                isValidLive2d(previous.morning.result) &&
+                !isValidLive2d(incoming.morning.result)
+            ) {
                 previous.morning
             } else {
                 incoming.morning
             },
-            evening = if (previous.evening.finalized && !incoming.evening.finalized) {
+            evening = if (
+                isValidLive2d(previous.evening.result) &&
+                !isValidLive2d(incoming.evening.result)
+            ) {
                 previous.evening
             } else {
                 incoming.evening
@@ -235,6 +241,29 @@ internal object LiveStateReducer {
         scheduleTime: LocalTime,
         previousPrimaryLiveSession: LiveSession?,
     ): LiveFeedData {
+        // After cutoff, process final fields from this response but freeze LIVE fields.
+        val frozenSession = liveSessionWhoseLiveIsFrozenAt(scheduleTime)
+        if (frozenSession != null) {
+            val canFreezePrevious =
+                previousPrimaryLiveSession == frozenSession &&
+                    hasValidLive(previous, scheduleDate)
+            return if (canFreezePrevious) {
+                incoming.copy(
+                    live = previous!!.live,
+                    liveSet = previous.liveSet,
+                    liveVal = previous.liveVal,
+                )
+            } else {
+                // Cold start after cutoff: do not mistake a post-cutoff Luke
+                // LIVE field for the last pre-cutoff LIVE value.
+                incoming.copy(
+                    live = LIVE_PENDING,
+                    liveSet = LIVE_PENDING,
+                    liveVal = LIVE_PENDING,
+                )
+            }
+        }
+
         val activeSession = liveSessionForTime(scheduleTime) ?: return incoming
         if (
             previousPrimaryLiveSession != activeSession ||

@@ -87,14 +87,14 @@ internal fun finalValid(
 }
 
 internal fun latestFinalFor(feed: LiveFeedData): LiveHeroSnapshot? = when {
-    feed.evening.finalized -> LiveHeroSnapshot(
+    isValidLive2d(feed.evening.result) -> LiveHeroSnapshot(
         feed.evening.result,
         feed.evening.set,
         feed.evening.value,
         LIVE_SESSION_EVENING_LABEL,
         feed.date,
     )
-    feed.morning.finalized -> LiveHeroSnapshot(
+    isValidLive2d(feed.morning.result) -> LiveHeroSnapshot(
         feed.morning.result,
         feed.morning.set,
         feed.morning.value,

@@ -30,13 +30,19 @@ internal enum class LiveSession {
 }
 
 internal fun liveSessionForTime(t: LocalTime): LiveSession? = when {
-    // The session remains "live" through the finalization/catch-up window.
-    // At the exact final boundary the provider may still be carrying the
-    // last streaming value while it is preparing the verified final result.
-    // Keeping the same session owner lets preserveActiveLive() retain that
-    // last valid LIVE observation until the final result arrives.
+    // Session ownership remains active through the existing catch-up windows.
     t >= MORNING_LIVE && t < MORNING_CATCHUP_END -> LiveSession.MORNING
     t >= EVENING_LIVE && t < EVENING_CATCHUP_END -> LiveSession.EVENING
+    else -> null
+}
+
+/**
+ * Returns the session whose LIVE fields are frozen after the cutoff.
+ * Does not change API cadence, cutoff timing, or final catch-up windows.
+ */
+internal fun liveSessionWhoseLiveIsFrozenAt(t: LocalTime): LiveSession? = when {
+    t >= EVENING_CLOSE -> LiveSession.EVENING
+    t >= MORNING_CLOSE && t < EVENING_LIVE -> LiveSession.MORNING
     else -> null
 }
 

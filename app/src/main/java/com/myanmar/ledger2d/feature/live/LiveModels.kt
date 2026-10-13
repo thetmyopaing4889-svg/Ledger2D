@@ -33,7 +33,7 @@ data class LiveSessionData(
     val result: String,
     val set: String,
     val value: String,
-    /** True only when the verified result field is no longer "--". */
+    /** True only when result contains a valid two-digit final result. */
     val finalized: Boolean,
     val historyId: String? = null,
     val providerOpenTime: String? = null,
