@@ -244,19 +244,28 @@ internal object LiveStateReducer {
         // After cutoff, process final fields from this response but freeze LIVE fields.
         val frozenSession = liveSessionWhoseLiveIsFrozenAt(scheduleTime)
         if (frozenSession != null) {
-            val canFreezePrevious =
+            val boundary = if (frozenSession == LiveSession.MORNING) MORNING_CLOSE else EVENING_CLOSE
+            val previousLiveIsAvailable =
                 previousPrimaryLiveSession == frozenSession &&
                     hasValidLive(previous, scheduleDate)
-            return if (canFreezePrevious) {
-                incoming.copy(
+            val incomingSourceTime =
+                parseDecisionInstant(incoming)?.atZone(YANGON)?.toLocalTime()
+            val incomingIsPreBoundaryLive =
+                incomingSourceTime != null &&
+                    incomingSourceTime.isBefore(boundary) &&
+                    hasValidLive(incoming, scheduleDate)
+
+            return when {
+                previousLiveIsAvailable -> incoming.copy(
                     live = previous!!.live,
                     liveSet = previous.liveSet,
                     liveVal = previous.liveVal,
                 )
-            } else {
-                // Cold start after cutoff: do not mistake a post-cutoff Luke
-                // LIVE field for the last pre-cutoff LIVE value.
-                incoming.copy(
+                // A cold-start response may arrive after the app cutoff while
+                // still representing the final pre-cutoff provider observation.
+                // Keep that value; only mask genuinely post-cutoff LIVE values.
+                incomingIsPreBoundaryLive -> incoming
+                else -> incoming.copy(
                     live = LIVE_PENDING,
                     liveSet = LIVE_PENDING,
                     liveVal = LIVE_PENDING,
