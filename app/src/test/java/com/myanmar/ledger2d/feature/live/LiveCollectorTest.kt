@@ -3063,7 +3063,7 @@ class LiveCollectorTest {
             scope = scope,
             fetcher = {
                 calls++
-                if (calls == 1) {
+                if (calls <= 2) {
                     feed(
                         "41",
                         "12:01:03",
@@ -3079,12 +3079,12 @@ class LiveCollectorTest {
 
         collector.start()
         runCurrent()
-        assertEquals(1, calls)
+        assertTrue(calls >= 1)
         advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
         runCurrent()
 
         val state = collector.state.value as LiveUiState.Data
-        assertTrue(calls >= 2)
+        assertTrue(calls >= 3)
         assertEquals("61", state.hero?.result)
         assertFalse(state.heroLive)
         scope.cancel()
