@@ -21,6 +21,9 @@ import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
+private const val LIVE_HISTORY_RECOVERY_ATTEMPTS = 2
+private const val LIVE_HISTORY_RECOVERY_RETRY_DELAY_MS = 1_000L
+
 internal fun monotonicMs(): Long = runCatching {
     SystemClock.elapsedRealtime()
 }.getOrElse {
@@ -913,26 +916,41 @@ internal class LiveCollector(
         // First recover the exact cycle row represented by the app clock.
         // Fresh-install policy owns only the date selection; the Daily Flow
         // still decides what portions of that row are displayable.
+        suspend fun fetchHistoricalFeed(
+            targetDate: LocalDate,
+            fetcher: (suspend (LocalDate) -> LiveFeedData?)?,
+        ): LiveFeedData? {
+            val request = fetcher ?: return null
+            for (attempt in 0 until LIVE_HISTORY_RECOVERY_ATTEMPTS) {
+                val candidate = runSuspendCatchingCancellable {
+                    request(targetDate)
+                }?.takeIf {
+                    canonicalDate(it.date) == targetDate
+                }
+                if (candidate != null) return candidate
+                if (attempt + 1 < LIVE_HISTORY_RECOVERY_ATTEMPTS) {
+                    // A transient history-source failure must not leave a fresh
+                    // install blank after only one unsuccessful request.
+                    delay(LIVE_HISTORY_RECOVERY_RETRY_DELAY_MS)
+                }
+            }
+            LiveDiagnostics.warn(
+                "History recovery feed unavailable date=$targetDate attempts=$LIVE_HISTORY_RECOVERY_ATTEMPTS",
+            )
+            return null
+        }
+
+        // First recover the exact cycle row represented by the app clock.
+        // Fresh-install policy owns only the date selection; Daily Flow still
+        // decides which portions of that row are displayable.
         val currentFeed = if (closedHold != null) {
-            runSuspendCatchingCancellable {
-                closedDayFeedFetcher?.invoke(cycleDate)
-            }?.takeIf {
-                canonicalDate(it.date) == cycleDate
-            }
+            fetchHistoricalFeed(cycleDate, closedDayFeedFetcher)
         } else {
-            runSuspendCatchingCancellable {
-                historicalFeedFetcher?.invoke(cycleDate)
-            }?.takeIf {
-                canonicalDate(it.date) == cycleDate
-            }
+            fetchHistoricalFeed(cycleDate, historicalFeedFetcher)
         }
 
         val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
-            runSuspendCatchingCancellable {
-                historicalFeedFetcher?.invoke(fallbackFeedDate)
-            }?.takeIf {
-                canonicalDate(it.date) == fallbackFeedDate
-            }
+            fetchHistoricalFeed(fallbackFeedDate, historicalFeedFetcher)
         } else {
             null
         }
@@ -1245,6 +1263,7 @@ internal class LiveCollector(
                             ?.let { row ->
                                 historyRowToFinal(
                                     row,
+                                    currentYangonDate(),
                                     LocalTime.now(YANGON),
                                 )
                             }

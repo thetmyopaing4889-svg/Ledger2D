@@ -191,6 +191,55 @@ class LiveCollectorTest {
         assertEquals("HISTORY", feed.sourceTag)
     }
 
+    @Test fun previous_workday_final_is_available_before_current_day_cutoff() {
+        val previousRow = historyRow(monday, morning = "36", evening = "57")
+        val todayRow = historyRow(tuesday, morning = "44", evening = "66")
+
+        val heldFinal = historyRowToFinal(previousRow, tuesday, LocalTime.of(8, 24))
+        val currentDayFinal = historyRowToFinal(todayRow, tuesday, LocalTime.of(8, 24))
+
+        assertEquals("57", heldFinal?.result)
+        assertEquals(monday.toString(), heldFinal?.date)
+        assertNull("Today's final must remain pending before the cutoff", currentDayFinal)
+    }
+
+    @Test fun fresh_start_retries_history_feed_after_one_transient_failure() = runTest {
+        val mondayRow = historyRow(monday)
+        var historyCalls = 0
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null },
+            clock = { LocalTime.of(8, 24) },
+            dateProvider = { tuesday },
+            historicalFeedFetcher = { date ->
+                historyCalls++
+                if (historyCalls == 1) null else {
+                    assertEquals(monday, date)
+                    historyRowToFeed(mondayRow, tuesday, LocalTime.of(8, 24))
+                }
+            },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertEquals(1, historyCalls)
+        assertNull((collector.state.value as LiveUiState.Data).feed)
+
+        advanceTimeBy(1_000L)
+        runCurrent()
+
+        assertEquals(2, historyCalls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals(monday.toString(), state.feed?.date)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
     @Test fun fresh_start_tuesday_before_0930_reconstructs_monday_full_held_state() = runTest {
         val mondayRow = com.myanmar.ledger2d.core.database.HistoryResultEntity(
             date = monday,

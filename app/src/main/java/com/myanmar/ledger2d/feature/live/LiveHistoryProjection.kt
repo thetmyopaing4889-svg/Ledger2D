@@ -162,6 +162,21 @@ internal fun historyRowToFeed(
 internal fun historyRowToFinal(row: HistoryResultEntity): LiveHeroSnapshot? =
     historyRowToFinal(row, LocalTime.of(23, 59, 59))
 
+/**
+ * A previous-date row represents a completed working-day result regardless
+ * of the current clock time. Current-day rows remain phase-gated so future
+ * sessions do not appear early.
+ */
+internal fun historyRowToFinal(
+    row: HistoryResultEntity,
+    today: LocalDate,
+    now: LocalTime,
+): LiveHeroSnapshot? = if (row.date.isBefore(today)) {
+    historyRowToFinal(row)
+} else {
+    historyRowToFinal(row, now)
+}
+
 internal fun historyRowToFinal(
     row: HistoryResultEntity,
     now: LocalTime,
