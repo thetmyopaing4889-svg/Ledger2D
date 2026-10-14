@@ -919,23 +919,26 @@ internal class LiveCollector(
         suspend fun fetchHistoricalFeed(
             targetDate: LocalDate,
             fetcher: (suspend (LocalDate) -> LiveFeedData?)?,
+            retryOnMiss: Boolean,
         ): LiveFeedData? {
             val request = fetcher ?: return null
-            for (attempt in 0 until LIVE_HISTORY_RECOVERY_ATTEMPTS) {
+            // Retry only when recovering a held/previous-day cycle (the fresh
+            // install 08:30 case, weekends, or a confirmed Closed Day). Normal
+            // current-day phases keep their original single-attempt timing.
+            val maxAttempts = if (retryOnMiss) LIVE_HISTORY_RECOVERY_ATTEMPTS else 1
+            for (attempt in 0 until maxAttempts) {
                 val candidate = runSuspendCatchingCancellable {
                     request(targetDate)
                 }?.takeIf {
                     canonicalDate(it.date) == targetDate
                 }
                 if (candidate != null) return candidate
-                if (attempt + 1 < LIVE_HISTORY_RECOVERY_ATTEMPTS) {
-                    // A transient history-source failure must not leave a fresh
-                    // install blank after only one unsuccessful request.
+                if (attempt + 1 < maxAttempts) {
                     delay(LIVE_HISTORY_RECOVERY_RETRY_DELAY_MS)
                 }
             }
             LiveDiagnostics.warn(
-                "History recovery feed unavailable date=$targetDate attempts=$LIVE_HISTORY_RECOVERY_ATTEMPTS",
+                "History recovery feed unavailable date=$targetDate attempts=$maxAttempts",
             )
             return null
         }
@@ -944,13 +947,13 @@ internal class LiveCollector(
         // Fresh-install policy owns only the date selection; Daily Flow still
         // decides which portions of that row are displayable.
         val currentFeed = if (closedHold != null) {
-            fetchHistoricalFeed(cycleDate, closedDayFeedFetcher)
+            fetchHistoricalFeed(cycleDate, closedDayFeedFetcher, retryOnMiss = cycleDate != today)
         } else {
-            fetchHistoricalFeed(cycleDate, historicalFeedFetcher)
+            fetchHistoricalFeed(cycleDate, historicalFeedFetcher, retryOnMiss = cycleDate != today)
         }
 
         val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
-            fetchHistoricalFeed(fallbackFeedDate, historicalFeedFetcher)
+            fetchHistoricalFeed(fallbackFeedDate, historicalFeedFetcher, retryOnMiss = false)
         } else {
             null
         }
