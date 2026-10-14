@@ -943,10 +943,17 @@ internal class LiveCollector(
         // Once the morning catch-up window has ended, current-cycle final recovery
         // is valid again. A held cycle (weekend / pre-09:30 / Luke Closed Day) is
         // always eligible because its cycleDate differs from today's app date.
+        // A recovered feed already contains the session result fields. Derive
+        // its final hero directly instead of issuing a second full-history HTTP
+        // request before publishing the cold-start state. This is especially
+        // important before 09:30: a fresh install must not remain visually blank
+        // while a redundant final-only lookup is still loading or has failed.
         val currentFinal = if (
             cycleDate != today || !now.isBefore(MORNING_CATCHUP_END)
         ) {
-            runSuspendCatchingCancellable {
+            currentFeed?.let(::latestFinalFor)?.takeIf {
+                canonicalDate(it.date) == cycleDate
+            } ?: runSuspendCatchingCancellable {
                 historicalFinalFetcher?.invoke(cycleDate)
             }?.takeIf {
                 canonicalDate(it.date) == cycleDate
@@ -960,7 +967,9 @@ internal class LiveCollector(
             fallbackFeedDate != null &&
             fallbackFeedDate != cycleDate
         ) {
-            runSuspendCatchingCancellable {
+            fallbackFeed?.let(::latestFinalFor)?.takeIf {
+                canonicalDate(it.date) == fallbackFeedDate
+            } ?: runSuspendCatchingCancellable {
                 historicalFinalFetcher?.invoke(fallbackFeedDate)
             }?.takeIf {
                 canonicalDate(it.date) == fallbackFeedDate

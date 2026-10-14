@@ -207,6 +207,7 @@ class LiveCollectorTest {
         )
 
         var historyCalls = 0
+        var finalHistoryCalls = 0
         var lukeCalls = 0
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
@@ -222,13 +223,14 @@ class LiveCollectorTest {
                 assertEquals(monday, date)
                 historyRowToFeed(mondayRow)
             },
-            historicalFinalFetcher = { null },
+            historicalFinalFetcher = { finalHistoryCalls++; null },
         )
 
         collector.start()
         runCurrent()
 
         assertEquals(1, historyCalls)
+        assertEquals("Recovered final is derived from the already fetched history feed", 0, finalHistoryCalls)
         assertEquals(1, lukeCalls)
 
         val state = collector.state.value as LiveUiState.Data
@@ -244,6 +246,8 @@ class LiveCollectorTest {
 
         scope.cancel()
     }
+
+    
 
     @Test fun fresh_start_monday_before_0930_reconstructs_friday_full_held_state() = runTest {
         val fridayRow = com.myanmar.ledger2d.core.database.HistoryResultEntity(
@@ -525,6 +529,7 @@ class LiveCollectorTest {
 
     @Test fun fresh_start_tuesday_0830_enters_monday_held_phase_completely() = runTest {
         val mondayRow = historyRow(monday)
+        var finalHistoryCalls = 0
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
@@ -535,6 +540,7 @@ class LiveCollectorTest {
                 if (date == monday) historyRowToFeed(mondayRow, tuesday, LocalTime.of(8, 30)) else null
             },
             historicalFinalFetcher = { date ->
+                finalHistoryCalls++
                 if (date == monday) historyRowToFinal(mondayRow) else null
             },
         )
@@ -543,6 +549,7 @@ class LiveCollectorTest {
         runCurrent()
 
         val state = collector.state.value as LiveUiState.Data
+        assertEquals("Do not re-fetch final when historical feed already includes it", 0, finalHistoryCalls)
         assertEquals(monday.toString(), state.feed?.date)
         assertEquals("36", state.feed?.morning?.result)
         assertEquals("57", state.feed?.evening?.result)
@@ -555,6 +562,8 @@ class LiveCollectorTest {
 
         scope.cancel()
     }
+
+    
 
     @Test fun fresh_start_tuesday_1130_enters_new_cycle_without_old_hero_before_first_live() = runTest {
         val mondayRow = historyRow(monday, morning = "36", evening = "57")
