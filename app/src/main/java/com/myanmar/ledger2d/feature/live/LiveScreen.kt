@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.HistoryResultEntity
+import com.myanmar.ledger2d.core.database.LiveDailyResultEntity
+import com.myanmar.ledger2d.core.domain.DeviceCalendar
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.feature.main.OperationalScaffold
@@ -79,6 +81,48 @@ private const val LIVE_BLINK_DURATION_MS = 700
 /** Sentinel the API uses for "not available yet". */
 private const val PENDING = "--"
 
+private data class CalendarResult(
+    val date: LocalDate,
+    val morning2d: String?,
+    val morningSet: String?,
+    val morningValue: String?,
+    val evening2d: String?,
+    val eveningSet: String?,
+    val eveningValue: String?,
+    val modern930: String?,
+    val internet930: String?,
+    val modern200: String?,
+    val internet200: String?,
+)
+
+private fun HistoryResultEntity.toCalendarResult() = CalendarResult(
+    date = date,
+    morning2d = morning2d,
+    morningSet = morningSet,
+    morningValue = morningValue,
+    evening2d = evening2d,
+    eveningSet = eveningSet,
+    eveningValue = eveningValue,
+    modern930 = modern930,
+    internet930 = internet930,
+    modern200 = modern200,
+    internet200 = internet200,
+)
+
+private fun LiveDailyResultEntity.toCalendarResult() = CalendarResult(
+    date = date,
+    morning2d = morning2d,
+    morningSet = morningSet,
+    morningValue = morningValue,
+    evening2d = evening2d,
+    eveningSet = eveningSet,
+    eveningValue = eveningValue,
+    modern930 = modern930,
+    internet930 = internet930,
+    modern200 = modern200,
+    internet200 = internet200,
+)
+
 // ============================================================================
 // Screen
 // ============================================================================
@@ -86,11 +130,13 @@ private const val PENDING = "--"
 @Composable
 fun LiveScreen(
     historyFlow: Flow<List<HistoryResultEntity>>,
+    liveResultsFlow: Flow<List<LiveDailyResultEntity>>,
     onBack: () -> Unit,
 ) {
     val collector = LiveCollector.instance
     val state by collector.state.collectAsStateWithLifecycle()
     val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val liveResults by liveResultsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedTab by rememberSaveable { mutableStateOf("live") }
     var selectedDateText by rememberSaveable { mutableStateOf("") }
 
@@ -99,6 +145,18 @@ fun LiveScreen(
     val selectedDate = selectedDateText.takeIf { it.isNotBlank() }?.let {
         runCatching { LocalDate.parse(it) }.getOrNull()
     }
+
+    // Calendar is a database reader: show historical rows first, then let an
+    // existing Room live row replace that date as soon as Room emits an update.
+    val calendarResults = remember(history, liveResults) {
+        val byDate = linkedMapOf<LocalDate, CalendarResult>()
+        history.forEach { byDate[it.date] = it.toCalendarResult() }
+        liveResults.forEach { byDate[it.date] = it.toCalendarResult() }
+        byDate.values.sortedByDescending { it.date }
+    }
+    val today = DeviceCalendar.today()
+    val latestDate = maxOf(today, calendarResults.maxOfOrNull { it.date } ?: today)
+    val earliestDate = calendarResults.minOfOrNull { it.date } ?: today
 
     OperationalScaffold(
         title = if (selectedTab == "calendar" && selectedDate != null) "2D Calendar" else "2D LIVE",
@@ -110,33 +168,37 @@ fun LiveScreen(
             }
         },
         content = { padding ->
-            when (val s = state) {
-            LiveUiState.Loading, is LiveUiState.Error -> LiveUnavailableState(
-                loading = s == LiveUiState.Loading,
-                onRetry = { collector.fetchCycle() },
-                modifier = Modifier.padding(padding),
-            )
-            is LiveUiState.Data -> {
-                if (selectedTab == "live") {
-                    LiveContent(s.feed, s.hero, s.heroLive, s.closedDay, Modifier.padding(padding))
-                } else if (selectedDate != null) {
+            if (selectedTab == "calendar") {
+                if (selectedDate != null) {
                     LiveCalendarDetail(
-                        history = history.firstOrNull { it.date == selectedDate },
+                        result = calendarResults.firstOrNull { it.date == selectedDate },
                         date = selectedDate,
                         onBackToCalendar = { selectedDateText = "" },
                         modifier = Modifier.padding(padding),
                     )
                 } else {
                     LiveCalendar(
-                        history = history,
+                        results = calendarResults,
+                        earliestDate = earliestDate,
+                        latestDate = latestDate,
                         onDateSelected = { selectedDateText = it.toString() },
                         modifier = Modifier.padding(padding),
                     )
                 }
+            } else {
+                when (val s = state) {
+                    LiveUiState.Loading, is LiveUiState.Error -> LiveUnavailableState(
+                        loading = s == LiveUiState.Loading,
+                        onRetry = { collector.fetchCycle() },
+                        modifier = Modifier.padding(padding),
+                    )
+                    is LiveUiState.Data -> LiveContent(
+                        s.feed, s.hero, s.heroLive, s.closedDay, Modifier.padding(padding),
+                    )
+                }
             }
-        }
-    }
-)
+        },
+    )
 }
 
 @Composable
@@ -211,15 +273,15 @@ private fun LiveBottomBar(selected: String, onSelect: (String) -> Unit) {
 
 @Composable
 private fun LiveCalendar(
-    history: List<HistoryResultEntity>,
+    results: List<CalendarResult>,
+    earliestDate: LocalDate,
+    latestDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val latestDate = history.maxOfOrNull { it.date } ?: LocalDate.now()
-    val earliestDate = history.minOfOrNull { it.date } ?: latestDate
     var monthText by rememberSaveable { mutableStateOf(YearMonth.from(latestDate).toString()) }
     val month = runCatching { YearMonth.parse(monthText) }.getOrElse { YearMonth.from(latestDate) }
-    val historyByDate = remember(history) { history.associateBy { it.date } }
+    val resultsByDate = remember(results) { results.associateBy { it.date } }
     val monthLabel = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.ENGLISH))
     val minMonth = YearMonth.from(earliestDate)
     val maxMonth = YearMonth.from(latestDate)
@@ -300,7 +362,7 @@ private fun LiveCalendar(
                 for (offset in 0..4) {
                     val date = weekStart.plusDays(offset.toLong())
                     val inMonth = date.month == month.month && date.year == month.year
-                    val result = if (inMonth) historyByDate[date] else null
+                    val result = if (inMonth) resultsByDate[date] else null
                     if (inMonth) {
                         Surface(
                             modifier = Modifier
@@ -359,7 +421,7 @@ private fun LiveCalendar(
 
 @Composable
 private fun LiveCalendarDetail(
-    history: HistoryResultEntity?,
+    result: CalendarResult?,
     date: LocalDate,
     onBackToCalendar: () -> Unit,
     modifier: Modifier = Modifier,
@@ -388,8 +450,8 @@ private fun LiveCalendarDetail(
             Spacer(Modifier.size(44.dp))
         }
 
-        LiveDetailResultCard("12:01 PM", history?.morningSet ?: PENDING, history?.morningValue ?: PENDING, history?.morning2d ?: PENDING)
-        LiveDetailResultCard("4:30 PM", history?.eveningSet ?: PENDING, history?.eveningValue ?: PENDING, history?.evening2d ?: PENDING)
+        LiveDetailResultCard("12:01 PM", result?.morningSet ?: PENDING, result?.morningValue ?: PENDING, result?.morning2d ?: PENDING)
+        LiveDetailResultCard("4:30 PM", result?.eveningSet ?: PENDING, result?.eveningValue ?: PENDING, result?.evening2d ?: PENDING)
 
         Card(
             Modifier.fillMaxWidth(),
@@ -405,8 +467,8 @@ private fun LiveCalendarDetail(
                     Text("INTERNET", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
                 }
                 HorizontalDivider()
-                LiveDetailReferenceRow("09:30", history?.modern930 ?: PENDING, history?.internet930 ?: PENDING)
-                LiveDetailReferenceRow("14:00", history?.modern200 ?: PENDING, history?.internet200 ?: PENDING)
+                LiveDetailReferenceRow("09:30", result?.modern930 ?: PENDING, result?.internet930 ?: PENDING)
+                LiveDetailReferenceRow("14:00", result?.modern200 ?: PENDING, result?.internet200 ?: PENDING)
             }
         }
     }
