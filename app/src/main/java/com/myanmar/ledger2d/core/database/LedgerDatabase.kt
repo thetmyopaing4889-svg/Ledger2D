@@ -6,13 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [AgentEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class, LiveDailyResultEntity::class], version = 7, exportSchema = true)
+@Database(entities = [AgentEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class, LiveDailyResultEntity::class, ManualWinnerLockEntity::class], version = 8, exportSchema = true)
 @TypeConverters(DatabaseConverters::class)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun agentDao(): AgentDao
     abstract fun customerDao(): CustomerDao
     abstract fun betDao(): BetDao
     abstract fun winningNumberDao(): WinningNumberDao
+    abstract fun manualWinnerLockDao(): ManualWinnerLockDao
     abstract fun historyResultDao(): HistoryResultDao
     abstract fun liveDailyResultDao(): LiveDailyResultDao
     abstract fun closedDayDao(): ClosedDayDao
@@ -62,6 +63,14 @@ abstract class LedgerDatabase : RoomDatabase() {
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_live_daily_results_date ON live_daily_results(date)")
             }
         }
-        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build()
+        private val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS manual_winner_locks (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, date TEXT NOT NULL, session TEXT NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_manual_winner_locks_date_session ON manual_winner_locks(date, session)")
+                // Treat winners saved before Hybrid was introduced as user-owned.
+                db.execSQL("INSERT OR IGNORE INTO manual_winner_locks (date, session, createdAt, updatedAt) SELECT date, session, createdAt, updatedAt FROM winning_numbers")
+            }
+        }
+        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build()
     }
 }

@@ -7,11 +7,16 @@ import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
 import com.myanmar.ledger2d.feature.live.LiveRoomKeeperWorker
+import com.myanmar.ledger2d.feature.live.RoomWinningNumberAutoSaveBridge
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 object LedgerApplicationContextHolder { lateinit var context: Application }
 
 class LedgerApplication : Application() {
     lateinit var container: AppContainer
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -22,6 +27,16 @@ class LedgerApplication : Application() {
         WorkManager.getInstance(this).cancelUniqueWork(LiveRoomKeeperWorker.WORK_NAME)
 
         container = AppContainer(LedgerDatabase.create(this))
+
+        // Independent Room -> operational Winner route. Existing Live/Room/Calendar
+        // ingestion remains unchanged; manual locks protect every user-owned draw.
+        RoomWinningNumberAutoSaveBridge(
+            context = this,
+            liveResults = container.liveResults,
+            winners = container.winners,
+            closedDays = container.closedDays,
+            scope = applicationScope,
+        ).start()
 
         // App-scoped 2D LIVE collector: window-gated polling that continues
         // during the scheduled LIVE windows even when the screen is closed.

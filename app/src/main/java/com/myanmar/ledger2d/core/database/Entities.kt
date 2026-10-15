@@ -19,6 +19,16 @@ data class BetLineEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val 
 @Entity(tableName = "winning_numbers", indices = [Index(value = ["date", "session"], unique = true)])
 data class WinningNumberEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val date: LocalDate, val session: DrawSession, val digit: String, val createdAt: Long, val updatedAt: Long)
 
+/** A persistent user-owned override. Its row remains even if the winner is deleted. */
+@Entity(tableName = "manual_winner_locks", indices = [Index(value = ["date", "session"], unique = true)])
+data class ManualWinnerLockEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val date: LocalDate,
+    val session: DrawSession,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
 @Entity(tableName = "history_results", indices = [Index(value = ["date"], unique = true)])
 data class HistoryResultEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

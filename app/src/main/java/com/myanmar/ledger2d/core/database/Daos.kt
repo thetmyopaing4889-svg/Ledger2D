@@ -47,6 +47,14 @@ import java.time.LocalDate
     @Upsert suspend fun upsert(value: WinningNumberEntity): Long
     @Delete suspend fun delete(value: WinningNumberEntity)
 }
+
+@Dao interface ManualWinnerLockDao {
+    @Query("SELECT * FROM manual_winner_locks WHERE date=:date AND session=:session LIMIT 1")
+    suspend fun get(date: LocalDate, session: DrawSession): ManualWinnerLockEntity?
+
+    @Upsert
+    suspend fun upsert(value: ManualWinnerLockEntity): Long
+}
 @Dao interface HistoryResultDao {
     @Query("SELECT * FROM history_results ORDER BY date DESC") fun observeAll(): Flow<List<HistoryResultEntity>>
     @Query("SELECT * FROM history_results WHERE date=:date") fun observe(date: LocalDate): Flow<HistoryResultEntity?>

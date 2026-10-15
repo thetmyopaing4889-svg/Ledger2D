@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter
 interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun observe(id: Long): Flow<AgentEntity?>; suspend fun get(id: Long): AgentEntity?; suspend fun save(value: AgentEntity): Long }
 interface CustomerRepository { fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>; fun observe(id: Long): Flow<CustomerEntity?>; suspend fun get(id: Long): CustomerEntity?; suspend fun getForAgent(agentId: Long): List<CustomerEntity>; suspend fun save(value: CustomerEntity): Long }
 interface BetRepository { fun observeCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotalsWithCommission(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitCommissionRow>>; fun observeEntry(id: Long): Flow<BetEntryWithLines?>; suspend fun getEntry(id: Long): BetEntryWithLines?; fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>; fun observeCustomerEntries(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; fun observeAgentEntries(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; suspend fun getCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getCustomerCommission(customerId: Long, date: LocalDate, session: DrawSession): Long; suspend fun recalculateCustomerCommission(customerId: Long, basisPoints: Int); suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long; suspend fun confirm(customerId: Long, agentId: Long, date: LocalDate, session: DrawSession, source: String, format: QuickFormat, bets: List<ExpandedBet>): Long; suspend fun edit(entry: BetEntryEntity, bets: List<ExpandedBet>, format: QuickFormat); suspend fun delete(entry: BetEntryEntity) }
-interface WinningNumberRepository { fun observeAll(): Flow<List<WinningNumberEntity>>; fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>; suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?; suspend fun save(date: LocalDate, session: DrawSession, digit: String): Long; suspend fun update(existing: WinningNumberEntity, date: LocalDate, session: DrawSession, digit: String): Long; suspend fun delete(value: WinningNumberEntity) }
+interface WinningNumberRepository { fun observeAll(): Flow<List<WinningNumberEntity>>; fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>; suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?; suspend fun save(date: LocalDate, session: DrawSession, digit: String): Long; suspend fun update(existing: WinningNumberEntity, date: LocalDate, session: DrawSession, digit: String): Long; suspend fun delete(value: WinningNumberEntity); suspend fun syncFromLive(date: LocalDate, session: DrawSession, digit: String): Boolean }
 interface HistoryResultRepository {
     fun observeAll(): Flow<List<HistoryResultEntity>>
     fun observe(date: LocalDate): Flow<HistoryResultEntity?>
@@ -78,7 +78,127 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     override suspend fun edit(entry:BetEntryEntity,bets:List<ExpandedBet>,format:QuickFormat) = db.withTransaction { validateLines(bets); require(entry.sourceText.isNotBlank()); val old=dao.getEntry(entry.id)?.entry ?: error("Bet entry not found"); require(db.winningNumberDao().get(old.drawDate,old.drawSession)==null); require(db.winningNumberDao().get(entry.drawDate,entry.drawSession)==null); val amount=total(bets); dao.updateEntry(entry.copy(inputFormat=format.name,commissionAmount=CommissionCalculator().calculate(amount,entry.commissionRateBasisPoints),updatedAt=System.currentTimeMillis())); dao.deleteLines(entry.id); dao.insertLines(bets.map { BetLineEntity(betEntryId=entry.id,digit=it.digit,amount=it.amount) }) }
     override suspend fun delete(entry:BetEntryEntity) = db.withTransaction { require(db.winningNumberDao().get(entry.drawDate,entry.drawSession)==null); dao.deleteEntry(entry) }
 }
-class RoomWinningNumberRepository(private val db:LedgerDatabase):WinningNumberRepository { private val dao=db.winningNumberDao(); override fun observeAll()=dao.observeAll(); override fun observe(date:LocalDate,session:DrawSession)=dao.observe(date,session); override suspend fun get(date:LocalDate,session:DrawSession)=dao.get(date,session); override suspend fun save(date:LocalDate,session:DrawSession,digit:String):Long { require(BetParser.validDigit(digit)); require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)); val now=System.currentTimeMillis(); val old=dao.get(date,session); require(old==null || db.betDao().countEntries(date,session)==0); return dao.upsert(WinningNumberEntity(id=old?.id?:0,date=date,session=session,digit=digit,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun update(existing:WinningNumberEntity,date:LocalDate,session:DrawSession,digit:String):Long = db.withTransaction { require(BetParser.validDigit(digit)); require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)); require(db.betDao().countEntries(existing.date,existing.session)==0); require(db.betDao().countEntries(date,session)==0); val now=System.currentTimeMillis(); dao.delete(existing); dao.upsert(WinningNumberEntity(id=existing.id,date=date,session=session,digit=digit,createdAt=existing.createdAt,updatedAt=now)) }; override suspend fun delete(value:WinningNumberEntity) { require(db.betDao().countEntries(value.date,value.session)==0); dao.delete(value) } }
+class RoomWinningNumberRepository(private val db: LedgerDatabase) : WinningNumberRepository {
+    private val dao = db.winningNumberDao()
+    private val manualLocks = db.manualWinnerLockDao()
+
+    override fun observeAll() = dao.observeAll()
+    override fun observe(date: LocalDate, session: DrawSession) = dao.observe(date, session)
+    override suspend fun get(date: LocalDate, session: DrawSession) = dao.get(date, session)
+
+    /** Manual Save and the persistent override marker are committed together. */
+    override suspend fun save(date: LocalDate, session: DrawSession, digit: String): Long =
+        db.withTransaction {
+            require(BetParser.validDigit(digit))
+            require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date))
+            val old = dao.get(date, session)
+            // A stale UI can race with Auto Save. It may take ownership of an
+            // auto-owned row even when bets exist, but never silently replace
+            // a row already marked as manual.
+            require(old == null || manualLocks.get(date, session) == null) {
+                "ဒီ draw အတွက် ရလဒ်ရှိပြီးသားပါ"
+            }
+            val now = System.currentTimeMillis()
+            val id = dao.upsert(
+                WinningNumberEntity(
+                    id = old?.id ?: 0,
+                    date = date,
+                    session = session,
+                    digit = digit,
+                    createdAt = old?.createdAt ?: now,
+                    updatedAt = now,
+                ),
+            )
+            markManual(date, session, now)
+            id
+        }
+
+    /** Same-draw digit edits remain allowed even if bet entries already exist. */
+    override suspend fun update(
+        existing: WinningNumberEntity,
+        date: LocalDate,
+        session: DrawSession,
+        digit: String,
+    ): Long = db.withTransaction {
+        require(BetParser.validDigit(digit))
+        require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date))
+
+        val sameDraw = existing.date == date && existing.session == session
+        if (!sameDraw) {
+            // Preserve the existing protections for moving a result between draws.
+            require(db.betDao().countEntries(existing.date, existing.session) == 0)
+            require(db.betDao().countEntries(date, session) == 0)
+        }
+
+        val now = System.currentTimeMillis()
+        dao.delete(existing)
+        val id = dao.upsert(
+            WinningNumberEntity(
+                id = existing.id,
+                date = date,
+                session = session,
+                digit = digit,
+                createdAt = existing.createdAt,
+                updatedAt = now,
+            ),
+        )
+        // Lock both identities if a result was moved, so Auto Save cannot
+        // recreate the old row or take over the destination.
+        markManual(existing.date, existing.session, now)
+        markManual(date, session, now)
+        id
+    }
+
+    /** Deleting a result leaves a manual tombstone so Room cannot restore it. */
+    override suspend fun delete(value: WinningNumberEntity) = db.withTransaction {
+        require(db.betDao().countEntries(value.date, value.session) == 0)
+        dao.delete(value)
+        markManual(value.date, value.session, System.currentTimeMillis())
+    }
+
+    /** Atomic Live sync: only an unlocked draw can be inserted or updated. */
+    override suspend fun syncFromLive(
+        date: LocalDate,
+        session: DrawSession,
+        digit: String,
+    ): Boolean = db.withTransaction {
+        if (!BetParser.validDigit(digit) ||
+            !com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date)
+        ) {
+            return@withTransaction false
+        }
+        if (manualLocks.get(date, session) != null) return@withTransaction false
+
+        val old = dao.get(date, session)
+        if (old?.digit == digit) return@withTransaction false
+
+        val now = System.currentTimeMillis()
+        dao.upsert(
+            WinningNumberEntity(
+                id = old?.id ?: 0,
+                date = date,
+                session = session,
+                digit = digit,
+                createdAt = old?.createdAt ?: now,
+                updatedAt = now,
+            ),
+        )
+        true
+    }
+
+    private suspend fun markManual(date: LocalDate, session: DrawSession, now: Long) {
+        val old = manualLocks.get(date, session)
+        manualLocks.upsert(
+            ManualWinnerLockEntity(
+                id = old?.id ?: 0,
+                date = date,
+                session = session,
+                createdAt = old?.createdAt ?: now,
+                updatedAt = now,
+            ),
+        )
+    }
+}
 class RoomLiveDailyResultRepository(private val db: LedgerDatabase): LiveDailyResultRepository {
     private val dao = db.liveDailyResultDao()
 
