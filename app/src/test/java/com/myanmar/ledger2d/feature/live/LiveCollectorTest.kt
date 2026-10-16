@@ -1783,6 +1783,17 @@ class LiveCollectorTest {
 
     @Test fun late_cold_start_retries_luke_when_first_request_and_history_are_empty() = runTest {
         var lukeCalls = 0
+        val emptyFeed = feed(
+            value = "--",
+            time = "20:08:00",
+            morning = LiveSessionData("--", "--", "--", false),
+            evening = LiveSessionData("--", "--", "--", false),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
         val currentFeed = feed(
             value = "--",
             time = "20:08:00",
@@ -1799,7 +1810,11 @@ class LiveCollectorTest {
             scope = scope,
             fetcher = {
                 lukeCalls++
-                if (lukeCalls == 1) null else currentFeed
+                when (lukeCalls) {
+                    1 -> null
+                    2 -> emptyFeed
+                    else -> currentFeed
+                }
             },
             clock = { LocalTime.of(20, 8) },
             dateProvider = { friday },
@@ -1818,7 +1833,15 @@ class LiveCollectorTest {
         advanceTimeBy(LATE_COLD_START_RETRY_DELAY_MS)
         runCurrent()
 
-        assertEquals("Late cold-start retry should issue a second Luke request", 2, lukeCalls)
+        assertEquals("Second Luke response contains no usable fields", 2, lukeCalls)
+        state = collector.state.value as LiveUiState.Data
+        assertNull(state.feed)
+        assertNull(state.hero)
+
+        advanceTimeBy(LATE_COLD_START_RETRY_DELAY_MS)
+        runCurrent()
+
+        assertEquals("Late cold-start retry should keep going until usable data arrives", 3, lukeCalls)
         state = collector.state.value as LiveUiState.Data
         assertEquals(friday.toString(), state.feed?.date)
         assertEquals("36", state.feed?.morning?.result)
