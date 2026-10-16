@@ -1781,6 +1781,52 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun completed_phase_cold_start_requests_luke_without_waiting_for_historical_recovery() = runTest {
+        var lukeCalls = 0
+        val historyStarted = CompletableDeferred<Unit>()
+        val historyGate = CompletableDeferred<LiveFeedData?>()
+        val currentFeed = feed(
+            value = "--",
+            time = "20:08:00",
+            morning = finalMorning("36"),
+            evening = finalEvening("57"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+            date = friday,
+        )
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                lukeCalls++
+                currentFeed
+            },
+            clock = { LocalTime.of(20, 8) },
+            dateProvider = { friday },
+            historicalFeedFetcher = {
+                historyStarted.complete(Unit)
+                historyGate.await()
+            },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertTrue("History recovery should be running independently", historyStarted.isCompleted)
+        assertEquals("The current Luke request must not wait for History I/O", 1, lukeCalls)
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("57", state.hero?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
     @Test fun cold_start_same_session_live_cache_stays_live_when_first_luke_refresh_fails() = runTest {
         val cachedLive = feed("55", "11:55:00")
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
