@@ -1819,7 +1819,7 @@ class LiveCollectorTest {
         )
         val historyStarted = CompletableDeferred<Unit>()
         val historyGate = CompletableDeferred<LiveFeedData?>()
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { lukeResponse },
@@ -1901,7 +1901,7 @@ class LiveCollectorTest {
             modern200 = "16",
             internet200 = "56",
         )
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = { lukeResponse },
@@ -1972,7 +1972,7 @@ class LiveCollectorTest {
             today = friday,
             now = LocalTime.of(20, 8),
         )
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
             scope = scope,
             fetcher = {
