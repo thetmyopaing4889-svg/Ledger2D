@@ -972,6 +972,31 @@ internal class LiveCollector(
         )
     }
 
+    private fun isExplicitClosedDayHistoryMarker(
+        feed: LiveFeedData?,
+        today: LocalDate,
+        now: LocalTime,
+    ): Boolean {
+        val snapshot = feed ?: return false
+        if (!snapshot.sourceTag.equals("HISTORY", ignoreCase = true)) return false
+        if (canonicalDate(snapshot.date) != today) return false
+        if (!isWorkingDay(today) || dailyCycleDate(today, now) != today) return false
+        if (now.isBefore(MORNING_REFERENCE)) return false
+
+        // The history source uses the literal "off" only for an explicit
+        // non-trading day; empty/pending fields alone are not enough to infer closure.
+        val bothSessionsOff =
+            snapshot.morning.result.equals("off", ignoreCase = true) &&
+                snapshot.evening.result.equals("off", ignoreCase = true)
+        val referencesAbsent = listOf(
+            snapshot.modern930,
+            snapshot.internet930,
+            snapshot.modern200,
+            snapshot.internet200,
+        ).all { it.isBlank() || it == LIVE_PENDING }
+        return bothSessionsOff && referencesAbsent
+    }
+
     private suspend fun recoverPreviousWorkingDayFinal() {
         val recoveryStartedElapsed = monotonicMs()
         val today = dateProvider()
@@ -1018,6 +1043,38 @@ internal class LiveCollector(
             fetchHistoricalFeed(cycleDate, closedDayFeedFetcher, retryOnMiss = cycleDate != today)
         } else {
             fetchHistoricalFeed(cycleDate, historicalFeedFetcher, retryOnMiss = cycleDate != today)
+        }
+
+        // Some holidays are explicitly represented in the history source as
+        // result_1200="off" / result_430="off" while Luke's close-day flag may
+        // be absent or encoded in a JSON type that older parsing did not accept.
+        // Translate only that explicit current-day marker into the same Closed
+        // Day transition used by Luke; do not treat ordinary pending data as closed.
+        if (closedHold == null && isExplicitClosedDayHistoryMarker(currentFeed, today, now)) {
+            if (!currentClosedDayForNotice(today)) {
+                val holdDate = previousWorkingDay(today)
+                val heldFeed = fetchHistoricalFeed(
+                    holdDate,
+                    closedDayFeedFetcher ?: historicalFeedFetcher,
+                    retryOnMiss = true,
+                )
+                if (!currentClosedDayForNotice(today)) {
+                    val closedObservation = currentFeed!!.copy(isCloseDay = true)
+                    LiveDiagnostics.warn(
+                        "Closed Day confirmed from explicit history off marker date=$today holdDate=$holdDate",
+                    )
+                    applyReferenceResult(
+                        LiveReferenceResultEvent(
+                            isMorning = true,
+                            cycleDate = today,
+                            feed = closedObservation,
+                            closedDayObservation = true,
+                            heldFeed = heldFeed,
+                        )
+                    )
+                }
+            }
+            return
         }
 
         val fallbackFeed = if (currentFeed == null && fallbackFeedDate != null) {
