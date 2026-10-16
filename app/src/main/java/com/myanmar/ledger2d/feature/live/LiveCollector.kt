@@ -775,6 +775,7 @@ internal class LiveCollector(
         // pair rules. Luke's current_time may be 09:29:54 after the app clock
         // crossed 09:30, or the response may arrive after reference retries stop.
         if (
+            isMorning &&
             feed != null &&
             isCurrentClosedDayObservation(feed, cycleDate, dateProvider(), clock())
         ) {
