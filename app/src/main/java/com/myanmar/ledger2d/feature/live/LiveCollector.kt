@@ -313,8 +313,9 @@ internal class LiveCollector(
             isWorkingDay(observedDate) &&
             closedCycleDate == observedDate &&
             !observedTime.isBefore(MORNING_REFERENCE) &&
-            observedTime.isBefore(MORNING_CLOSE) &&
-            isCurrentCycleReferenceObservation(feed, closedCycleDate)
+            isCurrentCycleReferenceObservation(feed, closedCycleDate) &&
+            (!isReferenceComplete(true, closedCycleDate) ||
+                currentClosedDayForNotice(observedDate))
         ) {
             LiveDiagnostics.info(
                 "Closed Day snapshot deferred to morning reference acceptance " +
