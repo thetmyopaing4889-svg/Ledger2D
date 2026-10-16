@@ -391,11 +391,15 @@ class LiveCollectorTest {
         var lukeCalls = 0
         var lukeResponse = feed(
             value = "--",
-            time = "09:30:00",
+            // Luke can answer just before 09:30 while the app clock has
+            // crossed the boundary. Closed Day must still be recognized.
+            time = "09:29:54",
             date = wednesday,
             isCloseDay = true,
-            modern930 = "--",
-            internet930 = "--",
+            // If the ordinary LIVE path promotes this valid pair first, the
+            // coordinator can incorrectly skip Closed Day acceptance.
+            modern930 = "11",
+            internet930 = "22",
             modern200 = "--",
             internet200 = "--",
         )
