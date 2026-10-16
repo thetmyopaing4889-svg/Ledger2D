@@ -1786,15 +1786,27 @@ class LiveCollectorTest {
         val historyStarted = CompletableDeferred<Unit>()
         val historyGate = CompletableDeferred<LiveFeedData?>()
         val currentFeed = feed(
-            value = "--",
+            value = "13",
             time = "20:08:00",
-            morning = finalMorning("36"),
-            evening = finalEvening("57"),
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+        val historicalRow = historyRow(
+            date = friday,
+            morning = "36",
+            evening = "57",
             modern930 = "80",
             internet930 = "33",
             modern200 = "98",
             internet200 = "78",
-            date = friday,
+        )
+        val historicalFeed = historyRowToFeed(
+            historicalRow,
+            today = friday,
+            now = LocalTime.of(20, 8),
         )
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val collector = LiveCollector(
@@ -1817,12 +1829,26 @@ class LiveCollectorTest {
 
         assertTrue("History recovery should be running independently", historyStarted.isCompleted)
         assertEquals("The current Luke request must not wait for History I/O", 1, lukeCalls)
-        val state = collector.state.value as LiveUiState.Data
-        assertEquals("57", state.hero?.result)
-        assertEquals("57", state.feed?.evening?.result)
-        assertEquals("80", state.feed?.modern930)
-        assertEquals("98", state.feed?.modern200)
-        assertFalse(state.heroLive)
+        val beforeHistory = collector.state.value as LiveUiState.Data
+        assertEquals("Luke LIVE is available while final/reference fields are pending", "13", beforeHistory.feed?.live)
+        assertNull("No official final is available before History returns", beforeHistory.hero)
+        assertEquals("--", beforeHistory.feed?.evening?.result)
+        assertEquals("--", beforeHistory.feed?.modern930)
+
+        // Simulate the historical row arriving after Luke's newer LIVE response.
+        historyGate.complete(historicalFeed)
+        runCurrent()
+
+        val recovered = collector.state.value as LiveUiState.Data
+        assertEquals("57", recovered.hero?.result)
+        assertEquals("13", recovered.feed?.live)
+        assertEquals("36", recovered.feed?.morning?.result)
+        assertEquals("57", recovered.feed?.evening?.result)
+        assertEquals("80", recovered.feed?.modern930)
+        assertEquals("33", recovered.feed?.internet930)
+        assertEquals("98", recovered.feed?.modern200)
+        assertEquals("78", recovered.feed?.internet200)
+        assertFalse(recovered.heroLive)
 
         scope.cancel()
     }
