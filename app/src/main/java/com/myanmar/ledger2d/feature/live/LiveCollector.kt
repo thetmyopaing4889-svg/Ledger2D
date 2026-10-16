@@ -1337,9 +1337,16 @@ internal class LiveCollector(
             val startupTime = clock()
             val startupClosed = closedHoldDate(startupToday, startupTime)
             val startupLiveSession = liveSessionForTime(startupTime)
+            // A pre-09:30 startup recovers the previous cycle, not today's
+            // explicit History "off" marker; leave that date unprobed until 09:30.
+            var lastHistoryProbeDate = startupToday.takeIf {
+                isWorkingDay(it) && !startupTime.isBefore(MORNING_REFERENCE)
+            }
 
             if (startupLiveSession != null && startupClosed == null) {
-                // Active LIVE/finalization cold-start remains latency-sensitive.
+                // Start History recovery independently. It may confirm an
+                // explicit off marker, but must never delay the first Luke LIVE request.
+                launch { recoverPreviousWorkingDayFinal() }
                 fetchCycle()
             } else if (
                 isWorkingDay(startupToday) &&
@@ -1405,6 +1412,19 @@ internal class LiveCollector(
                 sideEffects.drain()
 
                 maybeReferenceFetch(t)
+
+                // The app-scoped collector may stay alive across dates. If it
+                // started before 09:30 (or was already running from yesterday),
+                // check today's History marker once the new cycle actually begins.
+                if (
+                    isWorkingDay(currentDate) &&
+                    !t.isBefore(MORNING_REFERENCE) &&
+                    dailyCycleDate(currentDate, t) == currentDate &&
+                    lastHistoryProbeDate != currentDate
+                ) {
+                    lastHistoryProbeDate = currentDate
+                    launch { recoverPreviousWorkingDayFinal() }
+                }
 
                 if (shouldPoll(t)) {
                     launchRequest()
