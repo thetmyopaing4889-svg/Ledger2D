@@ -1842,7 +1842,11 @@ class LiveCollectorTest {
         assertTrue("Current-day history lookup must start", historyStarted.isCompleted)
         val beforeHistory = collector.state.value as LiveUiState.Data
         assertFalse(beforeHistory.closedDay)
-        assertEquals("13", beforeHistory.feed?.live)
+        assertEquals(
+            "The post-cutoff LIVE value must be masked even before history completes",
+            LIVE_PENDING,
+            beforeHistory.feed?.live,
+        )
 
         // The API says is_close_day=0 and carries yesterday's 13 as LIVE;
         // the authoritative history row explicitly marks both sessions off.
@@ -1994,7 +1998,11 @@ class LiveCollectorTest {
         assertTrue("History recovery should be running independently", historyStarted.isCompleted)
         assertEquals("The current Luke request must not wait for History I/O", 1, lukeCalls)
         val beforeHistory = collector.state.value as LiveUiState.Data
-        assertEquals("Luke LIVE is available while final/reference fields are pending", "13", beforeHistory.feed?.live)
+        assertEquals(
+            "The post-cutoff LIVE field is frozen while the official final is missing",
+            LIVE_PENDING,
+            beforeHistory.feed?.live,
+        )
         assertNull("No official final is available before History returns", beforeHistory.hero)
         assertEquals("--", beforeHistory.feed?.evening?.result)
         assertEquals("--", beforeHistory.feed?.modern930)
@@ -2005,7 +2013,7 @@ class LiveCollectorTest {
 
         val recovered = collector.state.value as LiveUiState.Data
         assertEquals("57", recovered.hero?.result)
-        assertEquals("13", recovered.feed?.live)
+        assertEquals("The post-cutoff LIVE field stays masked after recovery", LIVE_PENDING, recovered.feed?.live)
         assertEquals("36", recovered.feed?.morning?.result)
         assertEquals("57", recovered.feed?.evening?.result)
         assertEquals("80", recovered.feed?.modern930)
