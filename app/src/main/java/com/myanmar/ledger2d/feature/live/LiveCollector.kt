@@ -1161,11 +1161,89 @@ internal class LiveCollector(
             if (recoveredFeed != null && !preserveNewerLukePrimary) {
                 primary = transition.primary
                 applyReferenceStateLocked(transition.references)
+            } else if (
+                recoveredFeed != null &&
+                preserveNewerLukePrimary &&
+                cycleDate == today &&
+                !now.isBefore(EVENING_CLOSE) &&
+                canonicalDate(recoveredFeed.date) == cycleDate
+            ) {
+                // At/after the evening cutoff, History supplies completed
+                // finals and reference pairs that Luke's LIVE endpoint can
+                // still leave pending. Preserve the newer Luke timestamp/live
+                // fields, but merge in completed historical fields rather than
+                // dropping the history result along with the replaced primary.
+                val current = primary
+                val currentFeed = current?.feed
+                if (
+                    current != null &&
+                    currentFeed != null &&
+                    currentFeed.sourceTag.equals("LUKE", ignoreCase = true) &&
+                    canonicalDate(currentFeed.date) == cycleDate
+                ) {
+                    primary = current.copy(
+                        feed = mergeCompletedHistoryIntoLukeFeed(
+                            lukeFeed = currentFeed,
+                            historyFeed = recoveredFeed,
+                        ),
+                    )
+                    applyReferenceStateLocked(transition.references)
+                }
             }
 
             publishLocked()
         }
         sideEffects.drain()
+    }
+
+    /**
+     * Fill missing completed-day result/reference fields from History without
+     * replacing the fresher Luke observation or its LIVE timestamp.
+     */
+    private fun mergeCompletedHistoryIntoLukeFeed(
+        lukeFeed: LiveFeedData,
+        historyFeed: LiveFeedData,
+    ): LiveFeedData {
+        fun resolvedReferencePair(
+            currentModern: String,
+            currentInternet: String,
+            historicalModern: String,
+            historicalInternet: String,
+        ): Pair<String, String>? = when {
+            isValidLive2d(currentModern) && isValidLive2d(currentInternet) ->
+                currentModern to currentInternet
+            isValidLive2d(historicalModern) && isValidLive2d(historicalInternet) ->
+                historicalModern to historicalInternet
+            else -> null
+        }
+
+        val reference930 = resolvedReferencePair(
+            lukeFeed.modern930,
+            lukeFeed.internet930,
+            historyFeed.modern930,
+            historyFeed.internet930,
+        )
+        val reference200 = resolvedReferencePair(
+            lukeFeed.modern200,
+            lukeFeed.internet200,
+            historyFeed.modern200,
+            historyFeed.internet200,
+        )
+
+        return lukeFeed.copy(
+            morning = if (
+                isValidLive2d(lukeFeed.morning.result) ||
+                !isValidLive2d(historyFeed.morning.result)
+            ) lukeFeed.morning else historyFeed.morning,
+            evening = if (
+                isValidLive2d(lukeFeed.evening.result) ||
+                !isValidLive2d(historyFeed.evening.result)
+            ) lukeFeed.evening else historyFeed.evening,
+            modern930 = reference930?.first ?: lukeFeed.modern930,
+            internet930 = reference930?.second ?: lukeFeed.internet930,
+            modern200 = reference200?.first ?: lukeFeed.modern200,
+            internet200 = reference200?.second ?: lukeFeed.internet200,
+        )
     }
 
     private fun publishLocked() {
