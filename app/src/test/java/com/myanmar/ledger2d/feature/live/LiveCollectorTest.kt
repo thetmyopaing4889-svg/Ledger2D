@@ -383,6 +383,60 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun luke_closed_day_from_late_live_response_holds_previous_result_even_when_reference_window_is_closed() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        var now = LocalTime.of(17, 12)
+        val today = wednesday
+        val lukeResponse = feed(
+            value = "--",
+            time = "09:29:54",
+            date = wednesday,
+            isCloseDay = true,
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val heldRow = historyRow(
+            date = tuesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { lukeResponse },
+            clock = { now },
+            dateProvider = { today },
+            closedDayFeedFetcher = { date ->
+                assertEquals(tuesday, date)
+                historyRowToFeed(heldRow)
+            },
+            historicalFinalFetcher = { date ->
+                if (date == tuesday) historyRowToFinal(heldRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
     @Test fun luke_closed_day_holds_previous_working_day_and_exposes_notice_then_expires_next_day() = runTest {
         val wednesday = tuesday.plusDays(1)
         val thursday = wednesday.plusDays(1)
