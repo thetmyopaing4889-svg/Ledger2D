@@ -69,7 +69,17 @@ internal fun historyRowToFeed(
         value: String,
         allowed: Boolean,
     ): LiveSessionData {
-        if (!allowed) return LiveSessionData(LIVE_PENDING, LIVE_PENDING, LIVE_PENDING, false)
+        if (!allowed) {
+            // Keep the explicit History "off" marker for Closed Day detection,
+            // while all other future result values remain phase-masked.
+            val explicitOff = result.equals("off", ignoreCase = true)
+            return LiveSessionData(
+                result = if (explicitOff) "off" else LIVE_PENDING,
+                set = LIVE_PENDING,
+                value = LIVE_PENDING,
+                finalized = false,
+            )
+        }
         val normalizedResult = result.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
         val normalizedSet = set.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
         val normalizedValue = value.takeUnless { it == "-" || it.isBlank() } ?: LIVE_PENDING
