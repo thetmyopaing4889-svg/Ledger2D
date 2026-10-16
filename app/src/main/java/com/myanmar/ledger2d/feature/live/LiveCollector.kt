@@ -109,6 +109,8 @@ internal class LiveCollector(
      * to the user's Room ClosedDayRepository.
      */
     private var closedDayDate: LocalDate? = null
+    /** Current-day Closed Day requests being resolved outside stateLock. */
+    private val closedDayProcessingDates = mutableSetOf<LocalDate>()
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
 
@@ -294,11 +296,128 @@ internal class LiveCollector(
         requestCoordinator.launchLiveRequest()
     }
 
+    private fun isCurrentClosedDayObservation(
+        feed: LiveFeedData,
+        cycleDate: LocalDate,
+        today: LocalDate,
+        now: LocalTime,
+    ): Boolean {
+        if (
+            !feed.isCloseDay ||
+            today != cycleDate ||
+            !isWorkingDay(today) ||
+            now.isBefore(MORNING_REFERENCE) ||
+            dailyCycleDate(today, now) != cycleDate ||
+            !isCurrentCycleReferenceObservation(feed, cycleDate)
+        ) {
+            return false
+        }
+
+        // Some Luke payloads keep the previous result date while current_time
+        // belongs to today. Accept either verified date, but never a stale
+        // absolute timestamp from another cycle.
+        val feedDate = canonicalDate(feed.date)
+        val sourceDate = feed.serverTimeEpochMs
+            ?.takeIf { it >= 946684800000L }
+            ?.let { Instant.ofEpochMilli(it).atZone(YANGON).toLocalDate() }
+        return feedDate == cycleDate || sourceDate == cycleDate
+    }
+
+    private fun reserveClosedDayProcessing(cycleDate: LocalDate): Boolean =
+        synchronized(stateLock) {
+            val heldDate = previousWorkingDay(cycleDate)
+            val heldFeedAlreadyInstalled = closedDayDate == cycleDate &&
+                primary?.feed?.let { held ->
+                    canonicalDate(held.date) == heldDate && latestFinalFor(held) != null
+                } == true
+            !heldFeedAlreadyInstalled && closedDayProcessingDates.add(cycleDate)
+        }
+
+    private fun releaseClosedDayProcessing(cycleDate: LocalDate) {
+        synchronized(stateLock) {
+            closedDayProcessingDates.remove(cycleDate)
+        }
+    }
+
+    private fun scheduleClosedDayObservation(cycleDate: LocalDate, feed: LiveFeedData) {
+        if (!reserveClosedDayProcessing(cycleDate)) return
+
+        scope.launch {
+            try {
+                processClosedDayObservation(cycleDate, feed)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                LiveDiagnostics.warn(
+                    "Closed Day transition failed date=$cycleDate error=${failure.message}",
+                )
+            } finally {
+                releaseClosedDayProcessing(cycleDate)
+            }
+        }
+    }
+
+    private suspend fun acceptClosedDayObservation(
+        cycleDate: LocalDate,
+        feed: LiveFeedData,
+    ): Boolean {
+        if (!reserveClosedDayProcessing(cycleDate)) return true
+
+        return try {
+            processClosedDayObservation(cycleDate, feed)
+        } finally {
+            releaseClosedDayProcessing(cycleDate)
+        }
+    }
+
+    private suspend fun processClosedDayObservation(
+        cycleDate: LocalDate,
+        feed: LiveFeedData,
+    ): Boolean {
+        if (!isCurrentClosedDayObservation(feed, cycleDate, dateProvider(), clock())) {
+            LiveDiagnostics.warn(
+                "Closed Day observation became stale before acceptance date=$cycleDate " +
+                    "appDate=${dateProvider()} appTime=${clock()} feedDate=${feed.date}",
+            )
+            return true
+        }
+
+        val holdDate = previousWorkingDay(cycleDate)
+        val heldFeed = runSuspendCatchingCancellable {
+            closedDayFeedFetcher?.invoke(holdDate)
+        }
+        return applyReferenceResult(
+            LiveReferenceResultEvent(
+                isMorning = true,
+                cycleDate = cycleDate,
+                feed = feed,
+                closedDayObservation = true,
+                heldFeed = heldFeed,
+            )
+        )
+    }
+
     private fun applyLiveRequestResult(event: LiveRequestResultEvent) {
         val sequence = event.sequence
         val feed = event.feed
         val startedAt = event.requestStartedAtElapsedMs
         val finishedAt = event.requestFinishedAtElapsedMs
+
+        // Route a confirmed current-day Closed Day through its dedicated
+        // transition before normal LIVE acceptance can promote references or
+        // replace the previous-working-day display. This must also work after
+        // 12:01/16:30, when ordinary reference retry windows are closed.
+        val observedDate = dateProvider()
+        val observedTime = clock()
+        if (isCurrentClosedDayObservation(feed, observedDate, observedDate, observedTime)) {
+            LiveDiagnostics.info(
+                "Closed Day LIVE response routed to hold acceptance " +
+                    "seq=$sequence appDate=$observedDate appTime=$observedTime " +
+                    "feedDate=${feed.date} current_time=${feed.currentTime}",
+            )
+            scheduleClosedDayObservation(observedDate, feed)
+            return
+        }
 
         // Room has its own current-day/checkpoint policy. Run it before UI
         // display/ordering rejection so eligible early Luke fields are not lost.
@@ -652,34 +771,27 @@ internal class LiveCollector(
         cycleDate: LocalDate,
         feed: LiveFeedData?,
     ): Boolean {
+        // Closed Day confirmation is independent of the 09:30/14:00 reference
+        // pair rules. Luke's current_time may be 09:29:54 after the app clock
+        // crossed 09:30, or the response may arrive after reference retries stop.
+        if (
+            feed != null &&
+            isCurrentClosedDayObservation(feed, cycleDate, dateProvider(), clock())
+        ) {
+            return acceptClosedDayObservation(cycleDate, feed)
+        }
+
         // Dedicated reference fetches also feed Room independently of whether
         // the reference reducer accepts them for the visible UI state.
         if (feed != null) syncLiveRoom(feed, dateProvider(), clock())
-
-        val closedSnapshot = isMorning &&
-            feed != null &&
-            feed.isCloseDay &&
-            isCurrentCycleReferenceObservation(feed, cycleDate) &&
-            isReferenceObservationAtOrAfterBoundary(feed, isMorning = true)
-
-        // Keep the previous-working-day lookup outside the state lock. The
-        // completed I/O is carried with the reference result event.
-        val heldFeed = if (closedSnapshot) {
-            val holdDate = previousWorkingDay(cycleDate)
-            runSuspendCatchingCancellable {
-                closedDayFeedFetcher?.invoke(holdDate)
-            }
-        } else {
-            null
-        }
 
         return applyReferenceResult(
             LiveReferenceResultEvent(
                 isMorning = isMorning,
                 cycleDate = cycleDate,
                 feed = feed,
-                closedDayObservation = closedSnapshot,
-                heldFeed = heldFeed,
+                closedDayObservation = false,
+                heldFeed = null,
             )
         )
     }
@@ -721,7 +833,23 @@ internal class LiveCollector(
 
         if (closedSnapshot) {
             synchronized(stateLock) {
-                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
+                val closeFeed = feed ?: return true
+                val acceptedDate = dateProvider()
+                val acceptedTime = clock()
+                if (
+                    !isCurrentClosedDayObservation(
+                        closeFeed,
+                        cycleDate,
+                        acceptedDate,
+                        acceptedTime,
+                    )
+                ) {
+                    LiveDiagnostics.warn(
+                        "Closed Day confirmation rejected as stale cycle=$cycleDate " +
+                            "appDate=$acceptedDate appTime=$acceptedTime feedDate=${closeFeed.date}",
+                    )
+                    return true
+                }
 
                 val transition = LiveStateReducer.reduceConfirmedClosedDay(
                     cycleDate = cycleDate,

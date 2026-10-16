@@ -391,11 +391,13 @@ class LiveCollectorTest {
         var lukeCalls = 0
         var lukeResponse = feed(
             value = "--",
-            time = "09:30:00",
+            // The app clock has crossed 09:30, but Luke's snapshot can lag by seconds.
+            time = "09:29:54",
             date = wednesday,
             isCloseDay = true,
-            modern930 = "--",
-            internet930 = "--",
+            // A valid pair must not route this Closed Day snapshot through normal LIVE first.
+            modern930 = "11",
+            internet930 = "22",
             modern200 = "--",
             internet200 = "--",
         )
@@ -421,6 +423,7 @@ class LiveCollectorTest {
             },
             clock = { now },
             dateProvider = { today },
+            cacheFeedLoader = { historyRowToFeed(heldRow) },
             closedDayFeedFetcher = { date ->
                 assertEquals(tuesday, date)
                 historyRowToFeed(heldRow)
@@ -480,6 +483,63 @@ class LiveCollectorTest {
         assertEquals("11", state.feed?.modern930)
         assertEquals("22", state.feed?.internet930)
         assertEquals("--", state.feed?.morning?.result)
+
+        scope.cancel()
+    }
+
+    @Test fun luke_closed_day_is_confirmed_after_friday_reference_window_closes() = runTest {
+        val today = friday
+        var heldFetches = 0
+        val now = LocalTime.of(17, 12)
+        val closedResponse = feed(
+            value = "--",
+            time = "09:29:54",
+            date = today,
+            isCloseDay = true,
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val heldRow = historyRow(
+            date = thursday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { closedResponse },
+            clock = { now },
+            dateProvider = { today },
+            closedDayFeedFetcher = { date ->
+                assertEquals(thursday, date)
+                heldFetches++
+                historyRowToFeed(heldRow)
+            },
+            historicalFinalFetcher = { date ->
+                if (date == thursday) historyRowToFinal(heldRow) else null
+            },
+            historicalFeedFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(thursday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+        assertEquals(1, heldFetches)
 
         scope.cancel()
     }
