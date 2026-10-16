@@ -109,6 +109,7 @@ internal class LiveCollector(
      * to the user's Room ClosedDayRepository.
      */
     private var closedDayDate: LocalDate? = null
+    private val closedDayProcessingDates = mutableSetOf<LocalDate>()
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
 
@@ -299,6 +300,52 @@ internal class LiveCollector(
         val feed = event.feed
         val startedAt = event.requestStartedAtElapsedMs
         val finishedAt = event.requestFinishedAtElapsedMs
+
+        // A normal LIVE response may be the first Luke response we receive on
+        // a Closed Day, including cold starts after the 09:30 retry window.
+        // Resolve that signal before ordinary LIVE reduction can replace the
+        // held previous-working-day display.
+        val observedDate = dateProvider()
+        val observedTime = clock()
+        if (
+            feed.isCloseDay &&
+            isWorkingDay(observedDate) &&
+            observedDate == dailyCycleDate(observedDate, observedTime) &&
+            !observedTime.isBefore(MORNING_REFERENCE) &&
+            isCurrentCycleReferenceObservation(feed, observedDate)
+        ) {
+            val shouldRecover = synchronized(stateLock) {
+                if (closedDayDate == observedDate || !closedDayProcessingDates.add(observedDate)) {
+                    false
+                } else {
+                    true
+                }
+            }
+            if (shouldRecover) {
+                scope.launch {
+                    val holdDate = previousWorkingDay(observedDate)
+                    val heldFeed = runSuspendCatchingCancellable {
+                        closedDayFeedFetcher?.invoke(holdDate)
+                    }?.takeIf { canonicalDate(it.date) == holdDate }
+                    try {
+                        applyReferenceResult(
+                            LiveReferenceResultEvent(
+                                isMorning = true,
+                                cycleDate = observedDate,
+                                feed = feed,
+                                closedDayObservation = true,
+                                heldFeed = heldFeed,
+                            )
+                        )
+                    } finally {
+                        synchronized(stateLock) {
+                            closedDayProcessingDates.remove(observedDate)
+                        }
+                    }
+                }
+            }
+            return
+        }
 
         // Room has its own current-day/checkpoint policy. Run it before UI
         // display/ordering rejection so eligible early Luke fields are not lost.
