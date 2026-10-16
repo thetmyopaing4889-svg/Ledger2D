@@ -1234,9 +1234,13 @@ internal class LiveCollector(
                     }
                 }
             } else {
-                // Preserve the prior startup sequence for weekends and later
-                // phases. Those paths keep their existing history/final behavior.
-                recoverPreviousWorkingDayFinal()
+                // Do not put the first Luke request behind historical I/O after
+                // the reference windows have closed (including a cold start at
+                // 16:30+). A slow/unavailable History endpoint must not leave the
+                // LIVE screen blank while the current provider can answer now.
+                // Recovery already preserves a newer accepted Luke primary when
+                // its history request completes later.
+                launch { recoverPreviousWorkingDayFinal() }
                 maybeReferenceFetch(startupTime)
                 if (startupClosed == null) {
                     fetchCycle()
