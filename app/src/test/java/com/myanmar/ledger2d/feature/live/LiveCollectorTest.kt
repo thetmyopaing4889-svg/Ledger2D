@@ -85,6 +85,19 @@ class LiveCollectorTest {
         assertEquals(8_000, LIVE_READ_TIMEOUT_MS)
     }
 
+    @Test fun close_day_flag_accepts_boolean_numeric_and_string_json_values() {
+        assertTrue(LiveApi.parseCloseDayFlag(true))
+        assertTrue(LiveApi.parseCloseDayFlag(1))
+        assertTrue(LiveApi.parseCloseDayFlag(1L))
+        assertTrue(LiveApi.parseCloseDayFlag("1"))
+        assertTrue(LiveApi.parseCloseDayFlag("true"))
+        assertTrue(LiveApi.parseCloseDayFlag(" YES "))
+        assertFalse(LiveApi.parseCloseDayFlag(false))
+        assertFalse(LiveApi.parseCloseDayFlag(0))
+        assertFalse(LiveApi.parseCloseDayFlag("0"))
+        assertFalse(LiveApi.parseCloseDayFlag("--"))
+    }
+
     @Test fun daily_cycle_date_switches_at_0930_and_skips_weekend() {
         assertEquals(thursday, dailyCycleDate(friday, LocalTime.of(9, 29, 59)))
         assertEquals(friday, dailyCycleDate(friday, LocalTime.of(23, 59)))
@@ -378,6 +391,63 @@ class LiveCollectorTest {
         assertEquals("25", state.hero?.result)
         assertEquals("80", state.feed?.modern930)
         assertEquals("98", state.feed?.modern200)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun explicit_history_off_marker_confirms_closed_day_and_holds_previous_working_day() = runTest {
+        val marketHoliday = friday.plusDays(14)
+        val heldDate = marketHoliday.minusDays(1)
+        val now = LocalTime.of(20, 8)
+        val closedRow = historyRow(
+            date = marketHoliday,
+            morning = "off",
+            evening = "off",
+            modern930 = "",
+            internet930 = "",
+            modern200 = "",
+            internet200 = "",
+        )
+        val heldRow = historyRow(
+            date = heldDate,
+            morning = "98",
+            evening = "13",
+            modern930 = "92",
+            internet930 = "05",
+            modern200 = "16",
+            internet200 = "56",
+        )
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { null }, // Luke does not deliver a usable Closed Day flag.
+            clock = { now },
+            dateProvider = { marketHoliday },
+            closedDayFeedFetcher = { date ->
+                if (date == heldDate) historyRowToFeed(heldRow) else null
+            },
+            historicalFeedFetcher = { date ->
+                if (date == marketHoliday) historyRowToFeed(closedRow, marketHoliday, now) else null
+            },
+            historicalFinalFetcher = { date ->
+                if (date == heldDate) historyRowToFinal(heldRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(heldDate.toString(), state.feed?.date)
+        assertEquals("98", state.feed?.morning?.result)
+        assertEquals("13", state.feed?.evening?.result)
+        assertEquals("92", state.feed?.modern930)
+        assertEquals("05", state.feed?.internet930)
+        assertEquals("16", state.feed?.modern200)
+        assertEquals("56", state.feed?.internet200)
+        assertEquals("13", state.hero?.result)
         assertFalse(state.heroLive)
 
         scope.cancel()
