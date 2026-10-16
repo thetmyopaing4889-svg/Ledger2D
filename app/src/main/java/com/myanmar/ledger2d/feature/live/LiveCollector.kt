@@ -300,6 +300,30 @@ internal class LiveCollector(
         val startedAt = event.requestStartedAtElapsedMs
         val finishedAt = event.requestFinishedAtElapsedMs
 
+        // A Luke Closed Day observation belongs to the 09:30 reference flow.
+        // Do not first promote its reference pair through the normal LIVE path:
+        // the coordinator would see the pair as complete and skip the dedicated
+        // Closed Day transition. The same feed is passed to applyReferenceFeed
+        // immediately afterward, where the current-day hold is committed.
+        val observedDate = dateProvider()
+        val observedTime = clock()
+        val closedCycleDate = dailyCycleDate(observedDate, observedTime)
+        if (
+            feed.isCloseDay &&
+            isWorkingDay(observedDate) &&
+            closedCycleDate == observedDate &&
+            !observedTime.isBefore(MORNING_REFERENCE) &&
+            observedTime.isBefore(MORNING_CLOSE) &&
+            isCurrentCycleReferenceObservation(feed, closedCycleDate)
+        ) {
+            LiveDiagnostics.info(
+                "Closed Day snapshot deferred to morning reference acceptance " +
+                    "seq=$sequence appDate=$observedDate appTime=$observedTime " +
+                    "feedDate=${feed.date} current_time=${feed.currentTime}",
+            )
+            return
+        }
+
         // Room has its own current-day/checkpoint policy. Run it before UI
         // display/ordering rejection so eligible early Luke fields are not lost.
         // This does not alter the feed or the Daily Flow acceptance decision.
@@ -656,11 +680,14 @@ internal class LiveCollector(
         // the reference reducer accepts them for the visible UI state.
         if (feed != null) syncLiveRoom(feed, dateProvider(), clock())
 
+        // The app clock determines whether this is the morning reference
+        // cycle. Luke's provider timestamp can lag the boundary by a few seconds
+        // (for example 09:29:54 while the app is already at 09:30:02), so it
+        // must not veto an otherwise current-cycle is_close_day confirmation.
         val closedSnapshot = isMorning &&
             feed != null &&
             feed.isCloseDay &&
-            isCurrentCycleReferenceObservation(feed, cycleDate) &&
-            isReferenceObservationAtOrAfterBoundary(feed, isMorning = true)
+            isCurrentCycleReferenceObservation(feed, cycleDate)
 
         // Keep the previous-working-day lookup outside the state lock. The
         // completed I/O is carried with the reference result event.
