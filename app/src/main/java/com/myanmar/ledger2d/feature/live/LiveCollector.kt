@@ -1259,17 +1259,24 @@ internal class LiveCollector(
 
     private fun hasCompleteLateColdStartSnapshot(today: LocalDate): Boolean {
         val data = _state.value as? LiveUiState.Data ?: return false
-        // Once Luke confirms a Closed Day, stop retrying ordinary LIVE requests.
+        // Once Luke or an explicit History off marker confirms a Closed Day,
+        // ordinary after-hours recovery must not issue more LIVE requests.
         if (data.closedDay || currentClosedDayForNotice(today)) return true
 
         val feed = data.feed ?: return false
         if (canonicalDate(feed.date) != today) return false
-        val finalsReady = isValidLive2d(feed.morning.result) && isValidLive2d(feed.evening.result)
+
+        // The retry exists only to recover an entirely blank late cold start.
+        // Preserve the established schedule contract: once any current-day
+        // final result or a complete reference pair is usable, do not resume
+        // polling/retrying merely because another field is still pending.
+        val anyFinalReady =
+            isValidLive2d(feed.morning.result) || isValidLive2d(feed.evening.result)
         val morningReferenceReady =
             isValidLive2d(feed.modern930) && isValidLive2d(feed.internet930)
         val afternoonReferenceReady =
             isValidLive2d(feed.modern200) && isValidLive2d(feed.internet200)
-        return finalsReady && morningReferenceReady && afternoonReferenceReady
+        return anyFinalReady || morningReferenceReady || afternoonReferenceReady
     }
 
     /**
