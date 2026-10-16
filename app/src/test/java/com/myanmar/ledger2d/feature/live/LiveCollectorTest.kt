@@ -383,6 +383,60 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun luke_closed_day_from_late_live_response_holds_previous_result_even_when_reference_window_is_closed() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        var now = LocalTime.of(17, 12)
+        val today = wednesday
+        val lukeResponse = feed(
+            value = "--",
+            time = "09:29:54",
+            date = wednesday,
+            isCloseDay = true,
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val heldRow = historyRow(
+            date = tuesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { lukeResponse },
+            clock = { now },
+            dateProvider = { today },
+            closedDayFeedFetcher = { date ->
+                assertEquals(tuesday, date)
+                historyRowToFeed(heldRow)
+            },
+            historicalFinalFetcher = { date ->
+                if (date == tuesday) historyRowToFinal(heldRow) else null
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
     @Test fun luke_closed_day_holds_previous_working_day_and_exposes_notice_then_expires_next_day() = runTest {
         val wednesday = tuesday.plusDays(1)
         val thursday = wednesday.plusDays(1)
@@ -1723,6 +1777,242 @@ class LiveCollectorTest {
         assertEquals(0, historyCalls)
         assertTrue(state.heroLive)
         assertEquals("44", state.hero?.result)
+
+        scope.cancel()
+    }
+
+    @Test fun explicit_history_off_marker_holds_previous_working_day_when_luke_flag_is_false() = runTest {
+        val today = java.time.LocalDate.of(2026, 10, 16)
+        val previousDay = today.minusDays(1)
+        val lukeResponse = feed(
+            value = "13",
+            time = "20:08:00",
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = today,
+            isCloseDay = false,
+        ).copy(liveSet = "1,573.01", liveVal = "58,483.65")
+        val offRow = historyRow(
+            date = today,
+            morning = "off",
+            evening = "off",
+            modern930 = "",
+            internet930 = "",
+            modern200 = "",
+            internet200 = "",
+        ).copy(
+            morningSet = "",
+            morningValue = "",
+            eveningSet = "",
+            eveningValue = "",
+        )
+        val previousRow = historyRow(
+            date = previousDay,
+            morning = "98",
+            evening = "13",
+            modern930 = "92",
+            internet930 = "05",
+            modern200 = "16",
+            internet200 = "56",
+        )
+        val historyStarted = CompletableDeferred<Unit>()
+        val historyGate = CompletableDeferred<LiveFeedData?>()
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { lukeResponse },
+            clock = { LocalTime.of(20, 8) },
+            dateProvider = { today },
+            historicalFeedFetcher = { date ->
+                assertEquals(today, date)
+                historyStarted.complete(Unit)
+                historyGate.await()
+            },
+            closedDayFeedFetcher = { date ->
+                assertEquals(previousDay, date)
+                historyRowToFeed(previousRow)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertTrue("Current-day history lookup must start", historyStarted.isCompleted)
+        val beforeHistory = collector.state.value as LiveUiState.Data
+        assertFalse(beforeHistory.closedDay)
+        assertEquals("13", beforeHistory.feed?.live)
+
+        // The API says is_close_day=0 and carries yesterday's 13 as LIVE;
+        // the authoritative history row explicitly marks both sessions off.
+        historyGate.complete(historyRowToFeed(offRow))
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(previousDay.toString(), state.feed?.date)
+        assertEquals("98", state.feed?.morning?.result)
+        assertEquals("13", state.feed?.evening?.result)
+        assertEquals("92", state.feed?.modern930)
+        assertEquals("05", state.feed?.internet930)
+        assertEquals("16", state.feed?.modern200)
+        assertEquals("56", state.feed?.internet200)
+        assertEquals("13", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun explicit_history_off_marker_is_checked_when_running_app_reaches_0930() = runTest {
+        val today = java.time.LocalDate.of(2026, 10, 16)
+        val previousDay = today.minusDays(1)
+        var now = LocalTime.of(8, 30)
+        val lukeResponse = feed(
+            value = "13",
+            time = "20:08:00",
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = today,
+            isCloseDay = false,
+        ).copy(liveSet = "1,573.01", liveVal = "58,483.65")
+        val offRow = historyRow(
+            date = today,
+            morning = "off",
+            evening = "off",
+            modern930 = "",
+            internet930 = "",
+            modern200 = "",
+            internet200 = "",
+        ).copy(
+            morningSet = "",
+            morningValue = "",
+            eveningSet = "",
+            eveningValue = "",
+        )
+        val previousRow = historyRow(
+            date = previousDay,
+            morning = "98",
+            evening = "13",
+            modern930 = "92",
+            internet930 = "05",
+            modern200 = "16",
+            internet200 = "56",
+        )
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { lukeResponse },
+            clock = { now },
+            dateProvider = { today },
+            historicalFeedFetcher = { date ->
+                when (date) {
+                    today -> historyRowToFeed(offRow, today, now)
+                    previousDay -> historyRowToFeed(previousRow, today, now)
+                    else -> null
+                }
+            },
+            closedDayFeedFetcher = { date ->
+                assertEquals(previousDay, date)
+                historyRowToFeed(previousRow)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+        assertFalse((collector.state.value as LiveUiState.Data).closedDay)
+
+        // The app stayed alive from before 09:30; the scheduler must probe the
+        // current day's explicit History marker when its daily cycle begins.
+        now = LocalTime.of(9, 30)
+        advanceTimeBy(NORMAL_POLL_INTERVAL_MS)
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(previousDay.toString(), state.feed?.date)
+        assertEquals("98", state.feed?.morning?.result)
+        assertEquals("13", state.feed?.evening?.result)
+        assertEquals("92", state.feed?.modern930)
+        assertEquals("05", state.feed?.internet930)
+        assertEquals("16", state.feed?.modern200)
+        assertEquals("56", state.feed?.internet200)
+        assertEquals("13", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun completed_phase_cold_start_requests_luke_without_waiting_for_historical_recovery() = runTest {
+        var lukeCalls = 0
+        val historyStarted = CompletableDeferred<Unit>()
+        val historyGate = CompletableDeferred<LiveFeedData?>()
+        val currentFeed = feed(
+            value = "13",
+            time = "20:08:00",
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+            date = friday,
+        )
+        val historicalRow = historyRow(
+            date = friday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val historicalFeed = historyRowToFeed(
+            historicalRow,
+            today = friday,
+            now = LocalTime.of(20, 8),
+        )
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                lukeCalls++
+                currentFeed
+            },
+            clock = { LocalTime.of(20, 8) },
+            dateProvider = { friday },
+            historicalFeedFetcher = {
+                historyStarted.complete(Unit)
+                historyGate.await()
+            },
+            historicalFinalFetcher = { null },
+        )
+
+        collector.start()
+        runCurrent()
+
+        assertTrue("History recovery should be running independently", historyStarted.isCompleted)
+        assertEquals("The current Luke request must not wait for History I/O", 1, lukeCalls)
+        val beforeHistory = collector.state.value as LiveUiState.Data
+        assertEquals("Luke LIVE is available while final/reference fields are pending", "13", beforeHistory.feed?.live)
+        assertNull("No official final is available before History returns", beforeHistory.hero)
+        assertEquals("--", beforeHistory.feed?.evening?.result)
+        assertEquals("--", beforeHistory.feed?.modern930)
+
+        // Simulate the historical row arriving after Luke's newer LIVE response.
+        historyGate.complete(historicalFeed)
+        runCurrent()
+
+        val recovered = collector.state.value as LiveUiState.Data
+        assertEquals("57", recovered.hero?.result)
+        assertEquals("13", recovered.feed?.live)
+        assertEquals("36", recovered.feed?.morning?.result)
+        assertEquals("57", recovered.feed?.evening?.result)
+        assertEquals("80", recovered.feed?.modern930)
+        assertEquals("33", recovered.feed?.internet930)
+        assertEquals("98", recovered.feed?.modern200)
+        assertEquals("78", recovered.feed?.internet200)
+        assertFalse(recovered.heroLive)
 
         scope.cancel()
     }
