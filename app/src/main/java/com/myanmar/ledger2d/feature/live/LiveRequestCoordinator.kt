@@ -80,6 +80,15 @@ internal class LiveRequestCoordinator(
         request.start()
     }
 
+    /** Wait for requests already in flight before an explicit cold-start retry. */
+    suspend fun awaitLiveRequests() {
+        awaitExistingLiveRequests()
+    }
+
+    /** Make one ordinary LIVE request through the same acceptance pipeline. */
+    suspend fun requestLiveNow(): LiveFeedData? =
+        fetchAndPublishLiveRequest(requestSequence.incrementAndGet())
+
     private suspend fun fetchAndPublishLiveRequest(sequence: Long): LiveFeedData? {
         val startedAt = monotonicClockMs()
         val startedAtWallMs = System.currentTimeMillis()
