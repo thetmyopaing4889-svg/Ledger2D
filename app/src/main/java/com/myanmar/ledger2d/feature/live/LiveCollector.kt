@@ -656,11 +656,14 @@ internal class LiveCollector(
         // the reference reducer accepts them for the visible UI state.
         if (feed != null) syncLiveRoom(feed, dateProvider(), clock())
 
+        // Closed Day is a calendar-day signal, not a reference-pair
+        // acceptance decision. Luke may publish the current day's close-day
+        // flag a few seconds before 09:30, so do not apply the reference
+        // source-time boundary gate here.
         val closedSnapshot = isMorning &&
             feed != null &&
             feed.isCloseDay &&
-            isCurrentCycleReferenceObservation(feed, cycleDate) &&
-            isReferenceObservationAtOrAfterBoundary(feed, isMorning = true)
+            isCurrentCycleReferenceObservation(feed, cycleDate)
 
         // Keep the previous-working-day lookup outside the state lock. The
         // completed I/O is carried with the reference result event.
@@ -721,7 +724,21 @@ internal class LiveCollector(
 
         if (closedSnapshot) {
             synchronized(stateLock) {
-                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
+                // A confirmed Closed Day must be applied even if the 09:30
+                // reference retry window has already ended (e.g. cold start
+                // late in the afternoon). This is independent of reference
+                // pair retry scheduling.
+                if (
+                    !isWorkingDay(dateProvider()) ||
+                    dateProvider() != cycleDate ||
+                    dailyCycleDate(dateProvider(), clock()) != cycleDate
+                ) {
+                    LiveDiagnostics.warn(
+                        "Closed Day observation rejected due to stale cycle " +
+                            "cycleDate=$cycleDate appDate=${dateProvider()} appTime=${clock()}",
+                    )
+                    return true
+                }
 
                 val transition = LiveStateReducer.reduceConfirmedClosedDay(
                     cycleDate = cycleDate,
