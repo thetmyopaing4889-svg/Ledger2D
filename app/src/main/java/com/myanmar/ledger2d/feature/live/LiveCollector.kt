@@ -55,6 +55,10 @@ internal const val SOURCE_FRESHNESS_MS = 5_000L
 internal const val SOURCE_TIME_SKEW_MS = 2_000L
 internal const val LIVE_REFERENCE_FETCH_INTERVAL_MS = 60_000L
 
+// Bounded cold-start recovery only; this does not reopen the normal after-hours polling window.
+internal const val LATE_COLD_START_RETRY_ATTEMPTS = 4
+internal const val LATE_COLD_START_RETRY_DELAY_MS = 5_000L
+
 internal class LiveCollector(
     private val scope: CoroutineScope,
     private val fetcher: suspend () -> LiveFeedData?,
@@ -1196,6 +1200,66 @@ internal class LiveCollector(
         return mergeReferenceIntoFeed(projected)
     }
 
+    private fun hasCompleteLateColdStartSnapshot(today: LocalDate): Boolean {
+        val data = _state.value as? LiveUiState.Data ?: return false
+        // Once Luke confirms a Closed Day, stop retrying ordinary LIVE requests.
+        if (data.closedDay || currentClosedDayForNotice(today)) return true
+
+        val feed = data.feed ?: return false
+        if (canonicalDate(feed.date) != today) return false
+        val finalsReady = isValidLive2d(feed.morning.result) && isValidLive2d(feed.evening.result)
+        val morningReferenceReady =
+            isValidLive2d(feed.modern930) && isValidLive2d(feed.internet930)
+        val afternoonReferenceReady =
+            isValidLive2d(feed.modern200) && isValidLive2d(feed.internet200)
+        return finalsReady && morningReferenceReady && afternoonReferenceReady
+    }
+
+    /**
+     * A late cold start normally does not poll after the final catch-up window.
+     * If its first Luke snapshot and history recovery both provide no usable
+     * current-day data, run a small bounded recovery sequence instead of leaving
+     * the UI permanently blank. Every request still goes through normal acceptance.
+     */
+    private fun launchLateColdStartRecoveryRetries(startupDate: LocalDate) {
+        scope.launch {
+            repeat(LATE_COLD_START_RETRY_ATTEMPTS) { index ->
+                delay(LATE_COLD_START_RETRY_DELAY_MS)
+
+                var now = clock()
+                if (
+                    dateProvider() != startupDate ||
+                    !isWorkingDay(startupDate) ||
+                    now.isBefore(EVENING_CATCHUP_END) ||
+                    closedHoldDate(startupDate, now) != null
+                ) {
+                    return@launch
+                }
+
+                // Never overlap a retry with the startup request still in flight.
+                requestCoordinator.awaitLiveRequests()
+
+                now = clock()
+                if (
+                    dateProvider() != startupDate ||
+                    !isWorkingDay(startupDate) ||
+                    now.isBefore(EVENING_CATCHUP_END) ||
+                    closedHoldDate(startupDate, now) != null
+                ) {
+                    return@launch
+                }
+                if (hasCompleteLateColdStartSnapshot(startupDate)) return@launch
+
+                LiveDiagnostics.warn(
+                    "Late cold-start data incomplete; retrying Luke " +
+                        "attempt=${index + 1}/$LATE_COLD_START_RETRY_ATTEMPTS date=$startupDate",
+                )
+                requestCoordinator.requestLiveNow()
+                if (hasCompleteLateColdStartSnapshot(startupDate)) return@launch
+            }
+        }
+    }
+
     fun start() {
         if (!started.compareAndSet(false, true)) return
 
@@ -1245,6 +1309,14 @@ internal class LiveCollector(
                 if (startupClosed == null) {
                     fetchCycle()
                 }
+            }
+
+            if (
+                startupClosed == null &&
+                isWorkingDay(startupToday) &&
+                !startupTime.isBefore(EVENING_CATCHUP_END)
+            ) {
+                launchLateColdStartRecoveryRetries(startupToday)
             }
 
             var lastSchedulerDate = startupToday
