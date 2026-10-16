@@ -89,7 +89,7 @@ internal object LiveApi {
                     internet200 = data.nonBlankString("internet_200"),
                     sourceTag = "LUKE",
                     serverTimeEpochMs = parseServerTimeEpoch(data.nonBlankString("current_time")),
-                    isCloseDay = data.optInt("is_close_day", 0) == 1,
+                    isCloseDay = parseCloseDayFlag(data.opt("is_close_day")),
                 )
                 LiveDiagnostics.info(
                     "Luke response status=$status startedAtMs=$startedAtWallMs " +
@@ -117,6 +117,13 @@ internal object LiveApi {
         ((System.nanoTime() - startedAtNanos) / 1_000_000L).coerceAtLeast(0L)
 
     private fun parseServerTimeEpoch(raw: String): Long? = runCatching { java.time.LocalDateTime.parse(raw.replace(' ', 'T')).atZone(java.time.ZoneId.of("Asia/Yangon")).toInstant().toEpochMilli() }.getOrNull()
+
+    internal fun parseCloseDayFlag(value: Any?): Boolean = when (value) {
+        is Boolean -> value
+        is Number -> value.toInt() != 0
+        is String -> value.trim().lowercase(java.util.Locale.ROOT) in setOf("1", "true", "yes", "y", "on")
+        else -> false
+    }
 
     /** Reads a string field, normalizing JSON null / blank / "null" to "--" (or a fallback). */
     private fun JSONObject.nonBlankString(name: String, fallback: String = PENDING): String {
