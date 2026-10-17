@@ -1,6 +1,7 @@
 package com.myanmar.ledger2d.feature.live
 
 import android.content.Context
+import com.myanmar.ledger2d.core.database.HistoryResultEntity
 import com.myanmar.ledger2d.core.database.LiveDailyResultPatch
 import com.myanmar.ledger2d.core.repository.HistorySync
 import android.os.SystemClock
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 private const val LIVE_HISTORY_RECOVERY_ATTEMPTS = 2
 private const val LIVE_HISTORY_RECOVERY_RETRY_DELAY_MS = 1_000L
+private const val CLOSED_DAY_HISTORY_PROBE_RETRY_MS = 60_000L
 
 internal fun monotonicMs(): Long = runCatching {
     SystemClock.elapsedRealtime()
@@ -39,6 +41,29 @@ internal suspend fun <T> runSuspendCatchingCancellable(block: suspend () -> T): 
         // Match the previous runCatching contract while allowing cancellation to propagate.
         null
     }
+
+/**
+ * Detect only an explicit current-day History closure marker. Missing or pending
+ * references alone are not enough to classify a date as closed.
+ */
+internal fun explicitHistoryClosedDayMarker(
+    row: HistoryResultEntity?,
+    expectedDate: LocalDate,
+): Boolean? {
+    val snapshot = row ?: return null
+    if (snapshot.date != expectedDate) return false
+
+    val bothSessionsOff =
+        snapshot.morning2d.equals("off", ignoreCase = true) &&
+            snapshot.evening2d.equals("off", ignoreCase = true)
+    val referencesAbsent = listOf(
+        snapshot.modern930,
+        snapshot.internet930,
+        snapshot.modern200,
+        snapshot.internet200,
+    ).all { it.isBlank() || it == "-" || it == "--" }
+    return bothSessionsOff && referencesAbsent
+}
 
 /**
  * Luke-only Phase 1:
@@ -67,6 +92,7 @@ internal class LiveCollector(
     private val cacheFeedSaver: (LiveFeedData) -> Unit = {},
     private val liveRoomSaver: (suspend (List<LiveDailyResultPatch>) -> Unit)? = null,
     private val closedDayFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
+    private val closedDayHistoryMarkerFetcher: (suspend (LocalDate) -> Boolean?)? = null,
     private val closedDayDateLoader: () -> LocalDate? = { null },
     private val closedDayDateSaver: (LocalDate) -> Unit = {},
     private val closedDayDateClearer: () -> Unit = {},
@@ -109,6 +135,11 @@ internal class LiveCollector(
      * to the user's Room ClosedDayRepository.
      */
     private var closedDayDate: LocalDate? = null
+    private val closedDayProcessingDates = mutableSetOf<LocalDate>()
+    private var closedDayHistoryProbeInFlightDate: LocalDate? = null
+    private var closedDayHistoryProbeCompletedDate: LocalDate? = null
+    private var closedDayHistoryProbeLastAttemptDate: LocalDate? = null
+    private var closedDayHistoryProbeLastAttemptElapsedMs: Long = Long.MIN_VALUE
     private var lastFinal: LiveHeroSnapshot? = null
     private var lastRoomSyncSignature: String? = null
 
@@ -176,6 +207,175 @@ internal class LiveCollector(
 
     private fun currentClosedDayForNotice(today: LocalDate): Boolean =
         synchronized(stateLock) { closedDayDate == today }
+
+    private fun isCurrentLukeClosedDayObservation(
+        feed: LiveFeedData,
+        today: LocalDate,
+        now: LocalTime,
+    ): Boolean =
+        feed.isCloseDay &&
+            isWorkingDay(today) &&
+            dailyCycleDate(today, now) == today &&
+            !now.isBefore(MORNING_REFERENCE) &&
+            isCurrentCycleReferenceObservation(feed, today)
+
+    private fun claimClosedDayProcessing(date: LocalDate): Boolean =
+        synchronized(stateLock) {
+            closedDayDate != date && closedDayProcessingDates.add(date)
+        }
+
+    private fun releaseClosedDayProcessing(date: LocalDate) {
+        synchronized(stateLock) {
+            closedDayProcessingDates.remove(date)
+        }
+    }
+
+    /**
+     * Resolve a Luke Closed Day independently from the reference pair and the
+     * provider clock boundary. The app clock chooses the cycle; the source date
+     * must still match that cycle.
+     */
+    private fun handleLukeClosedDayFromLive(feed: LiveFeedData): Boolean {
+        val today = dateProvider()
+        val now = clock()
+        if (!isCurrentLukeClosedDayObservation(feed, today, now)) return false
+
+        if (!claimClosedDayProcessing(today)) return true
+
+        scope.launch {
+            try {
+                confirmLukeClosedDay(feed, today)
+            } finally {
+                releaseClosedDayProcessing(today)
+            }
+        }
+        return true
+    }
+
+    private suspend fun confirmLukeClosedDay(feed: LiveFeedData, closedDate: LocalDate) {
+        val now = clock()
+        if (
+            dateProvider() != closedDate ||
+            !isWorkingDay(closedDate) ||
+            now.isBefore(MORNING_REFERENCE) ||
+            dailyCycleDate(closedDate, now) != closedDate
+        ) {
+            return
+        }
+
+        val holdDate = previousWorkingDay(closedDate)
+        val heldFeed = runSuspendCatchingCancellable {
+            closedDayFeedFetcher?.invoke(holdDate)
+        }?.takeIf { canonicalDate(it.date) == holdDate }
+
+        applyReferenceResult(
+            LiveReferenceResultEvent(
+                isMorning = true,
+                cycleDate = closedDate,
+                feed = feed,
+                closedDayObservation = true,
+                heldFeed = heldFeed,
+            )
+        )
+    }
+
+    /**
+     * A few dates have Luke is_close_day=false while History explicitly says
+     * both sessions are off and all reference fields are absent. Check that
+     * narrowly-defined marker once the 09:30 cycle begins; retry only on errors.
+     */
+    private fun maybeProbeCurrentDayClosedDayHistory(today: LocalDate, now: LocalTime) {
+        if (
+            !isWorkingDay(today) ||
+            now.isBefore(MORNING_REFERENCE) ||
+            dailyCycleDate(today, now) != today ||
+            currentClosedDayForNotice(today)
+        ) {
+            return
+        }
+
+        val elapsed = monotonicMs()
+        val shouldStart = synchronized(stateLock) {
+            when {
+                closedDayDate == today ||
+                    today in closedDayProcessingDates ||
+                    closedDayHistoryProbeInFlightDate == today ||
+                    closedDayHistoryProbeCompletedDate == today -> false
+                closedDayHistoryProbeLastAttemptDate == today &&
+                    elapsed - closedDayHistoryProbeLastAttemptElapsedMs < CLOSED_DAY_HISTORY_PROBE_RETRY_MS -> false
+                else -> {
+                    closedDayHistoryProbeInFlightDate = today
+                    closedDayHistoryProbeLastAttemptDate = today
+                    closedDayHistoryProbeLastAttemptElapsedMs = elapsed
+                    true
+                }
+            }
+        }
+        if (!shouldStart) return
+
+        scope.launch {
+            try {
+                val marker = runSuspendCatchingCancellable {
+                    closedDayHistoryMarkerFetcher?.invoke(today)
+                }
+                if (marker != null) {
+                    synchronized(stateLock) {
+                        closedDayHistoryProbeCompletedDate = today
+                    }
+                }
+                if (marker != true) return@launch
+
+                val currentTime = clock()
+                if (
+                    dateProvider() != today ||
+                    !isWorkingDay(today) ||
+                    currentTime.isBefore(MORNING_REFERENCE) ||
+                    dailyCycleDate(today, currentTime) != today
+                ) {
+                    return@launch
+                }
+                if (!claimClosedDayProcessing(today)) return@launch
+
+                try {
+                    val holdDate = previousWorkingDay(today)
+                    val heldFeed = runSuspendCatchingCancellable {
+                        closedDayFeedFetcher?.invoke(holdDate)
+                    }?.takeIf { canonicalDate(it.date) == holdDate }
+
+                    if (heldFeed == null) {
+                        synchronized(stateLock) {
+                            if (closedDayHistoryProbeCompletedDate == today) {
+                                closedDayHistoryProbeCompletedDate = null
+                            }
+                        }
+                        return@launch
+                    }
+
+                    LiveDiagnostics.warn(
+                        "Closed Day confirmed from explicit History off/off marker date=" +
+                            today + " holdDate=" + holdDate,
+                    )
+                    applyReferenceResult(
+                        LiveReferenceResultEvent(
+                            isMorning = true,
+                            cycleDate = today,
+                            feed = null,
+                            closedDayObservation = true,
+                            heldFeed = heldFeed,
+                        )
+                    )
+                } finally {
+                    releaseClosedDayProcessing(today)
+                }
+            } finally {
+                synchronized(stateLock) {
+                    if (closedDayHistoryProbeInFlightDate == today) {
+                        closedDayHistoryProbeInFlightDate = null
+                    }
+                }
+            }
+        }
+    }
 
     private fun isLiveDisplayableFeed(
         feed: LiveFeedData,
@@ -299,6 +499,10 @@ internal class LiveCollector(
         val feed = event.feed
         val startedAt = event.requestStartedAtElapsedMs
         val finishedAt = event.requestFinishedAtElapsedMs
+
+        // A confirmed Luke Closed Day takes precedence over normal LIVE reduction.
+        // In particular, stale post-cutoff LIVE values must not replace the held result.
+        if (handleLukeClosedDayFromLive(feed)) return
 
         // Room has its own current-day/checkpoint policy. Run it before UI
         // display/ordering rejection so eligible early Luke fields are not lost.
@@ -656,21 +860,21 @@ internal class LiveCollector(
         // the reference reducer accepts them for the visible UI state.
         if (feed != null) syncLiveRoom(feed, dateProvider(), clock())
 
+        val today = dateProvider()
+        val now = clock()
         val closedSnapshot = isMorning &&
             feed != null &&
-            feed.isCloseDay &&
-            isCurrentCycleReferenceObservation(feed, cycleDate) &&
-            isReferenceObservationAtOrAfterBoundary(feed, isMorning = true)
+            cycleDate == today &&
+            isCurrentLukeClosedDayObservation(feed, today, now)
 
-        // Keep the previous-working-day lookup outside the state lock. The
-        // completed I/O is carried with the reference result event.
-        val heldFeed = if (closedSnapshot) {
-            val holdDate = previousWorkingDay(cycleDate)
-            runSuspendCatchingCancellable {
-                closedDayFeedFetcher?.invoke(holdDate)
+        if (closedSnapshot) {
+            if (!claimClosedDayProcessing(cycleDate)) return true
+            return try {
+                confirmLukeClosedDay(feed!!, cycleDate)
+                true
+            } finally {
+                releaseClosedDayProcessing(cycleDate)
             }
-        } else {
-            null
         }
 
         return applyReferenceResult(
@@ -678,8 +882,8 @@ internal class LiveCollector(
                 isMorning = isMorning,
                 cycleDate = cycleDate,
                 feed = feed,
-                closedDayObservation = closedSnapshot,
-                heldFeed = heldFeed,
+                closedDayObservation = false,
+                heldFeed = null,
             )
         )
     }
@@ -721,7 +925,16 @@ internal class LiveCollector(
 
         if (closedSnapshot) {
             synchronized(stateLock) {
-                if (!referenceRetryWindowOpen(cycleDate, dateProvider(), clock())) return true
+                val acceptedDate = dateProvider()
+                val acceptedTime = clock()
+                // Confirmed Closed Day remains valid after the reference retry window,
+                // but never after the app has entered a different cycle.
+                if (
+                    cycleDate != acceptedDate ||
+                    !isWorkingDay(acceptedDate) ||
+                    acceptedTime.isBefore(MORNING_REFERENCE) ||
+                    dailyCycleDate(acceptedDate, acceptedTime) != cycleDate
+                ) return true
 
                 val transition = LiveStateReducer.reduceConfirmedClosedDay(
                     cycleDate = cycleDate,
@@ -1204,6 +1417,7 @@ internal class LiveCollector(
                 sideEffects.drain()
 
                 maybeReferenceFetch(t)
+                maybeProbeCurrentDayClosedDayHistory(currentDate, t)
 
                 if (shouldPoll(t)) {
                     launchRequest()
@@ -1250,6 +1464,11 @@ internal class LiveCollector(
                         HistorySync.fetch2DHistory(date, date)
                             .firstOrNull()
                             ?.let(::historyRowToFeed)
+                    },
+                    closedDayHistoryMarkerFetcher = { date ->
+                        HistorySync.fetch2DHistory(date, date)
+                            .firstOrNull()
+                            ?.let { row -> explicitHistoryClosedDayMarker(row, date) }
                     },
                     closedDayDateLoader = {
                         LiveClosedDayStore.load(context)
