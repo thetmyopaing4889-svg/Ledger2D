@@ -565,6 +565,153 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+
+    @Test fun late_reference_zero_during_closed_day_confirmation_cannot_mutate_room_or_release_hold() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val now = LocalTime.of(14, 5)
+        val lateReferenceGate = CompletableDeferred<LiveFeedData?>()
+        val heldFeedGate = CompletableDeferred<LiveFeedData?>()
+        var lukeCalls = 0
+        var roomWriteCalls = 0
+
+        val closedResponse = feed(
+            value = "--",
+            time = "09:29:54",
+            date = wednesday,
+            isCloseDay = true,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val lateNonClosedResponse = feed(
+            value = "13",
+            time = "14:04:50",
+            date = wednesday,
+            isCloseDay = false,
+            morning = finalMorning("41"),
+            evening = finalEvening("52"),
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "33",
+            internet200 = "44",
+        )
+        val heldRow = historyRow(
+            date = tuesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                when (lukeCalls++) {
+                    0, 1 -> lateReferenceGate.await()
+                    2 -> closedResponse
+                    else -> null
+                }
+            },
+            clock = { now },
+            dateProvider = { wednesday },
+            closedDayFeedFetcher = { date ->
+                assertEquals(tuesday, date)
+                heldFeedGate.await()
+            },
+            liveRoomSaver = { patches ->
+                if (patches.isNotEmpty()) roomWriteCalls++
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        // The LIVE Closed Day confirmation is waiting for yesterday's History row,
+        // while morning/afternoon Reference requests remain in flight.
+        assertTrue("Expected concurrent LIVE and reference requests", lukeCalls >= 3)
+
+        lateReferenceGate.complete(lateNonClosedResponse)
+        runCurrent()
+
+        // A same-day is_close_day=0 response must be rejected before it can
+        // write today's reference checkpoints to Room during closure confirmation.
+        assertEquals(0, roomWriteCalls)
+
+        heldFeedGate.complete(historyRowToFeed(heldRow))
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals(0, roomWriteCalls)
+
+        scope.cancel()
+    }
+
+    @Test fun next_working_day_clears_prior_closed_day_then_accepts_new_close_signal() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val thursday = wednesday.plusDays(1)
+        var clearCalls = 0
+        val savedClosedDates = mutableListOf<LocalDate>()
+        val closedResponse = feed(
+            value = "--",
+            time = "09:29:54",
+            date = thursday,
+            isCloseDay = true,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val heldRow = historyRow(
+            date = wednesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { closedResponse },
+            clock = { LocalTime.of(9, 30, 2) },
+            dateProvider = { thursday },
+            closedDayFeedFetcher = { date ->
+                assertEquals(wednesday, date)
+                historyRowToFeed(heldRow)
+            },
+            closedDayDateLoader = { wednesday },
+            closedDayDateSaver = { date -> savedClosedDates += date },
+            closedDayDateClearer = { clearCalls++ },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("Expired prior-cycle preference should be cleared once", 1, clearCalls)
+        assertEquals(listOf(thursday), savedClosedDates)
+        assertTrue(state.closedDay)
+        assertEquals(wednesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+
+        scope.cancel()
+    }
+
     @Test fun fresh_install_evening_uses_normal_luke_response_when_close_flag_is_zero() = runTest {
         val wednesday = tuesday.plusDays(1)
         val response = feed(
