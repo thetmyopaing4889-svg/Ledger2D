@@ -485,21 +485,18 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
-    @Test fun history_off_marker_holds_previous_working_day_when_luke_close_flag_is_false() = runTest {
+    @Test fun confirmed_closed_day_ignores_later_zero_and_preserves_held_results() = runTest {
         val wednesday = tuesday.plusDays(1)
-        val offRow = historyRow(
+        var now = LocalTime.of(9, 30, 2)
+        var response = feed(
+            value = "--",
+            time = "09:29:54",
             date = wednesday,
-            morning = "off",
-            evening = "off",
-            modern930 = "",
-            internet930 = "",
-            modern200 = "",
-            internet200 = "",
-        ).copy(
-            morningSet = "",
-            morningValue = "",
-            eveningSet = "",
-            eveningValue = "",
+            isCloseDay = true,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
         )
         val heldRow = historyRow(
             date = tuesday,
@@ -510,40 +507,53 @@ class LiveCollectorTest {
             modern200 = "98",
             internet200 = "78",
         )
-        assertEquals(true, explicitHistoryClosedDayMarker(offRow, wednesday))
-
-        val lukeResponse = feed(
-            value = "13",
-            time = "09:30:02",
-            date = wednesday,
-            isCloseDay = false,
-            modern930 = "--",
-            internet930 = "--",
-            modern200 = "--",
-            internet200 = "--",
-        )
         val scope = CoroutineScope(
             backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
         )
         val collector = LiveCollector(
             scope = scope,
-            fetcher = { lukeResponse },
-            clock = { LocalTime.of(9, 30) },
+            fetcher = { response },
+            clock = { now },
             dateProvider = { wednesday },
             closedDayFeedFetcher = { date ->
                 assertEquals(tuesday, date)
                 historyRowToFeed(heldRow)
             },
-            closedDayHistoryMarkerFetcher = { date ->
-                assertEquals(wednesday, date)
-                explicitHistoryClosedDayMarker(offRow, date)
+            historicalFinalFetcher = { date ->
+                if (date == tuesday) historyRowToFinal(heldRow) else null
             },
         )
 
         collector.start()
         runCurrent()
 
-        val state = collector.state.value as LiveUiState.Data
+        var state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+
+        // Simulate a later/in-flight Luke response flipping is_close_day back to 0
+        // while carrying current-day fields. It must not replace the held feed.
+        now = LocalTime.of(16, 5, 0)
+        response = feed(
+            value = "13",
+            time = "16:05:02",
+            date = wednesday,
+            isCloseDay = false,
+            morning = finalMorning("41"),
+            evening = finalEvening("52"),
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "33",
+            internet200 = "44",
+        )
+        collector.fetchCycle()
+        runCurrent()
+
+        state = collector.state.value as LiveUiState.Data
         assertTrue(state.closedDay)
         assertEquals(tuesday.toString(), state.feed?.date)
         assertEquals("36", state.feed?.morning?.result)
@@ -551,46 +561,38 @@ class LiveCollectorTest {
         assertEquals("80", state.feed?.modern930)
         assertEquals("98", state.feed?.modern200)
         assertEquals("57", state.hero?.result)
-        assertFalse(state.heroLive)
 
         scope.cancel()
     }
 
-    @Test fun missing_reference_values_without_history_off_markers_do_not_confirm_closed_day() = runTest {
+    @Test fun fresh_install_evening_uses_normal_luke_response_when_close_flag_is_zero() = runTest {
         val wednesday = tuesday.plusDays(1)
-        val normalRow = historyRow(
-            date = wednesday,
-            morning = "--",
-            evening = "--",
-            modern930 = "",
-            internet930 = "",
-            modern200 = "",
-            internet200 = "",
-        )
-        assertEquals(false, explicitHistoryClosedDayMarker(normalRow, wednesday))
-
-        val lukeResponse = feed(
+        val response = feed(
             value = "13",
-            time = "09:30:02",
+            time = "16:05:02",
             date = wednesday,
             isCloseDay = false,
-            modern930 = "--",
-            internet930 = "--",
-            modern200 = "--",
-            internet200 = "--",
+            morning = finalMorning("36"),
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
         )
+        var previousDayFetches = 0
         val scope = CoroutineScope(
             backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
         )
         val collector = LiveCollector(
             scope = scope,
-            fetcher = { lukeResponse },
-            clock = { LocalTime.of(9, 30) },
+            fetcher = { response },
+            clock = { LocalTime.of(16, 5) },
             dateProvider = { wednesday },
-            closedDayHistoryMarkerFetcher = { date ->
-                assertEquals(wednesday, date)
-                explicitHistoryClosedDayMarker(normalRow, date)
+            closedDayFeedFetcher = {
+                previousDayFetches++
+                null
             },
+            historicalFinalFetcher = { null },
+            historicalFeedFetcher = { null },
         )
 
         collector.start()
@@ -598,6 +600,13 @@ class LiveCollectorTest {
 
         val state = collector.state.value as LiveUiState.Data
         assertFalse(state.closedDay)
+        assertEquals(wednesday.toString(), state.feed?.date)
+        assertEquals("13", state.feed?.live)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("--", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals(0, previousDayFetches)
 
         scope.cancel()
     }
