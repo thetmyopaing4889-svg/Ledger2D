@@ -386,12 +386,13 @@ class LiveCollectorTest {
     @Test fun luke_closed_day_holds_previous_working_day_and_exposes_notice_then_expires_next_day() = runTest {
         val wednesday = tuesday.plusDays(1)
         val thursday = wednesday.plusDays(1)
-        var now = LocalTime.of(9, 30)
+        // The app has crossed 09:30 even though Luke's provider timestamp lags.
+        var now = LocalTime.of(9, 30, 2)
         var today = wednesday
         var lukeCalls = 0
         var lukeResponse = feed(
             value = "--",
-            time = "09:30:00",
+            time = "09:29:54",
             date = wednesday,
             isCloseDay = true,
             modern930 = "--",
@@ -480,6 +481,123 @@ class LiveCollectorTest {
         assertEquals("11", state.feed?.modern930)
         assertEquals("22", state.feed?.internet930)
         assertEquals("--", state.feed?.morning?.result)
+
+        scope.cancel()
+    }
+
+    @Test fun history_off_marker_holds_previous_working_day_when_luke_close_flag_is_false() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val offRow = historyRow(
+            date = wednesday,
+            morning = "off",
+            evening = "off",
+            modern930 = "",
+            internet930 = "",
+            modern200 = "",
+            internet200 = "",
+        ).copy(
+            morningSet = "",
+            morningValue = "",
+            eveningSet = "",
+            eveningValue = "",
+        )
+        val heldRow = historyRow(
+            date = tuesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        assertEquals(true, explicitHistoryClosedDayMarker(offRow, wednesday))
+
+        val lukeResponse = feed(
+            value = "13",
+            time = "09:30:02",
+            date = wednesday,
+            isCloseDay = false,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { lukeResponse },
+            clock = { LocalTime.of(9, 30) },
+            dateProvider = { wednesday },
+            closedDayFeedFetcher = { date ->
+                assertEquals(tuesday, date)
+                historyRowToFeed(heldRow)
+            },
+            closedDayHistoryMarkerFetcher = { date ->
+                assertEquals(wednesday, date)
+                explicitHistoryClosedDayMarker(offRow, date)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.heroLive)
+
+        scope.cancel()
+    }
+
+    @Test fun missing_reference_values_without_history_off_markers_do_not_confirm_closed_day() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val normalRow = historyRow(
+            date = wednesday,
+            morning = "--",
+            evening = "--",
+            modern930 = "",
+            internet930 = "",
+            modern200 = "",
+            internet200 = "",
+        )
+        assertEquals(false, explicitHistoryClosedDayMarker(normalRow, wednesday))
+
+        val lukeResponse = feed(
+            value = "13",
+            time = "09:30:02",
+            date = wednesday,
+            isCloseDay = false,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = { lukeResponse },
+            clock = { LocalTime.of(9, 30) },
+            dateProvider = { wednesday },
+            closedDayHistoryMarkerFetcher = { date ->
+                assertEquals(wednesday, date)
+                explicitHistoryClosedDayMarker(normalRow, date)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertFalse(state.closedDay)
 
         scope.cancel()
     }
