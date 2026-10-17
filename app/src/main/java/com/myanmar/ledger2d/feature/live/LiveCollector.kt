@@ -745,16 +745,34 @@ internal class LiveCollector(
         cycleDate: LocalDate,
         feed: LiveFeedData?,
     ): Boolean {
-        // Dedicated reference fetches also feed Room independently of whether
-        // the reference reducer accepts them for the visible UI state.
-        if (feed != null) syncLiveRoom(feed, dateProvider(), clock())
-
         val today = dateProvider()
         val now = clock()
         val closedSnapshot = isMorning &&
             feed != null &&
             cycleDate == today &&
             isCurrentLukeClosedDayObservation(feed, today, now)
+
+        // Dedicated reference requests can also finish after the LIVE request
+        // confirmed a Closed Day. Ignore a later false/non-closed observation
+        // (or a response arriving while confirmation is in progress), so the
+        // reference reducer cannot undo the held results through this side path.
+        val closureInProgress = synchronized(stateLock) {
+            today in closedDayProcessingDates
+        }
+        if (!closedSnapshot &&
+            (closureInProgress || closedHoldDate(today, now) != null)
+        ) {
+            LiveDiagnostics.info(
+                "Reference response ignored during confirmed/pending Closed Day hold " +
+                    "cycleDate=$cycleDate appDate=$today appTime=$now " +
+                    "feedDate=${feed?.date} closeDay=${feed?.isCloseDay}",
+            )
+            return true
+        }
+
+        // Dedicated reference fetches also feed Room independently of whether
+        // the reference reducer accepts them for the visible UI state.
+        if (feed != null) syncLiveRoom(feed, today, now)
 
         if (closedSnapshot) {
             if (!claimClosedDayProcessing(cycleDate)) return true
