@@ -712,6 +712,85 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+
+    @Test fun afternoon_reference_can_confirm_closed_day_when_live_flag_is_zero() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val morningResponse = feed(
+            value = "--",
+            time = "14:04:50",
+            date = wednesday,
+            isCloseDay = false,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val afternoonClosedResponse = feed(
+            value = "--",
+            time = "14:04:50",
+            date = wednesday,
+            isCloseDay = true,
+            modern930 = "--",
+            internet930 = "--",
+            modern200 = "--",
+            internet200 = "--",
+        )
+        val laterLiveNonClosedResponse = feed(
+            value = "13",
+            time = "14:05:02",
+            date = wednesday,
+            isCloseDay = false,
+            morning = finalMorning("41"),
+            evening = finalEvening("52"),
+            modern930 = "11",
+            internet930 = "22",
+            modern200 = "33",
+            internet200 = "44",
+        )
+        var requestCount = 0
+        val heldRow = historyRow(
+            date = tuesday,
+            morning = "36",
+            evening = "57",
+            modern930 = "80",
+            internet930 = "33",
+            modern200 = "98",
+            internet200 = "78",
+        )
+        val scope = CoroutineScope(
+            backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)
+        )
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                when (requestCount++) {
+                    0 -> morningResponse
+                    1 -> afternoonClosedResponse
+                    else -> laterLiveNonClosedResponse
+                }
+            },
+            clock = { LocalTime.of(14, 5) },
+            dateProvider = { wednesday },
+            closedDayFeedFetcher = { date ->
+                assertEquals(tuesday, date)
+                historyRowToFeed(heldRow)
+            },
+        )
+
+        collector.start()
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals(tuesday.toString(), state.feed?.date)
+        assertEquals("36", state.feed?.morning?.result)
+        assertEquals("57", state.feed?.evening?.result)
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("98", state.feed?.modern200)
+
+        scope.cancel()
+    }
+
     @Test fun fresh_install_evening_uses_normal_luke_response_when_close_flag_is_zero() = runTest {
         val wednesday = tuesday.plusDays(1)
         val response = feed(

@@ -747,7 +747,8 @@ internal class LiveCollector(
     ): Boolean {
         val today = dateProvider()
         val now = clock()
-        val closedSnapshot = isMorning &&
+        // Either current-cycle reference route may carry Luke's explicit Closed Day signal.
+        val closedSnapshot =
             feed != null &&
             cycleDate == today &&
             isCurrentLukeClosedDayObservation(feed, today, now)
