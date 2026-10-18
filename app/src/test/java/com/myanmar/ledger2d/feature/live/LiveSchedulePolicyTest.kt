@@ -47,6 +47,26 @@ class LiveSchedulePolicyTest {
     }
 
     @Test
+    fun live_market_availability_treats_closed_day_like_weekend() {
+        val friday = LocalDate.of(2026, 10, 2)
+        val saturday = friday.plusDays(1)
+        val monday = friday.plusDays(3)
+        val closedTuesday = monday.plusDays(1)
+        val wednesday = closedTuesday.plusDays(1)
+
+        // Ordinary weekends are unavailable even without a stored Closed Day.
+        assertFalse(isLiveMarketOpenAt(saturday, LocalTime.of(12, 0), null))
+
+        // A confirmed weekday Closed Day is treated the same as unavailable market time.
+        assertFalse(isLiveMarketOpenAt(closedTuesday, LocalTime.of(10, 0), closedTuesday))
+
+        // The prior-day hold persists overnight, then the regular 09:30 cycle boundary reopens LIVE.
+        assertFalse(isLiveMarketOpenAt(wednesday, LocalTime.of(9, 29, 59), closedTuesday))
+        assertTrue(isLiveMarketOpenAt(wednesday, LocalTime.of(9, 30), closedTuesday))
+        assertTrue(isLiveMarketOpenAt(wednesday, LocalTime.of(9, 30), null))
+    }
+
+    @Test
     fun reference_retry_window_stays_open_on_cycle_day_except_friday_after_evening_close() {
         val friday = LocalDate.of(2026, 10, 2)
         val monday = friday.plusDays(3)

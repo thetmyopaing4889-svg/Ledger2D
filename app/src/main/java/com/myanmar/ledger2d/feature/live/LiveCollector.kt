@@ -147,6 +147,19 @@ internal class LiveCollector(
             )
         }
 
+    /**
+     * One LIVE-only availability decision shared by polling, reference scheduling,
+     * and Room ingestion. Does not modify the global working-day rule.
+     */
+    private fun isLiveMarketOpen(today: LocalDate, now: LocalTime): Boolean =
+        synchronized(stateLock) {
+            isLiveMarketOpenAt(
+                today = today,
+                now = now,
+                closedDayDate = closedDayDate,
+            )
+        }
+
     private fun isReferenceComplete(isMorning: Boolean, cycleDate: LocalDate): Boolean =
         synchronized(stateLock) {
             if (isMorning) reference930CompleteDate == cycleDate
@@ -345,10 +358,9 @@ internal class LiveCollector(
         val now = clock()
         val cycleDate = dailyCycleDate(today, now)
         val inMorningReferenceWindow =
-            isWorkingDay(today) &&
+            isLiveMarketOpen(today, now) &&
                 !now.isBefore(MORNING_REFERENCE) &&
-                now.isBefore(MORNING_LIVE) &&
-                closedHoldDate(today, now) == null
+                now.isBefore(MORNING_LIVE)
 
         if (
             inMorningReferenceWindow &&
@@ -497,9 +509,8 @@ internal class LiveCollector(
         val saver = liveRoomSaver ?: return
         if (
             today != dateProvider() ||
-            !isWorkingDay(today) ||
-            feed.isCloseDay ||
-            closedHoldDate(today, now) != null
+            !isLiveMarketOpen(today, now) ||
+            feed.isCloseDay
         ) {
             LiveDiagnostics.info(
                 "Room sync skipped appDate=$today feedDate=${feed.date} " +
@@ -946,8 +957,7 @@ internal class LiveCollector(
         val today = dateProvider()
         clearExpiredClosedDayBeforeMorningBoundary(today, t)
 
-        if (closedHoldDate(today, t) != null) return
-        if (!isWorkingDay(today)) return
+        if (!isLiveMarketOpen(today, t)) return
 
         val cycleDate = dailyCycleDate(today, t)
 

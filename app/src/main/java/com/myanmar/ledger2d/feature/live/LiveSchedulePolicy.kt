@@ -103,6 +103,23 @@ internal fun liveClosedDayHoldDate(
     return null
 }
 
+/**
+ * Shared LIVE-only availability rule: a weekend and a Luke-confirmed Closed Day
+ * both make today's trading unavailable. The persisted closed date only affects
+ * LIVE; it does not redefine the app-wide working-day calendar.
+ */
+internal fun isLiveMarketOpenAt(
+    today: LocalDate,
+    now: LocalTime,
+    closedDayDate: LocalDate?,
+): Boolean =
+    isWorkingDay(today) &&
+        liveClosedDayHoldDate(
+            closedDate = closedDayDate,
+            today = today,
+            now = now,
+        ) == null
+
 internal fun dailyCycleDate(
     date: LocalDate = currentYangonDate(),
     time: LocalTime = LocalTime.now(YANGON),
