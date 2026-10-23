@@ -15,6 +15,14 @@ object MoneyMath {
 }
 class CommissionCalculator { fun calculate(totalBet: Long, rateBasisPoints: Int) = MoneyMath.percentage(totalBet, rateBasisPoints) }
 class PayoutCalculator { fun calculate(winningStake: Long, agentRate: Long) = MoneyMath.multiply(winningStake, agentRate) }
+/** Each rated stake retains the rate from its original bet entry. */
+data class RatedStake(val amount: Long, val payoutRate: Long)
+class SnapshotPayoutCalculator {
+    fun calculate(winningLines: Iterable<RatedStake>): Long =
+        winningLines.fold(0L) { total, line ->
+            Math.addExact(total, MoneyMath.multiply(line.amount, line.payoutRate))
+        }
+}
 class ProfitLossCalculator { fun calculate(totalBet: Long, payout: Long): Long = Math.subtractExact(totalBet, payout) }
 class BetAggregator {
     fun byDigit(bets: Iterable<ExpandedBet>): Map<String, Long> { val result = sortedMapOf<String, Long>(); bets.forEach { require(it.amount in 1..MoneyMath.MaxSafeAmount); result[it.digit] = Math.addExact(result[it.digit] ?: 0, it.amount).also { total -> require(total <= MoneyMath.MaxSafeAmount) } }; return result }
@@ -37,6 +45,12 @@ class LimitValidator {
 data class DrawCalculation(val totalBet: Long, val distinctSlots: Int, val winningStake: Long, val payout: Long, val commission: Long, val profitLoss: Long) {
     /** Operational net after customer payout and commission returned by the agent. */
     val netSettlement: Long get() = Math.addExact(profitLoss, commission)
+}
+/** Keep reported totals while honoring each bet's historical payout and commission. */
+fun DrawCalculation.withSnapshotFinancials(savedPayout: Long, savedCommission: Long): DrawCalculation {
+    require(savedPayout >= 0 && savedCommission >= 0)
+    return copy(payout = savedPayout, commission = savedCommission,
+        profitLoss = Math.subtractExact(totalBet, savedPayout))
 }
 class ReportCalculator(private val commission: CommissionCalculator = CommissionCalculator(), private val payout: PayoutCalculator = PayoutCalculator(), private val profitLoss: ProfitLossCalculator = ProfitLossCalculator()) {
     fun calculate(amountsByDigit: Map<String, Long>, winningDigit: String?, agentRate: Long, commissionBasisPoints: Int): DrawCalculation {

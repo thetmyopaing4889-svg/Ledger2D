@@ -112,7 +112,6 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         viewModelScope.launch {
             val old=container.customers.get(customerId) ?: return@launch
             container.customers.save(old.copy(commissionRateBasisPoints=bp,updatedAt=System.currentTimeMillis()))
-            container.bets.recalculateCustomerCommission(customerId,bp)
             changed(); onDone()
         }
     }
@@ -163,15 +162,59 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun removeClosedDay(value:ClosedDayEntity){ viewModelScope.launch { runCatching { container.closedDays.remove(value) }.onSuccess { container.audit.record("CLOSED_DAY",value.id,"DELETE",value.date.toString()); changed() } } }
     fun settleAgent(agentId:Long,date:LocalDate,session:DrawSession){ viewModelScope.launch { if(container.winners.get(date,session)==null)return@launch; if(container.settlements.get(agentId,date,session)!=null)return@launch; val report=agentReport(agentId,date,session,true); val id=container.settlements.settle(SettlementEntity(agentId=agentId,date=date,session=session,totalBet=report.calculation.totalBet,payout=report.calculation.payout,commission=report.calculation.commission,netSettlement=report.calculation.netSettlement,settledAt=System.currentTimeMillis())); container.audit.record("SETTLEMENT",id,"CONFIRM","$date/${session.name}"); changed() } }
     suspend fun isSettled(agentId:Long,date:LocalDate,session:DrawSession):Boolean = container.settlements.get(agentId,date,session) != null
-    suspend fun customerReport(customerId:Long,date:LocalDate,session:DrawSession,after:Boolean = true):DrawReport { val customer=container.customers.get(customerId) ?: return DrawReport(DrawCalculation(0,0,0,0,0,0),null,!after,after); val agent=container.agents.get(customer.agentId); val winner=if(after) container.winners.get(date,session) else null; val totals=container.bets.getCustomerTotals(customerId,date,session); val base=ReportCalculator().calculate(totals,winner?.digit,agent?.rate?:0,customer.commissionRateBasisPoints); val calc=base.copy(commission=container.bets.getCustomerCommission(customerId,date,session)); return DrawReport(calc,winner?.digit,!after||winner!=null,after) }
-    suspend fun aggregateCustomerReport(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean = true):DrawReport { val agent=container.agents.get(agentId); val winner=if(after) container.winners.get(date,session) else null; val totals=container.bets.getAgentTotals(agentId,date,session); val base=ReportCalculator().calculate(totals,winner?.digit,agent?.rate?:0,0); val calc=base.copy(commission=container.bets.getAgentCommission(agentId,date,session)); return DrawReport(calc,winner?.digit,!after||winner!=null,after) }
-    suspend fun agentReport(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean = true):DrawReport { val winner=if(after) container.winners.get(date,session) else null; val totals=container.bets.getAgentTotals(agentId,date,session); val agent=container.agents.get(agentId); val base=ReportCalculator().calculate(totals,winner?.digit,agent?.rate?:0,0); val calc=base.copy(commission=container.bets.getAgentCommission(agentId,date,session)); return DrawReport(calc,winner?.digit,!after||winner!=null,after) }
+    private suspend fun customerFinancials(customerId:Long,date:LocalDate,session:DrawSession,winningDigit:String?):DrawCalculation {
+        val totals=container.bets.getCustomerTotals(customerId,date,session)
+        val base=ReportCalculator().calculate(totals,winningDigit,0,0)
+        val savedPayout=winningDigit?.let { container.bets.getCustomerPayout(customerId,date,session,it) } ?: 0L
+        val savedCommission=container.bets.getCustomerCommission(customerId,date,session)
+        return base.withSnapshotFinancials(savedPayout,savedCommission)
+    }
+    private suspend fun agentFinancials(agentId:Long,date:LocalDate,session:DrawSession,winningDigit:String?):DrawCalculation {
+        val totals=container.bets.getAgentTotals(agentId,date,session)
+        val base=ReportCalculator().calculate(totals,winningDigit,0,0)
+        val savedPayout=winningDigit?.let { container.bets.getAgentPayout(agentId,date,session,it) } ?: 0L
+        val savedCommission=container.bets.getAgentCommission(agentId,date,session)
+        return base.withSnapshotFinancials(savedPayout,savedCommission)
+    }
+    suspend fun customerReport(customerId:Long,date:LocalDate,session:DrawSession,after:Boolean = true):DrawReport {
+        val customer=container.customers.get(customerId) ?: return DrawReport(DrawCalculation(0,0,0,0,0,0),null,!after,after)
+        val winner=if(after) container.winners.get(date,session) else null
+        return DrawReport(customerFinancials(customer.id,date,session,winner?.digit),winner?.digit,!after||winner!=null,after)
+    }
+    suspend fun aggregateCustomerReport(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean = true):DrawReport {
+        val winner=if(after) container.winners.get(date,session) else null
+        return DrawReport(agentFinancials(agentId,date,session,winner?.digit),winner?.digit,!after||winner!=null,after)
+    }
+    suspend fun agentReport(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean = true):DrawReport {
+        val winner=if(after) container.winners.get(date,session) else null
+        return DrawReport(agentFinancials(agentId,date,session,winner?.digit),winner?.digit,!after||winner!=null,after)
+    }
     suspend fun allAgentSummaries(date:LocalDate,session:DrawSession,after:Boolean):List<ScopeSummary> = agents.value.mapNotNull { agent -> val report=agentReport(agent.id,date,session,after); if (!report.winnerAvailable || (report.calculation.totalBet==0L && after)) null else ScopeSummary(agent.id,agent.name,report.calculation.totalBet,report.calculation.winningStake,report.calculation.payout,report.calculation.profitLoss,report.calculation.commission) }
     suspend fun allCustomerSummaries(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean):List<ScopeSummary> = container.customers.getForAgent(agentId).mapNotNull { customer -> val report=customerReport(customer.id,date,session,after); if (!report.winnerAvailable || (report.calculation.totalBet==0L && after)) null else ScopeSummary(customer.id,customer.name,report.calculation.totalBet,report.calculation.winningStake,report.calculation.payout,report.calculation.profitLoss,report.calculation.commission) }
     suspend fun aggregateAgentSummary(date:LocalDate,session:DrawSession,after:Boolean):ScopeSummary? { val reports=agents.value.map { agentReport(it.id,date,session,after) }.filter { it.winnerAvailable && (it.calculation.totalBet>0L || !after) }; if (reports.isEmpty()) return null; return ScopeSummary(-1L,"ဒိုင်အားလုံး",reports.sumOf { it.calculation.totalBet },reports.sumOf { it.calculation.winningStake },reports.sumOf { it.calculation.payout },reports.sumOf { it.calculation.profitLoss },reports.sumOf { it.calculation.commission }) }
     suspend fun aggregateCustomerSummary(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean):ScopeSummary? { val reports=container.customers.getForAgent(agentId).map { customerReport(it.id,date,session,after) }.filter { it.winnerAvailable && (it.calculation.totalBet>0L || !after) }; if (reports.isEmpty()) return null; return ScopeSummary(-1L,"Customer အားလုံး",reports.sumOf { it.calculation.totalBet },reports.sumOf { it.calculation.winningStake },reports.sumOf { it.calculation.payout },reports.sumOf { it.calculation.profitLoss },reports.sumOf { it.calculation.commission }) }
-    suspend fun agentCustomerReport(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean):List<AgentCustomerReportRow>{ val agent=container.agents.get(agentId); val winner=if(after) container.winners.get(date,session) else null; return container.customers.getForAgent(agentId).map{customer->val totals=container.bets.getCustomerTotals(customer.id,date,session);val calculated=ReportCalculator().calculate(totals,winner?.digit,agent?.rate?:0,customer.commissionRateBasisPoints);AgentCustomerReportRow(customer,calculated.copy(commission=container.bets.getCustomerCommission(customer.id,date,session)))} }
-    suspend fun weeklyCustomerReport(customerId:Long,anyDate:LocalDate,after:Boolean):WeeklyReport { val customer=container.customers.get(customerId) ?: return WeeklyReportCalculator().build(anyDate,emptyMap()); val agent=container.agents.get(customer.agentId); val monday=anyDate.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)); val calculations=mutableMapOf<Pair<LocalDate,DrawSession>,DrawCalculation>(); val winners=mutableMapOf<Pair<LocalDate,DrawSession>,String>(); for(offset in 0L..4L){val date=monday.plusDays(offset);for(session in DrawSession.entries){val winner=container.winners.get(date,session);if(after && winner!=null) winners[date to session]=winner.digit; val eligible=(!date.isAfter(LocalDate.now())&&!after)||(after&&winner!=null); if(eligible){val totals=container.bets.getCustomerTotals(customerId,date,session);val calculated=ReportCalculator().calculate(totals,if(after) winner?.digit else null,agent?.rate?:0,customer.commissionRateBasisPoints);calculations[date to session]=calculated.copy(commission=container.bets.getCustomerCommission(customerId,date,session))}}}; return WeeklyReportCalculator().build(anyDate,calculations,winners) }
+    suspend fun agentCustomerReport(agentId:Long,date:LocalDate,session:DrawSession,after:Boolean):List<AgentCustomerReportRow> {
+        val winner=if(after) container.winners.get(date,session) else null
+        return container.customers.getForAgent(agentId).map { customer ->
+            AgentCustomerReportRow(customer,customerFinancials(customer.id,date,session,winner?.digit))
+        }
+    }
+    suspend fun weeklyCustomerReport(customerId:Long,anyDate:LocalDate,after:Boolean):WeeklyReport {
+        val customer=container.customers.get(customerId) ?: return WeeklyReportCalculator().build(anyDate,emptyMap())
+        val monday=anyDate.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        val calculations=mutableMapOf<Pair<LocalDate,DrawSession>,DrawCalculation>()
+        val winners=mutableMapOf<Pair<LocalDate,DrawSession>,String>()
+        for(offset in 0L..4L) {
+            val date=monday.plusDays(offset)
+            for(session in DrawSession.entries) {
+                val winner=container.winners.get(date,session)
+                if(after && winner!=null) winners[date to session]=winner.digit
+                val eligible=(!date.isAfter(LocalDate.now())&&!after)||(after&&winner!=null)
+                if(eligible) calculations[date to session]=customerFinancials(customer.id,date,session,if(after) winner?.digit else null)
+            }
+        }
+        return WeeklyReportCalculator().build(anyDate,calculations,winners)
+    }
     suspend fun aggregateWeeklyCustomerReport(agentId:Long,anyDate:LocalDate,after:Boolean):WeeklyReport { val customers=container.customers.getForAgent(agentId); val reports=customers.map { weeklyCustomerReport(it.id,anyDate,after) }; if (reports.isEmpty()) return WeeklyReportCalculator().build(anyDate,emptyMap()); val calculations=mutableMapOf<Pair<LocalDate,DrawSession>,DrawCalculation>(); val winners=mutableMapOf<Pair<LocalDate,DrawSession>,String>(); reports.flatMap { it.rows }.groupBy { it.date to it.session }.forEach { (key, rows) -> rows.mapNotNull { it.calculation }.takeIf { it.isNotEmpty() }?.let { calcs -> calculations[key]=DrawCalculation(calcs.sumOf { it.totalBet },calcs.sumOf { it.distinctSlots },calcs.sumOf { it.winningStake },calcs.sumOf { it.payout },calcs.sumOf { it.commission },calcs.sumOf { it.profitLoss }) }; rows.mapNotNull { it.winningDigit }.firstOrNull()?.let { winners[key]=it } }; return WeeklyReportCalculator().build(anyDate,calculations,winners) }
     suspend fun analysis(customerId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val customer=container.customers.get(customerId)?:return AnalysisResult(0,0,0,0,0,0,emptyList(),emptySet(),emptySet(),emptyList()); val agent=container.agents.get(customer.agentId); return AnalysisCalculator().calculate(container.bets.getCustomerTotals(customerId,date,session),effectiveLimits(customer.agentId,customerId),container.closedNumbers.getDigits(customer.agentId),agent?.rate?:0) }
     suspend fun aggregateAnalysis(agentId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val agent=container.agents.get(agentId); val limits=container.agentLimits.get(agentId); return AnalysisCalculator().calculate(container.bets.getAgentTotals(agentId,date,session),EffectiveLimits(limits.allLimit,limits.specialLimits),container.closedNumbers.getDigits(agentId),agent?.rate?:0) }
