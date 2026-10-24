@@ -86,10 +86,8 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     }
     /** A correction can retain/reduce previously accepted digits despite later restrictions. */
     private fun editValidation(bets:List<ExpandedBet>,original:BetEntryWithLines,current:Map<String,Long>,limits:EffectiveLimits,closed:Set<String>):ValidationResult {
-        val old=original.lines.associate{it.digit to it.amount}
-        return ValidationResult(validator.validate(bets,current,limits,closed).rows.map{row->
-            if(row.thisInput <= (old[row.digit] ?: 0L)) row.copy(isClosed=false,exceedsLimit=false) else row
-        })
+        val originalAmounts=original.lines.associate { it.digit to it.amount }
+        return EditCorrectionPolicy().validate(bets,originalAmounts,current,limits,closed)
     }
     private suspend fun effectiveLimits(agentId:Long,customerId:Long,date:LocalDate,session:DrawSession):EffectiveLimits {
         val agent=container.agentLimits.get(agentId,date,session)
