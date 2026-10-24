@@ -381,9 +381,10 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 
 @Composable private fun CustomerDigitsWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
     val totals by (if (customerId == -1L) vm.agentTotals(agentId, date, session) else vm.customerTotals(customerId, date, session)).collectAsStateWithLifecycle(initialValue = emptyList())
-    val specialLimits by (if(customerId == -1L) vm.agentSpecialLimits(agentId,date,session) else vm.specialLimits(customerId,date,session)).collectAsStateWithLifecycle(initialValue = emptyList())
+    val agentSpecials by vm.agentSpecialLimits(agentId,date,session).collectAsStateWithLifecycle(initialValue = emptyList())
+    val customerSpecials by vm.specialLimits(customerId,date,session).collectAsStateWithLifecycle(initialValue = emptyList())
     val amounts = totals.associate { it.digit to it.amount }
-    val specialDigits = specialLimits.map { it.digit }.toSet()
+    val specialDigits = (if(customerId==-1L) agentSpecials.map { it.digit } else customerSpecials.map { it.digit }).toSet()
     val revision by vm.revision.collectAsStateWithLifecycle()
     val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session) else vm.analysis(customerId, date, session) }
     val scenarios = analysis?.scenarios?.associateBy { it.digit }.orEmpty()

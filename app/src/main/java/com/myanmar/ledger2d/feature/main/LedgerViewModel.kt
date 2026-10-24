@@ -37,11 +37,6 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun updateHistory(){if(_historyUpdate.value is HistoryUpdateState.Working)return;_historyUpdate.value=HistoryUpdateState.Working;viewModelScope.launch{runCatching{container.history.sync()}.onSuccess{_historyUpdate.value=HistoryUpdateState.Success("History "+it.startDate+" → "+it.endDate+" ("+it.updatedRows+" updates)");changed()}.onFailure{_historyUpdate.value=HistoryUpdateState.Error(it.message?:"History update မအောင်မြင်ပါ")}}}
     private fun expandInput(raw: String, format: QuickFormat): ParseResult {
         val smart = engine.smartExpand(raw, format)
-        if(editing != null) {
-            val issues=smart.lines.mapNotNull { line -> (line.result as? ParseResult.Error)?.let { line.source+": "+it.message } }
-            if(issues.isNotEmpty()) return ParseResult.Error(issues.joinToString("; ")) to issues
-            return engine.run { BetParser().aggregate(smart.lines.flatMap { (it.result as ParseResult.Success).bets }) } to emptyList()
-        }
         val error = smart.lines.mapNotNull { it.result as? ParseResult.Error }.firstOrNull()
         return error ?: ParseResult.Success(smart.bets, smart.total)
     }
@@ -56,6 +51,11 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         editing: BetEntryWithLines? = null,
     ): Pair<ParseResult, List<String>> {
         val smart = engine.smartExpand(raw, format)
+        if(editing != null) {
+            val issues=smart.lines.mapNotNull { line -> (line.result as? ParseResult.Error)?.let { line.source+": "+it.message } }
+            if(issues.isNotEmpty()) return ParseResult.Error(issues.joinToString("; ")) to issues
+            return engine.run { BetParser().aggregate(smart.lines.flatMap { (it.result as ParseResult.Success).bets }) } to emptyList()
+        }
         val current = container.bets.getAgentTotals(agentId, date, session).toMutableMap()
         val sameDraw = editing != null && editing.entry.drawDate == date && editing.entry.drawSession == session
         if (sameDraw) editing!!.lines.forEach { current[it.digit] = (current[it.digit] ?: 0L) - it.amount }
