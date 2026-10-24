@@ -527,7 +527,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     val now = LocalDateTime.now()
     val pastDraw = date?.let {
         it.isBefore(now.toLocalDate()) ||
-            (it == now.toLocalDate() && session == DrawSession.MORNING && !now.toLocalTime().isBefore(DrawSchedule.morningResultTime))
+            (it == now.toLocalDate() && !DrawSchedule.isSessionOpenForToday(session,now))
     } ?: false
     val visiblePreview = if (pastDraw && !backdated) null else preview
     val overrideRate=historicalRate.trim().toLongOrNull()?.takeIf{it>0}
@@ -543,7 +543,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     if (showLateError) AlertDialog(
         onDismissRequest = { showLateError = false },
         title = { Text("စာရင်းသွင်း၍ မရပါ") },
-        text = { Text("သင်ထည့်သွင်းသော အချက်အလက်သည် ပေါက်ဂဏန်းထွက်ပြီးဖြစ်ပါသဖြင့် ထည့်သွင်း၍မရနိုင်ပါ။ အကယ်၍ ထည့်သွင်းရန်လိုအပ်ပါက နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်နှိပ်၍ ဖြည့်သွင်းနိုင်ပါသည်။") },
+        text = { Text("ဒီ Session အတွက် ပုံမှန်စာရင်းလက်ခံချိန် ကျော်လွန်ပါပြီ။ လက်ကျန်စာရင်းကို နောက်ကြောင်းပြန်သွင်းရန် လိုအပ်ပါက သီးခြားအတည်ပြုပါ။") },
         confirmButton = { TextButton({ showLateError = false }) { Text("OK") } },
         dismissButton = { TextButton({ showLateError = false }) { Text("မလုပ်တော့ပါ") } }
     )

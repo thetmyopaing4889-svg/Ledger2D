@@ -12,7 +12,10 @@ object DrawRatePolicy {
 
     fun earliestChange(now:LocalDateTime):DrawIdentity {
         val next=DrawSchedule.nextDraw(now)
-        val isOngoing=next.date==now.toLocalDate() && DrawSchedule.isSessionOpenForToday(next.session,now)
+        // Rate changes wait until the draw completes, not just until bet intake closes.
+        // Between 12:00 and the 12:01 result, the morning draw is still active.
+        val resultTime=if(next.session==DrawSession.MORNING)DrawSchedule.morningResultTime else DrawSchedule.eveningResultTime
+        val isOngoing=next.date==now.toLocalDate() && now.toLocalTime().isBefore(resultTime)
         if(!isOngoing)return next
         if(next.session==DrawSession.MORNING)return DrawIdentity(next.date,DrawSession.EVENING)
         return DrawSchedule.nextDraw(now.toLocalDate().atTime(16,31))

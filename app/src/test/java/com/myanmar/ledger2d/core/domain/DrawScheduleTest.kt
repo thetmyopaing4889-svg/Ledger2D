@@ -66,9 +66,11 @@ class DrawScheduleTest {
         )
     }
 
-    @Test fun draw_acceptance_cutoffs_follow_1201_morning_and_1630_evening() {
+    @Test fun draw_results_and_bet_acceptance_have_distinct_morning_cutoffs() {
         assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(monday, LocalTime.of(11, 59))))
-        assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(monday, LocalTime.NOON)))
+        assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(monday, LocalTime.NOON)))
+        assertEquals(LocalTime.of(12,1), DrawSchedule.morningResultTime)
+        assertEquals(DrawSession.MORNING, DrawSchedule.nextDraw(LocalDateTime.of(monday, LocalTime.NOON)).session)
         assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.MORNING, LocalDateTime.of(monday, LocalTime.of(12,1))))
         assertEquals(true, DrawSchedule.isSessionOpenForToday(DrawSession.EVENING, LocalDateTime.of(monday, LocalTime.of(16, 29))))
         assertEquals(false, DrawSchedule.isSessionOpenForToday(DrawSession.EVENING, LocalDateTime.of(monday, LocalTime.of(16, 30))))

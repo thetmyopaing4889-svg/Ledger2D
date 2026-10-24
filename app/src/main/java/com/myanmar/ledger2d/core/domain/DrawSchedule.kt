@@ -9,7 +9,10 @@ import java.time.LocalTime
 
 /** Selects draw times and fresh working contexts using the device's local date and time. */
 object DrawSchedule {
+    // The announced result appears at 12:01; ordinary morning stake intake
+    // still closes at noon. Corrections/backdated entry are handled separately.
     val morningResultTime: LocalTime = LocalTime.of(12, 1)
+    val morningBetCutoff: LocalTime = LocalTime.NOON
     val eveningResultTime: LocalTime = LocalTime.of(16, 30)
     private val workingMorningCutoff: LocalTime = LocalTime.of(12, 1)
 
@@ -42,7 +45,7 @@ object DrawSchedule {
     }
 
     fun isSessionOpenForToday(session: DrawSession, now: LocalDateTime): Boolean = when (session) {
-        DrawSession.MORNING -> now.toLocalTime().isBefore(morningResultTime)
+        DrawSession.MORNING -> now.toLocalTime().isBefore(morningBetCutoff)
         DrawSession.EVENING -> now.toLocalTime().isBefore(eveningResultTime)
     }
 
