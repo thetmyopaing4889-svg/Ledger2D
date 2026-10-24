@@ -91,33 +91,33 @@ import java.time.LocalDate
     @Delete suspend fun delete(value: ClosedDayEntity)
 }
 @Dao interface ClosedNumberDao {
-    @Query("SELECT * FROM closed_numbers WHERE agentId=:agentId ORDER BY digit") fun observe(agentId: Long): Flow<List<ClosedNumberEntity>>
-    @Query("SELECT digit FROM closed_numbers WHERE agentId=:agentId") suspend fun getDigits(agentId: Long): List<String>
-    @Query("SELECT * FROM closed_numbers WHERE agentId=:agentId AND digit=:digit") suspend fun get(agentId: Long, digit: String): ClosedNumberEntity?
+    @Query("SELECT * FROM closed_numbers WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session ORDER BY digit") fun observe(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<ClosedNumberEntity>>
+    @Query("SELECT digit FROM closed_numbers WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getDigits(agentId: Long, date: LocalDate, session: DrawSession): List<String>
+    @Query("SELECT * FROM closed_numbers WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session AND digit=:digit") suspend fun get(agentId: Long, date: LocalDate, session: DrawSession, digit: String): ClosedNumberEntity?
     @Upsert suspend fun upsert(value: ClosedNumberEntity): Long
     @Delete suspend fun delete(value: ClosedNumberEntity)
 }
 @Dao interface LimitDao {
-    @Query("SELECT * FROM all_limits WHERE customerId=:customerId") fun observeAllLimit(customerId: Long): Flow<AllLimitEntity?>
-    @Query("SELECT * FROM special_limits WHERE customerId=:customerId ORDER BY digit") fun observeSpecialLimits(customerId: Long): Flow<List<SpecialLimitEntity>>
-    @Query("SELECT * FROM all_limits WHERE customerId=:customerId") suspend fun getAllLimit(customerId: Long): AllLimitEntity?
-    @Query("SELECT * FROM special_limits WHERE customerId=:customerId") suspend fun getSpecialLimits(customerId: Long): List<SpecialLimitEntity>
-    @Query("SELECT * FROM special_limits WHERE customerId=:customerId AND digit=:digit") suspend fun getSpecial(customerId: Long, digit: String): SpecialLimitEntity?
+    @Query("SELECT * FROM all_limits WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session") fun observeAllLimit(customerId: Long, date: LocalDate, session: DrawSession): Flow<AllLimitEntity?>
+    @Query("SELECT * FROM special_limits WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session ORDER BY digit") fun observeSpecialLimits(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<SpecialLimitEntity>>
+    @Query("SELECT * FROM all_limits WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session") suspend fun getAllLimit(customerId: Long, date: LocalDate, session: DrawSession): AllLimitEntity?
+    @Query("SELECT * FROM special_limits WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session") suspend fun getSpecialLimits(customerId: Long, date: LocalDate, session: DrawSession): List<SpecialLimitEntity>
+    @Query("SELECT * FROM special_limits WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session AND digit=:digit") suspend fun getSpecial(customerId: Long, date: LocalDate, session: DrawSession, digit: String): SpecialLimitEntity?
     @Upsert suspend fun upsert(value: AllLimitEntity): Long
     @Upsert suspend fun upsert(value: SpecialLimitEntity): Long
-    @Query("DELETE FROM all_limits WHERE customerId=:customerId") suspend fun clearAll(customerId: Long)
+    @Query("DELETE FROM all_limits WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session") suspend fun clearAll(customerId: Long, date: LocalDate, session: DrawSession)
     @Delete suspend fun delete(value: SpecialLimitEntity)
 }
 
 @Dao interface AgentLimitDao {
-    @Query("SELECT * FROM agent_all_limits WHERE agentId=:agentId") fun observeAllLimit(agentId: Long): Flow<AgentAllLimitEntity?>
-    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId ORDER BY digit") fun observeSpecialLimits(agentId: Long): Flow<List<AgentSpecialLimitEntity>>
-    @Query("SELECT * FROM agent_all_limits WHERE agentId=:agentId") suspend fun getAllLimit(agentId: Long): AgentAllLimitEntity?
-    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId") suspend fun getSpecialLimits(agentId: Long): List<AgentSpecialLimitEntity>
-    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId AND digit=:digit") suspend fun getSpecial(agentId: Long, digit: String): AgentSpecialLimitEntity?
+    @Query("SELECT * FROM agent_all_limits WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") fun observeAllLimit(agentId: Long, date: LocalDate, session: DrawSession): Flow<AgentAllLimitEntity?>
+    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session ORDER BY digit") fun observeSpecialLimits(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<AgentSpecialLimitEntity>>
+    @Query("SELECT * FROM agent_all_limits WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getAllLimit(agentId: Long, date: LocalDate, session: DrawSession): AgentAllLimitEntity?
+    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getSpecialLimits(agentId: Long, date: LocalDate, session: DrawSession): List<AgentSpecialLimitEntity>
+    @Query("SELECT * FROM agent_special_limits WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session AND digit=:digit") suspend fun getSpecial(agentId: Long, date: LocalDate, session: DrawSession, digit: String): AgentSpecialLimitEntity?
     @Upsert suspend fun upsert(value: AgentAllLimitEntity): Long
     @Upsert suspend fun upsert(value: AgentSpecialLimitEntity): Long
-    @Query("DELETE FROM agent_all_limits WHERE agentId=:agentId") suspend fun clearAll(agentId: Long)
+    @Query("DELETE FROM agent_all_limits WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun clearAll(agentId: Long, date: LocalDate, session: DrawSession)
     @Delete suspend fun deleteSpecial(value: AgentSpecialLimitEntity)
 }
 

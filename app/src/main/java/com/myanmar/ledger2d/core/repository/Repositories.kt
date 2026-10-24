@@ -34,9 +34,9 @@ interface LiveDailyResultRepository {
     suspend fun apply(patches: List<LiveDailyResultPatch>): Int
 }
 interface ClosedDayRepository { fun observeAll(): Flow<List<ClosedDayEntity>>; suspend fun isClosed(date: LocalDate): Boolean; suspend fun add(date: LocalDate): Long; suspend fun remove(value: ClosedDayEntity) }
-interface ClosedNumberRepository { fun observe(agentId: Long): Flow<List<ClosedNumberEntity>>; suspend fun getDigits(agentId: Long): Set<String>; suspend fun add(agentId: Long, digit: String): Long; suspend fun remove(value: ClosedNumberEntity) }
-interface LimitRepository { fun observeAllLimit(customerId: Long): Flow<AllLimitEntity?>; fun observeSpecial(customerId: Long): Flow<List<SpecialLimitEntity>>; suspend fun get(customerId: Long): EffectiveLimits; suspend fun setAll(customerId: Long, amount: Long?); suspend fun setSpecial(customerId: Long, digit: String, amount: Long); suspend fun deleteSpecial(value: SpecialLimitEntity) }
-interface AgentLimitRepository { fun observeAllLimit(agentId: Long): Flow<AgentAllLimitEntity?>; fun observeSpecial(agentId: Long): Flow<List<AgentSpecialLimitEntity>>; suspend fun get(agentId: Long): EffectiveLimits; suspend fun setAll(agentId: Long, amount: Long?); suspend fun setSpecial(agentId: Long, digit: String, amount: Long); suspend fun deleteSpecial(value: AgentSpecialLimitEntity) }
+interface ClosedNumberRepository { fun observe(agentId:Long,date:LocalDate,session:DrawSession):Flow<List<ClosedNumberEntity>>; suspend fun getDigits(agentId:Long,date:LocalDate,session:DrawSession):Set<String>; suspend fun add(agentId:Long,date:LocalDate,session:DrawSession,digit:String):Long; suspend fun remove(value:ClosedNumberEntity) }
+interface LimitRepository { fun observeAllLimit(customerId:Long,date:LocalDate,session:DrawSession):Flow<AllLimitEntity?>; fun observeSpecial(customerId:Long,date:LocalDate,session:DrawSession):Flow<List<SpecialLimitEntity>>; suspend fun get(customerId:Long,date:LocalDate,session:DrawSession):EffectiveLimits; suspend fun setAll(customerId:Long,date:LocalDate,session:DrawSession,amount:Long?); suspend fun setSpecial(customerId:Long,date:LocalDate,session:DrawSession,digit:String,amount:Long); suspend fun deleteSpecial(value:SpecialLimitEntity) }
+interface AgentLimitRepository { fun observeAllLimit(agentId:Long,date:LocalDate,session:DrawSession):Flow<AgentAllLimitEntity?>; fun observeSpecial(agentId:Long,date:LocalDate,session:DrawSession):Flow<List<AgentSpecialLimitEntity>>; suspend fun get(agentId:Long,date:LocalDate,session:DrawSession):EffectiveLimits; suspend fun setAll(agentId:Long,date:LocalDate,session:DrawSession,amount:Long?); suspend fun setSpecial(agentId:Long,date:LocalDate,session:DrawSession,digit:String,amount:Long); suspend fun deleteSpecial(value:AgentSpecialLimitEntity) }
 interface SettlementRepository { fun observeAgent(agentId: Long): Flow<List<SettlementEntity>>; suspend fun get(agentId: Long, date: LocalDate, session: DrawSession): SettlementEntity?; suspend fun settle(value: SettlementEntity): Long }
 interface AuditRepository { fun observeAll(): Flow<List<AuditEventEntity>>; suspend fun record(type: String, id: Long, action: String, detail: String = ""): Long }
 
@@ -459,8 +459,48 @@ object HistorySync {
 }
 
 class RoomClosedDayRepository(private val dao:ClosedDayDao):ClosedDayRepository { override fun observeAll()=dao.observeAll(); override suspend fun isClosed(date:LocalDate)=dao.isClosed(date); override suspend fun add(date:LocalDate):Long { require(!date.isBefore(LocalDate.now())); val now=System.currentTimeMillis(); val old=dao.get(date); return dao.upsert(ClosedDayEntity(id=old?.id?:0,date=date,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun remove(value:ClosedDayEntity)=dao.delete(value) }
-class RoomClosedNumberRepository(private val dao:ClosedNumberDao):ClosedNumberRepository { override fun observe(agentId:Long)=dao.observe(agentId); override suspend fun getDigits(agentId:Long)=dao.getDigits(agentId).toSet(); override suspend fun add(agentId:Long,digit:String):Long { require(com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit)); val now=System.currentTimeMillis(); val old=dao.get(agentId,digit); return dao.upsert(ClosedNumberEntity(id=old?.id?:0,agentId=agentId,digit=digit,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun remove(value:ClosedNumberEntity)=dao.delete(value) }
-class RoomLimitRepository(private val dao:LimitDao):LimitRepository { override fun observeAllLimit(customerId:Long)=dao.observeAllLimit(customerId); override fun observeSpecial(customerId:Long)=dao.observeSpecialLimits(customerId); override suspend fun get(customerId:Long)=EffectiveLimits(dao.getAllLimit(customerId)?.amount,dao.getSpecialLimits(customerId).associate { it.digit to it.amount }); override suspend fun setAll(customerId:Long,amount:Long?) { if(amount==null) dao.clearAll(customerId) else { require(amount>0); val now=System.currentTimeMillis(); val old=dao.getAllLimit(customerId); dao.upsert(AllLimitEntity(id=old?.id?:0,customerId=customerId,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now)) } }; override suspend fun setSpecial(customerId:Long,digit:String,amount:Long) { require(com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit)&&amount>0); val now=System.currentTimeMillis(); val old=dao.getSpecial(customerId,digit); dao.upsert(SpecialLimitEntity(id=old?.id?:0,customerId=customerId,digit=digit,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun deleteSpecial(value:SpecialLimitEntity)=dao.delete(value) }
-class RoomAgentLimitRepository(private val dao:AgentLimitDao):AgentLimitRepository { override fun observeAllLimit(agentId:Long)=dao.observeAllLimit(agentId); override fun observeSpecial(agentId:Long)=dao.observeSpecialLimits(agentId); override suspend fun get(agentId:Long)=EffectiveLimits(dao.getAllLimit(agentId)?.amount,dao.getSpecialLimits(agentId).associate { it.digit to it.amount }); override suspend fun setAll(agentId:Long,amount:Long?) { if(amount==null) dao.clearAll(agentId) else { require(amount>0); val now=System.currentTimeMillis(); val old=dao.getAllLimit(agentId); dao.upsert(AgentAllLimitEntity(id=old?.id?:0,agentId=agentId,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now)) } }; override suspend fun setSpecial(agentId:Long,digit:String,amount:Long) { require(BetParser.validDigit(digit)&&amount>0); val now=System.currentTimeMillis(); val old=dao.getSpecial(agentId,digit); dao.upsert(AgentSpecialLimitEntity(id=old?.id?:0,agentId=agentId,digit=digit,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now)) }; override suspend fun deleteSpecial(value:AgentSpecialLimitEntity)=dao.deleteSpecial(value) }
+
+class RoomClosedNumberRepository(private val dao:ClosedNumberDao):ClosedNumberRepository {
+    override fun observe(agentId:Long,date:LocalDate,session:DrawSession)=dao.observe(agentId,date,session)
+    override suspend fun getDigits(agentId:Long,date:LocalDate,session:DrawSession)=dao.getDigits(agentId,date,session).toSet()
+    override suspend fun add(agentId:Long,date:LocalDate,session:DrawSession,digit:String):Long {
+        require(BetParser.validDigit(digit));val now=System.currentTimeMillis()
+        val old=dao.get(agentId,date,session,digit)
+        return dao.upsert(ClosedNumberEntity(id=old?.id?:0,agentId=agentId,digit=digit,createdAt=old?.createdAt?:now,updatedAt=now,drawDate=date,drawSession=session))
+    }
+    override suspend fun remove(value:ClosedNumberEntity)=dao.delete(value)
+}
+class RoomLimitRepository(private val dao:LimitDao):LimitRepository {
+    override fun observeAllLimit(customerId:Long,date:LocalDate,session:DrawSession)=dao.observeAllLimit(customerId,date,session)
+    override fun observeSpecial(customerId:Long,date:LocalDate,session:DrawSession)=dao.observeSpecialLimits(customerId,date,session)
+    override suspend fun get(customerId:Long,date:LocalDate,session:DrawSession)=EffectiveLimits(dao.getAllLimit(customerId,date,session)?.amount,dao.getSpecialLimits(customerId,date,session).associate{it.digit to it.amount})
+    override suspend fun setAll(customerId:Long,date:LocalDate,session:DrawSession,amount:Long?) {
+        if(amount==null) dao.clearAll(customerId,date,session) else {
+            require(amount>0L);val now=System.currentTimeMillis();val old=dao.getAllLimit(customerId,date,session)
+            dao.upsert(AllLimitEntity(id=old?.id?:0,customerId=customerId,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now,drawDate=date,drawSession=session))
+        }
+    }
+    override suspend fun setSpecial(customerId:Long,date:LocalDate,session:DrawSession,digit:String,amount:Long) {
+        require(BetParser.validDigit(digit)&&amount>0L);val now=System.currentTimeMillis();val old=dao.getSpecial(customerId,date,session,digit)
+        dao.upsert(SpecialLimitEntity(id=old?.id?:0,customerId=customerId,digit=digit,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now,drawDate=date,drawSession=session))
+    }
+    override suspend fun deleteSpecial(value:SpecialLimitEntity)=dao.delete(value)
+}
+class RoomAgentLimitRepository(private val dao:AgentLimitDao):AgentLimitRepository {
+    override fun observeAllLimit(agentId:Long,date:LocalDate,session:DrawSession)=dao.observeAllLimit(agentId,date,session)
+    override fun observeSpecial(agentId:Long,date:LocalDate,session:DrawSession)=dao.observeSpecialLimits(agentId,date,session)
+    override suspend fun get(agentId:Long,date:LocalDate,session:DrawSession)=EffectiveLimits(dao.getAllLimit(agentId,date,session)?.amount,dao.getSpecialLimits(agentId,date,session).associate{it.digit to it.amount})
+    override suspend fun setAll(agentId:Long,date:LocalDate,session:DrawSession,amount:Long?) {
+        if(amount==null) dao.clearAll(agentId,date,session) else {
+            require(amount>0L);val now=System.currentTimeMillis();val old=dao.getAllLimit(agentId,date,session)
+            dao.upsert(AgentAllLimitEntity(id=old?.id?:0,agentId=agentId,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now,drawDate=date,drawSession=session))
+        }
+    }
+    override suspend fun setSpecial(agentId:Long,date:LocalDate,session:DrawSession,digit:String,amount:Long) {
+        require(BetParser.validDigit(digit)&&amount>0L);val now=System.currentTimeMillis();val old=dao.getSpecial(agentId,date,session,digit)
+        dao.upsert(AgentSpecialLimitEntity(id=old?.id?:0,agentId=agentId,digit=digit,amount=amount,createdAt=old?.createdAt?:now,updatedAt=now,drawDate=date,drawSession=session))
+    }
+    override suspend fun deleteSpecial(value:AgentSpecialLimitEntity)=dao.deleteSpecial(value)
+}
 class RoomSettlementRepository(private val dao: SettlementDao): SettlementRepository { override fun observeAgent(agentId:Long)=dao.observeAgent(agentId); override suspend fun get(agentId:Long,date:LocalDate,session:DrawSession)=dao.get(agentId,date,session); override suspend fun settle(value:SettlementEntity)=dao.upsert(value) }
 class RoomAuditRepository(private val dao: AuditDao): AuditRepository { override fun observeAll()=dao.observeAll(); override suspend fun record(type:String,id:Long,action:String,detail:String)=dao.insert(AuditEventEntity(entityType=type,entityId=id,action=action,detail=detail,createdAt=System.currentTimeMillis())) }

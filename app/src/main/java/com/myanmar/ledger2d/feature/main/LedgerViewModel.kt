@@ -52,8 +52,8 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         val current = container.bets.getAgentTotals(agentId, date, session).toMutableMap()
         val sameDraw = editing != null && editing.entry.drawDate == date && editing.entry.drawSession == session
         if (sameDraw) editing!!.lines.forEach { current[it.digit] = (current[it.digit] ?: 0L) - it.amount }
-        val limits = effectiveLimits(agentId, customerId)
-        val closed = container.closedNumbers.getDigits(agentId)
+        val limits = effectiveLimits(agentId, customerId, date, session)
+        val closed = container.closedNumbers.getDigits(agentId,date,session)
         val accepted = mutableListOf<ExpandedBet>()
         val issues = mutableListOf<String>()
         for (line in smart.lines) {
@@ -77,9 +77,9 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         return if (accepted.isEmpty()) ParseResult.Error(issues.firstOrNull() ?: "စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်") to issues
         else engine.run { BetParser().aggregate(accepted) } to issues
     }
-    private suspend fun effectiveLimits(agentId:Long,customerId:Long):EffectiveLimits {
-        val agent=container.agentLimits.get(agentId)
-        val customer=container.limits.get(customerId)
+    private suspend fun effectiveLimits(agentId:Long,customerId:Long,date:LocalDate,session:DrawSession):EffectiveLimits {
+        val agent=container.agentLimits.get(agentId,date,session)
+        val customer=container.limits.get(customerId,date,session)
         val digits=(agent.specialLimits.keys+customer.specialLimits.keys).associateWith { digit ->
             listOfNotNull(agent.forDigit(digit),customer.forDigit(digit)).minOrNull() ?: Long.MAX_VALUE
         }.filterValues { it != Long.MAX_VALUE }
@@ -89,11 +89,11 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun agent(id:Long)=container.agents.observe(id)
     fun customers(agentId:Long)=container.customers.observeForAgent(agentId)
     fun customer(id:Long)=container.customers.observe(id)
-    fun closedNumbers(agentId:Long)=container.closedNumbers.observe(agentId)
-    fun allLimit(customerId:Long)=container.limits.observeAllLimit(customerId)
-    fun specialLimits(customerId:Long)=container.limits.observeSpecial(customerId)
-    fun agentAllLimit(agentId:Long)=container.agentLimits.observeAllLimit(agentId)
-    fun agentSpecialLimits(agentId:Long)=container.agentLimits.observeSpecial(agentId)
+    fun closedNumbers(agentId:Long,date:LocalDate,session:DrawSession)=container.closedNumbers.observe(agentId,date,session)
+    fun allLimit(customerId:Long,date:LocalDate,session:DrawSession)=container.limits.observeAllLimit(customerId,date,session)
+    fun specialLimits(customerId:Long,date:LocalDate,session:DrawSession)=container.limits.observeSpecial(customerId,date,session)
+    fun agentAllLimit(agentId:Long,date:LocalDate,session:DrawSession)=container.agentLimits.observeAllLimit(agentId,date,session)
+    fun agentSpecialLimits(agentId:Long,date:LocalDate,session:DrawSession)=container.agentLimits.observeSpecial(agentId,date,session)
     fun customerTotals(customerId:Long,date:LocalDate,session:DrawSession)=container.bets.observeCustomerTotals(customerId,date,session)
     fun customerEntries(customerId:Long)=container.bets.observeCustomerEntries(customerId)
     fun customerEntries(customerId:Long,date:LocalDate,session:DrawSession)=container.bets.observeCustomerEntries(customerId,date,session)
@@ -115,14 +115,33 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
             changed(); onDone()
         }
     }
-    fun updateAllLimit(customerId:Long,amount:String,onDone:()->Unit){ val parsed=amount.trim().takeIf(String::isNotEmpty)?.toLongOrNull(); if(amount.isNotBlank()&&(parsed==null||parsed<=0))return; viewModelScope.launch { container.limits.setAll(customerId,parsed); changed(); onDone() } }
-    fun updateAgentAllLimit(agentId:Long,amount:String,onDone:()->Unit){ val parsed=amount.trim().takeIf(String::isNotEmpty)?.toLongOrNull(); if(amount.isNotBlank()&&(parsed==null||parsed<=0))return; viewModelScope.launch { container.agentLimits.setAll(agentId,parsed); changed(); onDone() } }
-    fun addSpecialLimit(customerId:Long,digit:String,amount:String){ val value=amount.toLongOrNull()?:return; if(!BetParser.validDigit(digit)||value<=0)return; viewModelScope.launch { container.limits.setSpecial(customerId,digit,value);changed() } }
-    fun addAgentSpecialLimit(agentId:Long,digit:String,amount:String){ val value=amount.toLongOrNull()?:return; if(!BetParser.validDigit(digit)||value<=0)return; viewModelScope.launch { container.agentLimits.setSpecial(agentId,digit,value);changed() } }
-    fun removeSpecialLimit(value:SpecialLimitEntity){ viewModelScope.launch { container.limits.deleteSpecial(value);container.audit.record("SPECIAL_LIMIT",value.id,"DELETE","${value.customerId}/${value.digit}");changed() } }
-    fun removeAgentSpecialLimit(value:AgentSpecialLimitEntity){ viewModelScope.launch { container.agentLimits.deleteSpecial(value);container.audit.record("AGENT_SPECIAL_LIMIT",value.id,"DELETE","${value.agentId}/${value.digit}");changed() } }
-    fun addClosedNumber(agentId:Long,digit:String){ if(!BetParser.validDigit(digit))return; viewModelScope.launch { val id=container.closedNumbers.add(agentId,digit);container.audit.record("CLOSED_NUMBER",id,"CREATE","$agentId/$digit");changed() } }
-    fun removeClosedNumber(value:ClosedNumberEntity){ viewModelScope.launch { container.closedNumbers.remove(value);container.audit.record("CLOSED_NUMBER",value.id,"DELETE","${value.agentId}/${value.digit}");changed() } }
+    fun updateAllLimit(customerId:Long,date:LocalDate,session:DrawSession,amount:String,onDone:()->Unit) {
+        val parsed=amount.trim().takeIf(String::isNotEmpty)?.toLongOrNull()
+        if(amount.isNotBlank()&&(parsed==null||parsed<=0))return
+        viewModelScope.launch{container.limits.setAll(customerId,date,session,parsed);changed();onDone()}
+    }
+    fun updateAgentAllLimit(agentId:Long,date:LocalDate,session:DrawSession,amount:String,onDone:()->Unit) {
+        val parsed=amount.trim().takeIf(String::isNotEmpty)?.toLongOrNull()
+        if(amount.isNotBlank()&&(parsed==null||parsed<=0))return
+        viewModelScope.launch{container.agentLimits.setAll(agentId,date,session,parsed);changed();onDone()}
+    }
+    fun addSpecialLimit(customerId:Long,date:LocalDate,session:DrawSession,digit:String,amount:String){
+        val value=amount.toLongOrNull()?:return
+        if(!BetParser.validDigit(digit)||value<=0)return
+        viewModelScope.launch{container.limits.setSpecial(customerId,date,session,digit,value);changed()}
+    }
+    fun addAgentSpecialLimit(agentId:Long,date:LocalDate,session:DrawSession,digit:String,amount:String){
+        val value=amount.toLongOrNull()?:return
+        if(!BetParser.validDigit(digit)||value<=0)return
+        viewModelScope.launch{container.agentLimits.setSpecial(agentId,date,session,digit,value);changed()}
+    }
+    fun removeSpecialLimit(value:SpecialLimitEntity){viewModelScope.launch{container.limits.deleteSpecial(value);container.audit.record("SPECIAL_LIMIT",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
+    fun removeAgentSpecialLimit(value:AgentSpecialLimitEntity){viewModelScope.launch{container.agentLimits.deleteSpecial(value);container.audit.record("AGENT_SPECIAL_LIMIT",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
+    fun addClosedNumber(agentId:Long,date:LocalDate,session:DrawSession,digit:String){
+        if(!BetParser.validDigit(digit))return
+        viewModelScope.launch{val id=container.closedNumbers.add(agentId,date,session,digit);container.audit.record("CLOSED_NUMBER",id,"CREATE",date.toString()+"/"+session+"/"+digit);changed()}
+    }
+    fun removeClosedNumber(value:ClosedNumberEntity){viewModelScope.launch{container.closedNumbers.remove(value);container.audit.record("CLOSED_NUMBER",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
     fun refreshPreview(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,raw:String,format:QuickFormat,editingEntryId:Long=0L,allowBackdated:Boolean=false){
         viewModelScope.launch {
             val existing=if(editingEntryId>0) container.bets.getEntry(editingEntryId) else null
@@ -135,8 +154,8 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
             if(parsed is ParseResult.Error){_preview.value=BetPreview(parsed,issues=issues);return@launch}
             val current=container.bets.getAgentTotals(agentId,date,session).toMutableMap()
             if(sameDraw) existing!!.lines.forEach{current[it.digit]=(current[it.digit]?:0L)-it.amount;if(current[it.digit]==0L)current.remove(it.digit)}
-            val limits=effectiveLimits(agentId,customerId)
-            _preview.value=BetPreview(parsed,validator.validate((parsed as ParseResult.Success).bets,current,limits,container.closedNumbers.getDigits(agentId)),issues=issues)
+            val limits=effectiveLimits(agentId,customerId,date,session)
+            _preview.value=BetPreview(parsed,validator.validate((parsed as ParseResult.Success).bets,current,limits,container.closedNumbers.getDigits(agentId,date,session)),issues=issues)
         }
     }
     private suspend fun canSubmit(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,bets:List<ExpandedBet>,editing:BetEntryWithLines?=null,allowBackdated:Boolean=false):Boolean {
@@ -149,7 +168,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         if(!allowBackdated&&container.winners.get(date,session)!=null && !sameDraw) return false
         val current=container.bets.getAgentTotals(agentId,date,session).toMutableMap()
         if(sameDraw) editing!!.lines.forEach { current[it.digit]=(current[it.digit]?:0L)-it.amount; if(current[it.digit]==0L) current.remove(it.digit) }
-        return validator.validate(bets,current,effectiveLimits(agentId,customerId),container.closedNumbers.getDigits(agentId)).canConfirm
+        return validator.validate(bets,current,effectiveLimits(agentId,customerId,date,session),container.closedNumbers.getDigits(agentId,date,session)).canConfirm
     }
     fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL,allowBackdated:Boolean=false){ _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { val prepared=prepareInput(source,format,agentId,customerId,date,session); val parsed=prepared.first as? ParseResult.Success ?: error("စာရင်းသွင်းရန် အဆင်ပြေသောစာရင်းမရှိပါ"); require(canSubmit(customerId,agentId,date,session,parsed.bets,allowBackdated=allowBackdated)); container.bets.confirm(customerId,agentId,date,session,source,format,parsed.bets) }.onSuccess { container.audit.record("BET",it,"CREATE","$date/${session.name}"); changed(); _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
     fun deleteBet(value:BetEntryEntity){ viewModelScope.launch { runCatching { container.bets.delete(value) }.onSuccess { container.audit.record("BET",value.id,"DELETE","${value.drawDate}/${value.drawSession.name}"); changed() } } }
@@ -216,6 +235,6 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         return WeeklyReportCalculator().build(anyDate,calculations,winners)
     }
     suspend fun aggregateWeeklyCustomerReport(agentId:Long,anyDate:LocalDate,after:Boolean):WeeklyReport { val customers=container.customers.getForAgent(agentId); val reports=customers.map { weeklyCustomerReport(it.id,anyDate,after) }; if (reports.isEmpty()) return WeeklyReportCalculator().build(anyDate,emptyMap()); val calculations=mutableMapOf<Pair<LocalDate,DrawSession>,DrawCalculation>(); val winners=mutableMapOf<Pair<LocalDate,DrawSession>,String>(); reports.flatMap { it.rows }.groupBy { it.date to it.session }.forEach { (key, rows) -> rows.mapNotNull { it.calculation }.takeIf { it.isNotEmpty() }?.let { calcs -> calculations[key]=DrawCalculation(calcs.sumOf { it.totalBet },calcs.sumOf { it.distinctSlots },calcs.sumOf { it.winningStake },calcs.sumOf { it.payout },calcs.sumOf { it.commission },calcs.sumOf { it.profitLoss }) }; rows.mapNotNull { it.winningDigit }.firstOrNull()?.let { winners[key]=it } }; return WeeklyReportCalculator().build(anyDate,calculations,winners) }
-    suspend fun analysis(customerId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val customer=container.customers.get(customerId)?:return AnalysisResult(0,0,0,0,0,0,emptyList(),emptySet(),emptySet(),emptyList()); val agent=container.agents.get(customer.agentId); return AnalysisCalculator().calculate(container.bets.getCustomerTotals(customerId,date,session),effectiveLimits(customer.agentId,customerId),container.closedNumbers.getDigits(customer.agentId),agent?.rate?:0) }
-    suspend fun aggregateAnalysis(agentId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val agent=container.agents.get(agentId); val limits=container.agentLimits.get(agentId); return AnalysisCalculator().calculate(container.bets.getAgentTotals(agentId,date,session),EffectiveLimits(limits.allLimit,limits.specialLimits),container.closedNumbers.getDigits(agentId),agent?.rate?:0) }
+    suspend fun analysis(customerId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val customer=container.customers.get(customerId)?:return AnalysisResult(0,0,0,0,0,0,emptyList(),emptySet(),emptySet(),emptyList()); val agent=container.agents.get(customer.agentId); return AnalysisCalculator().calculate(container.bets.getCustomerTotals(customerId,date,session),effectiveLimits(customer.agentId,customerId,date,session),container.closedNumbers.getDigits(customer.agentId),agent?.rate?:0) }
+    suspend fun aggregateAnalysis(agentId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val agent=container.agents.get(agentId); val limits=container.agentLimits.get(agentId,date,session); return AnalysisCalculator().calculate(container.bets.getAgentTotals(agentId,date,session),EffectiveLimits(limits.allLimit,limits.specialLimits),container.closedNumbers.getDigits(agentId,date,session),agent?.rate?:0) }
 }

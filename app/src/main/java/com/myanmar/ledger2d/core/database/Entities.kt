@@ -93,20 +93,20 @@ data class LiveDailyResultPatch(
 @Entity(tableName = "closed_days", indices = [Index(value = ["date"], unique = true)])
 data class ClosedDayEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val date: LocalDate, val createdAt: Long, val updatedAt: Long)
 
-@Entity(tableName = "closed_numbers", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "digit"], unique = true)])
-data class ClosedNumberEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val digit: String, val createdAt: Long, val updatedAt: Long)
+@Entity(tableName = "closed_numbers", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "drawDate", "drawSession", "digit"], unique = true)])
+data class ClosedNumberEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val digit: String, val createdAt: Long, val updatedAt: Long, val drawDate: LocalDate? = null, val drawSession: DrawSession? = null)
 
-@Entity(tableName = "all_limits", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index(value = ["customerId"], unique = true)])
-data class AllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val amount: Long, val createdAt: Long, val updatedAt: Long)
+@Entity(tableName = "all_limits", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index(value = ["customerId", "drawDate", "drawSession"], unique = true)])
+data class AllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val amount: Long, val createdAt: Long, val updatedAt: Long, val drawDate: LocalDate? = null, val drawSession: DrawSession? = null)
 
-@Entity(tableName = "special_limits", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("customerId"), Index(value = ["customerId", "digit"], unique = true)])
-data class SpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long)
+@Entity(tableName = "special_limits", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("customerId"), Index(value = ["customerId", "drawDate", "drawSession", "digit"], unique = true)])
+data class SpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long, val drawDate: LocalDate? = null, val drawSession: DrawSession? = null)
 
-@Entity(tableName = "agent_all_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index(value = ["agentId"], unique = true)])
-data class AgentAllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val amount: Long, val createdAt: Long, val updatedAt: Long)
+@Entity(tableName = "agent_all_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index(value = ["agentId", "drawDate", "drawSession"], unique = true)])
+data class AgentAllLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val amount: Long, val createdAt: Long, val updatedAt: Long, val drawDate: LocalDate? = null, val drawSession: DrawSession? = null)
 
-@Entity(tableName = "agent_special_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "digit"], unique = true)])
-data class AgentSpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long)
+@Entity(tableName = "agent_special_limits", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "drawDate", "drawSession", "digit"], unique = true)])
+data class AgentSpecialLimitEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val digit: String, val amount: Long, val createdAt: Long, val updatedAt: Long, val drawDate: LocalDate? = null, val drawSession: DrawSession? = null)
 
 @Entity(tableName = "settlements", indices = [Index(value = ["agentId", "date", "session"], unique = true)])
 data class SettlementEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val date: LocalDate, val session: DrawSession, val totalBet: Long, val payout: Long, val commission: Long, val netSettlement: Long, val settledAt: Long)

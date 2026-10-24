@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [AgentEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class, LiveDailyResultEntity::class, ManualWinnerLockEntity::class], version = 9, exportSchema = true)
+@Database(entities = [AgentEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class, LiveDailyResultEntity::class, ManualWinnerLockEntity::class], version = 10, exportSchema = true)
 @TypeConverters(DatabaseConverters::class)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun agentDao(): AgentDao
@@ -79,6 +79,32 @@ abstract class LedgerDatabase : RoomDatabase() {
                 db.execSQL("UPDATE bet_entries SET payoutRate = COALESCE((SELECT rate FROM agents WHERE agents.id = bet_entries.agentId), 0)")
             }
         }
-        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
+        // v9 global rules have no draw identity. Keep them with NULL draw columns
+        // for recovery, never misapply them to a future session.
+        private val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE closed_numbers ADD COLUMN drawDate TEXT")
+                db.execSQL("ALTER TABLE closed_numbers ADD COLUMN drawSession TEXT")
+                db.execSQL("DROP INDEX IF EXISTS index_closed_numbers_agentId_digit")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_closed_numbers_agentId_drawDate_drawSession_digit ON closed_numbers (agentId, drawDate, drawSession, digit)")
+                db.execSQL("ALTER TABLE all_limits ADD COLUMN drawDate TEXT")
+                db.execSQL("ALTER TABLE all_limits ADD COLUMN drawSession TEXT")
+                db.execSQL("DROP INDEX IF EXISTS index_all_limits_customerId")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_all_limits_customerId_drawDate_drawSession ON all_limits (customerId, drawDate, drawSession)")
+                db.execSQL("ALTER TABLE special_limits ADD COLUMN drawDate TEXT")
+                db.execSQL("ALTER TABLE special_limits ADD COLUMN drawSession TEXT")
+                db.execSQL("DROP INDEX IF EXISTS index_special_limits_customerId_digit")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_special_limits_customerId_drawDate_drawSession_digit ON special_limits (customerId, drawDate, drawSession, digit)")
+                db.execSQL("ALTER TABLE agent_all_limits ADD COLUMN drawDate TEXT")
+                db.execSQL("ALTER TABLE agent_all_limits ADD COLUMN drawSession TEXT")
+                db.execSQL("DROP INDEX IF EXISTS index_agent_all_limits_agentId")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_agent_all_limits_agentId_drawDate_drawSession ON agent_all_limits (agentId, drawDate, drawSession)")
+                db.execSQL("ALTER TABLE agent_special_limits ADD COLUMN drawDate TEXT")
+                db.execSQL("ALTER TABLE agent_special_limits ADD COLUMN drawSession TEXT")
+                db.execSQL("DROP INDEX IF EXISTS index_agent_special_limits_agentId_digit")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_agent_special_limits_agentId_drawDate_drawSession_digit ON agent_special_limits (agentId, drawDate, drawSession, digit)")
+            }
+        }
+        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
     }
 }
