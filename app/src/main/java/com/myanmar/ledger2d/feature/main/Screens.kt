@@ -502,6 +502,8 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     var raw by rememberSaveable(entryId) { mutableStateOf("") }
     var format by rememberSaveable { mutableStateOf(QuickFormat.MANUAL) }
     var backdated by rememberSaveable(entryId) { mutableStateOf(entryId > 0L) }
+    var historicalRate by rememberSaveable(entryId) { mutableStateOf("") }
+    var historicalCommission by rememberSaveable(entryId) { mutableStateOf("") }
     var showLateError by rememberSaveable { mutableStateOf(false) }
     var receiptId by rememberSaveable { mutableStateOf(0L) }
     val existing by vm.betEntry(entryId).collectAsStateWithLifecycle(initialValue = null)
@@ -514,6 +516,13 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
             (it == now.toLocalDate() && session == DrawSession.MORNING && !now.toLocalTime().isBefore(DrawSchedule.morningResultTime))
     } ?: false
     val visiblePreview = if (pastDraw && !backdated) null else preview
+    val overrideRate=historicalRate.trim().toLongOrNull()?.takeIf{it>0}
+    val pct=historicalCommission.trim().toBigDecimalOrNull()
+    val overrideCommission=if(pct!=null && pct>=java.math.BigDecimal.ZERO && pct<=java.math.BigDecimal(100)){
+        val scaled=pct.movePointRight(2)
+        if(scaled.stripTrailingZeros().scale()<=0) scaled.toInt() else null
+    } else null
+    val historicalValid=!backdated || entryId>0L || (overrideRate!=null && overrideCommission!=null)
     LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.lines.sortedBy { line -> line.digit }.joinToString("\n") { line -> line.digit+" "+line.amount }; format = QuickFormat.MANUAL } }
     LaunchedEffect(raw, format, date, session, backdated) { date?.let { vm.refreshPreview(customerId, agentId, it, session, raw, format, entryId, backdated) } }
     LaunchedEffect(submit) { if (submit is SubmitState.Success) { receiptId=(submit as SubmitState.Success).id; vm.resetSubmit() } }
@@ -536,13 +545,18 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                         Column { Text("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း", fontWeight = FontWeight.SemiBold); Text("အချိန်လွန်စာရင်းသွင်းခြင်း", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
+                if(backdated&&entryId==0L)item {
+                    Text("နောက်ကြောင်းပြန်စာရင်းအတွက် မူလဒိုင်အဆနှင့် ကော်မရှင်ကို ကိုယ်တိုင်စစ်ပြီး ဖြည့်ပါ။ လက်ရှိနှုန်းကို အတိတ်နှုန်းအမှန်ဟု မယူဆပါ။",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Input(historicalRate,{historicalRate=it.filter(Char::isDigit)},"ဒီ Session ၏ လျော်ကြေးအဆ",true,KeyboardType.Number)
+                    Input(historicalCommission,{historicalCommission=it.filter{ch->ch.isDigit()||ch=='.'}},"ဒီ Session ၏ ကော်မရှင် %",true,KeyboardType.Decimal)
+                }
                 item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 10.13.14 100, 25 100" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100, 456 100" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
                 item { Text("အမြန်ထည့်သွင်းပုံများ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
                 item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။") else PreviewCard(visiblePreview ?: BetPreview()) }
                 item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }
             }
             Surface(shadowElevation = 10.dp) {
-                Button(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format, backdated) else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = preview.canConfirm && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) "အတည်ပြုနေသည်…" else "Confirm") }
+                Button(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format, backdated, if(backdated)overrideRate else null, if(backdated)overrideCommission else null) else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = preview.canConfirm && historicalValid && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) "အတည်ပြုနေသည်…" else "Confirm") }
             }
         }
     }
