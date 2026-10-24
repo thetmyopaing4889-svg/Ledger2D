@@ -6,6 +6,7 @@ import com.myanmar.ledger2d.core.domain.QuickFormat
 import com.myanmar.ledger2d.core.model.DrawSession
 import com.myanmar.ledger2d.core.model.ExpandedBet
 import com.myanmar.ledger2d.core.repository.RoomAgentLimitRepository
+import com.myanmar.ledger2d.core.repository.RoomAgentRepository
 import com.myanmar.ledger2d.core.repository.RoomBetRepository
 import com.myanmar.ledger2d.core.repository.RoomClosedNumberRepository
 import com.myanmar.ledger2d.core.repository.RoomWinningNumberRepository
@@ -94,6 +95,27 @@ class RoomDrawLedgerTest {
             assertEquals(0L,bets.getCustomerPayout(customer,date,DrawSession.MORNING,"20"))
             assertEquals(0L,bets.getCustomerCommission(customer,date,DrawSession.MORNING))
             assertEquals("20",winners.get(date,DrawSession.MORNING)?.digit)
+        } finally {db.close()}
+    }
+
+    @Test fun plannedRateChangeStartsOnFutureSessionAndDoesNotRepriceEarlierDraws()=runBlocking {
+        val (db,agent,customer)=freshDb()
+        try {
+            val agents=RoomAgentRepository(db)
+            val tomorrow=date.plusDays(1)
+            agents.saveWithRateSchedule(db.agentDao().get(agent)!!.copy(rate=85),
+                tomorrow,DrawSession.MORNING)
+            assertEquals(80L,agents.rateForDraw(agent,date,DrawSession.MORNING))
+            assertEquals(80L,agents.rateForDraw(agent,date,DrawSession.EVENING))
+            assertEquals(85L,agents.rateForDraw(agent,tomorrow,DrawSession.MORNING))
+            assertEquals(85L,agents.rateForDraw(agent,tomorrow,DrawSession.EVENING))
+            val bets=RoomBetRepository(db)
+            val morning=bets.confirm(customer,agent,date,DrawSession.MORNING,"20 1000",
+                QuickFormat.MANUAL,listOf(ExpandedBet("20",1000)))
+            val following=bets.confirm(customer,agent,tomorrow,DrawSession.MORNING,"20 1000",
+                QuickFormat.MANUAL,listOf(ExpandedBet("20",1000)))
+            assertEquals(80L,bets.getEntry(morning)!!.entry.payoutRate)
+            assertEquals(85L,bets.getEntry(following)!!.entry.payoutRate)
         } finally {db.close()}
     }
 

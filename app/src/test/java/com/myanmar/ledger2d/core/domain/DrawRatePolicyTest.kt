@@ -15,6 +15,11 @@ class DrawRatePolicyTest {
         val next=DrawRatePolicy.earliestChange(LocalDateTime.of(2026,10,23,15,0))
         assertEquals(LocalDate.of(2026,10,26),next.date);assertEquals(DrawSession.MORNING,next.session)
     }
+    @Test fun between_noon_closing_and_1201_winning_number_next_rate_is_evening(){
+        val next=DrawRatePolicy.earliestChange(LocalDateTime.of(2026,10,26,12,0,30))
+        assertEquals(LocalDate.of(2026,10,26),next.date)
+        assertEquals(DrawSession.EVENING,next.session)
+    }
     @Test fun rate_key_preserves_session_order(){
         val date=LocalDate.of(2026,10,26)
         assertTrue(DrawRatePolicy.key(date,DrawSession.MORNING)<DrawRatePolicy.key(date,DrawSession.EVENING))
