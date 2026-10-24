@@ -410,6 +410,12 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable fun EmptyState(title:String,subtitle:String){Column(Modifier.fillMaxWidth().padding(vertical=52.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(title,style=MaterialTheme.typography.headlineSmall,textAlign=TextAlign.Center);Spacer(Modifier.height(8.dp));Text(subtitle,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)}}
 @Composable fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val existing by vm.agent(id).collectAsState(initial=null)
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val upcoming=remember { DrawSchedule.nextDraw(LocalDateTime.now()) }
+    val activeRate by produceState<Long?>(null,id,revision) {
+        value=if(id>0)vm.agentRateForDraw(id,upcoming.date,upcoming.session)else null
+    }
+    var saveError by rememberSaveable(id){mutableStateOf("")}
     var name by rememberSaveable(id){mutableStateOf("")}
     var address by rememberSaveable(id){mutableStateOf("")}
     var phone by rememberSaveable(id){mutableStateOf("")}
@@ -429,13 +435,16 @@ fun transactionDisplayText(format: String, raw: String): String {
         Input(address,{address=it},"လိပ်စာ")
         Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone)
         Input(rate,{rate=it},"နှုန်းထား",true,KeyboardType.Number)
+        if(id>0L&&activeRate!=null&&activeRate!=existing?.rate)
+            Text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • ကြိုတင်သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ",color=MaterialTheme.colorScheme.secondary)
         if(rateIsChanging){
             Text("ဒိုင်အဆအသစ် စတင်သက်ရောက်မည့် Session (လက်ရှိ Session အတွင်း မပြောင်းပါ)")
             DateInput(effectiveDateText,{effectiveDateText=it},"အဆစတင်မည့်ရက်")
             Row { DrawSession.entries.forEach{draw->FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(draw.label)})} }
         }
         Input(remark,{remark=it},"မှတ်ချက်")
-        FormActions(onBack,{if(date!=null)vm.saveAgent(id,name,address,phone,rate,remark,date,effectiveSession,onBack)},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
+        if(saveError.isNotBlank()) Text(saveError,color=MaterialTheme.colorScheme.error)
+        FormActions(onBack,{if(date!=null)vm.saveAgent(id,name,address,phone,rate,remark,date,effectiveSession,onBack){saveError=it}},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
     }}
 }
 @Composable fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){val existing by vm.customer(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;remark=it.remark}};AppScaffold(if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){Input(name,{name=it},"အမည်",true);Input(address,{address=it},"လိပ်စာ");Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone);Input(remark,{remark=it},"မှတ်ချက်");FormActions(onBack,{vm.saveCustomer(id,agentId,name,address,phone,remark,onBack)},name.isNotBlank())}}}
@@ -450,9 +459,14 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun FormActions(cancel:()->Unit,save:()->Unit,enabled:Boolean){val l=LocalLanguage.current;Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){OutlinedButton(cancel,Modifier.weight(1f)){Text(l.text("မလုပ်တော့ပါ","Cancel"))};Button(save,Modifier.weight(1f),enabled=enabled){Text(l.text("သိမ်းမည်","Save"))}}}
 @Composable fun AgentDetailScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit, onRoute: (String) -> Unit) {
     val agent by vm.agent(id).collectAsState(initial = null); val profile=agent ?: return
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val upcoming=remember{DrawSchedule.nextDraw(LocalDateTime.now())}
+    val activeRate by produceState<Long?>(null,id,profile.rate,revision) {
+        value=vm.agentRateForDraw(id,upcoming.date,upcoming.session)
+    }
     AppScaffold(profile.name,onBack,action={IconButton({onRoute("agentForm/$id")}){Icon(Icons.Default.Edit,"ပြင်ရန်")}}){p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large){Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Store,null,tint=MaterialTheme.colorScheme.onPrimary,modifier=Modifier.padding(14.dp))};Column{Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("လျော်ကြေးနှုန်းထား ${profile.rate}",style=MaterialTheme.typography.bodyMedium);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
+            item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large){Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Store,null,tint=MaterialTheme.colorScheme.onPrimary,modifier=Modifier.padding(14.dp))};Column{Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("လက်ရှိလျော်ကြေးအဆ ${activeRate?:profile.rate} ဆ",style=MaterialTheme.typography.bodyMedium);if(activeRate!=null&&activeRate!=profile.rate) Text("သတ်မှတ်ထားသော နောက်အဆ ${profile.rate} ဆ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.secondary);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
             item{Button(onClick={onRoute("customers/$id")},modifier=Modifier.fillMaxWidth().height(54.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.People,null);Spacer(Modifier.width(10.dp));Text("ထိုးသားများ",style=MaterialTheme.typography.titleMedium)}}
             item{Text("စီမံခန့်ခွဲရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.ReceiptLong,"စုစုပေါင်းစာရင်း","total/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Assessment,"အစီရင်ခံစာ","report/agent/$id",onRoute)}}}
