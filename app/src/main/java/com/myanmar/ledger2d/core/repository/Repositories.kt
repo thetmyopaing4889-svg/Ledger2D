@@ -9,6 +9,7 @@ import com.myanmar.ledger2d.core.domain.QuickFormat
 import com.myanmar.ledger2d.core.domain.RatedStake
 import com.myanmar.ledger2d.core.domain.DrawRatePolicy
 import com.myanmar.ledger2d.core.domain.SnapshotPayoutCalculator
+import com.myanmar.ledger2d.core.domain.SessionScopedLimitValidator
 import com.myanmar.ledger2d.core.model.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -108,30 +109,65 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     }
     override suspend fun getCustomerScenarioPayouts(customerId:Long,date:LocalDate,session:DrawSession)=scenarioPayouts(dao.getCustomerRatedDigits(customerId,date,session))
     override suspend fun getAgentScenarioPayouts(agentId:Long,date:LocalDate,session:DrawSession)=scenarioPayouts(dao.getAgentRatedDigits(agentId,date,session))
+    /** The UI preview is advisory; recheck limits and closures atomically with the write. */
+    private suspend fun validateWithinDraw(
+        agentId:Long,customerId:Long,date:LocalDate,session:DrawSession,
+        bets:List<ExpandedBet>,existing:BetEntryWithLines?=null
+    ){
+        val aTotals=dao.getAgentTotals(agentId,date,session).associate{it.digit to it.amount}.toMutableMap()
+        val cTotals=dao.getCustomerTotals(customerId,date,session).associate{it.digit to it.amount}.toMutableMap()
+        val sameDraw=existing?.entry?.drawDate==date&&existing.entry.drawSession==session
+        if(sameDraw) existing!!.lines.forEach{line->
+            aTotals[line.digit]=Math.subtractExact(aTotals[line.digit]?:0L,line.amount)
+            cTotals[line.digit]=Math.subtractExact(cTotals[line.digit]?:0L,line.amount)
+        }
+        val a=db.agentLimitDao()
+        val c=db.limitDao()
+        val al=com.myanmar.ledger2d.core.model.EffectiveLimits(
+            a.getAllLimit(agentId,date,session)?.amount,
+            a.getSpecialLimits(agentId,date,session).associate{it.digit to it.amount})
+        val cl=com.myanmar.ledger2d.core.model.EffectiveLimits(
+            c.getAllLimit(customerId,date,session)?.amount,
+            c.getSpecialLimits(customerId,date,session).associate{it.digit to it.amount})
+        val closed=db.closedNumberDao().getDigits(agentId,date,session).toSet()
+        val old=if(sameDraw)existing!!.lines.associate{it.digit to it.amount}else null
+        require(SessionScopedLimitValidator().validate(bets,aTotals,cTotals,al,cl,closed,old).canConfirm){
+            "ဒီ Session အတွက် ပိတ်ဂဏန်း/Limit ကန့်သတ်ချက် မကိုက်ညီပါ"
+        }
+    }
     private fun validateLines(bets:List<ExpandedBet>) { require(bets.isNotEmpty()); require(bets.all { com.myanmar.ledger2d.core.domain.BetParser.validDigit(it.digit) && it.amount > 0 }); require(bets.map { it.digit }.distinct().size == bets.size) }
     private fun total(bets:List<ExpandedBet>) = bets.fold(0L) { sum, bet -> Math.addExact(sum, bet.amount) }
-    override suspend fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat,bets:List<ExpandedBet>,payoutRateOverride:Long?,commissionOverride:Int?):Long = db.withTransaction { validateLines(bets); require(source.isNotBlank()); val customer=db.customerDao().get(customerId) ?: error("Customer not found"); require(customer.agentId==agentId); val agent=db.agentDao().get(agentId) ?: error("Agent not found"); val entryRate=payoutRateOverride ?: (db.agentRateChangeDao().rateForDraw(agentId,DrawRatePolicy.key(date,session))?:agent.rate); require(entryRate>0 && (commissionOverride==null || commissionOverride in 0..10000)); val bp=commissionOverride?:customer.commissionRateBasisPoints; val now=System.currentTimeMillis(); val amount=total(bets); val id=dao.insertEntry(BetEntryEntity(customerId=customerId,agentId=agentId,drawDate=date,drawSession=session,sourceText=source,inputFormat=format.name,commissionRateBasisPoints=bp,commissionAmount=CommissionCalculator().calculate(amount,bp),payoutRate=entryRate,createdAt=now,updatedAt=now)); dao.insertLines(bets.map { BetLineEntity(betEntryId=id,digit=it.digit,amount=it.amount) }); id }
+    override suspend fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat,bets:List<ExpandedBet>,payoutRateOverride:Long?,commissionOverride:Int?):Long = db.withTransaction { validateLines(bets); require(source.isNotBlank()); val customer=db.customerDao().get(customerId) ?: error("Customer not found"); require(customer.agentId==agentId); val agent=db.agentDao().get(agentId) ?: error("Agent not found"); val entryRate=payoutRateOverride ?: (db.agentRateChangeDao().rateForDraw(agentId,DrawRatePolicy.key(date,session))?:agent.rate); require(entryRate>0 && (commissionOverride==null || commissionOverride in 0..10000)); validateWithinDraw(agentId,customerId,date,session,bets); val bp=commissionOverride?:customer.commissionRateBasisPoints; val now=System.currentTimeMillis(); val amount=total(bets); val id=dao.insertEntry(BetEntryEntity(customerId=customerId,agentId=agentId,drawDate=date,drawSession=session,sourceText=source,inputFormat=format.name,commissionRateBasisPoints=bp,commissionAmount=CommissionCalculator().calculate(amount,bp),payoutRate=entryRate,createdAt=now,updatedAt=now)); dao.insertLines(bets.map { BetLineEntity(betEntryId=id,digit=it.digit,amount=it.amount) }); id }
     override suspend fun edit(entry:BetEntryEntity,bets:List<ExpandedBet>,format:QuickFormat) = db.withTransaction {
         validateLines(bets)
         require(entry.sourceText.isNotBlank())
-        val old=dao.getEntry(entry.id)?.entry ?: error("Bet entry not found")
+        val original=dao.getEntry(entry.id) ?: error("Bet entry not found")
+        val old=original.entry
+        require(old.updatedAt==entry.updatedAt) { "စာရင်းကို တခြားနေရာမှ ပြင်ထားပြီးဖြစ်လို့ ပြန်ဖွင့်ပါ" }
+        require(old.agentId==entry.agentId && old.customerId==entry.customerId) { "မူလဒိုင်/ထိုးသား မပြောင်းရပါ" }
         val sameDraw=old.drawDate==entry.drawDate && old.drawSession==entry.drawSession
         // Post-result corrections within the same draw are allowed. Moving a
         // completed draw to another date/session remains forbidden.
         require(sameDraw || (db.winningNumberDao().get(old.drawDate,old.drawSession)==null &&
             db.winningNumberDao().get(entry.drawDate,entry.drawSession)==null))
+        validateWithinDraw(old.agentId,old.customerId,entry.drawDate,entry.drawSession,bets,original.takeIf{sameDraw})
         val amount=total(bets)
-        dao.updateEntry(entry.copy(inputFormat=format.name,
+        dao.updateEntry(old.copy(drawDate=entry.drawDate,drawSession=entry.drawSession,
+            sourceText=entry.sourceText,inputFormat=format.name,
             commissionRateBasisPoints=old.commissionRateBasisPoints,
             payoutRate=old.payoutRate,
             commissionAmount=CommissionCalculator().calculate(amount,old.commissionRateBasisPoints),
             updatedAt=System.currentTimeMillis()))
         dao.deleteLines(entry.id)
         dao.insertLines(bets.map { BetLineEntity(betEntryId=entry.id,digit=it.digit,amount=it.amount) })
+        // Reopening a confirmed draw must not leave a stale settlement snapshot.
+        db.settlementDao().invalidate(old.agentId,old.drawDate,old.drawSession)
     }
     override suspend fun delete(entry:BetEntryEntity) = db.withTransaction {
         val current=dao.getEntry(entry.id)?.entry ?: error("Bet entry not found")
+        require(current.updatedAt==entry.updatedAt) { "စာရင်းကို တခြားနေရာမှ ပြင်ထားပြီးဖြစ်လို့ ပြန်ဖွင့်ပါ" }
         dao.deleteEntry(current)
+        db.settlementDao().invalidate(current.agentId,current.drawDate,current.drawSession)
     }
 }
 class RoomWinningNumberRepository(private val db: LedgerDatabase) : WinningNumberRepository {

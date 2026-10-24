@@ -131,6 +131,7 @@ import java.time.LocalDate
 @Dao interface SettlementDao {
     @Query("SELECT * FROM settlements WHERE agentId=:agentId ORDER BY date DESC, session") fun observeAgent(agentId: Long): Flow<List<SettlementEntity>>
     @Query("SELECT * FROM settlements WHERE agentId=:agentId AND date=:date AND session=:session") suspend fun get(agentId: Long, date: LocalDate, session: DrawSession): SettlementEntity?
+    @Query("DELETE FROM settlements WHERE agentId=:agentId AND date=:date AND session=:session") suspend fun invalidate(agentId:Long,date:LocalDate,session:DrawSession):Int
     @Upsert suspend fun upsert(value: SettlementEntity): Long
 }
 

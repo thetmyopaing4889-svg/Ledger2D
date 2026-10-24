@@ -9,7 +9,7 @@ import java.time.LocalTime
 
 /** Selects draw times and fresh working contexts using the device's local date and time. */
 object DrawSchedule {
-    val morningResultTime: LocalTime = LocalTime.NOON
+    val morningResultTime: LocalTime = LocalTime.of(12, 1)
     val eveningResultTime: LocalTime = LocalTime.of(16, 30)
     private val workingMorningCutoff: LocalTime = LocalTime.of(12, 1)
 

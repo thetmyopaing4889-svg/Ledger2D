@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 
 sealed interface SubmitState { data object Idle:SubmitState; data object Working:SubmitState; data class Success(val id:Long):SubmitState; data class Error(val message:String):SubmitState }
-data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်"),val validation:ValidationResult?=null,val loading:Boolean=false,val issues:List<String> = emptyList()){ val canConfirm get()=parse is ParseResult.Success&&validation?.canConfirm==true&&!loading }
+data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်"),val validation:ValidationResult?=null,val loading:Boolean=false,val issues:List<String> = emptyList()){ val canConfirm get()=parse is ParseResult.Success&&validation?.canConfirm==true&&issues.isEmpty()&&!loading }
 data class DrawReport(val calculation:DrawCalculation, val winningDigit:String?, val winnerAvailable:Boolean, val after:Boolean)
 data class AgentCustomerReportRow(val customer:CustomerEntity, val calculation:DrawCalculation)
 data class ScopeSummary(val id:Long, val name:String, val totalBet:Long, val winningStake:Long, val payout:Long, val profitLoss:Long, val commission:Long)
@@ -85,7 +85,10 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
                 issues += "${line.source}: $bad"
             }
         }
-        return if (accepted.isEmpty()) ParseResult.Error(issues.firstOrNull() ?: "စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်") to issues
+        // Never turn a partially rejected paste into a confirmed financial entry.
+        // Show all rejected lines and require the user to correct the whole batch.
+        if(issues.isNotEmpty()) return ParseResult.Error("ပိတ်ဂဏန်း/Limit/စာကြောင်းအမှား ရှိနေသည်။ အားလုံးပြင်ပြီးမှ အတည်ပြုပါ။") to issues
+        return if(accepted.isEmpty()) ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်") to issues
         else engine.run { BetParser().aggregate(accepted) } to issues
     }
     private suspend fun effectiveLimits(agentId:Long,customerId:Long,date:LocalDate,session:DrawSession):EffectiveLimits {
