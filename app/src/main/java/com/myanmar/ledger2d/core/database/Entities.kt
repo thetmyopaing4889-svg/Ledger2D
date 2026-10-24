@@ -7,6 +7,9 @@ import java.time.LocalDate
 @Entity(tableName = "agents", indices = [Index(value = ["name"])])
 data class AgentEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val address: String = "", val phone: String = "", val rate: Long, val remark: String = "", val createdAt: Long, val updatedAt: Long)
 
+@Entity(tableName = "agent_rate_changes", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"),Index(value=["agentId","effectiveDrawKey"],unique=true)])
+data class AgentRateChangeEntity(@PrimaryKey(autoGenerate=true) val id:Long=0, val agentId:Long, val effectiveDrawKey:Long, val rate:Long, val createdAt:Long)
+
 @Entity(tableName = "customers", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "name"])])
 data class CustomerEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val name: String, val address: String = "", val phone: String = "", val remark: String = "", val commissionRateBasisPoints: Int = 0, val createdAt: Long, val updatedAt: Long)
 

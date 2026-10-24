@@ -408,7 +408,36 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable fun EmptyState(title:String,subtitle:String){Column(Modifier.fillMaxWidth().padding(vertical=52.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(title,style=MaterialTheme.typography.headlineSmall,textAlign=TextAlign.Center);Spacer(Modifier.height(8.dp));Text(subtitle,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)}}
-@Composable fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val existing by vm.agent(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var rate by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}};AppScaffold(if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){Input(name,{name=it},"အမည်",true);Input(address,{address=it},"လိပ်စာ");Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone);Input(rate,{rate=it},"နှုန်းထား",true,KeyboardType.Number);Input(remark,{remark=it},"မှတ်ချက်");FormActions(onBack,{vm.saveAgent(id,name,address,phone,rate,remark,onBack)},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true)}}}
+@Composable fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
+    val existing by vm.agent(id).collectAsState(initial=null)
+    var name by rememberSaveable(id){mutableStateOf("")}
+    var address by rememberSaveable(id){mutableStateOf("")}
+    var phone by rememberSaveable(id){mutableStateOf("")}
+    var rate by rememberSaveable(id){mutableStateOf("")}
+    var remark by rememberSaveable(id){mutableStateOf("")}
+    val next=remember { com.myanmar.ledger2d.core.domain.DrawRatePolicy.earliestChange(LocalDateTime.now()) }
+    var effectiveDateText by rememberSaveable(id){mutableStateOf(next.date.toString())}
+    var effectiveSession by rememberSaveable(id){mutableStateOf(next.session)}
+    LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}}
+    val rateIsChanging=existing!=null && rate.toLongOrNull()!=existing?.rate
+    val date=runCatching{LocalDate.parse(effectiveDateText)}.getOrNull()
+    val earliest=com.myanmar.ledger2d.core.domain.DrawRatePolicy.earliestChange(LocalDateTime.now())
+    val validDate=!rateIsChanging || (date!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date) &&
+        com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(date,effectiveSession)>=com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(earliest.date,earliest.session))
+    AppScaffold(if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){
+        Input(name,{name=it},"အမည်",true)
+        Input(address,{address=it},"လိပ်စာ")
+        Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone)
+        Input(rate,{rate=it},"နှုန်းထား",true,KeyboardType.Number)
+        if(rateIsChanging){
+            Text("ဒိုင်အဆအသစ် စတင်သက်ရောက်မည့် Session (လက်ရှိ Session အတွင်း မပြောင်းပါ)")
+            DateInput(effectiveDateText,{effectiveDateText=it},"အဆစတင်မည့်ရက်")
+            Row { DrawSession.entries.forEach{draw->FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(draw.label)})} }
+        }
+        Input(remark,{remark=it},"မှတ်ချက်")
+        FormActions(onBack,{if(date!=null)vm.saveAgent(id,name,address,phone,rate,remark,date,effectiveSession,onBack)},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
+    }}
+}
 @Composable fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){val existing by vm.customer(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;remark=it.remark}};AppScaffold(if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){Input(name,{name=it},"အမည်",true);Input(address,{address=it},"လိပ်စာ");Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone);Input(remark,{remark=it},"မှတ်ချက်");FormActions(onBack,{vm.saveCustomer(id,agentId,name,address,phone,remark,onBack)},name.isNotBlank())}}}
 @Composable private fun FormColumn(p:PaddingValues,content:@Composable ColumnScope.() -> Unit)=Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp),content=content)
 @Composable fun Input(value:String,onValue:(String)->Unit,label:String,required:Boolean=false,keyboard:KeyboardType=KeyboardType.Text){val display=LocalLanguage.current.translate(label);OutlinedTextField(value,onValue,Modifier.fillMaxWidth(),label={Text(display+(if(required)" *" else ""))},singleLine=label!="မှတ်ချက်",keyboardOptions=KeyboardOptions(keyboardType=keyboard),shape=MaterialTheme.shapes.medium)}

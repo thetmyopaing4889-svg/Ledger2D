@@ -11,6 +11,11 @@ import java.time.LocalDate
     @Query("SELECT * FROM agents WHERE id=:id") suspend fun get(id: Long): AgentEntity?
     @Upsert suspend fun upsert(value: AgentEntity): Long
 }
+@Dao interface AgentRateChangeDao {
+    @Query("SELECT * FROM agent_rate_changes WHERE agentId=:agentId AND effectiveDrawKey=:key") suspend fun get(agentId:Long,key:Long):AgentRateChangeEntity?
+    @Query("SELECT rate FROM agent_rate_changes WHERE agentId=:agentId AND effectiveDrawKey <= :key ORDER BY effectiveDrawKey DESC LIMIT 1") suspend fun rateForDraw(agentId:Long,key:Long):Long?
+    @Upsert suspend fun upsert(value:AgentRateChangeEntity):Long
+}
 @Dao interface CustomerDao {
     @Query("SELECT * FROM customers WHERE agentId=:agentId ORDER BY name COLLATE NOCASE") fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>
     @Query("SELECT * FROM customers WHERE id=:id") fun observe(id: Long): Flow<CustomerEntity?>

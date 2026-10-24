@@ -7,6 +7,7 @@ import com.myanmar.ledger2d.core.domain.BetParser
 import com.myanmar.ledger2d.core.domain.CommissionCalculator
 import com.myanmar.ledger2d.core.domain.QuickFormat
 import com.myanmar.ledger2d.core.domain.RatedStake
+import com.myanmar.ledger2d.core.domain.DrawRatePolicy
 import com.myanmar.ledger2d.core.domain.SnapshotPayoutCalculator
 import com.myanmar.ledger2d.core.model.*
 import kotlinx.coroutines.async
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun observe(id: Long): Flow<AgentEntity?>; suspend fun get(id: Long): AgentEntity?; suspend fun save(value: AgentEntity): Long }
+interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun observe(id: Long): Flow<AgentEntity?>; suspend fun get(id: Long): AgentEntity?; suspend fun save(value: AgentEntity): Long; suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession):Long }
 interface CustomerRepository { fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>; fun observe(id: Long): Flow<CustomerEntity?>; suspend fun get(id: Long): CustomerEntity?; suspend fun getForAgent(agentId: Long): List<CustomerEntity>; suspend fun save(value: CustomerEntity): Long }
 interface BetRepository { fun observeCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotalsWithCommission(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitCommissionRow>>; fun observeEntry(id: Long): Flow<BetEntryWithLines?>; suspend fun getEntry(id: Long): BetEntryWithLines?; fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>; fun observeCustomerEntries(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; fun observeAgentEntries(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; suspend fun getCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getCustomerCommission(customerId: Long, date: LocalDate, session: DrawSession): Long; suspend fun getCustomerPayout(customerId: Long, date: LocalDate, session: DrawSession, winningDigit: String): Long; suspend fun getCustomerScenarioPayouts(customerId:Long,date:LocalDate,session:DrawSession):Map<String,Long>; suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long; suspend fun getAgentPayout(agentId: Long, date: LocalDate, session: DrawSession, winningDigit: String): Long; suspend fun getAgentScenarioPayouts(agentId:Long,date:LocalDate,session:DrawSession):Map<String,Long>; suspend fun confirm(customerId: Long, agentId: Long, date: LocalDate, session: DrawSession, source: String, format: QuickFormat, bets: List<ExpandedBet>): Long; suspend fun edit(entry: BetEntryEntity, bets: List<ExpandedBet>, format: QuickFormat); suspend fun delete(entry: BetEntryEntity) }
 interface WinningNumberRepository { fun observeAll(): Flow<List<WinningNumberEntity>>; fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>; suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?; suspend fun save(date: LocalDate, session: DrawSession, digit: String): Long; suspend fun update(existing: WinningNumberEntity, date: LocalDate, session: DrawSession, digit: String): Long; suspend fun delete(value: WinningNumberEntity); suspend fun syncFromLive(date: LocalDate, session: DrawSession, digit: String): Boolean }
@@ -40,7 +41,30 @@ interface AgentLimitRepository { fun observeAllLimit(agentId:Long,date:LocalDate
 interface SettlementRepository { fun observeAgent(agentId: Long): Flow<List<SettlementEntity>>; suspend fun get(agentId: Long, date: LocalDate, session: DrawSession): SettlementEntity?; suspend fun settle(value: SettlementEntity): Long }
 interface AuditRepository { fun observeAll(): Flow<List<AuditEventEntity>>; suspend fun record(type: String, id: Long, action: String, detail: String = ""): Long }
 
-class RoomAgentRepository(private val dao: AgentDao): AgentRepository { override fun observeAll()=dao.observeAll(); override fun observe(id:Long)=dao.observe(id); override suspend fun get(id:Long)=dao.get(id); override suspend fun save(value:AgentEntity)=dao.upsert(value) }
+class RoomAgentRepository(private val db:LedgerDatabase):AgentRepository {
+    private val dao=db.agentDao()
+    private val rates=db.agentRateChangeDao()
+    override fun observeAll()=dao.observeAll()
+    override fun observe(id:Long)=dao.observe(id)
+    override suspend fun get(id:Long)=dao.get(id)
+    override suspend fun save(value:AgentEntity)=dao.upsert(value)
+    override suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession):Long = db.withTransaction {
+        val previous=if(value.id>0L)dao.get(value.id) else null
+        if(previous!=null && previous.rate!=value.rate) {
+            require(value.rate>0)
+            val key=DrawRatePolicy.key(effectiveDate,effectiveSession)
+            val earliest=DrawRatePolicy.earliestChange(java.time.LocalDateTime.now())
+            require(key>=DrawRatePolicy.key(earliest.date,earliest.session)) { "အဆအသစ်သည် လက်ရှိ Session အပြီးမှ စတင်ရပါမည်" }
+            // Seed the previous known rate before adding the scheduled change.
+            // Pre-migration historical rates remain unknowable: entry snapshots win.
+            if(rates.rateForDraw(previous.id,Long.MAX_VALUE)==null)
+                rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=Long.MIN_VALUE,rate=previous.rate,createdAt=System.currentTimeMillis()))
+            val prior=rates.get(previous.id,key)
+            rates.upsert(AgentRateChangeEntity(id=prior?.id?:0,agentId=previous.id,effectiveDrawKey=key,rate=value.rate,createdAt=prior?.createdAt?:System.currentTimeMillis()))
+        }
+        dao.upsert(value)
+    }
+}
 class RoomCustomerRepository(private val dao: CustomerDao): CustomerRepository { override fun observeForAgent(agentId:Long)=dao.observeForAgent(agentId); override fun observe(id:Long)=dao.observe(id); override suspend fun get(id:Long)=dao.get(id); override suspend fun getForAgent(agentId:Long)=dao.getForAgent(agentId); override suspend fun save(value:CustomerEntity)=dao.upsert(value) }
 class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     private val dao=db.betDao()
@@ -86,7 +110,7 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     override suspend fun getAgentScenarioPayouts(agentId:Long,date:LocalDate,session:DrawSession)=scenarioPayouts(dao.getAgentRatedDigits(agentId,date,session))
     private fun validateLines(bets:List<ExpandedBet>) { require(bets.isNotEmpty()); require(bets.all { com.myanmar.ledger2d.core.domain.BetParser.validDigit(it.digit) && it.amount > 0 }); require(bets.map { it.digit }.distinct().size == bets.size) }
     private fun total(bets:List<ExpandedBet>) = bets.fold(0L) { sum, bet -> Math.addExact(sum, bet.amount) }
-    override suspend fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat,bets:List<ExpandedBet>):Long = db.withTransaction { validateLines(bets); require(source.isNotBlank()); val customer=db.customerDao().get(customerId) ?: error("Customer not found"); require(customer.agentId==agentId); val agent=db.agentDao().get(agentId) ?: error("Agent not found"); require(agent.rate>0); val now=System.currentTimeMillis(); val amount=total(bets); val id=dao.insertEntry(BetEntryEntity(customerId=customerId,agentId=agentId,drawDate=date,drawSession=session,sourceText=source,inputFormat=format.name,commissionRateBasisPoints=customer.commissionRateBasisPoints,commissionAmount=CommissionCalculator().calculate(amount,customer.commissionRateBasisPoints),payoutRate=agent.rate,createdAt=now,updatedAt=now)); dao.insertLines(bets.map { BetLineEntity(betEntryId=id,digit=it.digit,amount=it.amount) }); id }
+    override suspend fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat,bets:List<ExpandedBet>):Long = db.withTransaction { validateLines(bets); require(source.isNotBlank()); val customer=db.customerDao().get(customerId) ?: error("Customer not found"); require(customer.agentId==agentId); val agent=db.agentDao().get(agentId) ?: error("Agent not found"); val entryRate=db.agentRateChangeDao().rateForDraw(agentId,DrawRatePolicy.key(date,session))?:agent.rate; require(entryRate>0); val now=System.currentTimeMillis(); val amount=total(bets); val id=dao.insertEntry(BetEntryEntity(customerId=customerId,agentId=agentId,drawDate=date,drawSession=session,sourceText=source,inputFormat=format.name,commissionRateBasisPoints=customer.commissionRateBasisPoints,commissionAmount=CommissionCalculator().calculate(amount,customer.commissionRateBasisPoints),payoutRate=entryRate,createdAt=now,updatedAt=now)); dao.insertLines(bets.map { BetLineEntity(betEntryId=id,digit=it.digit,amount=it.amount) }); id }
     override suspend fun edit(entry:BetEntryEntity,bets:List<ExpandedBet>,format:QuickFormat) = db.withTransaction {
         validateLines(bets)
         require(entry.sourceText.isNotBlank())

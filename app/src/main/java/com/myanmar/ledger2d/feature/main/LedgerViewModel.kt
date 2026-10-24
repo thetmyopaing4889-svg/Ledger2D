@@ -115,7 +115,17 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun betEntry(id:Long)=container.bets.observeEntry(id)
     fun agentTotals(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotals(agentId,date,session)
     fun agentTotalsWithCommission(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotalsWithCommission(agentId,date,session)
-    fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,onDone:()->Unit){ val clean=name.trim(); val parsed=rate.toLongOrNull(); if(clean.isEmpty()||parsed==null||parsed<=0)return; viewModelScope.launch { val old=if(id>0)container.agents.get(id) else null; val now=System.currentTimeMillis(); container.agents.save(AgentEntity(id=id,name=clean,address=address.trim(),phone=phone.trim(),rate=parsed,remark=remark.trim(),createdAt=old?.createdAt?:now,updatedAt=now)); onDone() } }
+    fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,effectiveDate:LocalDate,effectiveSession:DrawSession,onDone:()->Unit){
+        val clean=name.trim();val parsed=rate.toLongOrNull()
+        if(clean.isEmpty()||parsed==null||parsed<=0)return
+        viewModelScope.launch {
+            val old=if(id>0)container.agents.get(id) else null
+            val now=System.currentTimeMillis()
+            val entity=AgentEntity(id=id,name=clean,address=address.trim(),phone=phone.trim(),rate=parsed,remark=remark.trim(),createdAt=old?.createdAt?:now,updatedAt=now)
+            runCatching { container.agents.saveWithRateSchedule(entity,effectiveDate,effectiveSession) }
+                .onSuccess { changed();onDone() }
+        }
+    }
     fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,onDone:()->Unit){ val clean=name.trim(); if(clean.isEmpty())return; viewModelScope.launch { val old=if(id>0)container.customers.get(id) else null; val now=System.currentTimeMillis(); container.customers.save(CustomerEntity(id=id,agentId=agentId,name=clean,address=address.trim(),phone=phone.trim(),remark=remark.trim(),commissionRateBasisPoints=old?.commissionRateBasisPoints?:0,createdAt=old?.createdAt?:now,updatedAt=now)); onDone() } }
     fun updateCommission(customerId:Long,percent:String,onDone:()->Unit){
         val parsed=percent.trim().toBigDecimalOrNull() ?: return
