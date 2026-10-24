@@ -10,13 +10,13 @@ data class AnalysisResult(val distinctDigits: Int, val totalBet: Long, val limit
 }
 
 class AnalysisCalculator {
-    fun calculate(amounts: Map<String, Long>, limits: EffectiveLimits, closed: Set<String>, agentRate: Long): AnalysisResult {
+    fun calculate(amounts: Map<String, Long>, limits: EffectiveLimits, closed: Set<String>, agentRate: Long, payoutByDigit: Map<String,Long>? = null): AnalysisResult {
         val total = amounts.values.fold(0L, Math::addExact)
         val scenarios = (0..99).map { it.toString().padStart(2, '0') }.map { digit ->
             val stake = amounts[digit] ?: 0L
             val limit = limits.forDigit(digit)
             val used = if (limit != null && limit > 0) BigInteger.valueOf(stake).multiply(BigInteger.valueOf(100)).divide(BigInteger.valueOf(limit)).min(BigInteger.valueOf(Int.MAX_VALUE.toLong())).toInt() else null
-            DigitScenario(digit, stake, MoneyMath.multiply(stake, agentRate), Math.subtractExact(total, MoneyMath.multiply(stake, agentRate)), limit, used, digit in closed)
+            DigitScenario(digit, stake, payoutByDigit?.get(digit) ?: MoneyMath.multiply(stake, agentRate), Math.subtractExact(total, payoutByDigit?.get(digit) ?: MoneyMath.multiply(stake, agentRate)), limit, used, digit in closed)
         }
         return AnalysisResult(amounts.count { it.value > 0 }, total, scenarios.count { it.limit != null }, scenarios.count { it.percentUsed != null && it.percentUsed >= 80 }, scenarios.count { it.percentUsed != null && it.percentUsed >= 90 }, scenarios.count { it.percentUsed != null && it.percentUsed >= 100 }, amounts.entries.sortedByDescending { it.value }.take(5).map { it.key to it.value }, scenarios.filter { it.closed }.map { it.digit }.toSet(), scenarios.filter { it.percentUsed != null && it.percentUsed >= 100 || it.closed }.map { it.digit }.toSet(), scenarios)
     }

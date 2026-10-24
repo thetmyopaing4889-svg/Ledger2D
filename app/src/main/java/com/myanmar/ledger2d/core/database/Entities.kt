@@ -117,6 +117,7 @@ data class AuditEventEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, v
 data class DigitTotalRow(val digit: String, val amount: Long)
 data class DigitCommissionRow(val digit: String, val amount: Long, val commission: Long)
 data class BetPayoutComponent(val amount: Long, val payoutRate: Long)
+data class RatedDigitStake(val digit: String, val amount: Long, val payoutRate: Long)
 data class BetEntryWithLines(@Embedded val entry: BetEntryEntity, @Relation(parentColumn = "id", entityColumn = "betEntryId") val lines: List<BetLineEntity>)
 
 class DatabaseConverters {

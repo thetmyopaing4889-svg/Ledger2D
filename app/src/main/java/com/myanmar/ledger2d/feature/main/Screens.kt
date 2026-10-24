@@ -485,7 +485,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
             (it == now.toLocalDate() && session == DrawSession.MORNING && !now.toLocalTime().isBefore(DrawSchedule.morningResultTime))
     } ?: false
     val visiblePreview = if (pastDraw && !backdated) null else preview
-    LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.entry.sourceText; format = runCatching { QuickFormat.valueOf(it.entry.inputFormat) }.getOrDefault(QuickFormat.MANUAL) } }
+    LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.lines.sortedBy { line -> line.digit }.joinToString("\n") { line -> line.digit+" "+line.amount }; format = QuickFormat.MANUAL } }
     LaunchedEffect(raw, format, date, session, backdated) { date?.let { vm.refreshPreview(customerId, agentId, it, session, raw, format, entryId, backdated) } }
     LaunchedEffect(submit) { if (submit is SubmitState.Success) { receiptId=(submit as SubmitState.Success).id; vm.resetSubmit() } }
     if (showLateError) AlertDialog(
@@ -1017,6 +1017,8 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val entries by vm.customerEntries(customerId, selectedDate, session).collectAsState(initial = emptyList())
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    deleteError?.let{msg->AlertDialog(onDismissRequest={deleteError=null},title={Text("စာရင်းဖျက်မရပါ")},text={Text(msg)},confirmButton={TextButton({deleteError=null}){Text("OK")}})}
     var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
     expandedEntry?.let { record ->
         AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }, text = {
@@ -1032,7 +1034,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             }
         })
     }
-    pendingDelete?.let { entry -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("စာရင်းဖျက်မည်လား")}, text={Text("ဒီစာရင်းကို အပြီးဖျက်မလား?")}, confirmButton={TextButton(onClick={vm.deleteBet(entry);pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton(onClick={pendingDelete=null}){Text("မလုပ်ပါ")}}) }
+    pendingDelete?.let { entry -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("စာရင်းဖျက်မည်လား")}, text={Text("ဒီစာရင်းကို အပြီးဖျက်မလား?")}, confirmButton={TextButton(onClick={vm.deleteBet(entry){deleteError=it};pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton(onClick={pendingDelete=null}){Text("မလုပ်ပါ")}}) }
     AppScaffold("စာရင်းမှတ်တမ်း", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) } } }
