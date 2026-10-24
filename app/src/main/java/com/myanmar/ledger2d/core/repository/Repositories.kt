@@ -162,12 +162,14 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
         dao.insertLines(bets.map { BetLineEntity(betEntryId=entry.id,digit=it.digit,amount=it.amount) })
         // Reopening a confirmed draw must not leave a stale settlement snapshot.
         db.settlementDao().invalidate(old.agentId,old.drawDate,old.drawSession)
+        Unit
     }
     override suspend fun delete(entry:BetEntryEntity) = db.withTransaction {
         val current=dao.getEntry(entry.id)?.entry ?: error("Bet entry not found")
         require(current.updatedAt==entry.updatedAt) { "စာရင်းကို တခြားနေရာမှ ပြင်ထားပြီးဖြစ်လို့ ပြန်ဖွင့်ပါ" }
         dao.deleteEntry(current)
         db.settlementDao().invalidate(current.agentId,current.drawDate,current.drawSession)
+        Unit
     }
 }
 class RoomWinningNumberRepository(private val db: LedgerDatabase) : WinningNumberRepository {
