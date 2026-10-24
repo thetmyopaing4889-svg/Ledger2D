@@ -3,6 +3,9 @@ package com.myanmar.ledger2d.core.database
 import android.app.Application
 import androidx.room.Room
 import com.myanmar.ledger2d.core.domain.QuickFormat
+import com.myanmar.ledger2d.core.domain.DrawRatePolicy
+import com.myanmar.ledger2d.core.domain.DrawSchedule
+import java.time.LocalDateTime
 import com.myanmar.ledger2d.core.model.DrawSession
 import com.myanmar.ledger2d.core.model.ExpandedBet
 import com.myanmar.ledger2d.core.repository.RoomAgentLimitRepository
@@ -102,17 +105,20 @@ class RoomDrawLedgerTest {
         val (db,agent,customer)=freshDb()
         try {
             val agents=RoomAgentRepository(db)
-            val tomorrow=date.plusDays(1)
+            // Schedule against a future weekday, independent of the CI run date.
+            val changeDate=DrawRatePolicy.earliestChange(LocalDateTime.now()).date.plusWeeks(1)
+            var beforeChange=changeDate.minusDays(1)
+            while(!DrawSchedule.isWeekday(beforeChange))beforeChange=beforeChange.minusDays(1)
             agents.saveWithRateSchedule(db.agentDao().get(agent)!!.copy(rate=85),
-                tomorrow,DrawSession.MORNING)
-            assertEquals(80L,agents.rateForDraw(agent,date,DrawSession.MORNING))
-            assertEquals(80L,agents.rateForDraw(agent,date,DrawSession.EVENING))
-            assertEquals(85L,agents.rateForDraw(agent,tomorrow,DrawSession.MORNING))
-            assertEquals(85L,agents.rateForDraw(agent,tomorrow,DrawSession.EVENING))
+                changeDate,DrawSession.MORNING)
+            assertEquals(80L,agents.rateForDraw(agent,beforeChange,DrawSession.MORNING))
+            assertEquals(80L,agents.rateForDraw(agent,beforeChange,DrawSession.EVENING))
+            assertEquals(85L,agents.rateForDraw(agent,changeDate,DrawSession.MORNING))
+            assertEquals(85L,agents.rateForDraw(agent,changeDate,DrawSession.EVENING))
             val bets=RoomBetRepository(db)
-            val morning=bets.confirm(customer,agent,date,DrawSession.MORNING,"20 1000",
+            val morning=bets.confirm(customer,agent,beforeChange,DrawSession.MORNING,"20 1000",
                 QuickFormat.MANUAL,listOf(ExpandedBet("20",1000)))
-            val following=bets.confirm(customer,agent,tomorrow,DrawSession.MORNING,"20 1000",
+            val following=bets.confirm(customer,agent,changeDate,DrawSession.MORNING,"20 1000",
                 QuickFormat.MANUAL,listOf(ExpandedBet("20",1000)))
             assertEquals(80L,bets.getEntry(morning)!!.entry.payoutRate)
             assertEquals(85L,bets.getEntry(following)!!.entry.payoutRate)
