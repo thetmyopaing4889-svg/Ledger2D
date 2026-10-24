@@ -19,6 +19,10 @@ android {
         vectorDrawables { useSupportLibrary = true }
         ksp { arg("room.schemaLocation", "$projectDir/schemas") }
     }
+    testOptions {
+        // Run real Room repository tests on Robolectric without a physical device.
+        unitTests.isIncludeAndroidResources = true
+    }
     buildTypes {
         release {
             // Keep the distributable release APK complete. R8/resource shrinking
@@ -55,6 +59,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
+    testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
