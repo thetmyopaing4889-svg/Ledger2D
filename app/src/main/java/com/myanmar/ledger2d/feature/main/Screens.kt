@@ -417,7 +417,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val existing by vm.agent(id).collectAsState(initial=null)
     val revision by vm.revision.collectAsStateWithLifecycle()
-    val upcoming=remember { DrawSchedule.nextDraw(LocalDateTime.now()) }
+    val upcoming=remember { com.myanmar.ledger2d.core.domain.DrawRatePolicy.currentSession(LocalDateTime.now()) }
     val activeRate by produceState<Long?>(null,id,revision) {
         value=if(id>0)vm.agentRateForDraw(id,upcoming.date,upcoming.session)else null
     }
@@ -434,8 +434,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val rateIsChanging=existing!=null && rate.toLongOrNull()!=existing?.rate
     val date=runCatching{LocalDate.parse(effectiveDateText)}.getOrNull()
     val earliest=com.myanmar.ledger2d.core.domain.DrawRatePolicy.earliestChange(LocalDateTime.now())
-    val validDate=!rateIsChanging || (date!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date) &&
-        com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(date,effectiveSession)>=com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(earliest.date,earliest.session))
+    val validDate=!rateIsChanging || (date!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date))
     AppScaffold(if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){
         Input(name,{name=it},"အမည်",true)
         Input(address,{address=it},"လိပ်စာ")
@@ -444,7 +443,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         if(id>0L&&activeRate!=null&&activeRate!=existing?.rate)
             Text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • ကြိုတင်သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ",color=MaterialTheme.colorScheme.secondary)
         if(rateIsChanging){
-            Text("ဒိုင်အဆအသစ် စတင်သက်ရောက်မည့် Session (လက်ရှိ Session အတွင်း မပြောင်းပါ)")
+            Text("ဒိုင်အဆသစ်သုံးမည့် Session (အဲဒီ Session ၏ Entry အားလုံးကို ပြန်တွက်မည်။ အတိတ် Session ရွေးလျှင် အဲဒီ Session တစ်ခုသာ ပြင်မည်။)")
             DateInput(effectiveDateText,{effectiveDateText=it},"အဆစတင်မည့်ရက်")
             Row { DrawSession.entries.forEach{draw->FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(draw.label)})} }
         }
