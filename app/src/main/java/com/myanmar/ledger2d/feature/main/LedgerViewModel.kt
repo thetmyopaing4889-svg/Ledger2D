@@ -274,7 +274,9 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
             for(session in DrawSession.entries) {
                 val winner=container.winners.get(date,session)
                 if(after && winner!=null) winners[date to session]=winner.digit
-                val eligible=(!date.isAfter(LocalDate.now())&&!after)||(after&&winner!=null)
+                // Before shows already-entered bets even for a future-dated test draw.
+                // After stays gated by the saved winning digit.
+                val eligible=!after||winner!=null
                 if(eligible) calculations[date to session]=customerFinancials(customer.id,date,session,if(after) winner?.digit else null)
             }
         }

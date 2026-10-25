@@ -13,6 +13,10 @@ import com.myanmar.ledger2d.core.repository.RoomAgentRepository
 import com.myanmar.ledger2d.core.repository.RoomBetRepository
 import com.myanmar.ledger2d.core.repository.RoomClosedNumberRepository
 import com.myanmar.ledger2d.core.repository.RoomWinningNumberRepository
+import com.myanmar.ledger2d.AppContainer
+import com.myanmar.ledger2d.feature.main.LedgerViewModel
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -39,6 +43,24 @@ class RoomDrawLedgerTest {
         val c=db.customerDao().upsert(CustomerEntity(agentId=a,name="Test Customer",
             commissionRateBasisPoints=1500,createdAt=1,updatedAt=1))
         return Triple(db,a,c)
+    }
+
+    @Test fun futureEnteredBetsShowInWeeklyBeforeWithoutWinningNumber()=runBlocking {
+        val (db,agent,customer)=freshDb()
+        try {
+            val futureMonday=LocalDate.now().plusWeeks(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY))
+            val bets=RoomBetRepository(db)
+            bets.confirm(customer,agent,futureMonday,DrawSession.MORNING,"20 1000",
+                QuickFormat.MANUAL,listOf(ExpandedBet("20",1_000)))
+            val vm=LedgerViewModel(AppContainer(db))
+            val before=vm.weeklyCustomerReport(customer,futureMonday,false)
+            val after=vm.weeklyCustomerReport(customer,futureMonday,true)
+            assertEquals(1_000L,before.totalBet)
+            assertEquals(0L,after.totalBet)
+            assertEquals(150L,before.commission)
+            RoomWinningNumberRepository(db).save(futureMonday,DrawSession.MORNING,"20")
+            assertEquals(1_000L,vm.weeklyCustomerReport(customer,futureMonday,true).totalBet)
+        } finally { db.close() }
     }
 
     @Test fun limitsAndClosedDigitsResetAtNextSessionButMorningStillExists()=runBlocking {

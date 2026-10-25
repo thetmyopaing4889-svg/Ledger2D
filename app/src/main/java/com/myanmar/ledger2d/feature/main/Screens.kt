@@ -111,8 +111,14 @@ fun inputFormatDisplay(value: String): String = when (value.uppercase()) {
     else -> "လက်ဖြင့်ထည့်သွင်းမှု"
 }
 fun transactionDisplayText(format: String, raw: String): String {
-    if (format.equals("MANUAL", ignoreCase = true)) return raw.trim()
-    val value = raw.trim().replace(Regex("[Rr]"), " ").replace(Regex("\\s+"), " ")
+    val original = raw.trim()
+    if (format.equals("MANUAL", ignoreCase = true)) return original
+    // A Messenger paste can contain several individually labeled formats even
+    // when a single quick-format chip was selected. Never add a misleading label.
+    val explicitLabels = listOf("အခွေပူး", "အခေပူး", "အခွေ", "အခေ",
+        "ပတ်သီး", "ပါဝါ", "နက္ခတ်", "အပူး", "ညီအကို", "ထိပ်စည်း", "နောက်ပိတ်")
+    if (explicitLabels.any { original.contains(it) }) return original
+    val value = original.replace(Regex("[Rr]"), " ").replace(Regex("\\s+"), " ")
     return "${inputFormatDisplay(format)} $value".trim()
 }
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
@@ -586,7 +592,17 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                 }
             }
             when(val parsed=preview.parse){
-                is ParseResult.Error -> Text(LocalLanguage.current.translate(previewError(parsed.message)),color=MaterialTheme.colorScheme.error)
+                is ParseResult.Error -> Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                    Text(LocalLanguage.current.translate(previewError(parsed.message)),color=MaterialTheme.colorScheme.error)
+                    // Keep the strict all-or-nothing rejection, but show the exact
+                    // blocked digit or exceeded limit instead of just a generic error.
+                    if(preview.issues.isNotEmpty()) Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){
+                        Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                            Text("လက်မခံနိုင်သော စာရင်းများ",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer)
+                            preview.issues.forEach { issue->Text("• $issue",color=MaterialTheme.colorScheme.onErrorContainer) }
+                        }
+                    }
+                }
                 is ParseResult.Success -> {
                     if(preview.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     if(preview.issues.isNotEmpty()) Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){Text("ချန်ထားသောစာရင်း",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer);preview.issues.forEach{Text("• $it",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onErrorContainer)}}}
