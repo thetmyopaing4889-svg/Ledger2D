@@ -16,7 +16,7 @@ import org.robolectric.annotation.Config
 @Config(sdk=[33],manifest=Config.NONE,application=Application::class)
 class CommissionMigrationTest {
     @Test fun migratingExistingLedgerAddsOnlyCommissionRulesAndRetainsOtherTables()=runBlocking {
-        val context=RuntimeEnvironment.getApplication<Application>()
+        val context=RuntimeEnvironment.getApplication()
         val name="ledger2d.db"
         context.deleteDatabase(name)
         try {
