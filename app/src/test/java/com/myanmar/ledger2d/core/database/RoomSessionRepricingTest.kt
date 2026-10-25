@@ -57,6 +57,12 @@ class RoomSessionRepricingTest {
             assertEquals(90L,bets.getEntry(first)!!.entry.payoutRate)
             assertEquals(90L,agents.rateForDraw(agentId,active.date,active.session))
             assertEquals(90L,db.agentDao().get(agentId)!!.rate)
+            // A historical session can be corrected back to the master rate,
+            // even though the master value itself has not changed.
+            agents.saveWithRateSchedule(db.agentDao().get(agentId)!!.copy(rate=90),
+                old,DrawSession.MORNING,forceSessionReprice=true)
+            assertEquals(90L,bets.getEntry(historical)!!.entry.payoutRate)
+            assertEquals(90L,bets.getEntry(first)!!.entry.payoutRate)
         } finally {db.close()}
     }
 
