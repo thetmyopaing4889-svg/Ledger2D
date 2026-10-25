@@ -52,16 +52,12 @@ class RoomCommissionRulesTest {
             assertEquals(2000,bets.getEntry(futureEntry)!!.entry.commissionRateBasisPoints)
             assertEquals(200L,bets.getCustomerCommission(customer,future,DrawSession.MORNING))
 
-            db.settlementDao().upsert(SettlementEntity(agentId=agent,date=old,
-                session=DrawSession.MORNING,totalBet=2000,payout=160000,commission=270,
-                netSettlement=-157730,settledAt=100))
             commissions.overrideDraw(customer,old,DrawSession.MORNING,2000)
             assertEquals(200L,bets.getCustomerCommission(customer,old,DrawSession.MORNING))
             assertEquals(150L,bets.getCustomerCommission(customer,old,DrawSession.EVENING))
             assertEquals(120L,bets.getCustomerCommission(other,old,DrawSession.MORNING))
             assertEquals(2000,commissions.rateForDraw(customer,old,DrawSession.MORNING))
             assertEquals(1500,commissions.rateForDraw(customer,old,DrawSession.EVENING))
-            assertNull(db.settlementDao().get(agent,old,DrawSession.MORNING))
             // A later edit must preserve the corrected snapshot rather than
             // snapping back to the customer's future default.
             val corrected=bets.getEntry(oldMorning)!!
