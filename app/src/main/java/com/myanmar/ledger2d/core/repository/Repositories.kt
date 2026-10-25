@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun observe(id: Long): Flow<AgentEntity?>; suspend fun get(id: Long): AgentEntity?; suspend fun save(value: AgentEntity): Long; suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession):Long; suspend fun rateForDraw(agentId:Long,date:LocalDate,session:DrawSession):Long? }
+interface AgentRepository { fun observeAll(): Flow<List<AgentEntity>>; fun observe(id: Long): Flow<AgentEntity?>; suspend fun get(id: Long): AgentEntity?; suspend fun save(value: AgentEntity): Long; suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean=false):Long; suspend fun rateForDraw(agentId:Long,date:LocalDate,session:DrawSession):Long? }
 interface CommissionRepository {
     suspend fun rateForDraw(customerId:Long,date:LocalDate,session:DrawSession):Int?
     suspend fun schedule(customerId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession)
@@ -56,9 +56,9 @@ class RoomAgentRepository(private val db:LedgerDatabase):AgentRepository {
     override suspend fun rateForDraw(agentId:Long,date:LocalDate,session:DrawSession):Long? =
         rates.rateForDraw(agentId,DrawRatePolicy.key(date,session)) ?: dao.get(agentId)?.rate
     override suspend fun save(value:AgentEntity)=dao.upsert(value)
-    override suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession):Long = db.withTransaction {
+    override suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean):Long = db.withTransaction {
         val previous=if(value.id>0L)dao.get(value.id) else null
-        if(previous==null || previous.rate==value.rate) {
+        if(previous==null || (previous.rate==value.rate && !forceSessionReprice)) {
             dao.upsert(value)
         } else {
             require(value.rate>0 && DrawSchedule.isWeekday(effectiveDate))
