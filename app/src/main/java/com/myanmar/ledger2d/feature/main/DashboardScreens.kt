@@ -416,7 +416,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     // The normal rate is scheduled prospectively; a draw correction only changes
     // the selected customer's selected morning/evening session.
     var mode by rememberSaveable(customerId) { mutableStateOf("FORWARD") }
-    val next=remember { com.myanmar.ledger2d.core.domain.DrawSchedule.nextDraw(java.time.LocalDateTime.now()) }
+    val next=remember { com.myanmar.ledger2d.core.domain.DrawRatePolicy.currentSession(java.time.LocalDateTime.now()) }
     var effectiveDate by rememberSaveable(customerId) { mutableStateOf(next.date.toString()) }
     var effectiveSession by rememberSaveable(customerId) { mutableStateOf(next.session) }
     var value by rememberSaveable(customerId) { mutableStateOf("") }
@@ -431,7 +431,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     val validRate=parsed!=null && parsed>=java.math.BigDecimal.ZERO && parsed<=java.math.BigDecimal(100) &&
         parsed.movePointRight(2).stripTrailingZeros().scale()<=0
     val startDate=runCatching { LocalDate.parse(effectiveDate) }.getOrNull()
-    val earliest=com.myanmar.ledger2d.core.domain.DrawSchedule.nextDraw(java.time.LocalDateTime.now())
+    val earliest=com.myanmar.ledger2d.core.domain.DrawRatePolicy.currentSession(java.time.LocalDateTime.now())
     val validStart=startDate!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(startDate) &&
         com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(startDate,effectiveSession)>=
         com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(earliest.date,earliest.session)
