@@ -6,12 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [AgentEntity::class, AgentRateChangeEntity::class, CustomerEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class, LiveDailyResultEntity::class, ManualWinnerLockEntity::class], version = 11, exportSchema = true)
+@Database(entities = [AgentEntity::class, AgentRateChangeEntity::class, CustomerEntity::class, CustomerCommissionRuleEntity::class, BetEntryEntity::class, BetLineEntity::class, WinningNumberEntity::class, ClosedDayEntity::class, ClosedNumberEntity::class, AllLimitEntity::class, SpecialLimitEntity::class, AgentAllLimitEntity::class, AgentSpecialLimitEntity::class, SettlementEntity::class, AuditEventEntity::class, HistoryResultEntity::class, LiveDailyResultEntity::class, ManualWinnerLockEntity::class], version = 12, exportSchema = true)
 @TypeConverters(DatabaseConverters::class)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun agentDao(): AgentDao
     abstract fun agentRateChangeDao(): AgentRateChangeDao
     abstract fun customerDao(): CustomerDao
+    abstract fun customerCommissionRuleDao(): CustomerCommissionRuleDao
     abstract fun betDao(): BetDao
     abstract fun winningNumberDao(): WinningNumberDao
     abstract fun manualWinnerLockDao(): ManualWinnerLockDao
@@ -113,6 +114,14 @@ abstract class LedgerDatabase : RoomDatabase() {
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_agent_rate_changes_agentId_effectiveDrawKey ON agent_rate_changes(agentId, effectiveDrawKey)")
             }
         }
-        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11).build()
+        private val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Additive only: all existing ledger, LIVE, history and winner tables remain intact.
+                db.execSQL("CREATE TABLE IF NOT EXISTS customer_commission_rules (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, customerId INTEGER NOT NULL, ruleType TEXT NOT NULL, drawKey INTEGER NOT NULL, rateBasisPoints INTEGER NOT NULL, createdAt INTEGER NOT NULL, FOREIGN KEY(customerId) REFERENCES customers(id) ON UPDATE CASCADE ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_customer_commission_rules_customerId ON customer_commission_rules(customerId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_customer_commission_rules_customerId_ruleType_drawKey ON customer_commission_rules(customerId, ruleType, drawKey)")
+            }
+        }
+        fun create(context: Context): LedgerDatabase = Room.databaseBuilder(context, LedgerDatabase::class.java, "ledger2d.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12).build()
     }
 }

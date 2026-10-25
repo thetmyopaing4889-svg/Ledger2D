@@ -23,6 +23,15 @@ import java.time.LocalDate
     @Query("SELECT * FROM customers WHERE agentId=:agentId ORDER BY name COLLATE NOCASE") suspend fun getForAgent(agentId: Long): List<CustomerEntity>
     @Upsert suspend fun upsert(value: CustomerEntity): Long
 }
+@Dao interface CustomerCommissionRuleDao {
+    @Query("SELECT * FROM customer_commission_rules WHERE customerId=:customerId AND ruleType=:type AND drawKey=:key LIMIT 1")
+    suspend fun get(customerId:Long,type:String,key:Long):CustomerCommissionRuleEntity?
+    @Query("SELECT rateBasisPoints FROM customer_commission_rules WHERE customerId=:customerId AND ruleType='DRAW' AND drawKey=:key LIMIT 1")
+    suspend fun drawOverride(customerId:Long,key:Long):Int?
+    @Query("SELECT rateBasisPoints FROM customer_commission_rules WHERE customerId=:customerId AND ruleType='FORWARD' AND drawKey<=:key ORDER BY drawKey DESC LIMIT 1")
+    suspend fun forwardRate(customerId:Long,key:Long):Int?
+    @Upsert suspend fun upsert(value:CustomerCommissionRuleEntity):Long
+}
 @Dao interface BetDao {
     @Insert suspend fun insertEntry(value: BetEntryEntity): Long
     @Insert suspend fun insertLines(values: List<BetLineEntity>)
@@ -30,6 +39,8 @@ import java.time.LocalDate
     @Query("DELETE FROM bet_lines WHERE betEntryId=:entryId") suspend fun deleteLines(entryId: Long)
     @Transaction @Query("SELECT * FROM bet_entries WHERE id=:id") fun observeEntry(id: Long): Flow<BetEntryWithLines?>
     @Transaction @Query("SELECT * FROM bet_entries WHERE id=:id") suspend fun getEntry(id: Long): BetEntryWithLines?
+    @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session")
+    suspend fun getEntriesForCustomerDraw(customerId:Long,date:LocalDate,session:DrawSession):List<BetEntryWithLines>
     @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId ORDER BY drawDate DESC, drawSession DESC, id DESC") fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>
     @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session ORDER BY id DESC") fun observeCustomerEntries(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>
     @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session ORDER BY id DESC") fun observeAgentEntries(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>

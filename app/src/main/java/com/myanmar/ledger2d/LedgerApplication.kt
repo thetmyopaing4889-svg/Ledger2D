@@ -53,6 +53,7 @@ class AppContainer(val database: LedgerDatabase) {
     val workingContext = WorkingContextStore()
     val agents: AgentRepository = RoomAgentRepository(database)
     val customers: CustomerRepository = RoomCustomerRepository(database.customerDao())
+    val commissions: CommissionRepository = RoomCommissionRepository(database)
     val bets: BetRepository = RoomBetRepository(database)
     val winners: WinningNumberRepository = RoomWinningNumberRepository(database)
     val history: HistoryResultRepository = RoomHistoryResultRepository(database)

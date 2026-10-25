@@ -130,17 +130,45 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         }
     }
     fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,onDone:()->Unit){ val clean=name.trim(); if(clean.isEmpty())return; viewModelScope.launch { val old=if(id>0)container.customers.get(id) else null; val now=System.currentTimeMillis(); container.customers.save(CustomerEntity(id=id,agentId=agentId,name=clean,address=address.trim(),phone=phone.trim(),remark=remark.trim(),commissionRateBasisPoints=old?.commissionRateBasisPoints?:0,createdAt=old?.createdAt?:now,updatedAt=now)); onDone() } }
-    fun updateCommission(customerId:Long,percent:String,onDone:()->Unit){
-        val parsed=percent.trim().toBigDecimalOrNull() ?: return
-        if(parsed < java.math.BigDecimal.ZERO || parsed > java.math.BigDecimal(100)) return
+    /** Existing call retained only for compatibility with older UI entry points. */
+    private fun commissionBasisPoints(percent:String):Int? {
+        val parsed=percent.trim().toBigDecimalOrNull() ?: return null
+        if(parsed<java.math.BigDecimal.ZERO || parsed>java.math.BigDecimal(100))return null
         val scaled=parsed.movePointRight(2)
-        if(scaled.stripTrailingZeros().scale() > 0) return
-        val bp=scaled.toInt()
+        if(scaled.stripTrailingZeros().scale()>0)return null
+        return scaled.toInt()
+    }
+    suspend fun commissionForDraw(customerId:Long,date:LocalDate,session:DrawSession):Int? =
+        container.commissions.rateForDraw(customerId,date,session)
+
+    fun scheduleCommission(customerId:Long,percent:String,effectiveDate:LocalDate,effectiveSession:DrawSession,
+        onDone:()->Unit,onError:(String)->Unit={}) {
+        val bp=commissionBasisPoints(percent) ?: return onError("ကော်မရှင် 0 မှ 100% အထိသာ သတ်မှတ်ပါ")
         viewModelScope.launch {
-            val old=container.customers.get(customerId) ?: return@launch
-            container.customers.save(old.copy(commissionRateBasisPoints=bp,updatedAt=System.currentTimeMillis()))
-            changed(); onDone()
+            runCatching { container.commissions.schedule(customerId,bp,effectiveDate,effectiveSession) }
+                .onSuccess { changed();onDone() }
+                .onFailure { onError(it.message?:"ကော်မရှင် သိမ်းမရပါ") }
         }
+    }
+
+    fun overrideSessionCommission(customerId:Long,date:LocalDate,session:DrawSession,percent:String,
+        onDone:()->Unit,onError:(String)->Unit={}) {
+        val bp=commissionBasisPoints(percent) ?: return onError("ကော်မရှင် 0 မှ 100% အထိသာ သတ်မှတ်ပါ")
+        viewModelScope.launch {
+            mutationMutex.withLock {
+                runCatching { container.commissions.overrideDraw(customerId,date,session,bp) }
+                    .onSuccess {
+                        container.audit.record("COMMISSION",customerId,"DRAW_OVERRIDE","$date/${session.name}/$bp")
+                        changed();onDone()
+                    }
+                    .onFailure { onError(it.message?:"ဒီ Session ၏ ကော်မရှင် ပြင်မရပါ") }
+            }
+        }
+    }
+
+    fun updateCommission(customerId:Long,percent:String,onDone:()->Unit) {
+        val next=DrawSchedule.nextDraw(java.time.LocalDateTime.now())
+        scheduleCommission(customerId,percent,next.date,next.session,onDone)
     }
     fun updateAllLimit(customerId:Long,date:LocalDate,session:DrawSession,amount:String,onDone:()->Unit) {
         val parsed=amount.trim().takeIf(String::isNotEmpty)?.toLongOrNull()

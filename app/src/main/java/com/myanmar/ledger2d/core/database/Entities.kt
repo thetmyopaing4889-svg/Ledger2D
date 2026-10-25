@@ -13,6 +13,18 @@ data class AgentRateChangeEntity(@PrimaryKey(autoGenerate=true) val id:Long=0, v
 @Entity(tableName = "customers", foreignKeys = [ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("agentId"), Index(value = ["agentId", "name"])])
 data class CustomerEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val agentId: Long, val name: String, val address: String = "", val phone: String = "", val remark: String = "", val commissionRateBasisPoints: Int = 0, val createdAt: Long, val updatedAt: Long)
 
+/** FORWARD changes are effective for future entries; DRAW rules override one customer's
+ * selected draw and are applied transactionally to its existing entries. */
+@Entity(tableName = "customer_commission_rules",
+    foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"],
+        childColumns = ["customerId"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+    indices = [Index("customerId"), Index(value=["customerId","ruleType","drawKey"],unique=true)])
+data class CustomerCommissionRuleEntity(
+    @PrimaryKey(autoGenerate = true) val id:Long=0,
+    val customerId:Long, val ruleType:String, val drawKey:Long,
+    val rateBasisPoints:Int, val createdAt:Long
+)
+
 @Entity(tableName = "bet_entries", foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE), ForeignKey(entity = AgentEntity::class, parentColumns = ["id"], childColumns = ["agentId"], onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.CASCADE)], indices = [Index("customerId"), Index("agentId"), Index(value = ["customerId", "drawDate", "drawSession"]), Index(value = ["agentId", "drawDate", "drawSession"])])
 data class BetEntryEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val customerId: Long, val agentId: Long, val drawDate: LocalDate, val drawSession: DrawSession, val sourceText: String, val inputFormat: String = "MANUAL", val commissionRateBasisPoints: Int = 0, val commissionAmount: Long = 0, val payoutRate: Long = 0, val createdAt: Long, val updatedAt: Long)
 
