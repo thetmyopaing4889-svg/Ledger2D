@@ -79,10 +79,23 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
                     customerCurrent[bet.digit]=Math.addExact(customerCurrent[bet.digit]?:0L,bet.amount)
                 }
             }else{
-                val bad=check.rows.filter{it.isClosed||it.exceedsLimit}.joinToString(", "){row->
-                    row.digit+" "+(if(row.isClosed)"ပိတ်" else "ကန့်သတ်ချက်ကျော်")
+                // Attribute every rejection to the independent agent/customer rule.
+                // Preview must never silently accept a partial batch.
+                val a=LimitValidator().validate(bets,agentCurrent,agentLimits,closed)
+                val b=LimitValidator().validate(bets,customerCurrent,customerLimits)
+                val details=mutableListOf<String>()
+                fun describe(scope:String,row:DigitValidation) {
+                    if(row.isClosed) details += "${row.digit} • $scope: ပိတ်ဂဏန်း"
+                    if(row.exceedsLimit) {
+                        val limit=row.limit ?: return
+                        val available=(limit-row.currentTotal).coerceAtLeast(0L)
+                        val excess=(row.afterInput-limit).coerceAtLeast(0L)
+                        details += "${row.digit} • $scope: ယခင် ${row.currentTotal} + အသစ် ${row.thisInput} = ${row.afterInput}၊ Limit $limit၊ လက်ကျန် $available၊ ကျော် $excess ကျပ်၊ အသစ်ထည့်ငွေ အပြည့်လက်မခံ"
+                    }
                 }
-                issues += "${line.source}: $bad"
+                a.rows.forEach{describe("Agent",it)}
+                b.rows.forEach{describe("Customer",it)}
+                issues += "${line.source}: ${details.joinToString(" | ")}"
             }
         }
         // Never turn a partially rejected paste into a confirmed financial entry.
