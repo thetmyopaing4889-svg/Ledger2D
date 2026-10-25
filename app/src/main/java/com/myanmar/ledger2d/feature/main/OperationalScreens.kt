@@ -44,27 +44,3 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
     },bottomBar={OperationalBottomBar("ledger",onNavigate,{onNavigate("quick")})})
 }
 
-@Composable
-fun SettlementScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Unit={}){
-    val l=com.myanmar.ledger2d.core.design.LocalLanguage.current
-    var dateText by rememberSaveable{mutableStateOf(l.selectedDate)}
-    var session by rememberSaveable{mutableStateOf(l.selectedSession)}
-    LaunchedEffect(l.selectedDate, l.selectedSession) { dateText = l.selectedDate; session = l.selectedSession }
-    val date=runCatching{LocalDate.parse(dateText)}.getOrElse{LocalDate.now()}
-    val revision by vm.revision.collectAsStateWithLifecycle()
-    val agents by vm.agents.collectAsStateWithLifecycle()
-    val reports by produceState<Map<Long,DrawReport>>(emptyMap(),date,session,revision,agents){value=agents.associate{it.id to vm.agentReport(it.id,date,session,true)}}
-    OperationalScaffold(l.translate("ရှင်းတမ်း"),onBack,content={padding->
-        LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-            item{DateInput(dateText,{dateText=it;l.setDate(it)},"ရက်စွဲ");Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;l.setSession(draw)},label={Text(draw.label)})}}}
-            if(agents.isEmpty())item{EmptyState(l.translate("ဒိုင်မရှိသေးပါ"),l.translate("ဒိုင်ထည့်ပြီးမှ ရှင်းတမ်းတွက်နိုင်ပါမည်"))}
-            items(agents,key={it.id}){agent->
-                val report=reports[agent.id]
-                val settled by produceState<Boolean?>(null,agent.id,date,session,revision){value=vm.isSettled(agent.id,date,session)}
-                report?.let{r->ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);if(settled==true)Text(l.translate("ပြီး"),color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)};SettlementMetric(l.translate("ထိုးကြေး"),r.calculation.totalBet.mmk());SettlementMetric(l.translate("ပေါက်ကြေး"),r.calculation.winningStake.mmk());SettlementMetric(l.translate("လျော်ပေးငွေ"),r.calculation.payout.mmk());SettlementMetric(l.translate("ကော်မရှင်"),r.calculation.commission.mmk());HorizontalDivider();SettlementMetric(l.translate("Net settlement"),r.calculation.netSettlement.mmk(),true);if(settled!=true)Button({vm.settleAgent(agent.id,date,session)},enabled=r.winnerAvailable,modifier=Modifier.fillMaxWidth()){Text(if(r.winnerAvailable)l.translate("ရှင်းတမ်းအတည်ပြုမည်") else l.translate("ပေါက်ဂဏန်းမရှိသေးပါ"))}}}}
-            }
-        }
-    },bottomBar={OperationalBottomBar("settlement",onNavigate,{onNavigate("quick")})})
-}
-
-@Composable private fun SettlementMetric(label:String,value:String,emphasis:Boolean=false){Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,fontWeight=if(emphasis)FontWeight.Black else FontWeight.SemiBold,color=if(emphasis)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)}}
