@@ -409,21 +409,81 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 
 @Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
     val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
-    var value by rememberSaveable { mutableStateOf("") }
-    var saved by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(customer, saved) { if (!saved) customer?.let { value = java.math.BigDecimal(it.commissionRateBasisPoints).movePointLeft(2).stripTrailingZeros().toPlainString() } }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(if (customerId == -1L) "Customer အားလုံး၏ ကော်မရှင်" else "ဒီ Customer ၏ ကော်မရှင်နှုန်းထား", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("တွက်ချက်မည့်ကာလ • ${date.displayDate()} • ${session.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        Text(if (customerId == -1L) "ရွေးထားသော Agent အောက်က Customer အားလုံး၏ snapshot commission ကို ပေါင်းပြထားသည်။" else "စုစုပေါင်းထိုးကြေး၏ ရာခိုင်နှုန်းအဖြစ် တွက်ပြီး စာရင်းတစ်ခုချင်း snapshot သိမ်းထားသည်။", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (customerId == -1L) {
-            val revision by vm.revision.collectAsStateWithLifecycle()
-            val total by produceState(initialValue = 0L, agentId, date, session, revision) { this.value = vm.agentReport(agentId, date, session, true).calculation.commission }
-            AnalysisMetric("စုစုပေါင်းကော်မရှင်", total.mmk())
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val drawRate by produceState<Int?>(null,customerId,date,session,revision) {
+        value=if(customerId>0L)vm.commissionForDraw(customerId,date,session)else null
+    }
+    // The normal rate is scheduled prospectively; a draw correction only changes
+    // the selected customer's selected morning/evening session.
+    var mode by rememberSaveable(customerId) { mutableStateOf("FORWARD") }
+    val next=remember { com.myanmar.ledger2d.core.domain.DrawSchedule.nextDraw(java.time.LocalDateTime.now()) }
+    var effectiveDate by rememberSaveable(customerId) { mutableStateOf(next.date.toString()) }
+    var effectiveSession by rememberSaveable(customerId) { mutableStateOf(next.session) }
+    var value by rememberSaveable(customerId) { mutableStateOf("") }
+    var saved by rememberSaveable(customerId) { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var pendingOverride by remember { mutableStateOf(false) }
+    LaunchedEffect(customer?.commissionRateBasisPoints,drawRate,mode,date,session) {
+        value=java.math.BigDecimal(if(mode=="DRAW")drawRate?:customer?.commissionRateBasisPoints?:0
+            else customer?.commissionRateBasisPoints?:0).movePointLeft(2).stripTrailingZeros().toPlainString()
+    }
+    val parsed=value.toBigDecimalOrNull()
+    val validRate=parsed!=null && parsed>=java.math.BigDecimal.ZERO && parsed<=java.math.BigDecimal(100) &&
+        parsed.movePointRight(2).stripTrailingZeros().scale()<=0
+    val startDate=runCatching { LocalDate.parse(effectiveDate) }.getOrNull()
+    val earliest=com.myanmar.ledger2d.core.domain.DrawSchedule.nextDraw(java.time.LocalDateTime.now())
+    val validStart=startDate!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(startDate) &&
+        com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(startDate,effectiveSession)>=
+        com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(earliest.date,earliest.session)
+    if(pendingOverride)AlertDialog(onDismissRequest={pendingOverride=false},
+        title={Text("ဒီ Session ၏ ကော်မရှင်ကို ပြန်တွက်မည်လား")},
+        text={Text("${date.displayDate()} • ${session.label} အတွက် ဒီ Customer ၏ ထိုးကြေးအားလုံးကို ${value}% နဲ့ ပြန်တွက်မည်။ တခြား Session နဲ့ Customer တွေ မပြောင်းပါ။")},
+        confirmButton={TextButton({
+            pendingOverride=false
+            vm.overrideSessionCommission(customerId,date,session,value,{saved=true;error=""},{error=it})
+        }){Text("ပြန်တွက်မည်")}},
+        dismissButton={TextButton({pendingOverride=false}){Text("မလုပ်တော့ပါ")}})
+    Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Text(if(customerId==-1L)"Customer အားလုံး၏ ကော်မရှင်" else "ဒီ Customer ၏ ကော်မရှင်နှုန်းထား",
+            style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Text("ရွေးထားသော Session • ${date.displayDate()} • ${session.label}",
+            style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
+        if(customerId==-1L) {
+            val total by produceState(0L,agentId,date,session,revision) {
+                value=vm.agentReport(agentId,date,session,true).calculation.commission
+            }
+            AnalysisMetric("စုစုပေါင်းကော်မရှင်",total.mmk())
         } else {
-            OutlinedTextField(value, { saved = false; value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) }, Modifier.fillMaxWidth(), label = { Text("ရာခိုင်နှုန်း") })
-            Button({ vm.updateCommission(customerId, value) { value = ""; saved = true } }, enabled = value.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100) } == true) { Text("သိမ်းမည်") }
-            if (saved) Text("သိမ်းပြီးပါပြီ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                FilterChip(mode=="FORWARD",{mode="FORWARD";saved=false;error=""},label={Text("ပုံမှန်နှုန်း ပြောင်းရန်")})
+                FilterChip(mode=="DRAW",{mode="DRAW";saved=false;error=""},label={Text("ဒီ Session သီးသန့်")})
+            }
+            if(mode=="DRAW") {
+                Text("ဒီ Session လက်ရှိနှုန်း: ${java.math.BigDecimal(drawRate?:0).movePointLeft(2).stripTrailingZeros().toPlainString()}%",
+                    style=MaterialTheme.typography.bodyMedium)
+                Text("ဒီ Customer ၏ ရွေးထားသော Session တစ်ခုတည်းကို Recalculate လုပ်မယ်။ အတိတ်/အနာဂတ် အခြား Session မပြောင်းပါ။",
+                    style=MaterialTheme.typography.bodySmall)
+            } else {
+                Text("နှုန်းအသစ် စတင်သက်ရောက်မည့် Session ရွေးပါ။ အရင်သိမ်းထားသော Entry များ၏ ကော်မရှင် မပြောင်းပါ။",
+                    style=MaterialTheme.typography.bodySmall)
+                DateInput(effectiveDate,{effectiveDate=it},"နှုန်းအသစ် စတင်မည့်ရက်")
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    DrawSession.entries.forEach { draw->
+                        FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(draw.label)})
+                    }
+                }
+            }
+            OutlinedTextField(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6);saved=false;error=""},
+                Modifier.fillMaxWidth(),label={Text("ကော်မရှင် %")})
+            if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+            Button(onClick={
+                if(mode=="DRAW")pendingOverride=true
+                else if(startDate!=null)vm.scheduleCommission(customerId,value,startDate,effectiveSession,
+                    {saved=true;error=""},{error=it})
+            },enabled=validRate&&(mode=="DRAW"||validStart)) {
+                Text(if(mode=="DRAW")"ဒီ Session ကို ပြန်တွက်မည်" else "နှုန်းအသစ် သိမ်းမည်")
+            }
+            if(saved)Text("သိမ်းပြီးပါပြီ",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
         }
     }
 }
