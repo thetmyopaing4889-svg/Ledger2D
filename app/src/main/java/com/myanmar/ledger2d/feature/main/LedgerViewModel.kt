@@ -130,14 +130,14 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun betEntry(id:Long)=container.bets.observeEntry(id)
     fun agentTotals(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotals(agentId,date,session)
     fun agentTotalsWithCommission(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotalsWithCommission(agentId,date,session)
-    fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,effectiveDate:LocalDate,effectiveSession:DrawSession,onDone:()->Unit,onError:(String)->Unit={}){
+    fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean=false,onDone:()->Unit,onError:(String)->Unit={}){
         val clean=name.trim();val parsed=rate.toLongOrNull()
         if(clean.isEmpty()||parsed==null||parsed<=0)return
         viewModelScope.launch {
             val old=if(id>0)container.agents.get(id) else null
             val now=System.currentTimeMillis()
             val entity=AgentEntity(id=id,name=clean,address=address.trim(),phone=phone.trim(),rate=parsed,remark=remark.trim(),createdAt=old?.createdAt?:now,updatedAt=now)
-            runCatching { container.agents.saveWithRateSchedule(entity,effectiveDate,effectiveSession) }
+            runCatching { container.agents.saveWithRateSchedule(entity,effectiveDate,effectiveSession,forceSessionReprice) }
                 .onSuccess { changed();onDone() }
                 .onFailure { onError(it.message?:"ဒိုင်အချက်အလက် သိမ်း၍မရပါ") }
         }
