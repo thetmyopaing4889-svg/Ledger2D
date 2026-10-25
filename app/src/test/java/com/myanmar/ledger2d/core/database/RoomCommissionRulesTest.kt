@@ -73,6 +73,13 @@ class RoomCommissionRulesTest {
                 "21 1000",QuickFormat.MANUAL,listOf(ExpandedBet("21",1000)))
             assertEquals(2000,bets.getEntry(second)!!.entry.commissionRateBasisPoints)
             assertEquals(500L,bets.getCustomerCommission(customer,old,DrawSession.MORNING))
+            // A backdated entry carrying a stale explicit commission cannot bypass
+            // the customer's selected-draw override.
+            val backdated=bets.confirm(customer,agent,old,DrawSession.MORNING,
+                "22 1000",QuickFormat.MANUAL,listOf(ExpandedBet("22",1000)),
+                payoutRateOverride=80,commissionOverride=1500)
+            assertEquals(2000,bets.getEntry(backdated)!!.entry.commissionRateBasisPoints)
+            assertEquals(700L,bets.getCustomerCommission(customer,old,DrawSession.MORNING))
             // The agent payout multiplier must not be altered by commission corrections.
             assertEquals(80L,bets.getEntry(oldMorning)!!.entry.payoutRate)
         } finally {db.close()}

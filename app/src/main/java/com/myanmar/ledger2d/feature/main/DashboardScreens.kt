@@ -454,7 +454,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
             }
             AnalysisMetric("စုစုပေါင်းကော်မရှင်",total.mmk())
         } else {
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 FilterChip(mode=="FORWARD",{mode="FORWARD";saved=false;error=""},label={Text("ပုံမှန်နှုန်း ပြောင်းရန်")})
                 FilterChip(mode=="DRAW",{mode="DRAW";saved=false;error=""},label={Text("ဒီ Session သီးသန့်")})
             }
