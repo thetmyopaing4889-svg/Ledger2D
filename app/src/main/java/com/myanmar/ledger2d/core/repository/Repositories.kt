@@ -58,19 +58,34 @@ class RoomAgentRepository(private val db:LedgerDatabase):AgentRepository {
     override suspend fun save(value:AgentEntity)=dao.upsert(value)
     override suspend fun saveWithRateSchedule(value:AgentEntity,effectiveDate:LocalDate,effectiveSession:DrawSession):Long = db.withTransaction {
         val previous=if(value.id>0L)dao.get(value.id) else null
-        if(previous!=null && previous.rate!=value.rate) {
-            require(value.rate>0)
-            val key=DrawRatePolicy.key(effectiveDate,effectiveSession)
-            val earliest=DrawRatePolicy.earliestChange(java.time.LocalDateTime.now())
-            require(key>=DrawRatePolicy.key(earliest.date,earliest.session)) { "အဆအသစ်သည် လက်ရှိ Session အပြီးမှ စတင်ရပါမည်" }
-            // Seed the previous known rate before adding the scheduled change.
-            // Pre-migration historical rates remain unknowable: entry snapshots win.
+        if(previous==null || previous.rate==value.rate) {
+            dao.upsert(value)
+        } else {
+            require(value.rate>0 && DrawSchedule.isWeekday(effectiveDate))
+            val now=System.currentTimeMillis()
+            val targetKey=DrawRatePolicy.key(effectiveDate,effectiveSession)
+            val active=DrawRatePolicy.currentSession(java.time.LocalDateTime.now())
+            val isHistorical=targetKey<DrawRatePolicy.key(active.date,active.session)
+            // An explicit historical correction must not leak into later draws.
+            val following=DrawRatePolicy.following(effectiveDate,effectiveSession)
+            val followingKey=DrawRatePolicy.key(following.date,following.session)
+            val oldFollowingRate=if(isHistorical) rates.rateForDraw(previous.id,followingKey)?:previous.rate else null
             if(rates.rateForDraw(previous.id,Long.MAX_VALUE)==null)
-                rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=Long.MIN_VALUE,rate=previous.rate,createdAt=System.currentTimeMillis()))
-            val prior=rates.get(previous.id,key)
-            rates.upsert(AgentRateChangeEntity(id=prior?.id?:0,agentId=previous.id,effectiveDrawKey=key,rate=value.rate,createdAt=prior?.createdAt?:System.currentTimeMillis()))
+                rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=Long.MIN_VALUE,rate=previous.rate,createdAt=now))
+            val existing=rates.get(previous.id,targetKey)
+            rates.upsert(AgentRateChangeEntity(id=existing?.id?:0,agentId=previous.id,
+                effectiveDrawKey=targetKey,rate=value.rate,createdAt=existing?.createdAt?:now))
+            if(isHistorical && rates.get(previous.id,followingKey)==null) {
+                rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=followingKey,
+                    rate=oldFollowingRate!!,createdAt=now))
+            }
+            // The session is one financial unit: replace every entry's saved payout
+            // multiplier so all dashboard reports and risk scenarios agree.
+            db.betDao().getEntriesForAgentDraw(previous.id,effectiveDate,effectiveSession).forEach { record ->
+                db.betDao().updateEntry(record.entry.copy(payoutRate=value.rate,updatedAt=now))
+            }
+            dao.upsert(if(isHistorical)value.copy(rate=previous.rate) else value)
         }
-        dao.upsert(value)
     }
 }
 class RoomCustomerRepository(private val dao: CustomerDao): CustomerRepository { override fun observeForAgent(agentId:Long)=dao.observeForAgent(agentId); override fun observe(id:Long)=dao.observe(id); override suspend fun get(id:Long)=dao.get(id); override suspend fun getForAgent(agentId:Long)=dao.getForAgent(agentId); override suspend fun save(value:CustomerEntity)=dao.upsert(value) }
@@ -90,7 +105,7 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
     override suspend fun schedule(customerId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession) = db.withTransaction {
         require(rateBasisPoints in 0..10_000)
         require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(effectiveDate))
-        val next=com.myanmar.ledger2d.core.domain.DrawSchedule.nextDraw(java.time.LocalDateTime.now())
+        val next=DrawRatePolicy.currentSession(java.time.LocalDateTime.now())
         val key=DrawRatePolicy.key(effectiveDate,effectiveSession)
         require(key>=DrawRatePolicy.key(next.date,next.session)) { "ကော်မရှင်အသစ် စတင်မည့် Session ကို ပြန်စစ်ပါ" }
         val old=customers.get(customerId) ?: error("Customer not found")
@@ -103,6 +118,13 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
         rules.upsert(CustomerCommissionRuleEntity(id=existing?.id?:0,customerId=customerId,
             ruleType="FORWARD",drawKey=key,rateBasisPoints=rateBasisPoints,
             createdAt=existing?.createdAt?:now))
+        // A forward change starts with the selected session, including entries
+        // already recorded in that session. Future entries use the scheduled rule.
+        bets.getEntriesForCustomerDraw(customerId,effectiveDate,effectiveSession).forEach { record ->
+            val amount=record.lines.fold(0L) { sum,line->Math.addExact(sum,line.amount) }
+            bets.updateEntry(record.entry.copy(commissionRateBasisPoints=rateBasisPoints,
+                commissionAmount=CommissionCalculator().calculate(amount,rateBasisPoints),updatedAt=now))
+        }
         customers.upsert(old.copy(commissionRateBasisPoints=rateBasisPoints,updatedAt=now))
         Unit
     }
@@ -126,7 +148,6 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
                 updatedAt=now
             ))
         }
-        if(entries.isNotEmpty()) db.settlementDao().invalidate(customer.agentId,date,session)
         Unit
     }
 }
@@ -227,14 +248,12 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
         dao.deleteLines(entry.id)
         dao.insertLines(bets.map { BetLineEntity(betEntryId=entry.id,digit=it.digit,amount=it.amount) })
         // Reopening a confirmed draw must not leave a stale settlement snapshot.
-        db.settlementDao().invalidate(old.agentId,old.drawDate,old.drawSession)
         Unit
     }
     override suspend fun delete(entry:BetEntryEntity) = db.withTransaction {
         val current=dao.getEntry(entry.id)?.entry ?: error("Bet entry not found")
         require(current.updatedAt==entry.updatedAt) { "စာရင်းကို တခြားနေရာမှ ပြင်ထားပြီးဖြစ်လို့ ပြန်ဖွင့်ပါ" }
         dao.deleteEntry(current)
-        db.settlementDao().invalidate(current.agentId,current.drawDate,current.drawSession)
         Unit
     }
 }
