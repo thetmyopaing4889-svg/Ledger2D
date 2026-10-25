@@ -450,7 +450,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
             style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
         if(customerId==-1L) {
             val total by produceState(0L,agentId,date,session,revision) {
-                value=vm.agentReport(agentId,date,session,true).calculation.commission
+                this.value=vm.agentReport(agentId,date,session,true).calculation.commission
             }
             AnalysisMetric("စုစုပေါင်းကော်မရှင်",total.mmk())
         } else {
