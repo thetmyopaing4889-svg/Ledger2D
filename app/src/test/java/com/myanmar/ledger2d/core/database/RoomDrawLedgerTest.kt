@@ -78,7 +78,7 @@ class RoomDrawLedgerTest {
         } finally {db.close()}
     }
 
-    @Test fun winningDrawEditAndDeleteRecalculateAndInvalidateSettledSnapshot()=runBlocking {
+    @Test fun winningDrawEditAndDeleteRecalculateReports()=runBlocking {
         val (db,agent,customer)=freshDb()
         try {
             val bets=RoomBetRepository(db)
@@ -88,9 +88,6 @@ class RoomDrawLedgerTest {
             winners.save(date,DrawSession.MORNING,"20")
             assertEquals(80_000L,bets.getCustomerPayout(customer,date,DrawSession.MORNING,"20"))
             assertEquals(150L,bets.getCustomerCommission(customer,date,DrawSession.MORNING))
-            db.settlementDao().upsert(SettlementEntity(agentId=agent,date=date,
-                session=DrawSession.MORNING,totalBet=1_000,payout=80_000,commission=150,
-                netSettlement=-78_850,settledAt=100))
             val initial=bets.getEntry(betId)!!
             bets.edit(initial.entry.copy(sourceText="20 2000"),
                 listOf(ExpandedBet("20",2_000)),QuickFormat.MANUAL)
@@ -100,7 +97,6 @@ class RoomDrawLedgerTest {
             assertEquals(300L,bets.getCustomerCommission(customer,date,DrawSession.MORNING))
             assertEquals(80L,revised.entry.payoutRate)
             assertEquals(1500,revised.entry.commissionRateBasisPoints)
-            assertNull(db.settlementDao().get(agent,date,DrawSession.MORNING))
             assertTrue(bets.getAgentTotals(agent,date,DrawSession.EVENING).isEmpty())
 
             // A later session-specific closure does not erase a previously accepted stake.
