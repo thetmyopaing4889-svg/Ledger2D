@@ -160,7 +160,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         onDispose{controller?.isAppearanceLightStatusBars=true}
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onSettlement:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
     DarkStatusBarsEffect()
@@ -1166,7 +1166,6 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         NavigationBarItem(selected=="home",{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("ယနေ့")})
         NavigationBarItem(selected=="ledger",{onNavigate("ledger")},icon={Icon(Icons.Default.ListAlt,null)},label={Text("စာရင်း")})
         NavigationBarItem(selected=="quick",onQuickEntry,icon={Icon(Icons.Default.AddCircle,null)},label={Text("သွင်းရန်")})
-        NavigationBarItem(selected=="settlement",{onNavigate("settlement")},icon={Icon(Icons.Default.AccountBalanceWallet,null)},label={Text("ရှင်းတမ်း")})
         NavigationBarItem(selected=="manage",{onNavigate("manage")},icon={Icon(Icons.Default.Settings,null)},label={Text("စီမံရန်")})
     }
 }
