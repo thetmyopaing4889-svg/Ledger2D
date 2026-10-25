@@ -117,6 +117,9 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
         rules.upsert(CustomerCommissionRuleEntity(id=existing?.id?:0,customerId=customerId,
             ruleType="FORWARD",drawKey=key,rateBasisPoints=rateBasisPoints,
             createdAt=existing?.createdAt?:now))
+        // If this same draw had a manual correction, update its overriding rule
+        // as well so new entries never revert to a different commission.
+        rules.get(customerId,"DRAW",key)?.let { rules.upsert(it.copy(rateBasisPoints=rateBasisPoints)) }
         // A forward change starts with the selected session, including entries
         // already recorded in that session. Future entries use the scheduled rule.
         bets.getEntriesForCustomerDraw(customerId,effectiveDate,effectiveSession).forEach { record ->
@@ -238,11 +241,21 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
             db.winningNumberDao().get(entry.drawDate,entry.drawSession)==null))
         validateWithinDraw(old.agentId,old.customerId,entry.drawDate,entry.drawSession,bets,original.takeIf{sameDraw})
         val amount=total(bets)
+        // Moving an entry to another draw must adopt that draw's uniform rates.
+        val targetKey=DrawRatePolicy.key(entry.drawDate,entry.drawSession)
+        val targetRate=if(sameDraw)old.payoutRate else
+            (db.agentRateChangeDao().rateForDraw(old.agentId,targetKey)?:db.agentDao().get(old.agentId)?.rate
+                ?:error("Agent not found"))
+        val targetCommission=if(sameDraw)old.commissionRateBasisPoints else
+            (db.customerCommissionRuleDao().drawOverride(old.customerId,targetKey)
+                ?:db.customerCommissionRuleDao().forwardRate(old.customerId,targetKey)
+                ?:db.customerDao().get(old.customerId)?.commissionRateBasisPoints
+                ?:error("Customer not found"))
         dao.updateEntry(old.copy(drawDate=entry.drawDate,drawSession=entry.drawSession,
             sourceText=entry.sourceText,inputFormat=format.name,
-            commissionRateBasisPoints=old.commissionRateBasisPoints,
-            payoutRate=old.payoutRate,
-            commissionAmount=CommissionCalculator().calculate(amount,old.commissionRateBasisPoints),
+            commissionRateBasisPoints=targetCommission,
+            payoutRate=targetRate,
+            commissionAmount=CommissionCalculator().calculate(amount,targetCommission),
             updatedAt=System.currentTimeMillis()))
         dao.deleteLines(entry.id)
         dao.insertLines(bets.map { BetLineEntity(betEntryId=entry.id,digit=it.digit,amount=it.amount) })
