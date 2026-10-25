@@ -431,7 +431,8 @@ fun transactionDisplayText(format: String, raw: String): String {
     var effectiveDateText by rememberSaveable(id){mutableStateOf(next.date.toString())}
     var effectiveSession by rememberSaveable(id){mutableStateOf(next.session)}
     LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}}
-    val rateIsChanging=existing!=null && rate.toLongOrNull()!=existing?.rate
+    var forceSessionReprice by rememberSaveable(id){mutableStateOf(false)}
+    val rateIsChanging=existing!=null && (rate.toLongOrNull()!=existing?.rate || forceSessionReprice)
     val date=runCatching{LocalDate.parse(effectiveDateText)}.getOrNull()
     val earliest=com.myanmar.ledger2d.core.domain.DrawRatePolicy.earliestChange(LocalDateTime.now())
     val validDate=!rateIsChanging || (date!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date))
@@ -442,6 +443,10 @@ fun transactionDisplayText(format: String, raw: String): String {
         Input(rate,{rate=it},"နှုန်းထား",true,KeyboardType.Number)
         if(id>0L&&activeRate!=null&&activeRate!=existing?.rate)
             Text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • ကြိုတင်သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ",color=MaterialTheme.colorScheme.secondary)
+        if(id>0L) Row(verticalAlignment=Alignment.CenterVertically){
+            Checkbox(checked=forceSessionReprice,onCheckedChange={forceSessionReprice=it})
+            Text("ရွေးထားသော Session တစ်ခုလုံးကို ပြန်တွက်ရန်")
+        }
         if(rateIsChanging){
             Text("ဒိုင်အဆသစ်သုံးမည့် Session (အဲဒီ Session ၏ Entry အားလုံးကို ပြန်တွက်မည်။ အတိတ် Session ရွေးလျှင် အဲဒီ Session တစ်ခုသာ ပြင်မည်။)")
             DateInput(effectiveDateText,{effectiveDateText=it},"အဆစတင်မည့်ရက်")
@@ -449,7 +454,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         }
         Input(remark,{remark=it},"မှတ်ချက်")
         if(saveError.isNotBlank()) Text(saveError,color=MaterialTheme.colorScheme.error)
-        FormActions(onBack,{if(date!=null)vm.saveAgent(id,name,address,phone,rate,remark,date,effectiveSession,onBack){saveError=it}},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
+        FormActions(onBack,{if(date!=null)vm.saveAgent(id,name,address,phone,rate,remark,date,effectiveSession,forceSessionReprice,onBack){saveError=it}},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
     }}
 }
 @Composable fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){val existing by vm.customer(id).collectAsState(initial=null);var name by rememberSaveable(id){mutableStateOf("")};var address by rememberSaveable(id){mutableStateOf("")};var phone by rememberSaveable(id){mutableStateOf("")};var remark by rememberSaveable(id){mutableStateOf("")};LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;remark=it.remark}};AppScaffold(if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){Input(name,{name=it},"အမည်",true);Input(address,{address=it},"လိပ်စာ");Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone);Input(remark,{remark=it},"မှတ်ချက်");FormActions(onBack,{vm.saveCustomer(id,agentId,name,address,phone,remark,onBack)},name.isNotBlank())}}}
