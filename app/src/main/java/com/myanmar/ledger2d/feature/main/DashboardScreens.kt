@@ -384,7 +384,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     val agentSpecials by vm.agentSpecialLimits(agentId,date,session).collectAsStateWithLifecycle(initialValue = emptyList())
     val customerSpecials by vm.specialLimits(customerId,date,session).collectAsStateWithLifecycle(initialValue = emptyList())
     val amounts = totals.associate { it.digit to it.amount }
-    val specialDigits = (if(customerId==-1L) agentSpecials.map { it.digit } else customerSpecials.map { it.digit }).toSet()
+    val specialDigits = (agentSpecials.map { it.digit } + if(customerId==-1L) emptyList() else customerSpecials.map { it.digit }).toSet()
     val revision by vm.revision.collectAsStateWithLifecycle()
     val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session) else vm.analysis(customerId, date, session) }
     val scenarios = analysis?.scenarios?.associateBy { it.digit }.orEmpty()
@@ -423,6 +423,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     var saved by rememberSaveable(customerId) { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var pendingOverride by remember { mutableStateOf(false) }
+    var pendingForward by remember { mutableStateOf(false) }
     LaunchedEffect(customer?.commissionRateBasisPoints,drawRate,mode,date,session) {
         value=java.math.BigDecimal(if(mode=="DRAW")drawRate?:customer?.commissionRateBasisPoints?:0
             else customer?.commissionRateBasisPoints?:0).movePointLeft(2).stripTrailingZeros().toPlainString()
@@ -443,6 +444,15 @@ private fun WeeklyReportTable(report: WeeklyReport) {
             vm.overrideSessionCommission(customerId,date,session,value,{saved=true;error=""},{error=it})
         }){Text("ပြန်တွက်မည်")}},
         dismissButton={TextButton({pendingOverride=false}){Text("မလုပ်တော့ပါ")}})
+    if(pendingForward)AlertDialog(onDismissRequest={pendingForward=false},
+        title={Text("ပုံမှန်ကော်မရှင် ပြောင်းမည်လား")},
+        text={Text("$effectiveDate • ${effectiveSession.label} ကစပြီး နောက်ထပ်သတ်မှတ်ထားသောနှုန်းမရောက်ခင်အထိ $value% သုံးမည်။ အဲဒီကာလအတွက် ကြိုသွင်းထားပြီးသား Entry တွေကိုပါ ပြန်တွက်မည်။ အတိတ် Session မထိပါ။")},
+        confirmButton={TextButton({
+            pendingForward=false
+            if(startDate!=null)vm.scheduleCommission(customerId,value,startDate,effectiveSession,
+                {saved=true;error=""},{error=it})
+        }){Text("ပြောင်းမည်")}},
+        dismissButton={TextButton({pendingForward=false}){Text("မလုပ်တော့ပါ")}})
     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text(if(customerId==-1L)"Customer အားလုံး၏ ကော်မရှင်" else "ဒီ Customer ၏ ကော်မရှင်နှုန်းထား",
             style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -464,7 +474,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
                 Text("ဒီ Customer ၏ ရွေးထားသော Session တစ်ခုတည်းကို Recalculate လုပ်မယ်။ အတိတ်/အနာဂတ် အခြား Session မပြောင်းပါ။",
                     style=MaterialTheme.typography.bodySmall)
             } else {
-                Text("နှုန်းအသစ် စတင်သက်ရောက်မည့် Session ရွေးပါ။ အရင်သိမ်းထားသော Entry များ၏ ကော်မရှင် မပြောင်းပါ။",
+                Text("နှုန်းအသစ် စတင်မည့် Session ကို ရွေးပါ။ အဲဒီ Session ကစပြီး ကြိုသွင်းထားပြီးသားစာရင်းတွေအပါအဝင် ပြန်တွက်မည်။ အတိတ် Session မပြောင်းပါ။",
                     style=MaterialTheme.typography.bodySmall)
                 DateInput(effectiveDate,{effectiveDate=it},"နှုန်းအသစ် စတင်မည့်ရက်")
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -478,8 +488,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
             Button(onClick={
                 if(mode=="DRAW")pendingOverride=true
-                else if(startDate!=null)vm.scheduleCommission(customerId,value,startDate,effectiveSession,
-                    {saved=true;error=""},{error=it})
+                else if(startDate!=null)pendingForward=true
             },enabled=validRate&&(mode=="DRAW"||validStart)) {
                 Text(if(mode=="DRAW")"ဒီ Session ကို ပြန်တွက်မည်" else "နှုန်းအသစ် သိမ်းမည်")
             }
