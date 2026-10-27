@@ -66,16 +66,17 @@ class RoomAgentRepository(private val db:LedgerDatabase):AgentRepository {
             val targetKey=DrawRatePolicy.key(effectiveDate,effectiveSession)
             val active=DrawRatePolicy.currentSession(java.time.LocalDateTime.now())
             val isHistorical=targetKey<DrawRatePolicy.key(active.date,active.session)
+            val selectedDrawOnly=forceSessionReprice || isHistorical
             // An explicit historical correction must not leak into later draws.
             val following=DrawRatePolicy.following(effectiveDate,effectiveSession)
             val followingKey=DrawRatePolicy.key(following.date,following.session)
-            val oldFollowingRate=if(isHistorical) rates.rateForDraw(previous.id,followingKey)?:previous.rate else null
+            val oldFollowingRate=if(selectedDrawOnly) rates.rateForDraw(previous.id,followingKey)?:previous.rate else null
             if(rates.rateForDraw(previous.id,Long.MAX_VALUE)==null)
                 rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=Long.MIN_VALUE,rate=previous.rate,createdAt=now))
             val existing=rates.get(previous.id,targetKey)
             rates.upsert(AgentRateChangeEntity(id=existing?.id?:0,agentId=previous.id,
                 effectiveDrawKey=targetKey,rate=value.rate,createdAt=existing?.createdAt?:now))
-            if(isHistorical && rates.get(previous.id,followingKey)==null) {
+            if(selectedDrawOnly && rates.get(previous.id,followingKey)==null) {
                 rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=followingKey,
                     rate=oldFollowingRate!!,createdAt=now))
             }
@@ -84,13 +85,13 @@ class RoomAgentRepository(private val db:LedgerDatabase):AgentRepository {
             // A historical correction is strictly one session; do not touch successors.
             db.betDao().getEntriesForAgentFromDate(previous.id,effectiveDate).forEach { record ->
                 val drawKey=DrawRatePolicy.key(record.entry.drawDate,record.entry.drawSession)
-                if(drawKey>=targetKey && (!isHistorical || drawKey==targetKey)) {
-                    val effective=if(isHistorical) value.rate else (rates.rateForDraw(previous.id,drawKey) ?: previous.rate)
+                if(drawKey>=targetKey && (!selectedDrawOnly || drawKey==targetKey)) {
+                    val effective=if(selectedDrawOnly) value.rate else (rates.rateForDraw(previous.id,drawKey) ?: previous.rate)
                     if(record.entry.payoutRate!=effective)
                         db.betDao().updateEntry(record.entry.copy(payoutRate=effective,updatedAt=now))
                 }
             }
-            dao.upsert(if(isHistorical)value.copy(rate=previous.rate) else value)
+            dao.upsert(if(selectedDrawOnly)value.copy(rate=previous.rate) else value)
         }
     }
 }
