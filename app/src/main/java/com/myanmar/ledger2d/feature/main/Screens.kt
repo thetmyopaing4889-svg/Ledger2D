@@ -414,12 +414,13 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable fun EmptyState(title:String,subtitle:String){Column(Modifier.fillMaxWidth().padding(vertical=52.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(title,style=MaterialTheme.typography.headlineSmall,textAlign=TextAlign.Center);Spacer(Modifier.height(8.dp));Text(subtitle,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)}}
-@Composable fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
+@Composable
+fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val existing by vm.agent(id).collectAsState(initial=null)
     val revision by vm.revision.collectAsStateWithLifecycle()
-    val upcoming=remember { com.myanmar.ledger2d.core.domain.DrawRatePolicy.currentSession(LocalDateTime.now()) }
+    val active=remember { com.myanmar.ledger2d.core.domain.DrawRatePolicy.currentSession(LocalDateTime.now()) }
     val activeRate by produceState<Long?>(null,id,revision) {
-        value=if(id>0)vm.agentRateForDraw(id,upcoming.date,upcoming.session)else null
+        value=if(id>0)vm.agentRateForDraw(id,active.date,active.session)else null
     }
     var saveError by rememberSaveable(id){mutableStateOf("")}
     var name by rememberSaveable(id){mutableStateOf("")}
@@ -427,34 +428,60 @@ fun transactionDisplayText(format: String, raw: String): String {
     var phone by rememberSaveable(id){mutableStateOf("")}
     var rate by rememberSaveable(id){mutableStateOf("")}
     var remark by rememberSaveable(id){mutableStateOf("")}
-    val next=remember { com.myanmar.ledger2d.core.domain.DrawRatePolicy.earliestChange(LocalDateTime.now()) }
-    var effectiveDateText by rememberSaveable(id){mutableStateOf(next.date.toString())}
-    var effectiveSession by rememberSaveable(id){mutableStateOf(next.session)}
-    LaunchedEffect(existing){existing?.let{name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}}
-    var forceSessionReprice by rememberSaveable(id){mutableStateOf(false)}
-    val rateIsChanging=existing!=null && (rate.toLongOrNull()!=existing?.rate || forceSessionReprice)
-    val date=runCatching{LocalDate.parse(effectiveDateText)}.getOrNull()
-    val earliest=com.myanmar.ledger2d.core.domain.DrawRatePolicy.earliestChange(LocalDateTime.now())
-    val validDate=!rateIsChanging || (date!=null && com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date))
+    var mode by rememberSaveable(id){mutableStateOf("FORWARD")}
+    var effectiveDateText by rememberSaveable(id){mutableStateOf(active.date.toString())}
+    var effectiveSession by rememberSaveable(id){mutableStateOf(active.session)}
+    var pendingRateChange by rememberSaveable(id){mutableStateOf(false)}
+    LaunchedEffect(existing){
+        existing?.let {name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}
+    }
+    val rateIsChanging=existing!=null && (rate.toLongOrNull()!=existing?.rate || mode=="DRAW")
+    val selectedDate=runCatching{LocalDate.parse(effectiveDateText)}.getOrNull()
+    val selectedKey=selectedDate?.let{com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(it,effectiveSession)}
+    val activeKey=com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(active.date,active.session)
+    val validDate=!rateIsChanging || (selectedDate!=null &&
+        com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(selectedDate) &&
+        (mode=="DRAW" || (selectedKey!=null && selectedKey>=activeKey)))
+    fun applyChange(){
+        if(selectedDate!=null) vm.saveAgent(id,name,address,phone,rate,remark,
+            selectedDate,effectiveSession,mode=="DRAW",onBack){saveError=it}
+    }
+    if(pendingRateChange) AlertDialog(
+        onDismissRequest={pendingRateChange=false},
+        title={Text("ဒိုင်လျော်ကြေးအဆ ပြောင်းလဲမည်လား")},
+        text={Text("ဒိုင်: $name\nSession: $effectiveDateText • ${effectiveSession.label}\n" +
+            "အဆ: ${activeRate?:existing?.rate} → $rate ဆ\\n" +
+            if(mode=="DRAW")"ရွေးထားသော Session တစ်ခုတည်းကိုသာ ပြန်တွက်မည်။"
+            else "ရွေးထားသော Session ကစပြီး နောက်ပိုင်းသက်ဆိုင်ရာစာရင်းတွေကို ပြန်တွက်မည်။")},
+        confirmButton={TextButton({pendingRateChange=false;applyChange()}){Text("ပြောင်းမည်")}},
+        dismissButton={TextButton({pendingRateChange=false}){Text("မလုပ်တော့ပါ")}}
+    )
     AppScaffold(if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){
         Input(name,{name=it},"အမည်",true)
         Input(address,{address=it},"လိပ်စာ")
         Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone)
-        Input(rate,{rate=it},"နှုန်းထား",true,KeyboardType.Number)
-        if(id>0L&&activeRate!=null&&activeRate!=existing?.rate)
-            Text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • ကြိုတင်သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ",color=MaterialTheme.colorScheme.secondary)
-        if(id>0L) Row(verticalAlignment=Alignment.CenterVertically){
-            Checkbox(checked=forceSessionReprice,onCheckedChange={forceSessionReprice=it})
-            Text("ရွေးထားသော Session တစ်ခုလုံးကို ပြန်တွက်ရန်")
+        Input(rate,{rate=it.filter(Char::isDigit)},"နှုန်းထား",true,KeyboardType.Number)
+        if(id>0L && activeRate!=null && activeRate!=existing?.rate)
+            Text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ",
+                color=MaterialTheme.colorScheme.secondary)
+        if(id>0L) {
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                FilterChip(mode=="FORWARD",{mode="FORWARD";saveError=""},label={Text("ပုံမှန်နှုန်းပြောင်းရန်")})
+                FilterChip(mode=="DRAW",{mode="DRAW";saveError=""},label={Text("Session သီးသန့်ပြင်ရန်")})
+            }
         }
-        if(rateIsChanging){
-            Text("ဒိုင်အဆသစ်သုံးမည့် Session (အဲဒီ Session ၏ Entry အားလုံးကို ပြန်တွက်မည်။ အတိတ် Session ရွေးလျှင် အဲဒီ Session တစ်ခုသာ ပြင်မည်။)")
+        if(rateIsChanging) {
+            Text(if(mode=="DRAW")"ရွေးထားသော Session တစ်ခုတည်းကို ပြန်တွက်မည်။ တခြား Session မပြောင်းပါ။"
+                else "ရွေးထားသော Session ကစပြီး နောက်ထပ်နှုန်းမပြောင်းမချင်း သက်ရောက်မည်။ ကြိုသွင်းထားသောစာရင်းများကိုလည်း ပြန်တွက်မည်။")
             DateInput(effectiveDateText,{effectiveDateText=it},"အဆစတင်မည့်ရက်")
-            Row { DrawSession.entries.forEach{draw->FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(draw.label)})} }
+            Row { DrawSession.entries.forEach{draw->
+                FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(draw.label)})
+            } }
         }
         Input(remark,{remark=it},"မှတ်ချက်")
-        if(saveError.isNotBlank()) Text(saveError,color=MaterialTheme.colorScheme.error)
-        FormActions(onBack,{if(date!=null)vm.saveAgent(id,name,address,phone,rate,remark,date,effectiveSession,forceSessionReprice,onBack){saveError=it}},name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
+        if(saveError.isNotBlank())Text(saveError,color=MaterialTheme.colorScheme.error)
+        FormActions(onBack,{if(rateIsChanging)pendingRateChange=true else applyChange()},
+            name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
     }}
 }
 @Composable
