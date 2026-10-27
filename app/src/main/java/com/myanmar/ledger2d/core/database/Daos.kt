@@ -41,6 +41,8 @@ import java.time.LocalDate
     @Transaction @Query("SELECT * FROM bet_entries WHERE id=:id") suspend fun getEntry(id: Long): BetEntryWithLines?
     @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session")
     suspend fun getEntriesForCustomerDraw(customerId:Long,date:LocalDate,session:DrawSession):List<BetEntryWithLines>
+    @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId AND drawDate>=:date ORDER BY drawDate,drawSession")
+    suspend fun getEntriesForCustomerFromDate(customerId:Long,date:LocalDate):List<BetEntryWithLines>
     @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId ORDER BY drawDate DESC, drawSession DESC, id DESC") fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>
     @Transaction @Query("SELECT * FROM bet_entries WHERE customerId=:customerId AND drawDate=:date AND drawSession=:session ORDER BY id DESC") fun observeCustomerEntries(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>
     @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session ORDER BY id DESC") fun observeAgentEntries(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>
@@ -57,6 +59,7 @@ import java.time.LocalDate
     @Query("SELECT bl.digit AS digit, bl.amount AS amount, be.payoutRate AS payoutRate FROM bet_lines bl JOIN bet_entries be ON be.id=bl.betEntryId WHERE be.customerId=:customerId AND be.drawDate=:date AND be.drawSession=:session") suspend fun getCustomerRatedDigits(customerId:Long,date:LocalDate,session:DrawSession):List<RatedDigitStake>
     @Query("SELECT COALESCE(SUM(commissionAmount),0) FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long
     @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getEntriesForAgentDraw(agentId:Long,date:LocalDate,session:DrawSession):List<BetEntryWithLines>
+    @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate>=:date ORDER BY drawDate,drawSession") suspend fun getEntriesForAgentFromDate(agentId:Long,date:LocalDate):List<BetEntryWithLines>
     @Query("SELECT COUNT(*) FROM bet_entries WHERE drawDate=:date AND drawSession=:session") suspend fun countEntries(date: LocalDate, session: DrawSession): Int
     @Delete suspend fun deleteEntry(value: BetEntryEntity)
 }
