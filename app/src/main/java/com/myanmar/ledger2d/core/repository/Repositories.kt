@@ -79,10 +79,16 @@ class RoomAgentRepository(private val db:LedgerDatabase):AgentRepository {
                 rates.upsert(AgentRateChangeEntity(agentId=previous.id,effectiveDrawKey=followingKey,
                     rate=oldFollowingRate!!,createdAt=now))
             }
-            // The session is one financial unit: replace every entry's saved payout
-            // multiplier so all dashboard reports and risk scenarios agree.
-            db.betDao().getEntriesForAgentDraw(previous.id,effectiveDate,effectiveSession).forEach { record ->
-                db.betDao().updateEntry(record.entry.copy(payoutRate=value.rate,updatedAt=now))
+            // Reprice previously accepted advance bets from this session onward.
+            // Existing later scheduled rate changes still take precedence.
+            // A historical correction is strictly one session; do not touch successors.
+            db.betDao().getEntriesForAgentFromDate(previous.id,effectiveDate).forEach { record ->
+                val drawKey=DrawRatePolicy.key(record.entry.drawDate,record.entry.drawSession)
+                if(drawKey>=targetKey && (!isHistorical || drawKey==targetKey)) {
+                    val effective=if(isHistorical) value.rate else (rates.rateForDraw(previous.id,drawKey) ?: previous.rate)
+                    if(record.entry.payoutRate!=effective)
+                        db.betDao().updateEntry(record.entry.copy(payoutRate=effective,updatedAt=now))
+                }
             }
             dao.upsert(if(isHistorical)value.copy(rate=previous.rate) else value)
         }
@@ -121,12 +127,20 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
         // If this same draw had a manual correction, update its overriding rule
         // as well so new entries never revert to a different commission.
         rules.get(customerId,"DRAW",key)?.let { rules.upsert(it.copy(rateBasisPoints=rateBasisPoints)) }
-        // A forward change starts with the selected session, including entries
-        // already recorded in that session. Future entries use the scheduled rule.
-        bets.getEntriesForCustomerDraw(customerId,effectiveDate,effectiveSession).forEach { record ->
-            val amount=record.lines.fold(0L) { sum,line->Math.addExact(sum,line.amount) }
-            bets.updateEntry(record.entry.copy(commissionRateBasisPoints=rateBasisPoints,
-                commissionAmount=CommissionCalculator().calculate(amount,rateBasisPoints),updatedAt=now))
+        // Existing advance entries must obey the rate effective for *their*
+        // draw, including any later scheduled change or draw-only correction.
+        bets.getEntriesForCustomerFromDate(customerId,effectiveDate).forEach { record ->
+            val drawKey=DrawRatePolicy.key(record.entry.drawDate,record.entry.drawSession)
+            if(drawKey>=key) {
+                val effective=rules.drawOverride(customerId,drawKey)
+                    ?:rules.forwardRate(customerId,drawKey)
+                    ?:old.commissionRateBasisPoints
+                if(record.entry.commissionRateBasisPoints!=effective) {
+                    val amount=record.lines.fold(0L) { sum,line->Math.addExact(sum,line.amount) }
+                    bets.updateEntry(record.entry.copy(commissionRateBasisPoints=effective,
+                        commissionAmount=CommissionCalculator().calculate(amount,effective),updatedAt=now))
+                }
+            }
         }
         customers.upsert(old.copy(commissionRateBasisPoints=rateBasisPoints,updatedAt=now))
         Unit
@@ -224,10 +238,30 @@ class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     }
     private fun validateLines(bets:List<ExpandedBet>) { require(bets.isNotEmpty()); require(bets.all { com.myanmar.ledger2d.core.domain.BetParser.validDigit(it.digit) && it.amount > 0 }); require(bets.map { it.digit }.distinct().size == bets.size) }
     private fun total(bets:List<ExpandedBet>) = bets.fold(0L) { sum, bet -> Math.addExact(sum, bet.amount) }
-    override suspend fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat,bets:List<ExpandedBet>,payoutRateOverride:Long?,commissionOverride:Int?):Long = db.withTransaction { validateLines(bets); require(source.isNotBlank()); val customer=db.customerDao().get(customerId) ?: error("Customer not found"); require(customer.agentId==agentId); val agent=db.agentDao().get(agentId) ?: error("Agent not found"); val entryRate=payoutRateOverride ?: (db.agentRateChangeDao().rateForDraw(agentId,DrawRatePolicy.key(date,session))?:agent.rate); require(entryRate>0 && (commissionOverride==null || commissionOverride in 0..10000)); validateWithinDraw(agentId,customerId,date,session,bets); val key=DrawRatePolicy.key(date,session); val bp=db.customerCommissionRuleDao().drawOverride(customerId,key)
-        ?:commissionOverride
-        ?:db.customerCommissionRuleDao().forwardRate(customerId,key)
-        ?:customer.commissionRateBasisPoints; val now=System.currentTimeMillis(); val amount=total(bets); val id=dao.insertEntry(BetEntryEntity(customerId=customerId,agentId=agentId,drawDate=date,drawSession=session,sourceText=source,inputFormat=format.name,commissionRateBasisPoints=bp,commissionAmount=CommissionCalculator().calculate(amount,bp),payoutRate=entryRate,createdAt=now,updatedAt=now)); dao.insertLines(bets.map { BetLineEntity(betEntryId=id,digit=it.digit,amount=it.amount) }); id }
+    override suspend fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat,bets:List<ExpandedBet>,payoutRateOverride:Long?,commissionOverride:Int?):Long = db.withTransaction {
+        validateLines(bets)
+        require(source.isNotBlank())
+        val customer=db.customerDao().get(customerId) ?: error("Customer not found")
+        require(customer.agentId==agentId)
+        val agent=db.agentDao().get(agentId) ?: error("Agent not found")
+        val key=DrawRatePolicy.key(date,session)
+        // Entry-level overrides would allow a backdated entry to break the
+        // single-rate-per-session rule. The selected draw owns both rates.
+        val entryRate=db.agentRateChangeDao().rateForDraw(agentId,key) ?: agent.rate
+        val bp=db.customerCommissionRuleDao().drawOverride(customerId,key)
+            ?:db.customerCommissionRuleDao().forwardRate(customerId,key)
+            ?:customer.commissionRateBasisPoints
+        require(entryRate>0 && bp in 0..10000)
+        validateWithinDraw(agentId,customerId,date,session,bets)
+        val now=System.currentTimeMillis()
+        val amount=total(bets)
+        val id=dao.insertEntry(BetEntryEntity(customerId=customerId,agentId=agentId,
+            drawDate=date,drawSession=session,sourceText=source,inputFormat=format.name,
+            commissionRateBasisPoints=bp,commissionAmount=CommissionCalculator().calculate(amount,bp),
+            payoutRate=entryRate,createdAt=now,updatedAt=now))
+        dao.insertLines(bets.map { BetLineEntity(betEntryId=id,digit=it.digit,amount=it.amount) })
+        id
+    }
     override suspend fun edit(entry:BetEntryEntity,bets:List<ExpandedBet>,format:QuickFormat) = db.withTransaction {
         validateLines(bets)
         require(entry.sourceText.isNotBlank())
