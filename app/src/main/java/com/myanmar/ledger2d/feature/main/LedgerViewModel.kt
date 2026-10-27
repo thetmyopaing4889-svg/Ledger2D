@@ -229,7 +229,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun removeClosedNumber(value:ClosedNumberEntity){viewModelScope.launch{container.closedNumbers.remove(value);container.audit.record("CLOSED_NUMBER",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
     fun refreshPreview(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,raw:String,format:QuickFormat,editingEntryId:Long=0L,allowBackdated:Boolean=false){
         val requestId=++previewRequestId
-        emitIfLatest(BetPreview(loading=true))
+        _preview.value=BetPreview(loading=true)
         viewModelScope.launch {
             fun emitIfLatest(result:BetPreview) {
                 if(requestId==previewRequestId) _preview.value=result
