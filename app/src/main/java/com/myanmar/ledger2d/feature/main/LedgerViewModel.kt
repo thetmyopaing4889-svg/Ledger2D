@@ -27,6 +27,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     val closedDays=container.closedDays.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     private val engine=BetExpansionEngine(); private val validator=LimitValidator(); private val mutationMutex=Mutex()
     private val _preview=MutableStateFlow(BetPreview()); val preview:StateFlow<BetPreview> = _preview
+    private var previewRequestId=0L
     private val _submit=MutableStateFlow<SubmitState>(SubmitState.Idle); val submit:StateFlow<SubmitState> = _submit
     private val _revision=MutableStateFlow(0L); val revision:StateFlow<Long> = _revision.asStateFlow()
     private val _historyUpdate=MutableStateFlow<HistoryUpdateState>(HistoryUpdateState.Idle)
@@ -142,7 +143,23 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
                 .onFailure { onError(it.message?:"ဒိုင်အချက်အလက် သိမ်း၍မရပါ") }
         }
     }
-    fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,onDone:()->Unit){ val clean=name.trim(); if(clean.isEmpty())return; viewModelScope.launch { val old=if(id>0)container.customers.get(id) else null; val now=System.currentTimeMillis(); container.customers.save(CustomerEntity(id=id,agentId=agentId,name=clean,address=address.trim(),phone=phone.trim(),remark=remark.trim(),commissionRateBasisPoints=old?.commissionRateBasisPoints?:0,createdAt=old?.createdAt?:now,updatedAt=now)); onDone() } }
+    fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,commissionPercent:String,
+        onDone:()->Unit,onError:(String)->Unit={}) {
+        val clean=name.trim()
+        if(clean.isEmpty()) return onError("ထိုးသားအမည် ထည့်ပါ")
+        val openingRate=if(id==0L) commissionBasisPoints(commissionPercent) ?:return onError("ကော်မရှင် 0 မှ 100% အထိ သေချာသတ်မှတ်ပါ") else null
+        viewModelScope.launch {
+            runCatching {
+                val old=if(id>0L)container.customers.get(id) ?:error("Customer not found") else null
+                val now=System.currentTimeMillis()
+                // Editing profile details never silently changes historical/active commission.
+                container.customers.save(CustomerEntity(id=id,agentId=agentId,name=clean,
+                    address=address.trim(),phone=phone.trim(),remark=remark.trim(),
+                    commissionRateBasisPoints=old?.commissionRateBasisPoints?:openingRate!!,
+                    createdAt=old?.createdAt?:now,updatedAt=now))
+            }.onSuccess { changed();onDone() }.onFailure { onError(it.message?:"ထိုးသားသိမ်းမရပါ") }
+        }
+    }
     /** Existing call retained only for compatibility with older UI entry points. */
     private fun commissionBasisPoints(percent:String):Int? {
         val parsed=percent.trim().toBigDecimalOrNull() ?: return null
@@ -180,7 +197,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     }
 
     fun updateCommission(customerId:Long,percent:String,onDone:()->Unit) {
-        val next=DrawSchedule.nextDraw(java.time.LocalDateTime.now())
+        val next=DrawRatePolicy.currentSession(java.time.LocalDateTime.now())
         scheduleCommission(customerId,percent,next.date,next.session,onDone)
     }
     fun updateAllLimit(customerId:Long,date:LocalDate,session:DrawSession,amount:String,onDone:()->Unit) {
@@ -211,15 +228,20 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     }
     fun removeClosedNumber(value:ClosedNumberEntity){viewModelScope.launch{container.closedNumbers.remove(value);container.audit.record("CLOSED_NUMBER",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
     fun refreshPreview(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,raw:String,format:QuickFormat,editingEntryId:Long=0L,allowBackdated:Boolean=false){
+        val requestId=++previewRequestId
+        emitIfLatest(BetPreview(loading=true))
         viewModelScope.launch {
+            fun emitIfLatest(result:BetPreview) {
+                if(requestId==previewRequestId) _preview.value=result
+            }
             val existing=if(editingEntryId>0) container.bets.getEntry(editingEntryId) else null
-            if(!DrawSchedule.isWeekday(date)){_preview.value=BetPreview(ParseResult.Error("စနေ၊ တနင်္ဂနွေတွင် 2D စာရင်းမလုပ်ပါ"));return@launch}
-            if(!allowBackdated&&date==LocalDate.now()&&!DrawSchedule.isSessionOpenForToday(session,java.time.LocalDateTime.now())&&existing==null){_preview.value=BetPreview(ParseResult.Error("ဒီ session အတွက် စာရင်းလက်ခံချိန် ကျော်လွန်သွားပါပြီ"));return@launch}
-            if(container.closedDays.isClosed(date)&&existing?.entry?.drawDate!=date){_preview.value=BetPreview(ParseResult.Error("ဒီရက်သည် ပိတ်ရက်ဖြစ်သောကြောင့် စာရင်းသွင်း၍ မရပါ"));return@launch}
+            if(!DrawSchedule.isWeekday(date)){emitIfLatest(BetPreview(ParseResult.Error("စနေ၊ တနင်္ဂနွေတွင် 2D စာရင်းမလုပ်ပါ")));return@launch}
+            if(!allowBackdated&&date==LocalDate.now()&&!DrawSchedule.isSessionOpenForToday(session,java.time.LocalDateTime.now())&&existing==null){emitIfLatest(BetPreview(ParseResult.Error("ဒီ session အတွက် စာရင်းလက်ခံချိန် ကျော်လွန်သွားပါပြီ")));return@launch}
+            if(container.closedDays.isClosed(date)&&existing?.entry?.drawDate!=date){emitIfLatest(BetPreview(ParseResult.Error("ဒီရက်သည် ပိတ်ရက်ဖြစ်သောကြောင့် စာရင်းသွင်း၍ မရပါ")));return@launch}
             val sameDraw=existing?.entry?.customerId==customerId&&existing.entry.drawDate==date&&existing.entry.drawSession==session
-            if(!allowBackdated&&container.winners.get(date,session)!=null&&!sameDraw){_preview.value=BetPreview(ParseResult.Error("ဒီရက်နှင့် အချိန်အတွက် ထီပေါက်စဉ် ထည့်ပြီးပါပြီ"));return@launch}
+            if(!allowBackdated&&container.winners.get(date,session)!=null&&!sameDraw){emitIfLatest(BetPreview(ParseResult.Error("ဒီရက်နှင့် အချိန်အတွက် ထီပေါက်စဉ် ထည့်ပြီးပါပြီ")));return@launch}
             val (parsed,issues)=prepareInput(raw,format,agentId,customerId,date,session,existing?.takeIf { sameDraw })
-            if(parsed is ParseResult.Error){_preview.value=BetPreview(parsed,issues=issues);return@launch}
+            if(parsed is ParseResult.Error){emitIfLatest(BetPreview(parsed,issues=issues));return@launch}
             val agentCurrent=container.bets.getAgentTotals(agentId,date,session).toMutableMap()
             val customerCurrent=container.bets.getCustomerTotals(customerId,date,session).toMutableMap()
             if(sameDraw)existing!!.lines.forEach{line->
@@ -233,7 +255,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
             val currentBets=(parsed as ParseResult.Success).bets
             val original=if(sameDraw)existing!!.lines.associate{it.digit to it.amount} else null
             val checked=checker.validate(currentBets,agentCurrent,customerCurrent,agentLimits,customerLimits,closed,original)
-            _preview.value=BetPreview(parsed,checked,issues=issues)
+            emitIfLatest(BetPreview(parsed,checked,issues=issues))
         }
     }
     private suspend fun canSubmit(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,bets:List<ExpandedBet>,editing:BetEntryWithLines?=null,allowBackdated:Boolean=false):Boolean {
@@ -256,8 +278,24 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         val original=if(sameDraw)editing!!.lines.associate{it.digit to it.amount} else null
         return SessionScopedLimitValidator().validate(bets,agentCurrent,customerCurrent,agentLimits,customerLimits,closed,original).canConfirm
     }
-    fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL,allowBackdated:Boolean=false,payoutRateOverride:Long?=null,commissionOverride:Int?=null){ _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { val prepared=prepareInput(source,format,agentId,customerId,date,session); val parsed=prepared.first as? ParseResult.Success ?: error("စာရင်းသွင်းရန် အဆင်ပြေသောစာရင်းမရှိပါ"); require(canSubmit(customerId,agentId,date,session,parsed.bets,allowBackdated=allowBackdated)); if(allowBackdated)require(payoutRateOverride!=null && payoutRateOverride>0 && commissionOverride!=null && commissionOverride in 0..10000)
-                container.bets.confirm(customerId,agentId,date,session,source,format,parsed.bets,payoutRateOverride,commissionOverride) }.onSuccess { container.audit.record("BET",it,"CREATE","$date/${session.name}"); changed(); _submit.value=SubmitState.Success(it) }.onFailure { _submit.value=SubmitState.Error("စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
+    fun confirm(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,source:String,
+        format:QuickFormat=QuickFormat.MANUAL,allowBackdated:Boolean=false){
+        _submit.value=SubmitState.Working
+        viewModelScope.launch { mutationMutex.withLock {
+            runCatching {
+                val prepared=prepareInput(source,format,agentId,customerId,date,session)
+                val parsed=prepared.first as? ParseResult.Success ?:error("စာရင်းသွင်းရန် အဆင်ပြေသောစာရင်းမရှိပါ")
+                require(canSubmit(customerId,agentId,date,session,parsed.bets,allowBackdated=allowBackdated))
+                container.bets.confirm(customerId,agentId,date,session,source,format,parsed.bets)
+            }.onSuccess {
+                container.audit.record("BET",it,"CREATE","$date/${session.name}")
+                changed()
+                _submit.value=SubmitState.Success(it)
+            }.onFailure {
+                _submit.value=SubmitState.Error(it.message?:"စာရင်းသွင်း၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။")
+            }
+        } }
+    }
     fun deleteBet(value:BetEntryEntity,onError:(String)->Unit={}){ viewModelScope.launch { runCatching { container.bets.delete(value) }.onSuccess { container.audit.record("BET",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession.name); changed() }.onFailure { onError(it.message?:"စာရင်းဖျက်၍မရပါ") } } }
     fun editConfirm(entry:BetEntryWithLines,date:LocalDate,session:DrawSession,source:String,format:QuickFormat=QuickFormat.MANUAL){ _submit.value=SubmitState.Working; viewModelScope.launch { mutationMutex.withLock { runCatching { val prepared=prepareInput(source,format,entry.entry.agentId,entry.entry.customerId,date,session,entry); val parsed=prepared.first as? ParseResult.Success ?: error("စာရင်းပြင်ရန် အဆင်ပြေသောစာရင်းမရှိပါ"); require(canSubmit(entry.entry.customerId,entry.entry.agentId,date,session,parsed.bets,entry)); container.bets.edit(entry.entry.copy(drawDate=date,drawSession=session,sourceText=source),parsed.bets,format) }.onSuccess { container.audit.record("BET",entry.entry.id,"UPDATE",date.toString()+"/"+session.name);changed(); _submit.value=SubmitState.Success(entry.entry.id) }.onFailure { _submit.value=SubmitState.Error("စာရင်းပြင်၍ မရပါ။ အချက်အလက်နှင့် ကန့်သတ်ချက်များကို ပြန်စစ်ပါ။") } } } }
     fun resetSubmit(){_submit.value=SubmitState.Idle}
