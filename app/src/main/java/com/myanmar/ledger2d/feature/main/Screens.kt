@@ -437,6 +437,9 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     }
     val rateIsChanging=existing!=null && (rate.toLongOrNull()!=existing?.rate || mode=="DRAW")
     val selectedDate=runCatching{LocalDate.parse(effectiveDateText)}.getOrNull()
+    val selectedRate by produceState<Long?>(null,id,selectedDate,effectiveSession,revision) {
+        value=if(id>0L && selectedDate!=null)vm.agentRateForDraw(id,selectedDate,effectiveSession)else null
+    }
     val selectedKey=selectedDate?.let{com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(it,effectiveSession)}
     val activeKey=com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(active.date,active.session)
     val validDate=!rateIsChanging || (selectedDate!=null &&
@@ -450,7 +453,7 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         onDismissRequest={pendingRateChange=false},
         title={Text("ဒိုင်လျော်ကြေးအဆ ပြောင်းလဲမည်လား")},
         text={Text("ဒိုင်: $name\nSession: $effectiveDateText • ${effectiveSession.label}\n" +
-            "အဆ: ${activeRate?:existing?.rate} → $rate ဆ\\n" +
+            "အဆ: ${selectedRate?:existing?.rate} → $rate ဆ\n" +
             if(mode=="DRAW")"ရွေးထားသော Session တစ်ခုတည်းကိုသာ ပြန်တွက်မည်။"
             else "ရွေးထားသော Session ကစပြီး နောက်ပိုင်းသက်ဆိုင်ရာစာရင်းတွေကို ပြန်တွက်မည်။")},
         confirmButton={TextButton({pendingRateChange=false;applyChange()}){Text("ပြောင်းမည်")}},
