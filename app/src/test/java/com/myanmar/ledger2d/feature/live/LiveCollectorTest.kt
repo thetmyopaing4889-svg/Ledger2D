@@ -4177,4 +4177,33 @@ class LiveCollectorTest {
         assertEquals("47", (collector.state.value as LiveUiState.Data).temporaryWinner?.result)
     }
 
+    @Test fun close_boundary_publishes_temporary_without_extra_luke_request() = runTest {
+        var currentTime = LocalTime.of(12, 0, 59)
+        var calls = 0
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val collector = LiveCollector(
+            scope = scope,
+            fetcher = {
+                calls++
+                feed("47", "12:00:59")
+            },
+            clock = { currentTime },
+            dateProvider = { friday },
+        )
+        collector.start()
+        runCurrent()
+        assertEquals(1, calls)
+        assertNull((collector.state.value as LiveUiState.Data).temporaryWinner)
+
+        currentTime = LocalTime.of(12, 1)
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("47", state.temporaryWinner?.result)
+        assertTrue(state.postClosePending)
+        assertEquals(1, calls) // The boundary display wake did not poll Luke.
+        scope.cancel()
+    }
+
 }
