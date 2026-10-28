@@ -4207,4 +4207,113 @@ class LiveCollectorTest {
         scope.cancel()
     }
 
+    @Test fun weekend_after_1201_and_1630_keeps_last_friday_final_visible() = runTest {
+        val heldFriday = feed(
+            "--", "16:30:00", morning = finalMorning("22"),
+            evening = finalEvening("25"), date = friday,
+        )
+        for (day in listOf(saturday, sunday)) {
+            for (hour in listOf(LocalTime.of(12, 2), LocalTime.of(16, 31))) {
+                var clears = 0
+                val collector = LiveCollector(
+                    scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+                    fetcher = { null },
+                    clock = { hour },
+                    dateProvider = { day },
+                    cacheFeedLoader = { heldFriday },
+                    temporaryLoader = {
+                        LiveTemporaryWinnerPolicy.candidate(
+                            feed("47", "12:00:59"), friday, LiveSession.MORNING,
+                        )
+                    },
+                    temporaryClearer = { clears++ },
+                )
+                val state = collector.state.value as LiveUiState.Data
+                assertEquals("25", state.hero?.result)
+                assertFalse(state.postClosePending)
+                assertNull(state.temporaryWinner)
+                assertEquals(1, clears)
+            }
+        }
+    }
+
+    @Test fun closed_day_at_1202_keeps_previous_final_and_clears_old_temporary() = runTest {
+        val wednesday = tuesday.plusDays(1)
+        val heldTuesday = feed(
+            "--", "16:30:00", morning = finalMorning("36"),
+            evening = finalEvening("57"), date = tuesday,
+        )
+        var clears = 0
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { null },
+            clock = { LocalTime.of(12, 2) },
+            dateProvider = { wednesday },
+            closedDayDateLoader = { wednesday },
+            cacheFeedLoader = { heldTuesday },
+            temporaryLoader = {
+                LiveTemporaryWinnerPolicy.candidate(
+                    feed("47", "12:00:59", date = wednesday), wednesday, LiveSession.MORNING,
+                )
+            },
+            temporaryClearer = { clears++ },
+        )
+        val state = collector.state.value as LiveUiState.Data
+        assertTrue(state.closedDay)
+        assertEquals("57", state.hero?.result)
+        assertFalse(state.postClosePending)
+        assertNull(state.temporaryWinner)
+        assertEquals(1, clears)
+    }
+
+    @Test fun final_confirmation_clears_only_provisional_memory_and_cache() = runTest {
+        val preexisting = LiveTemporaryWinnerPolicy.candidate(
+            feed("47", "12:00:59"), friday, LiveSession.MORNING,
+        )
+        var clears = 0
+        val final = feed("47", "12:03:00", morning = finalMorning("49"))
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { final },
+            clock = { LocalTime.of(12, 3) },
+            dateProvider = { friday },
+            temporaryLoader = { preexisting },
+            temporaryClearer = { clears++ },
+        )
+        collector.fetchCycle()
+        runCurrent()
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("49", state.hero?.result)
+        assertNull(state.temporaryWinner)
+        assertFalse(state.postClosePending)
+        assertEquals(1, clears)
+    }
+
+    @Test fun older_pre_close_response_accepted_for_reference_cannot_replace_newer_live_freeze() = runTest {
+        var time = LocalTime.of(11, 59)
+        var incoming = feed("47", "11:59:00", modern930 = "--", internet930 = "--")
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { incoming },
+            clock = { time },
+            dateProvider = { friday },
+        )
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("47", (collector.state.value as LiveUiState.Data).hero?.result)
+
+        // An older Luke snapshot is accepted only because it carries the
+        // not-yet-completed 09:30 reference pair. It must not roll LIVE back.
+        incoming = feed("41", "11:58:30", modern930 = "80", internet930 = "33")
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("80", (collector.state.value as LiveUiState.Data).feed?.modern930)
+
+        time = LocalTime.of(12, 1, 3)
+        incoming = feed("48", "12:01:03", modern930 = "80", internet930 = "33")
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("47", (collector.state.value as LiveUiState.Data).temporaryWinner?.result)
+    }
+
 }
