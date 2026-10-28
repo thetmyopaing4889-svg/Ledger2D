@@ -1391,8 +1391,9 @@ internal class LiveCollector(
             return
         }
 
+        val cycleDate = dateProvider()
         delay(remaining)
-        if (dateProvider() == currentYangonDate() && clock() >= boundary) {
+        if (dateProvider() == cycleDate && clock() >= boundary) {
             synchronized(stateLock) { publishLocked() }
             sideEffects.drain()
         }
