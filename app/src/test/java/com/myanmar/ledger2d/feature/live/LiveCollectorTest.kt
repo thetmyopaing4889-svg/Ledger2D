@@ -4083,4 +4083,98 @@ class LiveCollectorTest {
         assertEquals("61", state.feed?.morning?.result)
     }
 
+    @Test fun late_entry_1202_captures_first_raw_luke_live_without_confirming_final() = runTest {
+        val responses = ArrayDeque(listOf(
+            feed("47", "12:02:00"),
+            feed("48", "12:02:03"),
+            feed("49", "12:03:00", morning = finalMorning("49")),
+        ))
+        val temporarySaves = mutableListOf<LiveTemporaryWinner>()
+        val finalSaves = mutableListOf<LiveHeroSnapshot>()
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { responses.removeFirst() },
+            clock = { LocalTime.of(12, 3) },
+            dateProvider = { friday },
+            temporarySaver = { temporarySaves += it },
+            cacheSaver = { finalSaves += it },
+        )
+
+        collector.fetchCycle()
+        runCurrent()
+        var state = collector.state.value as LiveUiState.Data
+        assertEquals("47", state.temporaryWinner?.result)
+        assertTrue(state.postClosePending)
+        assertTrue(finalSaves.isEmpty())
+
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertEquals("47", state.temporaryWinner?.result)
+        assertEquals(1, temporarySaves.size)
+
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+        assertNull(state.temporaryWinner)
+        assertEquals("49", state.hero?.result)
+        assertEquals(LiveStatus.FINAL_CONFIRMED, state.status)
+        assertFalse(state.postClosePending)
+        assertEquals("49", finalSaves.lastOrNull()?.result)
+    }
+
+    @Test fun pre_close_observation_wins_over_first_post_close_live() = runTest {
+        var currentTime = LocalTime.of(12, 0, 59)
+        var response = feed("47", "12:00:59")
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { response },
+            clock = { currentTime },
+            dateProvider = { friday },
+        )
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("47", (collector.state.value as LiveUiState.Data).hero?.result)
+
+        currentTime = LocalTime.of(12, 1, 3)
+        response = feed("48", "12:01:03")
+        collector.fetchCycle()
+        runCurrent()
+        val state = collector.state.value as LiveUiState.Data
+        assertEquals("47", state.temporaryWinner?.result)
+        assertTrue(state.postClosePending)
+    }
+
+    @Test fun late_entry_does_not_use_unfrozen_1140_cached_live() = runTest {
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { feed("39", "12:02:00") },
+            clock = { LocalTime.of(12, 2) },
+            dateProvider = { friday },
+            cacheFeedLoader = { feed("17", "11:40:00") },
+        )
+        val initial = collector.state.value as LiveUiState.Data
+        assertNull(initial.temporaryWinner)
+        assertTrue(initial.postClosePending)
+        collector.fetchCycle()
+        runCurrent()
+        assertEquals("39", (collector.state.value as LiveUiState.Data).temporaryWinner?.result)
+    }
+
+    @Test fun process_restart_restores_only_same_session_temporary_display() = runTest {
+        val saved = LiveTemporaryWinnerPolicy.candidate(
+            feed("47", "12:02:00"), friday, LiveSession.MORNING,
+        )
+        val collector = LiveCollector(
+            scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { null },
+            clock = { LocalTime.of(12, 3) },
+            dateProvider = { friday },
+            temporaryLoader = { saved },
+        )
+        collector.start()
+        runCurrent()
+        assertEquals("47", (collector.state.value as LiveUiState.Data).temporaryWinner?.result)
+    }
+
 }
