@@ -11,6 +11,8 @@ internal data class LiveTemporaryWinner(
     val date: LocalDate,
     val session: LiveSession,
     val hero: LiveHeroSnapshot,
+    /** Luke observation time; only pre-close candidates compete by this value. */
+    val sourceAtMs: Long = 0L,
 )
 
 internal object LiveTemporaryWinnerPolicy {
@@ -58,6 +60,7 @@ internal object LiveTemporaryWinnerPolicy {
         return LiveTemporaryWinner(
             date = date,
             session = session,
+            sourceAtMs = observed.toInstant().toEpochMilli(),
             hero = LiveHeroSnapshot(
                 result = feed.live,
                 set = feed.liveSet,
