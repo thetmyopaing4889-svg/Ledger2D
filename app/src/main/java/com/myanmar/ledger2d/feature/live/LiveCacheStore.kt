@@ -58,6 +58,7 @@ internal object LiveCacheStore {
         LiveTemporaryWinner(
             date = date,
             session = session,
+            sourceAtMs = o.optLong("sourceAtMs", 0L),
             hero = LiveHeroSnapshot(
                 result = digit,
                 set = o.optString("set", LIVE_PENDING),
@@ -78,6 +79,7 @@ internal object LiveCacheStore {
                 .put("date", winner.date.toString())
                 .put("session", winner.session.name)
                 .put("result", winner.hero.result)
+                .put("sourceAtMs", winner.sourceAtMs)
                 .put("set", winner.hero.set)
                 .put("value", winner.hero.value)
             context
@@ -86,6 +88,15 @@ internal object LiveCacheStore {
                 .putString(TEMPORARY_KEY, o.toString())
                 .commit()
         }
+    }
+
+    /** Clear only the separate UI-only temporary key, never latest_final/feed. */
+    fun clearTemporary(context: Context) {
+        context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(TEMPORARY_KEY)
+            .commit()
     }
 
     fun load(context: Context): LiveHeroSnapshot? {
