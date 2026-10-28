@@ -72,6 +72,8 @@ internal class LiveCollector(
     private val closedDayDateClearer: () -> Unit = {},
     private val historicalFinalFetcher: (suspend (LocalDate) -> LiveHeroSnapshot?)? = null,
     private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
+    private val temporaryLoader: () -> LiveTemporaryWinner? = { null },
+    private val temporarySaver: (LiveTemporaryWinner) -> Unit = {},
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -103,6 +105,10 @@ internal class LiveCollector(
     private var primary: SourceObservation? = null
     private var primaryLiveSession: LiveSession? = null
     private var lastLive: LiveHeroSnapshot? = null
+    /** Only in-memory observations taken while this process was running pre-close. */
+    private var lastPreCloseLive: LiveTemporaryWinner? = null
+    /** Display-only cache, deliberately independent of lastFinal and Room. */
+    private var temporaryWinner: LiveTemporaryWinner? = temporaryLoader()
     private var lastPhaseMarker: Pair<LiveWindowAction, LiveSession?>? = null
     /**
      * Last Luke-confirmed closed calendar date. Live-only state; never written
@@ -319,6 +325,14 @@ internal class LiveCollector(
             primary = SourceObservation(cachedFeed, startedAt, startedAt, 0L)
             if (hasValidLive(cachedFeed, today)) {
                 primaryLiveSession = LiveStateReducer.inferLiveSessionFromSourceTime(cachedFeed)
+                // A cache loaded AFTER cutoff is not proof that the app saw the
+                // closing tick. In that case wait for the late-entry Luke response.
+                val liveSession = liveSessionForTime(scheduleTime)
+                if (liveSession != null &&
+                    LiveTemporaryWinnerPolicy.isBeforeSessionClose(scheduleTime, liveSession)
+                ) {
+                    lastPreCloseLive = LiveTemporaryWinnerPolicy.candidate(cachedFeed, today, liveSession)
+                }
             }
             lastFinal = latestFinalFor(cachedFeed)
             publishLocked()
@@ -450,6 +464,7 @@ internal class LiveCollector(
             // request is still pending or previously failed. Promote those
             // reference fields from the accepted snapshot immediately.
             promoteCurrentCycleReferencesLocked(feed, today, scheduleTime)
+            observeTemporaryWinnerLocked(feed, today, scheduleTime)
 
             val reduction = LiveStateReducer.reduceAcceptedLiveSnapshot(
                 previous = previous,
@@ -495,6 +510,69 @@ internal class LiveCollector(
         }
         sideEffects.drain()
     }
+    /**
+     * The temporary display path only reads a raw accepted Luke response; it
+     * never changes the reducer's protected feed, Room patches, or final cache.
+     * Caller holds stateLock; persistence is dispatched outside the lock.
+     */
+    private fun observeTemporaryWinnerLocked(
+        feed: LiveFeedData,
+        today: LocalDate,
+        now: LocalTime,
+    ) {
+        if (!isWorkingDay(today) || closedHoldDate(today, now) != null) return
+        val activeSession = liveSessionForTime(now)
+        if (activeSession != null &&
+            LiveTemporaryWinnerPolicy.isBeforeSessionClose(now, activeSession)
+        ) {
+            if (!isCurrentSessionFinalLocked(today, activeSession) &&
+                !LiveTemporaryWinnerPolicy.sessionFinalConfirmed(feed, today, activeSession)
+            ) {
+                LiveTemporaryWinnerPolicy.candidate(feed, today, activeSession)?.let {
+                    // Only values observed by this running collector before
+                    // cutoff can be frozen as a pre-close snapshot.
+                    val providerTime = parseDecisionInstant(feed)?.atZone(YANGON)?.toLocalTime()
+                    val cutoff = if (activeSession == LiveSession.MORNING) MORNING_CLOSE else EVENING_CLOSE
+                    if (providerTime != null && providerTime < cutoff) lastPreCloseLive = it
+                }
+            }
+            return
+        }
+
+        val frozenSession = LiveTemporaryWinnerPolicy.frozenSessionAt(now) ?: return
+        val finalConfirmed = isCurrentSessionFinalLocked(today, frozenSession) ||
+            LiveTemporaryWinnerPolicy.sessionFinalConfirmed(feed, today, frozenSession)
+        storeTemporaryLocked(
+            LiveTemporaryWinnerPolicy.select(
+                existing = temporaryWinner,
+                preClose = lastPreCloseLive,
+                incoming = feed,
+                today = today,
+                now = now,
+                finalConfirmed = finalConfirmed,
+            )
+        )
+    }
+
+    private fun isCurrentSessionFinalLocked(date: LocalDate, session: LiveSession): Boolean {
+        if (LiveTemporaryWinnerPolicy.sessionFinalConfirmed(primary?.feed, date, session)) return true
+        val final = lastFinal ?: return false
+        return canonicalDate(final.date) == date &&
+            isValidLive2d(final.result) &&
+            final.sessionLabel == if (session == LiveSession.MORNING) {
+                LIVE_SESSION_MORNING_LABEL
+            } else {
+                LIVE_SESSION_EVENING_LABEL
+            }
+    }
+
+    private fun storeTemporaryLocked(winner: LiveTemporaryWinner?) {
+        if (winner != null && winner != temporaryWinner) {
+            temporaryWinner = winner
+            sideEffects.dispatch { temporarySaver(winner) }
+        }
+    }
+
     /**
      * Persist a Luke observation through the Room-specific acceptance path.
      * The Builder independently validates provider/app dates and each checkpoint;
@@ -1179,11 +1257,41 @@ internal class LiveCollector(
         lastPhaseMarker = liveWindowAction(clock()) to liveSessionForTime(clock())
         val scheduleTime = clock()
         val resolution = resolveDisplayLocked(today, scheduleTime)
+        val frozenSession = LiveTemporaryWinnerPolicy.frozenSessionAt(scheduleTime)
+        val confirmed = frozenSession != null && isCurrentSessionFinalLocked(today, frozenSession)
+        val closedHold = closedHoldDate(today, scheduleTime) != null
+        if (!closedHold) {
+            // Capture from the process's last actual pre-close observation even
+            // if no Luke response arrives exactly at the 12:01 / 16:30 tick.
+            storeTemporaryLocked(
+                LiveTemporaryWinnerPolicy.select(
+                    existing = temporaryWinner,
+                    preClose = lastPreCloseLive,
+                    incoming = null,
+                    today = today,
+                    now = scheduleTime,
+                    finalConfirmed = confirmed,
+                )
+            )
+        }
         applyResolutionEffectsLocked(resolution, today)
 
         _state.value = projectLiveUiState(
             resolution = resolution,
             closedDay = currentClosedDayForNotice(today),
+        ).copy(
+            temporaryWinner = if (!closedHold && !confirmed) {
+                LiveTemporaryWinnerPolicy.select(
+                    existing = temporaryWinner,
+                    preClose = null,
+                    incoming = null,
+                    today = today,
+                    now = scheduleTime,
+                    finalConfirmed = false,
+                )?.hero
+            } else {
+                null
+            },
         )
     }
 
@@ -1376,6 +1484,8 @@ internal class LiveCollector(
                     cacheSaver = { LiveCacheStore.save(context, it) },
                     cacheFeedLoader = { LiveCacheStore.loadFeed(context) },
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
+                    temporaryLoader = { LiveCacheStore.loadTemporary(context) },
+                    temporarySaver = { LiveCacheStore.saveTemporary(context, it) },
                     liveRoomSaver = liveRoomSaver,
                     closedDayFeedFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
