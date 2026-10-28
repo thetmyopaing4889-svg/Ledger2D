@@ -1292,6 +1292,7 @@ internal class LiveCollector(
             } else {
                 null
             },
+            postClosePending = frozenSession != null && !confirmed && !closedHold,
         )
     }
 
