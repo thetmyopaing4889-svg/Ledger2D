@@ -1372,6 +1372,33 @@ internal class LiveCollector(
         return mergeReferenceIntoFeed(projected)
     }
 
+    /**
+     * Wake once at the actual display boundary, without increasing the Luke
+     * polling frequency or changing the existing three-second request cycle.
+     * The app/process may still be delayed by Android scheduling.
+     */
+    private suspend fun delayThroughLiveClose(now: LocalTime) {
+        val boundary = when {
+            now >= MORNING_LIVE && now < MORNING_CLOSE -> MORNING_CLOSE
+            now >= EVENING_LIVE && now < EVENING_CLOSE -> EVENING_CLOSE
+            else -> null
+        }
+        val remaining = boundary?.let {
+            java.time.Duration.between(now, it).toMillis().coerceAtLeast(1L)
+        }
+        if (remaining == null || remaining >= NORMAL_POLL_INTERVAL_MS) {
+            delay(NORMAL_POLL_INTERVAL_MS)
+            return
+        }
+
+        delay(remaining)
+        if (dateProvider() == currentYangonDate() && clock() >= boundary) {
+            synchronized(stateLock) { publishLocked() }
+            sideEffects.drain()
+        }
+        delay(NORMAL_POLL_INTERVAL_MS - remaining)
+    }
+
     fun start() {
         if (!started.compareAndSet(false, true)) return
 
@@ -1449,7 +1476,7 @@ internal class LiveCollector(
                     launchRequest()
                 }
 
-                delay(NORMAL_POLL_INTERVAL_MS)
+                delayThroughLiveClose(t)
             }
         }
     }
