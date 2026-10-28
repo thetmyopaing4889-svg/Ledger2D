@@ -62,6 +62,8 @@ sealed interface LiveUiState {
         val closedDay: Boolean = false,
         /** Rendered over the core LIVE hero, never treated as a confirmed result. */
         val temporaryWinner: LiveHeroSnapshot? = null,
+        /** Suppress stale raw LIVE when a cutoff passed but no hero was captured. */
+        val postClosePending: Boolean = false,
     ) : LiveUiState
 
     /** No data yet and the latest fetch failed. */
