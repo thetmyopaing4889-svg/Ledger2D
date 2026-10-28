@@ -60,6 +60,8 @@ sealed interface LiveUiState {
         val staleAgeMs: Long = 0L,
         /** True only when Luke has confirmed today's 2D market is closed. */
         val closedDay: Boolean = false,
+        /** Rendered over the core LIVE hero, never treated as a confirmed result. */
+        val temporaryWinner: LiveHeroSnapshot? = null,
     ) : LiveUiState
 
     /** No data yet and the latest fetch failed. */
