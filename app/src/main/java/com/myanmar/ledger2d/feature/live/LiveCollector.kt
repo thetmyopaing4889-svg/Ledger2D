@@ -74,6 +74,7 @@ internal class LiveCollector(
     private val historicalFeedFetcher: (suspend (LocalDate) -> LiveFeedData?)? = null,
     private val temporaryLoader: () -> LiveTemporaryWinner? = { null },
     private val temporarySaver: (LiveTemporaryWinner) -> Unit = {},
+    private val temporaryClearer: () -> Unit = {},
 ) {
     private val _state = MutableStateFlow<LiveUiState>(
         LiveUiState.Data(null, null, false, false)
@@ -533,7 +534,13 @@ internal class LiveCollector(
                     // cutoff can be frozen as a pre-close snapshot.
                     val providerTime = parseDecisionInstant(feed)?.atZone(YANGON)?.toLocalTime()
                     val cutoff = if (activeSession == LiveSession.MORNING) MORNING_CLOSE else EVENING_CLOSE
-                    if (providerTime != null && providerTime < cutoff) lastPreCloseLive = it
+                    if (providerTime != null && providerTime < cutoff &&
+                        (lastPreCloseLive?.takeIf { previous ->
+                            previous.date == today && previous.session == activeSession
+                        }?.sourceAtMs ?: Long.MIN_VALUE) < it.sourceAtMs
+                    ) {
+                        lastPreCloseLive = it
+                    }
                 }
             }
             return
@@ -567,8 +574,13 @@ internal class LiveCollector(
     }
 
     private fun storeTemporaryLocked(winner: LiveTemporaryWinner?) {
-        if (winner != null && winner != temporaryWinner) {
-            temporaryWinner = winner
+        if (winner == temporaryWinner) return
+        temporaryWinner = winner
+        if (winner == null) {
+            // A confirmed final, new draw or closed market invalidates the
+            // provisional cache, not the independently persisted Luke final.
+            sideEffects.dispatch { temporaryClearer() }
+        } else {
             sideEffects.dispatch { temporarySaver(winner) }
         }
     }
@@ -1260,20 +1272,19 @@ internal class LiveCollector(
         val frozenSession = LiveTemporaryWinnerPolicy.frozenSessionAt(scheduleTime)
         val confirmed = frozenSession != null && isCurrentSessionFinalLocked(today, frozenSession)
         val closedHold = closedHoldDate(today, scheduleTime) != null
-        if (!closedHold) {
-            // Capture from the process's last actual pre-close observation even
-            // if no Luke response arrives exactly at the 12:01 / 16:30 tick.
-            storeTemporaryLocked(
-                LiveTemporaryWinnerPolicy.select(
-                    existing = temporaryWinner,
-                    preClose = lastPreCloseLive,
-                    incoming = null,
-                    today = today,
-                    now = scheduleTime,
-                    finalConfirmed = confirmed,
-                )
+        // A confirmed final, weekend, closed day or new LIVE session clears the
+        // prior temporary cache. Otherwise freeze the last accepted pre-close
+        // observation even if no response arrives at the exact boundary.
+        storeTemporaryLocked(
+            if (closedHold) null else LiveTemporaryWinnerPolicy.select(
+                existing = temporaryWinner,
+                preClose = lastPreCloseLive,
+                incoming = null,
+                today = today,
+                now = scheduleTime,
+                finalConfirmed = confirmed,
             )
-        }
+        )
         applyResolutionEffectsLocked(resolution, today)
 
         _state.value = projectLiveUiState(
@@ -1292,7 +1303,8 @@ internal class LiveCollector(
             } else {
                 null
             },
-            postClosePending = frozenSession != null && !confirmed && !closedHold,
+            postClosePending = frozenSession != null &&
+                isWorkingDay(today) && !confirmed && !closedHold,
         )
     }
 
@@ -1515,6 +1527,7 @@ internal class LiveCollector(
                     cacheFeedSaver = { LiveCacheStore.saveFeed(context, it) },
                     temporaryLoader = { LiveCacheStore.loadTemporary(context) },
                     temporarySaver = { LiveCacheStore.saveTemporary(context, it) },
+                    temporaryClearer = { LiveCacheStore.clearTemporary(context) },
                     liveRoomSaver = liveRoomSaver,
                     closedDayFeedFetcher = { date ->
                         HistorySync.fetch2DHistory(date, date)
