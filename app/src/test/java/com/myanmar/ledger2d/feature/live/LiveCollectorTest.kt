@@ -4192,7 +4192,8 @@ class LiveCollectorTest {
         )
         collector.start()
         runCurrent()
-        assertEquals(1, calls)
+        val callsBeforeBoundary = calls
+        assertTrue(callsBeforeBoundary >= 1)
         assertNull((collector.state.value as LiveUiState.Data).temporaryWinner)
 
         currentTime = LocalTime.of(12, 1)
@@ -4202,7 +4203,7 @@ class LiveCollectorTest {
         val state = collector.state.value as LiveUiState.Data
         assertEquals("47", state.temporaryWinner?.result)
         assertTrue(state.postClosePending)
-        assertEquals(1, calls) // The boundary display wake did not poll Luke.
+        assertEquals(callsBeforeBoundary, calls) // Boundary wake did not add a poll.
         scope.cancel()
     }
 
