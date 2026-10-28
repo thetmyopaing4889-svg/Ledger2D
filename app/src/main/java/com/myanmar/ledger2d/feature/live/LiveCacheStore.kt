@@ -43,6 +43,51 @@ internal object LiveCacheStore {
     private const val KEY = "latest_final"
     private const val FEED_KEY = "latest_feed"
 
+    private const val TEMPORARY_KEY = "temporary_winning_hero"
+
+    /** Only UI uses this cache. It has no connection to latest_final or Room. */
+    fun loadTemporary(context: Context): LiveTemporaryWinner? = runCatching {
+        val raw = context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(TEMPORARY_KEY, null) ?: return null
+        val o = JSONObject(raw)
+        val date = LocalDate.parse(o.getString("date"))
+        val session = LiveSession.valueOf(o.getString("session"))
+        val digit = o.getString("result")
+        if (!isValidLive2d(digit)) return null
+        LiveTemporaryWinner(
+            date = date,
+            session = session,
+            hero = LiveHeroSnapshot(
+                result = digit,
+                set = o.optString("set", LIVE_PENDING),
+                value = o.optString("value", LIVE_PENDING),
+                sessionLabel = if (session == LiveSession.MORNING) {
+                    LIVE_SESSION_MORNING_LABEL
+                } else {
+                    LIVE_SESSION_EVENING_LABEL
+                },
+                date = date.toString(),
+            ),
+        )
+    }.getOrNull()
+
+    fun saveTemporary(context: Context, winner: LiveTemporaryWinner) {
+        runCatching {
+            val o = JSONObject()
+                .put("date", winner.date.toString())
+                .put("session", winner.session.name)
+                .put("result", winner.hero.result)
+                .put("set", winner.hero.set)
+                .put("value", winner.hero.value)
+            context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(TEMPORARY_KEY, o.toString())
+                .commit()
+        }
+    }
+
     fun load(context: Context): LiveHeroSnapshot? {
         return try {
             val raw = context
