@@ -193,7 +193,8 @@ fun LiveScreen(
                         modifier = Modifier.padding(padding),
                     )
                     is LiveUiState.Data -> LiveContent(
-                        s.feed, s.hero, s.heroLive, s.closedDay, Modifier.padding(padding),
+                        s.feed, s.hero, s.heroLive, s.temporaryWinner,
+                        s.postClosePending, s.closedDay, Modifier.padding(padding),
                     )
                 }
             }
@@ -206,10 +207,18 @@ private fun LiveContent(
     feed: LiveFeedData?,
     hero: LiveHeroSnapshot?,
     heroLive: Boolean,
+    temporaryWinner: LiveHeroSnapshot?,
+    postClosePending: Boolean,
     closedDay: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val l = LocalLanguage.current
+    val temporary = postClosePending && temporaryWinner != null
+    val displayHero = when {
+        temporary -> temporaryWinner
+        postClosePending -> null // No falsely current LIVE from an old cached feed.
+        else -> hero
+    }
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -217,7 +226,7 @@ private fun LiveContent(
         if (closedDay) {
             ClosedDayNotice(l.text("ဒီနေ့ 2D ပိတ်ရက်ဖြစ်ပါသည်", "2D is closed today"))
         }
-        LiveHero(hero, heroLive, false)
+        LiveHero(displayHero, heroLive && !postClosePending, false, temporary, postClosePending && !temporary)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
             LiveSessionCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening, Modifier.weight(1f))
@@ -517,7 +526,7 @@ private fun LiveDetailReferenceRow(time: String, modern: String, internet: Strin
 // ---- Hero: persistent; 🔴 LIVE only while collection is active -------------
 
 @Composable
-private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean) {
+private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean, temporary: Boolean, waitingForFinal: Boolean) {
     val l = LocalLanguage.current
     ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.elevatedCardColors(containerColor = AppColors.PrimaryDeep), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)) {
         Column(
@@ -526,7 +535,11 @@ private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean) {
         ) {
             // Status row: red LIVE only in live mode, otherwise stable Updated.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isLive) {
+                if (temporary) {
+                    Text(l.text("ယာယီရလဒ်", "Temporary"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                } else if (waitingForFinal) {
+                    Text(l.text("အတည်ပြုချက်စောင့်နေ", "Awaiting final"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                } else if (isLive) {
                     LiveBlinkDot()
                     Text("LIVE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
                 } else {
@@ -559,8 +572,11 @@ private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean) {
                     )
                 }
                 Text(
-                    if (isLive) listOf(hero.date, hero.sessionLabel).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "LIVE" }
-                    else l.text("နောက်ဆုံးရလဒ်", "Latest final") + " • " + hero.sessionLabel,
+                    when {
+                        temporary -> l.text("အတည်ပြုချက်စောင့်ဆိုင်းဆဲ", "Awaiting final") + " • " + hero.sessionLabel
+                        isLive -> listOf(hero.date, hero.sessionLabel).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "LIVE" }
+                        else -> l.text("နောက်ဆုံးရလဒ်", "Latest final") + " • " + hero.sessionLabel
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = .85f),
                 )
