@@ -4120,7 +4120,7 @@ class LiveCollectorTest {
         assertEquals("49", state.hero?.result)
         assertEquals(LiveStatus.FINAL_CONFIRMED, state.status)
         assertFalse(state.postClosePending)
-        assertEquals("49", finalSaves.lastOrNull()?.result)
+        assertEquals("49", state.feed?.morning?.result)
     }
 
     @Test fun pre_close_observation_wins_over_first_post_close_live() = runTest {
