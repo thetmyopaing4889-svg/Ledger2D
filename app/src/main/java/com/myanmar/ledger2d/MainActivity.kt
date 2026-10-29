@@ -13,6 +13,9 @@ import com.myanmar.ledger2d.feature.main.LedgerNav
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Start the exact existing collector before Compose can access it.
+        // Worker-only process startup deliberately does not start this loop.
+        (application as LedgerApplication).startLiveCollectorForUi()
         enableEdgeToEdge()
         window.statusBarColor = AndroidColor.TRANSPARENT
         setContent {

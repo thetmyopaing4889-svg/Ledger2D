@@ -41,7 +41,10 @@ internal class LiveBackgroundSyncWorker(
             // Repair a current-day missing operational winner even if the LIVE
             // calendar has already received its complete record.
             saveEligibleWinners(app, date, time, stored)
-            if (!BackgroundLiveSyncPolicy.needsFetch(date, time, stored)) {
+            if (!BackgroundLiveSyncPolicy.needsFetch(date, time, stored) ||
+                LiveAppVisibility.isVisible
+            ) {
+                // A user may foreground the app while the worker is checking Room.
                 Result.success()
             } else {
                 val feed = withContext(Dispatchers.IO) { LiveApi.fetch() }

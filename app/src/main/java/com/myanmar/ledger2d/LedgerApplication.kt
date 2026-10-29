@@ -46,15 +46,6 @@ class LedgerApplication : Application() {
             scope = applicationScope,
         ).start()
 
-        // App-scoped 2D LIVE collector: window-gated polling that continues
-        // during the scheduled LIVE windows even when the screen is closed.
-        // Its cold-start historical fallback uses the existing HistorySync
-        // source inside LiveCollector; Room remains a write-only live record.
-        LiveCollector.startOnce(
-            this,
-            liveRoomSaver = { patches -> container.liveResults.apply(patches) },
-        )
-
         // Keep one persistent, network-constrained fallback for days when the
         // user never opens the app. Worker skips Luke I/O while UI is visible.
         // KEEP preserves the periodic schedule across ordinary app launches.
@@ -72,6 +63,18 @@ class LedgerApplication : Application() {
             LiveBackgroundSyncWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             work,
+        )
+    }
+
+    /**
+     * Preserve the original LIVE lifecycle when a user opens the app.
+     * Do not start the infinite app-scoped collector solely because Android
+     * created this process for a periodic WorkManager worker.
+     */
+    fun startLiveCollectorForUi() {
+        LiveCollector.startOnce(
+            this,
+            liveRoomSaver = { patches -> container.liveResults.apply(patches) },
         )
     }
 }
