@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 
 sealed interface SubmitState { data object Idle:SubmitState; data object Working:SubmitState; data class Success(val id:Long):SubmitState; data class Error(val message:String):SubmitState }
-data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်"),val validation:ValidationResult?=null,val loading:Boolean=false,val issues:List<String> = emptyList()){ val canConfirm get()=parse is ParseResult.Success&&validation?.canConfirm==true&&issues.isEmpty()&&!loading }
+data class BetPreview(val parse:ParseResult=ParseResult.Error("စာရင်းထည့်ပါက အကြိုကြည့်ရှုနိုင်ပါမည်"),val validation:ValidationResult?=null,val loading:Boolean=false,val issues:List<String> = emptyList(),val emptyInput:Boolean=false){ val canConfirm get()=!emptyInput&&parse is ParseResult.Success&&validation?.canConfirm==true&&issues.isEmpty()&&!loading }
 data class DrawReport(val calculation:DrawCalculation, val winningDigit:String?, val winnerAvailable:Boolean, val after:Boolean)
 data class AgentCustomerReportRow(val customer:CustomerEntity, val calculation:DrawCalculation)
 data class ScopeSummary(val id:Long, val name:String, val totalBet:Long, val winningStake:Long, val payout:Long, val profitLoss:Long, val commission:Long)
@@ -26,7 +26,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun winner(date:LocalDate, session:DrawSession)=container.winners.observe(date,session)
     val closedDays=container.closedDays.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     private val engine=BetExpansionEngine(); private val validator=LimitValidator(); private val mutationMutex=Mutex()
-    private val _preview=MutableStateFlow(BetPreview()); val preview:StateFlow<BetPreview> = _preview
+    private val _preview=MutableStateFlow(BetPreview(emptyInput=true)); val preview:StateFlow<BetPreview> = _preview
     private var previewRequestId=0L
     private val _submit=MutableStateFlow<SubmitState>(SubmitState.Idle); val submit:StateFlow<SubmitState> = _submit
     private val _revision=MutableStateFlow(0L); val revision:StateFlow<Long> = _revision.asStateFlow()
@@ -53,7 +53,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     ): Pair<ParseResult, List<String>> {
         val smart = engine.smartExpand(raw, format)
         if(editing != null) {
-            val issues=smart.lines.mapNotNull { line -> (line.result as? ParseResult.Error)?.let { line.source+": "+it.message } }
+            val issues=smart.lines.mapIndexedNotNull { index,line -> (line.result as? ParseResult.Error)?.let { "စာကြောင်း ${index+1} • "+line.source+": "+it.message } }
             if(issues.isNotEmpty()) return ParseResult.Error(issues.joinToString("; ")) to issues
             return engine.run { BetParser().aggregate(smart.lines.flatMap { (it.result as ParseResult.Success).bets }) } to emptyList()
         }
@@ -65,10 +65,10 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         val checker=SessionScopedLimitValidator()
         val accepted=mutableListOf<ExpandedBet>()
         val issues=mutableListOf<String>()
-        for(line in smart.lines){
+        for((lineIndex,line) in smart.lines.withIndex()){
             val result=line.result
             if(result is ParseResult.Error){
-                issues += "${line.source}: ${result.message}"
+                issues += "စာကြောင်း ${lineIndex+1} • ${line.source}: ${result.message}"
                 continue
             }
             val bets=(result as ParseResult.Success).bets
@@ -96,7 +96,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
                 }
                 a.rows.forEach{describe("Agent",it)}
                 b.rows.forEach{describe("Customer",it)}
-                issues += "${line.source}: ${details.joinToString(" | ")}"
+                issues += "စာကြောင်း ${lineIndex+1} • ${line.source}: ${details.joinToString(" | ")}"
             }
         }
         // Never turn a partially rejected paste into a confirmed financial entry.
@@ -229,6 +229,11 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun removeClosedNumber(value:ClosedNumberEntity){viewModelScope.launch{container.closedNumbers.remove(value);container.audit.record("CLOSED_NUMBER",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
     fun refreshPreview(customerId:Long,agentId:Long,date:LocalDate,session:DrawSession,raw:String,format:QuickFormat,editingEntryId:Long=0L,allowBackdated:Boolean=false){
         val requestId=++previewRequestId
+        // Empty input is a normal initial state, not a limit/closed-number error.
+        if(raw.isBlank()) {
+            _preview.value=BetPreview(emptyInput=true)
+            return
+        }
         _preview.value=BetPreview(loading=true)
         viewModelScope.launch {
             fun emitIfLatest(result:BetPreview) {

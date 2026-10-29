@@ -108,6 +108,10 @@ fun inputFormatDisplay(value: String): String = when (value.uppercase()) {
     "ASTROLOGY" -> "နက္ခတ်"
     "HEAD" -> "ထိပ်စည်း"
     "TAIL" -> "နောက်ပိတ်"
+    "EVEN_ODD" -> "စုံမ"
+    "ODD_EVEN" -> "မစုံ"
+    "EVEN_EVEN" -> "စုံစုံ"
+    "ODD_ODD" -> "မမ"
     else -> "လက်ဖြင့်ထည့်သွင်းမှု"
 }
 fun transactionDisplayText(format: String, raw: String): String {
@@ -115,9 +119,13 @@ fun transactionDisplayText(format: String, raw: String): String {
     if (format.equals("MANUAL", ignoreCase = true)) return original
     // A Messenger paste can contain several individually labeled formats even
     // when a single quick-format chip was selected. Never add a misleading label.
-    val explicitLabels = listOf("အခွေပူး", "အခေပူး", "အခွေ", "အခေ",
-        "ပတ်သီး", "ပါဝါ", "နက္ခတ်", "အပူး", "ညီအကို", "ထိပ်စည်း", "နောက်ပိတ်")
-    if (explicitLabels.any { original.contains(it) }) return original
+    val explicitLabels = listOf(
+        "အခွေပူး", "အခေပူး", "ခွေပူး", "ခေပူး", "အခွေ", "အခေ", "ခွေ", "ခေ",
+        "ပတ်သီး", "ပတ်", "အပါ", "ပါ", "ပါဝါ", "Power", "နက္ခတ်", "နက်ခတ်",
+        "အပူး", "ပူး", "ညီအကို", "ညီကို", "ထိပ်စည်း", "ထိပ်",
+        "နောက်ပိတ်", "နောက်", "စုံမ", "မစုံ", "စုံစုံ", "မမ",
+    )
+    if (explicitLabels.any { original.contains(it, ignoreCase = true) }) return original
     val value = original.replace(Regex("[Rr]"), " ").replace(Regex("\\s+"), " ")
     return "${inputFormatDisplay(format)} $value".trim()
 }
@@ -631,9 +639,9 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                     Text("နောက်ကြောင်းပြန်စာရင်းကို ရွေးထားသော Session ၏ ဒိုင်အဆနဲ့ Customer ကော်မရှင်အတိုင်း အလိုအလျောက်တွက်မည်။ နှုန်းပြောင်းရန် Dashboard မှ Session ရွေးပြီး ပြင်ပါ။",
                         style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 10.13.14 100, 25 100" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100, 456 100" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
+                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
                 item { Text("အမြန်ထည့်သွင်းပုံများ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
-                item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။") else PreviewCard(visiblePreview ?: BetPreview()) }
+                item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။") else PreviewCard(visiblePreview ?: BetPreview(emptyInput=true)) }
                 item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }
             }
             Surface(shadowElevation = 10.dp) {
@@ -647,12 +655,15 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
         Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
                 Text("အကြိုကြည့်ရှုရန်",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-                when(val parsed=preview.parse){
+                if (!preview.emptyInput) when(val parsed=preview.parse){
                     is ParseResult.Error -> Text("မပြည့်စုံသေးပါ",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.labelMedium)
                     is ParseResult.Success -> Text("${parsed.bets.size} ကွက် • ${parsed.total.mmk()}",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)
                 }
             }
-            when(val parsed=preview.parse){
+            if (preview.emptyInput) {
+                Text("Messenger စာရင်းကို အပေါ်မှာ ကူးထည့်ပါ။ ဂဏန်း၊ ထိုးကြေးနဲ့ Limit ကို ဒီနေရာမှာ အကြိုကြည့်နိုင်ပါတယ်။",
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium)
+            } else when(val parsed=preview.parse){
                 is ParseResult.Error -> Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
                     Text(LocalLanguage.current.translate(previewError(parsed.message)),color=MaterialTheme.colorScheme.error)
                     // Keep the strict all-or-nothing rejection, but show the exact
