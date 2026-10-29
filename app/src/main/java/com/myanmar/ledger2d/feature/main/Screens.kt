@@ -733,7 +733,42 @@ private fun previewError(message:String):String = when{
         else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(numbers,key={it.id}){n->ElevatedCard(shape=MaterialTheme.shapes.medium){ListItem(headlineContent={Text(n.digit,fontWeight=FontWeight.Black,style=MaterialTheme.typography.titleLarge)},supportingContent={Text("ဒီ Session အတွက် ပိတ်ထားသည်")},trailingContent={TextButton({pendingDelete=n}){Text("ဖယ်ရှားမည်")}})}}}
     }}
 }
-@Composable fun FormatScreen(onBack:()->Unit){val rows=listOf("ပါဝါ" to "05 50 16 61 27 72 38 83 49 94","နက္ခတ်" to "07 70 18 81 24 42 35 53 69 96","အပူး" to "00 11 22 33 44 55 66 77 88 99","ညီအကို" to "20 နှင့် ဆက်စပ်အတွဲဂဏန်းများ","အခွေ" to "345.100 → 34 43 45 54 35 53","အခွေပူး" to "အခွေ နှင့် အပူးဂဏန်းများ","ပတ်သီး" to "9.100 → 19 unique numbers","ထိပ်စည်း" to "9.100 → 90…99","နောက်ပိတ်" to "9.100 → 09…99","R / ပြောင်းပြန်" to "10.20R100 → both directions");AppScaffold("ထည့်သွင်းပုံ",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text("ထည့်သွင်းပုံ လမ်းညွှန်",style=MaterialTheme.typography.headlineSmall)};items(rows){(title,body)->OutlinedCard{Column(Modifier.padding(16.dp)){Text(title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold);Text(body,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}}}
+@Composable fun FormatScreen(onBack:()->Unit){
+    val rows = listOf(
+        "လက်ဖြင့် / Messenger" to "စာရင်းတစ်စောင်လုံး Paste လုပ်နိုင်သည်။ ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000",
+        "ပါဝါ" to "05 50 16 61 27 72 38 83 49 94 • ပါဝါ/Power",
+        "နက္ခတ်" to "07 70 18 81 24 42 35 53 69 96 • နက္ခတ်/နက်ခတ်",
+        "အပူး" to "00 11 22 33 44 55 66 77 88 99 • အပူး/ပူး",
+        "ညီအကို" to "20 ဆက်စပ်အတွဲဂဏန်းများ • ညီအကို/ညီကို",
+        "အခွေ" to "345ခွေ1000 → 34 43 45 54 35 53 • အခွေ/ခွေ",
+        "အခွေပူး" to "345ခွေပူး1000 → အခွေ 6 ကွက်နှင့် 33 44 55 • အခွေပူး/ခွေပူး",
+        "ပတ်သီး" to "9ပါ1000 → 9 ပါဝင်သော 19 ကွက် • ပါ/အပါ/ပတ်/ပတ်သီး",
+        "ထိပ်စည်း" to "9ထိပ်1000 → 90…99 • ထိပ်စည်း/ထိပ်",
+        "နောက်ပိတ်" to "9နောက်1000 → 09…99 • နောက်ပိတ်/နောက်",
+        "စုံမ" to "ရှေ့စုံ၊ နောက်မ • 25 ကွက် • စုံမ1000",
+        "မစုံ" to "ရှေ့မ၊ နောက်စုံ • 25 ကွက် • မစုံ1000",
+        "စုံစုံ" to "ရှေ့စုံ၊ နောက်စုံ • 25 ကွက် • စုံစုံ1000",
+        "မမ" to "ရှေ့မ၊ နောက်မ • 25 ကွက် • မမ1000",
+        "R / ပြောင်းပြန်" to "11R1000 → 11 တစ်ကွက် 2000 ကျပ် • R/r/ပြန်/ပြောင်းပြန်",
+    )
+    AppScaffold("ထည့်သွင်းပုံ",onBack){ p->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(p),
+            contentPadding=PaddingValues(AppDimens.screen),
+            verticalArrangement=Arrangement.spacedBy(10.dp)
+        ) {
+            item { Text("ထည့်သွင်းပုံ လမ်းညွှန်",style=MaterialTheme.typography.headlineSmall) }
+            items(rows){(title,body)->
+                OutlinedCard {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)
+                        Text(body,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
 @Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold("ကော်မရှင်နှုန်းထား",onBack){p->FormColumn(p){Text("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။",Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value){value="";onBack()}},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
 @Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val language=LocalLanguage.current

@@ -136,6 +136,21 @@ class MessengerSmartInputTest {
         }
     }
 
+    @Test fun excessivelyLargeOrCombinedStakesAreRejectedBeforeLedgerValidation() {
+        val huge = listOf(
+            "01=9000000000000001",
+            "01=9000000000000000\n02=1",
+            "11R5000000000000000",
+            "အပူး1000000000000000",
+        )
+        huge.forEach { input ->
+            val result = engine.smartExpand(input)
+            assertTrue(input, result.hasErrors)
+        }
+        assertEquals(2000L, amount("11R1000"))
+        assertEquals(38000L, amount("၉ပါ၂၀၀၀"))
+    }
+
     @Test fun malformedLinesAreNotSilentlyAccepted() {
         listOf("01=1000\nမသိတဲ့format1000", "01=1000\n334ခွေ1000",
             "01=1000,,02=500", "0102031000", "01 0", "01=0").forEach { input ->

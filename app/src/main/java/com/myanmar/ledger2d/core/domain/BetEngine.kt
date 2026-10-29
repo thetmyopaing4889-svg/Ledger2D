@@ -84,7 +84,8 @@ private fun positiveAmount(raw: String): Long? {
     val amount = match.groupValues[1].toLongOrNull() ?: return null
     if (amount <= 0L) return null
     return try {
-        if (match.groupValues[2].isEmpty()) amount else Math.multiplyExact(amount, 1000L)
+        val resolved = if (match.groupValues[2].isEmpty()) amount else Math.multiplyExact(amount, 1000L)
+        resolved.takeIf { it <= MoneyMath.MaxSafeAmount }
     } catch (_: ArithmeticException) { null }
 }
 
@@ -140,9 +141,25 @@ class BetParser {
 
     internal fun aggregate(values: List<ExpandedBet>): ParseResult = try {
         val grouped = linkedMapOf<String, Long>()
-        values.forEach { grouped[it.digit] = Math.addExact(grouped[it.digit] ?: 0L, it.amount) }
+        values.forEach { bet ->
+            // Match the same safe-money boundary used by the ledger validator.
+            // Catch oversized stakes here, before async Preview can throw.
+            if (bet.amount !in 1..MoneyMath.MaxSafeAmount) {
+                return ParseResult.Error("Amount is too large")
+            }
+            val next = Math.addExact(grouped[bet.digit] ?: 0L, bet.amount)
+            if (next > MoneyMath.MaxSafeAmount) {
+                return ParseResult.Error("Amount is too large")
+            }
+            grouped[bet.digit] = next
+        }
         val bets = grouped.map { ExpandedBet(it.key, it.value) }.sortedBy { it.digit }
-        ParseResult.Success(bets, bets.fold(0L) { sum, bet -> Math.addExact(sum, bet.amount) })
+        val total = bets.fold(0L) { sum, bet -> Math.addExact(sum, bet.amount) }
+        if (total > MoneyMath.MaxSafeAmount) {
+            ParseResult.Error("Amount is too large")
+        } else {
+            ParseResult.Success(bets, total)
+        }
     } catch (_: ArithmeticException) {
         ParseResult.Error("Amount is too large")
     }
