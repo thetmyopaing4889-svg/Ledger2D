@@ -123,6 +123,17 @@ class MessengerSmartInputTest {
         assertEquals(1, parsed.lines.size)
     }
 
+    @Test fun selectedChipStillHonorsExplicitReverseCommands() {
+        assertEquals(2000L, parse("11R1000", QuickFormat.COMBINATION).total)
+        assertEquals(19000L, parse("9r1000", QuickFormat.ROUND).total)
+    }
+
+    @Test fun explicitlyNegativeAmountsAreNeverNormalizedToPositive() {
+        listOf("01=-1000", "01=-၁၀၀၀", "စုံမ=-1000", "01=1000 02=-500").forEach {
+            assertTrue(it, engine.smartExpand(it).hasErrors)
+        }
+    }
+
     @Test fun malformedLinesAreNotSilentlyAccepted() {
         listOf("01=1000\nမသိတဲ့format1000", "01=1000\n334ခွေ1000",
             "01=1000,,02=500", "0102031000", "01 0", "01=0").forEach { input ->
