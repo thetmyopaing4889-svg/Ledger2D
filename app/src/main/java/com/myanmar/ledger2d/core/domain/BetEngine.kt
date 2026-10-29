@@ -174,7 +174,10 @@ class BetExpansionEngine(private val parser: BetParser = BetParser()) {
             val matched = findAlias(source)
             val format = matched?.second ?: fallback
             val cleaned = if (matched == null) source else
-                source.replace(matched.first, " ", ignoreCase = true).trim()
+                source.replace(matched.first, " ", ignoreCase = true)
+                    .trim()
+                    // Fixed formats can be written as "စုံမ=1000" or "ပူး:500".
+                    .trimStart { it.isWhitespace() || it in "=:/.-" }
             SmartLine(source, format, expand(cleaned, format))
         }
         if (lines.isEmpty()) return SmartParseResult(
