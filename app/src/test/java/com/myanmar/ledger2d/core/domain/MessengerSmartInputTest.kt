@@ -78,6 +78,8 @@ class MessengerSmartInputTest {
 
     @Test fun amountCommaAndMultipleSameLineEntriesAreNotConfused() {
         assertEquals(1000L, amount("01=1,000"))
+        assertEquals(6500L, amount("11 500,456အခွေ1000"))
+        assertEquals(17500L, amount("23R1000,123အခေပူး1000,11 500,456အခွေ1000"))
         assertEquals(1500L, amount("01=1,000,02=500"))
         assertEquals(1500L, amount("01=1000,02=500"))
         assertEquals(1700L, amount("01=1000 02=500 03=200"))
