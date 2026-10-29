@@ -97,7 +97,13 @@ class MessengerSmartInputTest {
         """.trimIndent()
         val parsed = parse(source)
         assertEquals(69500L, parsed.total)
-        assertEquals(2500L, parsed.bets.first { it.digit == "11" }.amount)
+        assertEquals(500L, parsed.bets.first { it.digit == "11" }.amount)
+    }
+
+    @Test fun overlappingFormatsMergeOneDigitBeforeLimitsAreEvaluated() {
+        val result = parse("11R1000\nအပူး500")
+        assertEquals(7000L, result.total)
+        assertEquals(2500L, result.bets.single { it.digit == "11" }.amount)
     }
 
     @Test fun aliasPrecedencePreventsPowerFromBecomingRoundOrDoublesFromCombination() {
