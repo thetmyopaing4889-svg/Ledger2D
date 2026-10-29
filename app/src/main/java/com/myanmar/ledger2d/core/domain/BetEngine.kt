@@ -76,7 +76,7 @@ private fun entrySegments(raw: String): List<String> {
 }
 
 private fun hasExplicitNegativeAmount(raw: String): Boolean =
-    Regex("""(?:[=:]\\s*-\\s*|\\s+-\\s*)\\d""").containsMatchIn(raw)
+    Regex("""(?:[=:]\s*-\s*|\s+-\s*)\d""").containsMatchIn(raw)
 
 private fun positiveAmount(raw: String): Long? {
     val cleaned = raw.trim().removeSuffix("ကျပ်").trim()
