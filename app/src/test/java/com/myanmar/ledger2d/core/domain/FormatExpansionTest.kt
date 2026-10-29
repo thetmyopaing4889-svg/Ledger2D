@@ -16,5 +16,8 @@ class FormatExpansionTest {
     @Test fun round_9_is_19_unique(){val r=success("9.100",QuickFormat.ROUND);assertEquals(19,r.bets.size);assertEquals(1900,r.total);assertTrue(r.bets.any{it.digit=="99"})}
     @Test fun head_9(){assertEquals((0..9).map{"9$it"},success("9.100",QuickFormat.HEAD).bets.map{it.digit})}
     @Test fun tail_9(){assertEquals((0..9).map{"${it}9"},success("9.100",QuickFormat.TAIL).bets.map{it.digit})}
-    @Test fun repeated_source_positions_aggregate_deterministically(){val r=success("334.100",QuickFormat.COMBINATION);assertEquals(200,r.bets.first{it.digit=="33"}.amount)}
+    @Test fun repeated_source_positions_are_rejected() {
+        assertTrue(engine.expand("334.100", QuickFormat.COMBINATION) is ParseResult.Error)
+        assertTrue(engine.expand("334.100", QuickFormat.COMBINATION_DOUBLES) is ParseResult.Error)
+    }
 }
