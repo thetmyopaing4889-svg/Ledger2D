@@ -1,7 +1,7 @@
 name: Android CI
 on:
   push:
-    branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan, fix/0930-reference-primary-first-636, fix/build-666-candidate-acceptance, feature/hybrid-winning-number-auto-save-675, fix/closed-day-only-from-677-20261018, fix/build704-historical-rates-postresult-edits-20261023, fix/build720-four-regressions-20261025, fix/session-recalc-remove-settlement-20261025, fix/session-consistent-financials-20261027]
+    branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan, fix/0930-reference-primary-first-636, fix/build-666-candidate-acceptance, feature/hybrid-winning-number-auto-save-675, fix/closed-day-only-from-677-20261018, fix/build704-historical-rates-postresult-edits-20261023, fix/build720-four-regressions-20261025, fix/session-recalc-remove-settlement-20261025, fix/session-consistent-financials-20261027, fix/live-temporary-winner-20261028]
   pull_request:
     branches: [main]
   workflow_dispatch:
