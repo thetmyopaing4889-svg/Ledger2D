@@ -131,7 +131,7 @@ class MessengerSmartInputTest {
     }
 
     @Test fun explicitlyNegativeAmountsAreNeverNormalizedToPositive() {
-        listOf("01=-1000", "01=-၁၀၀၀", "စုံမ=-1000", "01=1000 02=-500").forEach {
+        listOf("01=-1000", "01=-၁၀၀၀", "စုံမ=-1000", "01=1000 02=-500", "01--1000", "456ခွေ--1000").forEach {
             assertTrue(it, engine.smartExpand(it).hasErrors)
         }
     }
