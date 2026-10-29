@@ -51,11 +51,24 @@ private fun entrySegments(raw: String): List<String> {
             if (part.isBlank()) {
                 if (index != commaParts.lastIndex) result += ""
             } else {
-                // "01=1000 02=500" contains two independently priced entries.
-                val separated = part.trim().split(
-                    Regex("""(?<=\d)\s+(?=\d{2}\s*[=:/-]\s*\d)"""),
-                )
-                result += separated.map { it.trim() }
+                // A two-digit token followed by ":" may also be another
+                // digit in "01 02 03:1000", NOT a second bet. Only separate
+                // adjacent entries when the left side has a clear amount.
+                val source = part.trim()
+                val boundary = Regex("""\s+(?=\d{2}\s*[=:/-]\s*\d)""")
+                val separated = mutableListOf<String>()
+                var start = 0
+                for (match in boundary.findAll(source)) {
+                    val left = source.substring(start, match.range.first).trim()
+                    val priced = Regex("""[=:]\s*\d+(?:[kK]|ထောင်|ကျပ်)?$""").containsMatchIn(left) ||
+                        Regex("""[.\-/\s]\s*\d{3,}(?:[kK]|ထောင်|ကျပ်)?$""").containsMatchIn(left)
+                    if (priced) {
+                        separated += left
+                        start = match.range.last + 1
+                    }
+                }
+                separated += source.substring(start).trim()
+                result += separated
             }
         }
     }
