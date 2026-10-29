@@ -75,6 +75,9 @@ private fun entrySegments(raw: String): List<String> {
     return result
 }
 
+private fun hasExplicitNegativeAmount(raw: String): Boolean =
+    Regex("""(?:[=:]\\s*-\\s*|\\s+-\\s*)\\d""").containsMatchIn(raw)
+
 private fun positiveAmount(raw: String): Long? {
     val cleaned = raw.trim().removeSuffix("ကျပ်").trim()
     val match = Regex("""^([0-9]+)\s*([kK]|ထောင်)?$""").matchEntire(cleaned) ?: return null
@@ -98,6 +101,9 @@ class BetParser {
         if (segments.isEmpty()) return ParseResult.Error("Enter digit and amount")
         for (line in segments) {
             if (line.isEmpty()) return ParseResult.Error("Each entry must contain a digit and amount")
+            if (hasExplicitNegativeAmount(line)) {
+                return ParseResult.Error("Amount must be a positive MMK integer")
+            }
             if (Regex("""\d+\s+-\s*\d+""").containsMatchIn(line)) {
                 return ParseResult.Error("Amount must be a positive MMK integer")
             }
@@ -128,6 +134,9 @@ class BetParser {
         }
         return aggregate(expanded)
     }
+
+    internal fun isExplicitReverse(raw: String): Boolean =
+        reverse.matches(normalDigits(raw))
 
     internal fun aggregate(values: List<ExpandedBet>): ParseResult = try {
         val grouped = linkedMapOf<String, Long>()
@@ -186,13 +195,20 @@ class BetExpansionEngine(private val parser: BetParser = BetParser()) {
         val sources = entrySegments(raw).filterNot(::isMetadata)
         val lines = sources.map { source ->
             val matched = findAlias(source)
-            val format = matched?.second ?: fallback
+            // An explicit two-digit R command takes priority over a chip fallback.
+            // "9r1000" under the ROUND chip is still a round separator.
+            val format = if (matched == null && parser.isExplicitReverse(source)) {
+                QuickFormat.MANUAL
+            } else matched?.second ?: fallback
             val cleaned = if (matched == null) source else
                 source.replace(matched.first, " ", ignoreCase = true)
                     .trim()
                     // Fixed formats can be written as "စုံမ=1000" or "ပူး:500".
                     .trimStart { it.isWhitespace() || it in "=:/.-" }
-            SmartLine(source, format, expand(cleaned, format))
+            val result = if (hasExplicitNegativeAmount(source)) {
+                ParseResult.Error("Amount must be a positive MMK integer")
+            } else expand(cleaned, format)
+            SmartLine(source, format, result)
         }
         if (lines.isEmpty()) return SmartParseResult(
             listOf(SmartLine(raw, fallback, ParseResult.Error("Enter digit and amount"))),
