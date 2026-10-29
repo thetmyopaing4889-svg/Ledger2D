@@ -2,15 +2,22 @@ package com.myanmar.ledger2d
 
 import android.app.Application
 import androidx.work.WorkManager
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
 import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
+import com.myanmar.ledger2d.feature.live.LiveAppVisibility
+import com.myanmar.ledger2d.feature.live.LiveBackgroundSyncWorker
 import com.myanmar.ledger2d.feature.live.LiveRoomKeeperWorker
 import com.myanmar.ledger2d.feature.live.RoomWinningNumberAutoSaveBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.util.concurrent.TimeUnit
 
 object LedgerApplicationContextHolder { lateinit var context: Application }
 
@@ -21,6 +28,7 @@ class LedgerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         LedgerApplicationContextHolder.context = this
+        registerActivityLifecycleCallbacks(LiveAppVisibility)
 
         // Stop the historical backfill chain that may have been persisted by
         // older app releases. The compatibility worker below never reschedules it.
@@ -45,6 +53,25 @@ class LedgerApplication : Application() {
         LiveCollector.startOnce(
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },
+        )
+
+        // Keep one persistent, network-constrained fallback for days when the
+        // user never opens the app. Worker skips Luke I/O while UI is visible.
+        // KEEP preserves the periodic schedule across ordinary app launches.
+        val work = PeriodicWorkRequestBuilder<LiveBackgroundSyncWorker>(
+            30, TimeUnit.MINUTES,
+        )
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setInitialDelay(15, TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            LiveBackgroundSyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            work,
         )
     }
 }
