@@ -4289,6 +4289,36 @@ class LiveCollectorTest {
         assertEquals(1, clears)
     }
 
+    @Test fun older_luke_response_with_new_reference_must_not_roll_back_active_live_hero() = runTest {
+        // 09:30 reference remained unresolved. A delayed 11:58:30 response
+        // supplies the pair, but its LIVE digit is older than accepted 11:59.
+        var response = feed("47", "11:59:00", modern930 = "--", internet930 = "--")
+        val collector = LiveCollector(
+            scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            fetcher = { response },
+            clock = { LocalTime.of(11, 59) },
+            dateProvider = { friday },
+        )
+        collector.fetchCycle()
+        runCurrent()
+        var state = collector.state.value as LiveUiState.Data
+        assertEquals("47", state.hero?.result)
+        assertTrue(state.heroLive)
+
+        response = feed("41", "11:58:30", modern930 = "80", internet930 = "33")
+        collector.fetchCycle()
+        runCurrent()
+        state = collector.state.value as LiveUiState.Data
+
+        // Accept the genuinely missing 09:30 reference.
+        assertEquals("80", state.feed?.modern930)
+        assertEquals("33", state.feed?.internet930)
+        // Reject only the outdated LIVE digits/SET/VALUE.
+        assertEquals("47", state.hero?.result)
+        assertEquals("47", state.feed?.live)
+        assertTrue(state.heroLive)
+    }
+
     @Test fun older_pre_close_response_accepted_for_reference_cannot_replace_newer_live_freeze() = runTest {
         var time = LocalTime.of(11, 59)
         var incoming = feed("47", "11:59:00", modern930 = "--", internet930 = "--")
