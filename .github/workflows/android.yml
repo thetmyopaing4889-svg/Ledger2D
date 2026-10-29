@@ -22,6 +22,19 @@ jobs:
         run: chmod +x gradlew
       - name: Unit tests, lint, and debug APK
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - name: Show unit test failures
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob('app/build/test-results/testDebugUnitTest/*.xml'):
+              root = ET.parse(path).getroot()
+              for case in root.iter('testcase'):
+                  for fail in case.findall('failure'):
+                      print('FAILED', case.attrib.get('classname'), case.attrib.get('name'))
+                      print(fail.attrib.get('message', ''))
+                      print((fail.text or '')[:2500])
+          PY
       - name: Release APK verification
         run: ./gradlew --no-daemon assembleRelease
       - name: Upload debug APK
