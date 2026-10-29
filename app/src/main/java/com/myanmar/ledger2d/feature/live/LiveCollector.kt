@@ -460,6 +460,27 @@ internal class LiveCollector(
                 return@synchronized
             }
 
+            // An older Luke observation can legitimately fill a missing
+            // 09:30/14:00 reference pair. Accept ONLY those reference fields:
+            // never regress the already newer LIVE digit/source timestamp.
+            // A newly discovered final must still follow the normal
+            // final-priority reduction below, even if its timestamp is older.
+            val olderReferenceOnly =
+                incomingTime != null &&
+                    previousTime != null &&
+                    incomingTime.isBefore(previousTime) &&
+                    hasUnresolvedReferenceCandidate(feed, today, scheduleTime) &&
+                    !hasUnresolvedFinalCandidate(previous, feed, today)
+            if (olderReferenceOnly) {
+                promoteCurrentCycleReferencesLocked(feed, today, scheduleTime)
+                publishLocked()
+                LiveDiagnostics.info(
+                    "Older Luke snapshot accepted for reference only seq=$sequence " +
+                        "incomingTime=$incomingTime retainedLiveTime=$previousTime",
+                )
+                return@synchronized
+            }
+
             // A normal Luke snapshot can contain an already-valid
             // current-cycle reference even when the dedicated reference
             // request is still pending or previously failed. Promote those
