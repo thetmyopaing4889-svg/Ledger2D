@@ -39,9 +39,9 @@ private fun normalDigits(raw: String): String = buildString(raw.length) {
  * Blank Messenger lines are harmless.
  */
 private fun entrySegments(raw: String): List<String> {
-    // Only treat commas as money grouping when the preceding group has 1–3
-    // digits. "23R1000,123ခွေ1000" must stay TWO distinct bets.
-    val normalized = Regex("""(?<!\d)[0-9]{1,3}(?:,[0-9]{3})+(?!\d)""")
+    // A grouped-money comma must end at a delimiter, space, or 'ကျပ်'.
+    // "11 500,456အခွေ1000" is TWO bets, not 500456 kyats.
+    val normalized = Regex("""(?<!\d)[0-9]{1,3}(?:,[0-9]{3})+(?=$|[\s,၊]|ကျပ်)""")
         .replace(normalDigits(raw)) { it.value.replace(",", "") }
     val result = mutableListOf<String>()
     for (line in normalized.lines()) {
