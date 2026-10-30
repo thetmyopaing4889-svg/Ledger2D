@@ -91,15 +91,31 @@ internal fun CustomerRiskAnalysisWorkspace(
                         }
                     }
                 }
+                if (winner != null) {
+                    val actual = source.scenarios.firstOrNull { it.digit == winner?.digit }?.profitLoss
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("တကယ်ထွက်သောဂဏန်း: ${winner?.digit}", fontWeight = FontWeight.Bold)
+                            if (actual != null) {
+                                Text("လက်ရှိစာရင်းအရ တကယ် ${if (actual < 0L) "ရှုံး" else if (actual == 0L) "အရင်းကျေ" else "မြတ်"}ငွေ",
+                                    style = MaterialTheme.typography.labelSmall)
+                                Text("${signedRiskMoney(actual)} ကျပ်",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (actual < 0L) MaterialTheme.colorScheme.error else AppColors.Success)
+                            }
+                            Text("အောက်ပါ Analysis သုံးပိုင်းသည် အရင်စာရင်း၏ ဖြစ်နိုင်ခြေကို နှိုင်းယှဉ်ပြသော နမူနာများသာ ဖြစ်သည်။",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     RiskTab("လက်ရှိ", tab == "current", Modifier.weight(1f)) { tab = "current"; details = false }
                     RiskTab("50/50 မျှခြေ", tab == "balance", Modifier.weight(1f)) { tab = "balance"; details = false }
                     RiskTab("အမြတ်သေချာ", tab == "guarantee", Modifier.weight(1f)) { tab = "guarantee"; details = false }
                 }
-                if (winner != null) {
-                    Text("ပေါက်ဂဏန်း ${winner?.digit} ထွက်ပြီးပါပြီ။ အောက်ပါ ကာနည်းများသည် ရွေးထားသောစာရင်းအပေါ် မူတည်သည့် နမူနာတွက်ချက်မှုသာဖြစ်သည်။",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                // After a saved winning number, the actual result above takes priority.
                 when (tab) {
                     "current" -> {
                         RiskMoneyPair(base.bestProfit, base.worstLoss)
@@ -128,15 +144,15 @@ internal fun CustomerRiskAnalysisWorkspace(
                                     Text("အန္တရာယ်အများဆုံးဂဏန်း: ${base.riskDigits.take(10).joinToString(", ")}။ " +
                                         "ကာနည်းရွေးပြီး အရှုံးလျှော့နိုင်သည်။")
                                     val suggested = decision.plans.firstOrNull { it.id == "balance" }
-                                    if (suggested != null) {
+                                    if (suggested != null && suggested.upstreamTotal > 0L) {
                                         Text("မျှခြေနီးစပ်ရန်: ${suggested.upstreamTotal.riskMoney()} ကျပ် ကာလျှင် " +
-                                            "အများဆုံး +${suggested.bestProfit.riskMoney()} / −${suggested.worstLoss.riskMoney()} ကျပ်",
+                                            "အများဆုံး ${signedRiskMoney(suggested.bestProfit)} / −${suggested.worstLoss.riskMoney()} ကျပ်",
                                             style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
                             }
                         }
-                        if (!decision.alreadyGuaranteed) {
+                        if (!decision.alreadyGuaranteed && winner == null) {
                             Button(onClick = { tab = "balance"; details = false }, Modifier.fillMaxWidth()) {
                                 Text("ကာနည်းတွေ နှိုင်းယှဉ်ကြည့်ရန်")
                                 Spacer(Modifier.width(7.dp))
@@ -203,13 +219,16 @@ internal fun CustomerRiskAnalysisWorkspace(
                                     Text(if (details) "ကာစာရင်းပိတ်ရန်" else "ဘယ်ဂဏန်းကို ဘယ်လောက်ကာရမလဲ")
                                     Icon(if (details) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                                 }
-                                if (details) RiskHedgeDetails(picked)
+                                if (details) RiskHedgeDetails(picked, allowCopy = winner == null)
                             }
                         }
                     }
                     else -> {
                         if (decision.alreadyGuaranteed) {
                             RiskGuaranteedAlready(base.worstProfit)
+                        } else if (decision.missingHedgeRate) {
+                            Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အမြတ်သေချာ Plan ကို မတွက်နိုင်သေးပါ။",
+                                style = MaterialTheme.typography.bodyMedium)
                         } else {
                             val guaranteed = decision.guaranteedPlan
                             if (guaranteed == null) {
@@ -251,7 +270,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                     Text(if (details) "ကာစာရင်းပိတ်ရန်" else "အမြတ်သေချာကာစာရင်းကြည့်ရန်")
                                     Icon(if (details) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                                 }
-                                if (details) RiskHedgeDetails(guaranteed)
+                                if (details) RiskHedgeDetails(guaranteed, allowCopy = winner == null)
                             }
                         }
                     }
@@ -327,15 +346,19 @@ internal fun CustomerRiskAnalysisWorkspace(
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 RiskDetailRow("ဒိုင်ဆီကာရန်", "${plan.upstreamTotal.riskMoney()} ကျပ်")
                 RiskDetailRow("ကိုယ်တိုင်ကျန်ငွေ", "${plan.keptCash.riskMoney()} ကျပ်")
-                RiskDetailRow("ငွေကြေးမျှခြေ", "${plan.balancePercent} : ${100 - plan.balancePercent}")
+                RiskDetailRow("ငွေကြေးမျှခြေ", plan.balanceRatioLabel)
             }
         }
-        Text("မကာခင် +${oldProfit.riskMoney()} / −${oldLoss.riskMoney()} → " +
-            "ကာပြီး ${signedRiskMoney(plan.bestProfit)} / −${plan.worstLoss.riskMoney()} ကျပ်",
+        Text("မကာခင် ${signedRiskMoney(oldProfit)} / −${oldLoss.riskMoney()} → " +
+            "ကာပြီး ${signedRiskMoney(plan.bestProfit)} / ${if (plan.worstLoss == 0L) "0" else "−${plan.worstLoss.riskMoney()}"} ကျပ်",
             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
         val reduction = oldLoss - plan.worstLoss
-        Text("အများဆုံးရှုံးငွေ ${reduction.riskMoney()} ကျပ် လျော့မည်။ " +
-            "အမြတ်ဖြစ်မယ့်ဂဏန်း ${oldWinning} → ${plan.profitableDigits} ကွက်။",
+        val lossChange = when {
+            reduction > 0L -> "အများဆုံးရှုံးငွေ ${reduction.riskMoney()} ကျပ် လျော့မည်။"
+            reduction < 0L -> "အများဆုံးရှုံးငွေ ${(-reduction).riskMoney()} ကျပ် ပိုတိုးမည်။"
+            else -> "အများဆုံးရှုံးငွေ မပြောင်းပါ။"
+        }
+        Text(lossChange + " အမြတ်ဖြစ်မယ့်ဂဏန်း ${oldWinning} → ${plan.profitableDigits} ကွက်။",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -365,7 +388,7 @@ internal fun CustomerRiskAnalysisWorkspace(
     }
 }
 
-@Composable private fun RiskHedgeDetails(plan: RiskHedgePlan) {
+@Composable private fun RiskHedgeDetails(plan: RiskHedgePlan, allowCopy: Boolean) {
     val clipboard = LocalClipboardManager.current
     val copyText = plan.hedges.joinToString("\n") { "${it.digit}=${it.amount}" }
     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
@@ -378,13 +401,15 @@ internal fun CustomerRiskAnalysisWorkspace(
                     RiskDetailRow(hedge.digit, "${hedge.amount.riskMoney()} ကျပ်")
                 }
                 OutlinedButton(onClick = { clipboard.setText(AnnotatedString(copyText)) },
+                    enabled = allowCopy,
                     modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.ContentCopy, null, Modifier.size(17.dp))
                     Spacer(Modifier.width(7.dp))
                     Text("ကာစာရင်း Copy ယူရန်")
                 }
             }
-            Text("Copy ယူထားသည့်စာရင်းသည် ဒိုင်ဆီ တင်ပြီးသားစာရင်း မဟုတ်ပါ။",
+            Text(if (allowCopy) "Copy ယူထားသည့်စာရင်းသည် ဒိုင်ဆီ တင်ပြီးသားစာရင်း မဟုတ်ပါ။"
+                 else "ပေါက်ဂဏန်းထွက်ပြီးပြီ။ ဤကာစာရင်းသည် အတိတ်ကာနည်း နမူနာသာဖြစ်၍ တကယ်ကာရန် မဟုတ်ပါ။",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
