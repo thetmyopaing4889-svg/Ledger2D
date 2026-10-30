@@ -50,7 +50,7 @@ private val customerActions = listOf(
     DashboardAction("Customer List", "ရွေးထားသော Agent အောက်ရှိ Customer များ", Icons.Default.List, "customerList"),
     DashboardAction("စာရင်းမှတ်တမ်း", "Customer ၏ စာရင်းများ", Icons.Default.ReceiptLong, "history"),
     DashboardAction("အစီရင်ခံစာ", "Customer အလိုက် report", Icons.Default.Assessment, "report"),
-    DashboardAction("အမြန်သုံးသပ်ချက်", "လက်ရှိစာရင်းအခြေအနေ", Icons.Default.Insights, "analysis"),
+    DashboardAction("အမြန်သုံးသပ်ချက်", "အရှုံး/အမြတ်၊ ကာနည်းနှင့် အကြံပြုချက်", Icons.Default.Insights, "analysis"),
     DashboardAction("အကွက်စာရင်း", "00–99 အကွက်များ", Icons.Default.GridView, "digits"),
     DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission"),
     DashboardAction("ထီပေါက်စဉ်", "Global result မှတွက်ထားသော Customer result", Icons.Default.EmojiEvents, "winning")
@@ -375,7 +375,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     }
 }
 
-@Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) { val revision by vm.revision.collectAsStateWithLifecycle(); val result by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session) else vm.analysis(customerId, date, session) }; result?.let { analysis -> AnalysisMetric("လက်ရှိအကွက်အရေအတွက်", analysis.distinctDigits.toString()); AnalysisMetric("ထိုးကြေးစုစုပေါင်း", analysis.totalBet.mmk()); AnalysisMetric("ကန့်သတ်ထားသောအကွက်", analysis.limitedDigits.toString()); AnalysisMetric("80%+ သတိပေး", analysis.warningDigits.toString()); AnalysisMetric("90%+ အလွန်နီး", analysis.nearDigits.toString()); AnalysisMetric("100% ပြည့်ပြီး", analysis.fullDigits.toString()); AnalysisMetric("အဆိုးဆုံးလျော်ပေးရနိုင်မှု", analysis.worstCasePayout.mmk()); AnalysisMetric("အဆိုးဆုံး ရှုံး/မြတ်", analysis.worstCaseProfitLoss.mmk()); Text("ထိုးကြေးအများဆုံးအကွက်များ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.highest.forEach { Text("${it.first} • ${it.second.mmk()}") }; Text("ပိတ်ထားသောအကွက်များ: ${analysis.closedDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("ထပ်မလက်ခံသင့်သောအကွက်များ: ${analysis.rejectDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}"); Text("အကွက်အနိုင်ရ scenario", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); analysis.scenarios.filter { it.stake > 0 }.forEach { scenario -> Text("${scenario.digit}: ထိုး ${scenario.stake.mmk()} • လျော် ${scenario.payout.mmk()} • ရှုံး/မြတ် ${scenario.profitLoss.mmk()}") } } }
+@Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) { CustomerRiskAnalysisWorkspace(vm, agentId, customerId, date, session) }
 
 @Composable private fun RowScope.DigitCountSummary(label: String, count: Int, color: Color) { Surface(Modifier.weight(1f), color = color.copy(alpha = .08f), shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, color.copy(alpha = .35f))) { Column(Modifier.padding(7.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(count.toString(), fontWeight = FontWeight.Black, color = color); Text(label, style = MaterialTheme.typography.labelSmall, color = color, textAlign = TextAlign.Center, maxLines = 2) } } }
 
