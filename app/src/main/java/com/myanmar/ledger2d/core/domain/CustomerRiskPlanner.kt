@@ -46,7 +46,8 @@ data class RiskHedgePlan(
         val profit = bestProfit.coerceAtLeast(0).toDouble()
         val loss = worstLoss.toDouble()
         val share = if (profit + loss == 0.0) 50.0 else profit * 100.0 / (profit + loss)
-        return String.format(java.util.Locale.US, "%.1f : %.1f", share, 100.0 - share)
+        val rounded = kotlin.math.round(share * 10.0) / 10.0
+        return String.format(java.util.Locale.US, "%.1f : %.1f", rounded, 100.0 - rounded)
     }
 }
 
