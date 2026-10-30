@@ -365,6 +365,17 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         return WeeklyReportCalculator().build(anyDate,calculations,winners)
     }
     suspend fun aggregateWeeklyCustomerReport(agentId:Long,anyDate:LocalDate,after:Boolean):WeeklyReport { val customers=container.customers.getForAgent(agentId); val reports=customers.map { weeklyCustomerReport(it.id,anyDate,after) }; if (reports.isEmpty()) return WeeklyReportCalculator().build(anyDate,emptyMap()); val calculations=mutableMapOf<Pair<LocalDate,DrawSession>,DrawCalculation>(); val winners=mutableMapOf<Pair<LocalDate,DrawSession>,String>(); reports.flatMap { it.rows }.groupBy { it.date to it.session }.forEach { (key, rows) -> rows.mapNotNull { it.calculation }.takeIf { it.isNotEmpty() }?.let { calcs -> calculations[key]=DrawCalculation(calcs.sumOf { it.totalBet },calcs.sumOf { it.distinctSlots },calcs.sumOf { it.winningStake },calcs.sumOf { it.payout },calcs.sumOf { it.commission },calcs.sumOf { it.profitLoss }) }; rows.mapNotNull { it.winningDigit }.firstOrNull()?.let { winners[key]=it } }; return WeeklyReportCalculator().build(anyDate,calculations,winners) }
+    /** Per-customer 80/90/100% warnings for the selected agent's selected draw. */
+    suspend fun customerLimitWarnings(agentId:Long,date:LocalDate,session:DrawSession):List<CustomerLimitWarning> {
+        return container.customers.getForAgent(agentId).mapNotNull { customer ->
+            val amounts=container.bets.getCustomerTotals(customer.id,date,session)
+            val limits=effectiveLimits(agentId,customer.id,date,session)
+            CustomerLimitWarningCalculator.inspect(customer.id,customer.name,amounts,limits)
+        }.sortedWith(compareByDescending<CustomerLimitWarning> { it.fullDigits.size }
+            .thenByDescending { it.nearDigits.size }
+            .thenByDescending { it.warningDigits.size }.thenBy { it.name })
+    }
+
     suspend fun analysis(customerId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val customer=container.customers.get(customerId)?:return AnalysisResult(0,0,0,0,0,0,emptyList(),emptySet(),emptySet(),emptyList()); val agent=container.agents.get(customer.agentId); return AnalysisCalculator().calculate(container.bets.getCustomerTotals(customerId,date,session),effectiveLimits(customer.agentId,customerId,date,session),container.closedNumbers.getDigits(customer.agentId,date,session),agent?.rate?:0,container.bets.getCustomerScenarioPayouts(customerId,date,session)) }
     suspend fun aggregateAnalysis(agentId:Long,date:LocalDate,session:DrawSession):AnalysisResult { val agent=container.agents.get(agentId); val limits=container.agentLimits.get(agentId,date,session); return AnalysisCalculator().calculate(container.bets.getAgentTotals(agentId,date,session),EffectiveLimits(limits.allLimit,limits.specialLimits),container.closedNumbers.getDigits(agentId,date,session),agent?.rate?:0,container.bets.getAgentScenarioPayouts(agentId,date,session)) }
 }

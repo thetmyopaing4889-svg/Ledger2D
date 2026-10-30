@@ -117,27 +117,104 @@ class CustomerRiskPlanner {
         return CustomerRiskDecision(baseline, rows, plans, guaranteed, false, hedgeRate, false)
     }
 
-    /** Maximize money retained while keeping worst loss within the user's budget. */
+    /**
+     * Find the least-cost hedge whose worst loss stays within [budget], including
+     * draws containing different saved payout rates. Original liabilities are
+     * the historical [DigitScenario.payout] snapshots; only NEW hedge tickets
+     * are valued at [hedgeRate].
+     *
+     * For a residual payout ceiling C the minimum hedge on digit d is
+     * ceil(max(0, payout[d]-C) / hedgeRate). Among payout ceilings with the same
+     * remainder modulo hedgeRate, C + totalHedge(C) is convex. Its rightmost
+     * budget-feasible point gives the lowest hedge cost for that remainder.
+     * Every real optimum is covered by a ceiling having the remainder of one
+     * of the saved per-digit payouts (at least one digit attains the ceiling).
+     */
     fun planForLossBudget(source: AnalysisResult, hedgeRate: Long, budget: Long): RiskHedgePlan? {
-        if (hedgeRate <= 0L || budget < 0L || source.scenarios.size != 100 || source.totalBet <= 0L) return null
+        if (hedgeRate <= 0L || budget < 0L || source.scenarios.size != 100 || source.totalBet <= 0L)
+            return null
         val rows = source.scenarios.sortedBy { it.digit }
-        // The stake-cap risk curve is monotone in the constraint "worst loss <= budget"
-        // when the customer liability for every digit is the same rate as the hedge.
-        if (rows.any { it.payout != Math.multiplyExact(it.stake, hedgeRate) }) return null
-        var lo = 0L
-        var hi = rows.maxOf { it.stake }
-        var best: RiskHedgePlan? = null
-        while (lo <= hi) {
-            val mid = lo + (hi - lo) / 2L
-            val plan = planForStakeCap("budget", "စိတ်ကြိုက်အရှုံးကန့်သတ်", rows, source.totalBet, hedgeRate, mid)
-                ?: return best
-            if (plan.worstLoss <= budget) {
-                best = plan
-                if (mid == Long.MAX_VALUE) break
-                lo = mid + 1L
-            } else hi = mid - 1L
+        if (rows.any { it.stake < 0L || it.payout < 0L }) return null
+        val total = source.totalBet
+        val noHedge = evaluate("budget", "စိတ်ကြိုက်အရှုံးကန့်သတ်", rows, total,
+            hedgeRate, emptyList()) ?: return null
+        if (noHedge.worstLoss <= budget) return noHedge
+
+        val minCap = rows.maxOf { row ->
+            val excess = java.math.BigInteger.valueOf(row.payout)
+                .subtract(java.math.BigInteger.valueOf(row.stake)
+                    .multiply(java.math.BigInteger.valueOf(hedgeRate)))
+            if (excess.signum() > 0) excess.longValueExact() else 0L
         }
-        return best
+        val maxByRemainder = rows.groupBy { it.payout % hedgeRate }
+            .mapValues { (_, group) -> group.maxOf { it.payout } }
+        var best: RiskHedgePlan? = null
+
+        for ((remainder, lastPayout) in maxByRemainder) {
+            val qStart = if (minCap <= remainder) 0L else {
+                val diff = minCap - remainder
+                diff / hedgeRate + if (diff % hedgeRate == 0L) 0L else 1L
+            }
+            val qEnd = (lastPayout - remainder) / hedgeRate
+            if (qStart > qEnd) continue
+            fun ceiling(q: Long): Long = Math.addExact(remainder, Math.multiplyExact(q, hedgeRate))
+
+            // A plan with more hedge stake than money collected is not actionable.
+            // This predicate is monotone as the payout ceiling increases.
+            fun affordable(q: Long): Boolean {
+                val cap = ceiling(q)
+                var spent = 0L
+                for (row in rows) {
+                    if (row.payout <= cap) continue
+                    val diff = row.payout - cap
+                    val hedge = diff / hedgeRate + if (diff % hedgeRate == 0L) 0L else 1L
+                    if (hedge > row.stake || hedge > total - spent) return false
+                    spent += hedge
+                }
+                return true
+            }
+            if (!affordable(qEnd)) continue
+            var lo = qStart
+            var hi = qEnd
+            while (lo < hi) {
+                val mid = lo + (hi - lo) / 2L
+                if (affordable(mid)) hi = mid else lo = mid + 1L
+            }
+            val firstAffordable = lo
+
+            // C + H(C) reaches its minimum when there are at most hedgeRate
+            // positive-payout digits above C (the discrete slope flips sign).
+            lo = firstAffordable
+            hi = qEnd
+            while (lo < hi) {
+                val mid = lo + (hi - lo) / 2L
+                val active = rows.count { it.payout > ceiling(mid) }.toLong()
+                if (active > hedgeRate) lo = mid + 1L else hi = mid
+            }
+            val minimumLossPoint = lo
+            fun withinBudget(q: Long): Boolean =
+                planForLiabilityCap(rows, total, hedgeRate, ceiling(q))
+                    ?.let { it.worstLoss <= budget } ?: false
+            if (!withinBudget(minimumLossPoint)) continue
+
+            // After the minimum, worst loss is nondecreasing within the
+            // remainder class, so find its rightmost feasible ceiling.
+            lo = minimumLossPoint
+            hi = qEnd
+            while (lo < hi) {
+                val mid = lo + (hi - lo) / 2L + 1L
+                if (withinBudget(mid)) lo = mid else hi = mid - 1L
+            }
+            val candidate = planForLiabilityCap(rows, total, hedgeRate, ceiling(lo))
+                ?: continue
+            if (candidate.worstLoss > budget) continue
+            if (best == null || candidate.upstreamTotal < best.upstreamTotal ||
+                (candidate.upstreamTotal == best.upstreamTotal &&
+                    candidate.worstLoss < best.worstLoss)) {
+                best = candidate
+            }
+        }
+        return best?.copy(id = "budget", title = "စိတ်ကြိုက်အရှုံးကန့်သတ်")
     }
 
     private fun snapshot(total: Long, rows: List<DigitScenario>): RiskSnapshot {

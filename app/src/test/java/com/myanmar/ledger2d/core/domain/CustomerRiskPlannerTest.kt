@@ -132,7 +132,25 @@ class CustomerRiskPlannerTest {
         val balanced = result.plans.single { it.id == "balance" }
         assertEquals(500L, balanced.upstreamTotal)
         assertEquals(-49_500L, balanced.worstProfit)
-        assertNull(planner.planForLossBudget(source, 80L, 30_000L))
+        val budget = planner.planForLossBudget(source, 80L, 30_000L)!!
+        assertEquals(747L, budget.upstreamTotal)
+        assertEquals(253L, budget.keptCash)
+        assertEquals(29_987L, budget.worstLoss)
+        assertTrue(budget.worstLoss <= 30_000L)
+        assertNull(planner.planForLossBudget(source, 80L, 9_999L))
+    }
+
+    @Test fun allCustomerMixedRateLiabilityIsSummedBeforePlanning() {
+        // Two different saved payout rates on the SAME digit under one agent.
+        val amounts = mapOf("33" to 3_000L)
+        val source = from(amounts, payoutOverrides = mapOf("33" to 250_000L))
+        val result = planner.calculate(source, 80L)
+        assertEquals(250_000L, source.worstCasePayout)
+        assertEquals(247_000L, result.baseline.worstLoss)
+        val budget = planner.planForLossBudget(source, 80L, 11_000L)!!
+        assertEquals(2_988L, budget.upstreamTotal)
+        assertEquals(10_948L, budget.worstLoss)
+        assertNull(planner.planForLossBudget(source, 80L, 9_999L))
     }
 
     @Test fun smartInputExpandsExactlyLikeTheRealQuickEntryEngine() {

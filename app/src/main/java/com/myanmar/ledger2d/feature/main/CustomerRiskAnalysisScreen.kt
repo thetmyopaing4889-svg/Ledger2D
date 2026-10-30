@@ -35,7 +35,7 @@ private fun Long.riskMoney(): String = NumberFormat.getIntegerInstance(Locale.US
 private fun signedRiskMoney(value: Long): String =
     (if (value > 0L) "+" else if (value < 0L) "−" else "") + kotlin.math.abs(value).riskMoney()
 
-private data class RiskUiLoaded(val source: AnalysisResult, val decision: CustomerRiskDecision)
+private data class RiskUiLoaded(val source: AnalysisResult, val decision: CustomerRiskDecision, val customerWarnings: List<com.myanmar.ledger2d.core.domain.CustomerLimitWarning>)
 
 @Composable
 internal fun CustomerRiskAnalysisWorkspace(
@@ -51,7 +51,11 @@ internal fun CustomerRiskAnalysisWorkspace(
         val result = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session)
                      else vm.analysis(customerId, date, session)
         val rate = vm.agentRateForDraw(agentId, date, session) ?: 0L
-        value = RiskUiLoaded(result, CustomerRiskPlanner().calculate(result, rate))
+        val warnings = if (customerId == -1L) vm.customerLimitWarnings(agentId,date,session) else emptyList()
+        val plan = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            CustomerRiskPlanner().calculate(result, rate)
+        }
+        value = RiskUiLoaded(result, plan, warnings)
     }
     val winner by vm.winner(date, session).collectAsStateWithLifecycle(initialValue = null)
     var tab by rememberSaveable(agentId, customerId, date.toString(), session.name) { mutableStateOf("current") }
@@ -74,6 +78,11 @@ internal fun CustomerRiskAnalysisWorkspace(
             val source = data.source
             val decision = data.decision
             val base = decision.baseline
+            val mixedDigits = source.scenarios.count { row ->
+                row.stake > 0L && java.math.BigInteger.valueOf(row.payout) !=
+                    java.math.BigInteger.valueOf(row.stake)
+                        .multiply(java.math.BigInteger.valueOf(decision.hedgeRate))
+            }
             if (decision.missingHedgeRate) {
                 Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အရှုံး/အမြတ် Analysis ကို အတည်မပြုနိုင်ပါ။",
                     color = MaterialTheme.colorScheme.error)
@@ -91,6 +100,61 @@ internal fun CustomerRiskAnalysisWorkspace(
                             Text("ထိုးကွက်", style = MaterialTheme.typography.labelSmall)
                             Text("${base.coveredDigits}/100",
                                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("မူလစာရင်းနှင့် ကာမည့်အဆ", fontWeight = FontWeight.Bold)
+                        Text("မူလစာရင်း • သိမ်းထားသော Entry လျော်ကြေးအဆအလိုက်",
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("မူလအများဆုံးလျော်ကြေး " + source.worstCasePayout.riskMoney() + " ကျပ်",
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("အသစ်ကာမည့် ဒိုင်လျော်ကြေးအဆ " + decision.hedgeRate + " ဆ",
+                            style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        if (mixedDigits > 0) Text(
+                            "ကာမည့်အဆနှင့် မတူသော မူလလျော်ကြေးရှိသည့်ဂဏန်း " +
+                                mixedDigits + " ကွက်ရှိသည်။ မူလစာရင်းကို အဆတစ်ခုတည်းဖြင့် ပြန်မတွက်ပါ။",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (customerId == -1L) {
+                    val warnings = data.customerWarnings
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.medium) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Customer တစ်ယောက်ချင်း Limit သတိပေးချက်",
+                                fontWeight = FontWeight.Bold)
+                            Text("Agent/Customer Limit နှစ်ခုထဲမှ သက်ဆိုင်ရာ အနိမ့်ဆုံး Limit ကို " +
+                                "Customer တစ်ယောက်ချင်းစီအတွက် သီးခြားစစ်ထားသည်။",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (warnings.isEmpty()) {
+                                Text("Limit 80% နှင့်အထက် ရောက်နေသော Customer မရှိပါ။",
+                                    style = MaterialTheme.typography.bodySmall)
+                            } else {
+                                Text("သတိပေးချက်ရှိသော Customer " + warnings.size + " ယောက်",
+                                    style = MaterialTheme.typography.bodySmall)
+                                warnings.take(10).forEach { warning ->
+                                    Text(warning.name + " • 80–89%: " + warning.warningDigits.size +
+                                        "၊ 90–99%: " + warning.nearDigits.size +
+                                        "၊ 100%+: " + warning.fullDigits.size,
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.bodySmall)
+                                    val important = warning.fullDigits + warning.nearDigits
+                                    if (important.isNotEmpty()) {
+                                        Text("ဂဏန်း: " + important.joinToString(", "),
+                                            style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                                if (warnings.size > 10) Text(
+                                    "နောက်ထပ် " + (warnings.size - 10) + " ယောက်ရှိသည်။",
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                 }
