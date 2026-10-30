@@ -65,6 +65,13 @@ data class CustomerRiskDecision(
 class CustomerRiskPlanner {
     fun calculate(source: AnalysisResult, hedgeRate: Long): CustomerRiskDecision {
         val rows = source.scenarios.sortedBy { it.digit }
+        // A customer can be deleted between UI selection and the repository read.
+        // The existing ViewModel returns an empty scenario list for a missing customer.
+        if (rows.isEmpty() && source.totalBet == 0L) {
+            val empty = RiskSnapshot(0L, 0, 0, 0, 100, 0L, 0L, 0L, emptyList())
+            return CustomerRiskDecision(empty, emptyList(), emptyList(), null, false,
+                hedgeRate, hedgeRate <= 0L)
+        }
         require(rows.size == 100) { "Analysis must contain all 100 outcomes" }
         require(rows.all { it.stake >= 0L && it.payout >= 0L }) { "Invalid stake or payout" }
         require(source.totalBet >= 0L)
