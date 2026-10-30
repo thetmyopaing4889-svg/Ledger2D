@@ -20,12 +20,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.design.AppColors
-import com.myanmar.ledger2d.core.domain.AnalysisResult
 import com.myanmar.ledger2d.core.domain.DigitViewFilter
 import com.myanmar.ledger2d.core.domain.DigitViewSelector
 import com.myanmar.ledger2d.core.domain.DigitViewSort
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
+import java.text.NumberFormat
+import java.util.Locale
 
 /**
  * Display-only customer digit list: never modifies a bet, session setting, or analysis.
@@ -47,14 +48,12 @@ internal fun CustomerDigitViewsWorkspace(
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val customerSpecials by vm.specialLimits(customerId, date, session)
         .collectAsStateWithLifecycle(initialValue = emptyList())
-    val revision by vm.revision.collectAsStateWithLifecycle()
-    val analysis by produceState<AnalysisResult?>(
-        null, agentId, customerId, date, session, revision
-    ) {
-        value = null
-        value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session)
-                else vm.analysis(customerId, date, session)
-    }
+    val agentAll by vm.agentAllLimit(agentId, date, session)
+        .collectAsStateWithLifecycle(initialValue = null)
+    val customerAll by vm.allLimit(customerId, date, session)
+        .collectAsStateWithLifecycle(initialValue = null)
+    val closedNumbers by vm.closedNumbers(agentId, date, session)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
     val winner by vm.winner(date, session).collectAsStateWithLifecycle(initialValue = null)
 
     val amounts = remember(totals) { totals.associate { it.digit to it.amount } }
@@ -62,7 +61,9 @@ internal fun CustomerDigitViewsWorkspace(
         agentSpecials.map { it.digit }.toSet() +
             if (customerId == -1L) emptySet() else customerSpecials.map { it.digit }.toSet()
     }
-    val scenarios = remember(analysis) { analysis?.scenarios?.associateBy { it.digit }.orEmpty() }
+    val agentSpecialAmounts = remember(agentSpecials) { agentSpecials.associate { it.digit to it.amount } }
+    val customerSpecialAmounts = remember(customerSpecials) { customerSpecials.associate { it.digit to it.amount } }
+    val closedDigits = remember(closedNumbers) { closedNumbers.map { it.digit }.toSet() }
     val stakeCount = amounts.count { it.value > 0L }
     val totalStake = totals.sumOf { it.amount }
 
@@ -178,14 +179,19 @@ internal fun CustomerDigitViewsWorkspace(
             rows.chunked(5).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     row.forEach { item ->
-                        val scenario = scenarios[item.digit]
+                        val limit = DigitViewSelector.effectiveLimit(
+                            item.digit,
+                            agentAll?.amount, agentSpecialAmounts,
+                            customerAll?.amount, customerSpecialAmounts,
+                            aggregate = customerId == -1L,
+                        )
                         DigitViewCard(
                             digit = item.digit,
                             amount = item.stake,
                             isWinner = winner?.digit == item.digit,
-                            isClosed = scenario?.closed == true,
+                            isClosed = item.digit in closedDigits,
                             isSpecial = item.digit in specialDigits,
-                            percentUsed = scenario?.percentUsed,
+                            percentUsed = DigitViewSelector.percentUsed(item.stake, limit),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -297,7 +303,8 @@ private fun DigitViewCard(
                 color = if (isWinner) AppColors.Wine
                         else if (isClosed) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurface)
-            Text(amount.mmk(), style = MaterialTheme.typography.labelSmall,
+            Text(NumberFormat.getIntegerInstance(Locale.US).format(amount),
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (amount > 0L) FontWeight.Bold else FontWeight.Normal,
                 color = amountColor, textAlign = TextAlign.Center, maxLines = 2)
             if (isWinner) Text("ပေါက်", style = MaterialTheme.typography.labelSmall,
