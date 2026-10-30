@@ -144,7 +144,7 @@ class CustomerRiskPlanner {
             val excess = java.math.BigInteger.valueOf(row.payout)
                 .subtract(java.math.BigInteger.valueOf(row.stake)
                     .multiply(java.math.BigInteger.valueOf(hedgeRate)))
-            if (excess.signum() > 0) excess.longValueExact() else 0L
+            if (excess.signum() > 0) excess.toLong() else 0L
         }
         val maxByRemainder = rows.groupBy { it.payout % hedgeRate }
             .mapValues { (_, group) -> group.maxOf { it.payout } }
