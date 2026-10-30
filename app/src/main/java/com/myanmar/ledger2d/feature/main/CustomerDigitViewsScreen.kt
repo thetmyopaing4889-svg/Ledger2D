@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.design.AppColors
-import com.myanmar.ledger2d.core.design.mmk
 import com.myanmar.ledger2d.core.domain.AnalysisResult
 import com.myanmar.ledger2d.core.domain.DigitViewFilter
 import com.myanmar.ledger2d.core.domain.DigitViewSelector
@@ -82,16 +81,16 @@ internal fun CustomerDigitViewsWorkspace(
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DigitViewSummary("ထိုးကြေးရှိ", stakeCount, AppColors.Primary,
-                selected = view == DigitViewFilter.STAKED, Modifier.weight(1f)) {
+                selected = view == DigitViewFilter.STAKED, modifier = Modifier.weight(1f)) {
                 view = DigitViewFilter.STAKED
             }
             DigitViewSummary("ထိုးကြေးလွတ်", 100 - stakeCount,
                 MaterialTheme.colorScheme.onSurfaceVariant,
-                selected = view == DigitViewFilter.EMPTY, Modifier.weight(1f)) {
+                selected = view == DigitViewFilter.EMPTY, modifier = Modifier.weight(1f)) {
                 view = DigitViewFilter.EMPTY
             }
             DigitViewSummary("စုစုပေါင်း", 100, MaterialTheme.colorScheme.onSurface,
-                selected = view == DigitViewFilter.ALL, Modifier.weight(1f)) {
+                selected = view == DigitViewFilter.ALL, modifier = Modifier.weight(1f)) {
                 view = DigitViewFilter.ALL
             }
         }
