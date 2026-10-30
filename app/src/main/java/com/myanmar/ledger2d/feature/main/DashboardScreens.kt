@@ -215,7 +215,12 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
             if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
             else when (feature) {
                 "history" -> item { CustomerHistoryWorkspace(vm, agentId, customerId, onEditEntry) }
-                "analysis" -> item { CustomerAnalysisWorkspace(vm, agentId, customerId, date, session) }
+                "analysis" -> item {
+                    // Reset remembered content and any running analysis when scope changes.
+                    key(agentId, customerId, date, session) {
+                        CustomerAnalysisWorkspace(vm, agentId, customerId, date, session)
+                    }
+                }
                 "digits" -> item { CustomerDigitsWorkspace(vm, agentId, customerId, date, session) }
                 "commission" -> item { CustomerCommissionWorkspace(vm, agentId, customerId, date, session) }
                 "report" -> item { CustomerReportWorkspace(vm, agentId, customerId, date, session) }

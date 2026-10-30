@@ -37,6 +37,10 @@ private fun signedRiskMoney(value: Long): String =
 
 private data class RiskUiLoaded(val source: AnalysisResult, val decision: CustomerRiskDecision, val customerWarnings: List<com.myanmar.ledger2d.core.domain.CustomerLimitWarning>, val savedRates: List<Long>)
 
+// A null result means the async calculation has not finished; a null plan means
+// it finished but no feasible hedge exists under the requested loss limit.
+private data class RiskBudgetResult(val requestedBudget: Long, val plan: RiskHedgePlan?)
+
 @Composable
 internal fun CustomerRiskAnalysisWorkspace(
     vm: LedgerViewModel,
@@ -64,7 +68,28 @@ internal fun CustomerRiskAnalysisWorkspace(
     var details by rememberSaveable(agentId, customerId, date.toString(), session.name) { mutableStateOf(false) }
     var budgetText by rememberSaveable(agentId, customerId, date.toString(), session.name) { mutableStateOf("") }
     var budgetError by remember(agentId, customerId, date, session) { mutableStateOf("") }
-    var custom by remember(agentId, customerId, date, session, revision) { mutableStateOf<RiskHedgePlan?>(null) }
+    var budgetRequest by remember(agentId, customerId, date, session, revision) {
+        mutableStateOf<Long?>(null)
+    }
+    val budgetResult by produceState<RiskBudgetResult?>(
+        null, agentId, customerId, date, session, revision, loaded, budgetRequest
+    ) {
+        value = null
+        val request = budgetRequest
+        val data = loaded
+        if (request != null && data != null) {
+            val plan = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                CustomerRiskPlanner().planForLossBudget(
+                    data.source, data.decision.hedgeRate, request
+                )
+            }
+            value = RiskBudgetResult(request, plan)
+        }
+    }
+    val custom = budgetResult?.takeIf { it.requestedBudget == budgetRequest }?.plan
+    var expandedWarnings by rememberSaveable(agentId, customerId, date.toString(), session.name) {
+        mutableStateOf(false)
+    }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (customerId == -1L) "Customer အားလုံး၏ Analysis" else "Customer Analysis",
@@ -139,7 +164,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                             } else {
                                 Text("သတိပေးချက်ရှိသော Customer " + warnings.size + " ယောက်",
                                     style = MaterialTheme.typography.bodySmall)
-                                warnings.take(10).forEach { warning ->
+                                warnings.take(if (expandedWarnings) warnings.size else 10).forEach { warning ->
                                     Text(warning.name + " • 80–89%: " + warning.warningDigits.size +
                                         "၊ 90–99%: " + warning.nearDigits.size +
                                         "၊ 100%+: " + warning.fullDigits.size,
@@ -151,9 +176,12 @@ internal fun CustomerRiskAnalysisWorkspace(
                                             style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
-                                if (warnings.size > 10) Text(
-                                    "နောက်ထပ် " + (warnings.size - 10) + " ယောက်ရှိသည်။",
-                                    style = MaterialTheme.typography.labelSmall)
+                                if (warnings.size > 10) {
+                                    TextButton(onClick = { expandedWarnings = !expandedWarnings }) {
+                                        Text(if (expandedWarnings) "ပထမ ၁၀ ယောက်သာ ပြရန်"
+                                            else "ကျန် " + (warnings.size - 10) + " ယောက်ကိုပါ ကြည့်ရန်")
+                                    }
+                                }
                             }
                         }
                     }
@@ -264,20 +292,32 @@ internal fun CustomerRiskAnalysisWorkspace(
                             if (planId == "budget") {
                                 OutlinedTextField(
                                     value = budgetText,
-                                    onValueChange = { budgetText = it.filter { c -> c.isDigit() }; budgetError = "" },
+                                    onValueChange = {
+                                        budgetText = it.filter { c -> c.isDigit() }
+                                        budgetError = ""
+                                        budgetRequest = null
+                                    },
                                     label = { Text("အများဆုံး ရှုံးခံနိုင်ငွေ (ကျပ်)") },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth())
                                 Button(onClick = {
                                     val budget = budgetText.toLongOrNull()
                                     if (budget == null) {
+                                        budgetRequest = null
                                         budgetError = "ကန့်သတ်ငွေကို မှန်မှန်ထည့်ပါ"
-                                        custom = null
                                     } else {
-                                        custom = CustomerRiskPlanner().planForLossBudget(source, decision.hedgeRate, budget)
-                                        budgetError = if (custom == null) "ဒီလျော်ကြေးစာရင်းအတွက် စိတ်ကြိုက် Plan မတွက်နိုင်ပါ" else ""
+                                        budgetError = ""
+                                        budgetRequest = budget
                                     }
                                 }) { Text("အဲဒီငွေအတွင်း ကာနည်းတွက်ရန်") }
+                                if (budgetRequest != null && budgetResult?.requestedBudget != budgetRequest) {
+                                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                                }
+                                if (budgetRequest != null && budgetResult?.requestedBudget == budgetRequest &&
+                                    budgetResult?.plan == null) {
+                                    Text("ဒီလျော်ကြေးစာရင်းအတွက် သတ်မှတ်ထားတဲ့ အရှုံးအတွင်း ကာနည်းမရနိုင်ပါ။",
+                                        color = MaterialTheme.colorScheme.error)
+                                }
                                 if (budgetError.isNotBlank()) Text(budgetError, color = MaterialTheme.colorScheme.error)
                             }
                             val picked = if (planId == "budget") custom
