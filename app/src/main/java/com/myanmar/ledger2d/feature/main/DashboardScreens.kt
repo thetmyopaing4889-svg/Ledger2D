@@ -385,7 +385,11 @@ private fun CustomerDigitsWorkspace(
     date: LocalDate,
     session: DrawSession,
 ) {
-    CustomerDigitViewsWorkspace(vm, agentId, customerId, date, session)
+    // Reset remembered filters and subscriptions when the drawing scope changes.
+    // This prevents temporarily mixing the previous customer's totals and markers.
+    key(agentId, customerId, date, session) {
+        CustomerDigitViewsWorkspace(vm, agentId, customerId, date, session)
+    }
 }
 
 @Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
