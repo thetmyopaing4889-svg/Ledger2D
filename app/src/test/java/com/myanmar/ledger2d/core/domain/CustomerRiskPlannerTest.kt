@@ -51,7 +51,7 @@ class CustomerRiskPlannerTest {
         assertEquals(21_000L, plan.worstLoss)
         assertEquals(62, plan.profitableDigits)
         assertEquals(38, plan.losingDigits)
-        assertEquals(47, plan.balancePercent) // displays 47:53, not the probability of a win
+        assertEquals("47.5 : 52.5", plan.balanceRatioLabel) // monetary magnitudes, not win probability
         assertEquals(19, plan.hedges.count { it.amount == 500L })
         assertEquals(10, plan.hedges.count { it.amount == 1_500L })
         assertEquals(29, plan.hedges.size)
@@ -130,5 +130,46 @@ class CustomerRiskPlannerTest {
         assertEquals(500L, low.upstreamTotal)
         assertEquals(-49_500L, low.worstProfit) // 1000 - 500 - (90000 - 80*500)
         assertNull(planner.planForLossBudget(source, 80L, 30_000L))
+    }
+
+    @Test fun smartInputExpandsExactlyLikeTheRealQuickEntryEngine() {
+        val parsed = BetExpansionEngine().smartExpand(
+            "456အခွေပူး500, 8ပါ1000, 10.20.30.40.50r2000"
+        )
+        assertFalse(parsed.hasErrors)
+        assertEquals(38, parsed.bets.size)
+        assertEquals(43_500L, parsed.total)
+        assertEquals(9, parsed.bets.count { it.amount == 500L })
+        assertEquals(19, parsed.bets.count { it.amount == 1_000L })
+        assertEquals(10, parsed.bets.count { it.amount == 2_000L })
+        val analysis = from(parsed.bets.associate { it.digit to it.amount })
+        val plan = planner.calculate(analysis, 80L)
+        assertEquals(71, plan.baseline.profitableDigits)
+        assertEquals(24_500L, plan.plans.single { it.id == "balance" }.upstreamTotal)
+    }
+
+    @Test fun equalStakeSheetMustNotCallNoHedgeTheBalancedRecommendation() {
+        val bets = (0..34).associate { it.toString().padStart(2, '0') to 1_000L }
+        val result = planner.calculate(from(bets), 80L)
+        assertEquals(35, result.baseline.coveredDigits)
+        val balance = result.plans.single { it.id == "balance" }
+        assertEquals(17_500L, balance.upstreamTotal)
+        assertEquals(17_500L, balance.keptCash)
+        assertEquals(22_500L, balance.worstLoss)
+        assertTrue(balance.hedges.isNotEmpty())
+        assertEquals("43.8 : 56.3", balance.balanceRatioLabel)
+        val growth = result.plans.single { it.id == "growth" }
+        assertEquals(0L, growth.upstreamTotal)
+    }
+
+    @Test fun strictProfitRequiresAllOneHundredResultsPositive() {
+        val stakes = (0..99).associate { it.toString().padStart(2, '0') to
+            if (it == 99) 3_000L else 1_000L }
+        val result = planner.calculate(from(stakes), 80L)
+        val g = result.guaranteedPlan!!
+        assertEquals(100, g.profitableDigits)
+        assertEquals(0, g.breakEvenDigits)
+        assertTrue(g.worstProfit > 0L)
+        assertTrue(g.hedges.all { it.amount <= it.originalStake })
     }
 }
