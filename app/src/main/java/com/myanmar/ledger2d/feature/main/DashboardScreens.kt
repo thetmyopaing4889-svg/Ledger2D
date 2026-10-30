@@ -51,7 +51,7 @@ private val customerActions = listOf(
     DashboardAction("စာရင်းမှတ်တမ်း", "Customer ၏ စာရင်းများ", Icons.Default.ReceiptLong, "history"),
     DashboardAction("အစီရင်ခံစာ", "Customer အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("အမြန်သုံးသပ်ချက်", "အရှုံး/အမြတ်၊ ကာနည်းနှင့် အကြံပြုချက်", Icons.Default.Insights, "analysis"),
-    DashboardAction("အကွက်စာရင်း", "00–99 အကွက်များ", Icons.Default.GridView, "digits"),
+    DashboardAction("အကွက်စာရင်း", "00–99 • View, Sorting နှင့် Search", Icons.Default.GridView, "digits"),
     DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission"),
     DashboardAction("ထီပေါက်စဉ်", "Global result မှတွက်ထားသော Customer result", Icons.Default.EmojiEvents, "winning")
 )
@@ -377,34 +377,15 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 
 @Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) { CustomerRiskAnalysisWorkspace(vm, agentId, customerId, date, session) }
 
-@Composable private fun RowScope.DigitCountSummary(label: String, count: Int, color: Color) { Surface(Modifier.weight(1f), color = color.copy(alpha = .08f), shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, color.copy(alpha = .35f))) { Column(Modifier.padding(7.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(count.toString(), fontWeight = FontWeight.Black, color = color); Text(label, style = MaterialTheme.typography.labelSmall, color = color, textAlign = TextAlign.Center, maxLines = 2) } } }
-
-@Composable private fun CustomerDigitsWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
-    val totals by (if (customerId == -1L) vm.agentTotals(agentId, date, session) else vm.customerTotals(customerId, date, session)).collectAsStateWithLifecycle(initialValue = emptyList())
-    val agentSpecials by vm.agentSpecialLimits(agentId,date,session).collectAsStateWithLifecycle(initialValue = emptyList())
-    val customerSpecials by vm.specialLimits(customerId,date,session).collectAsStateWithLifecycle(initialValue = emptyList())
-    val amounts = totals.associate { it.digit to it.amount }
-    val specialDigits = (agentSpecials.map { it.digit } + if(customerId==-1L) emptyList() else customerSpecials.map { it.digit }).toSet()
-    val revision by vm.revision.collectAsStateWithLifecycle()
-    val analysis by produceState<AnalysisResult?>(null, customerId, date, session, revision) { value = if (customerId == -1L) vm.aggregateAnalysis(agentId, date, session) else vm.analysis(customerId, date, session) }
-    val scenarios = analysis?.scenarios?.associateBy { it.digit }.orEmpty()
-    val winningNumber by vm.winner(date, session).collectAsStateWithLifecycle(initialValue = null)
-    val paidCount = amounts.count { it.value > 0L }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("00–99 အကွက်စာရင်း", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DigitCountSummary("ထိုးကြေးတင်ထားသော", paidCount, AppColors.Primary)
-            DigitCountSummary("ထိုးကြေးလွတ်", 100 - paidCount, MaterialTheme.colorScheme.onSurfaceVariant)
-            DigitCountSummary("စုစုပေါင်း", 100, MaterialTheme.colorScheme.onSurface)
-        }
-        Text("အနီ = ထိုးကြေးရှိ • မီးခိုး = မရှိ • အဝါ = special limit • အနီရင့် = ပိတ်ဂဏန်း • ရွှေရောင် = ပေါက်ဂဏန်း", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        (0..99).chunked(5).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { row.forEach { n ->
-            val digit = n.toString().padStart(2, '0'); val scenario = scenarios[digit]; val amount = amounts[digit] ?: 0L; val isWinner = winningNumber?.digit == digit
-            val amountColor = when { isWinner -> AppColors.Wine; scenario?.closed == true -> MaterialTheme.colorScheme.error; digit in specialDigits -> MaterialTheme.colorScheme.tertiary; amount > 0 -> MaterialTheme.colorScheme.error; else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f) }
-            val cardColor = when { isWinner -> AppColors.GoldSoft; scenario?.closed == true -> MaterialTheme.colorScheme.errorContainer; amount > 0 -> MaterialTheme.colorScheme.surface; else -> MaterialTheme.colorScheme.surfaceVariant }
-            Surface(Modifier.weight(1f), color = cardColor, shape = MaterialTheme.shapes.small, border = BorderStroke(if (isWinner) 2.dp else 1.dp, when { isWinner -> AppColors.Wine; amount > 0 -> AppColors.Primary.copy(alpha = .55f); else -> MaterialTheme.colorScheme.outlineVariant })) { Column(Modifier.padding(5.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) { Text(digit, fontWeight = FontWeight.Bold, color = if (isWinner) AppColors.Wine else if (scenario?.closed == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface); if (isWinner) Text("ပေါက်", style = MaterialTheme.typography.labelSmall, color = AppColors.Wine, fontWeight = FontWeight.Bold); Text(amount.mmk(), style = MaterialTheme.typography.labelSmall, color = amountColor, fontWeight = if (amount > 0) FontWeight.Bold else FontWeight.Normal); scenario?.percentUsed?.let { Text("$it%", style = MaterialTheme.typography.labelSmall, color = amountColor) } } }
-        } } }
-    }
+@Composable
+private fun CustomerDigitsWorkspace(
+    vm: LedgerViewModel,
+    agentId: Long,
+    customerId: Long,
+    date: LocalDate,
+    session: DrawSession,
+) {
+    CustomerDigitViewsWorkspace(vm, agentId, customerId, date, session)
 }
 
 @Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
