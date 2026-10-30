@@ -42,10 +42,11 @@ data class RiskHedgePlan(
     val hedges: List<SuggestedHedge>,
 ) {
     /** Compare MONETARY magnitudes, not the number of winning outcomes. */
-    val balancePercent: Int get() {
-        val denominator = bestProfit.coerceAtLeast(0) + worstLoss
-        return if (denominator <= 0) 50 else
-            ((bestProfit.coerceAtLeast(0).toDouble() / denominator) * 100).toInt()
+    val balanceRatioLabel: String get() {
+        val profit = bestProfit.coerceAtLeast(0).toDouble()
+        val loss = worstLoss.toDouble()
+        val share = if (profit + loss == 0.0) 50.0 else profit * 100.0 / (profit + loss)
+        return String.format(java.util.Locale.US, "%.1f : %.1f", share, 100.0 - share)
     }
 }
 
@@ -81,10 +82,15 @@ class CustomerRiskPlanner {
         }
 
         val caps = linkedMapOf<String, Pair<String, Long>>()
-        val low = max(1L, minStake / 2L)
+        val evenStakes = maxStake == minStake
+        // Equal-stake sheets also need a genuine hedge option: a cap equal to
+        // the original amount would otherwise recommend "no hedge" as 50/50.
+        val low = max(1L, minStake / if (evenStakes) 4L else 2L)
         caps["low"] = "အရှုံးနည်း" to low
-        caps["balance"] = "မျှခြေနီးစပ်" to minStake
-        if (maxStake > minStake) {
+        caps["balance"] = "မျှခြေနီးစပ်" to if (evenStakes) max(1L, minStake / 2L) else minStake
+        if (evenStakes) {
+            caps["growth"] = "ငွေပိုကျန် (မကာ)" to maxStake
+        } else {
             val growth = min(maxStake, if (minStake > Long.MAX_VALUE / 2L) maxStake else minStake * 2L)
             val middle = minStake + (growth - minStake) / 2L
             if (middle > minStake && middle < growth) caps["middle"] = "အလယ်အလတ်" to middle
