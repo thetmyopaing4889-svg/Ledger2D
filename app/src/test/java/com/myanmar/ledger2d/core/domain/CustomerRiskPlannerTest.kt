@@ -127,8 +127,11 @@ class CustomerRiskPlannerTest {
         assertEquals(-89_000L, result.baseline.worstProfit)
         assertEquals(89_000L, result.baseline.worstLoss)
         val low = result.plans.single { it.id == "low" }
-        assertEquals(500L, low.upstreamTotal)
-        assertEquals(-49_500L, low.worstProfit) // 1000 - 500 - (90000 - 80*500)
+        assertEquals(750L, low.upstreamTotal)
+        assertEquals(-29_750L, low.worstProfit) // 1000 - 750 - (90000 - 80*750)
+        val balanced = result.plans.single { it.id == "balance" }
+        assertEquals(500L, balanced.upstreamTotal)
+        assertEquals(-49_500L, balanced.worstProfit)
         assertNull(planner.planForLossBudget(source, 80L, 30_000L))
     }
 
