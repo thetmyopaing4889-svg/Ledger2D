@@ -69,4 +69,46 @@ class DigitViewSelectorTest {
         assertEquals(100, DigitViewSelector.select(emptyMap(), DigitViewFilter.EMPTY).size)
         assertTrue(DigitViewSelector.select(emptyMap(), DigitViewFilter.STAKED).isEmpty())
     }
+
+    @Test fun individualLimitOverridesGeneralLimitAndAgentCustomerMinimumWins() {
+        val agentSpecial = mapOf("33" to 1_800L, "22" to 2_500L)
+        val customerSpecial = mapOf("33" to 1_200L)
+        val agentAll = 3_000L
+        val customerAll = 2_000L
+        assertEquals(
+            1_200L,
+            DigitViewSelector.effectiveLimit("33", agentAll, agentSpecial,
+                customerAll, customerSpecial, aggregate = false)
+        )
+        assertEquals(
+            2_000L,
+            DigitViewSelector.effectiveLimit("22", agentAll, agentSpecial,
+                customerAll, customerSpecial, aggregate = false)
+        )
+        assertEquals(
+            2_000L,
+            DigitViewSelector.effectiveLimit("44", agentAll, agentSpecial,
+                customerAll, customerSpecial, aggregate = false)
+        )
+        assertEquals(
+            1_800L,
+            DigitViewSelector.effectiveLimit("33", agentAll, agentSpecial,
+                customerAll, customerSpecial, aggregate = true)
+        )
+        assertEquals(
+            3_000L,
+            DigitViewSelector.effectiveLimit("44", agentAll, agentSpecial,
+                customerAll, customerSpecial, aggregate = true)
+        )
+    }
+
+    @Test fun absentLimitHasNoPercentageAndHugeAmountsDoNotOverflow() {
+        assertNull(DigitViewSelector.effectiveLimit("00", null, emptyMap(), null, emptyMap(), false))
+        assertNull(DigitViewSelector.percentUsed(1_000L, null))
+        assertNull(DigitViewSelector.percentUsed(1_000L, 0L))
+        assertEquals(50, DigitViewSelector.percentUsed(500L, 1_000L))
+        assertEquals(100, DigitViewSelector.percentUsed(1_000L, 1_000L))
+        assertEquals(125, DigitViewSelector.percentUsed(1_250L, 1_000L))
+        assertEquals(Int.MAX_VALUE, DigitViewSelector.percentUsed(Long.MAX_VALUE, 1L))
+    }
 }
