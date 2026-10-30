@@ -244,7 +244,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                         }
                                         Text("မူလထိုးထားသောဂဏန်းတွေကိုပဲ ပြန်ကာပြီး " +
                                             "ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်အောင်လုပ်မရပါ။ " +
-                                            "ကာကြေးအားလုံးကို ပြန်တင်လိုက်လျှင် အမြတ် 0 ကျပ်သာ ကျန်နိုင်သည်။",
+                                            "စာရင်းအားလုံးကို ပြန်ကာလိုက်ခြင်းကလည်း အမြတ်သေချာမကျန်စေပါ။",
                                             style = MaterialTheme.typography.bodySmall)
                                         Text("ထိုးထားသော ${base.coveredDigits} ကွက် • ဒိုင်လျော်ကြေး ${decision.hedgeRate} ဆ",
                                             style = MaterialTheme.typography.labelSmall,
