@@ -175,4 +175,19 @@ class CustomerRiskPlannerTest {
         assertTrue(g.worstProfit > 0L)
         assertTrue(g.hedges.all { it.amount <= it.originalStake })
     }
+
+    @Test fun deletedCustomerAndMissingRateCannotProduceFalseGuarantees() {
+        val deleted = AnalysisResult(
+            0, 0L, 0, 0, 0, 0, emptyList(), emptySet(), emptySet(), emptyList()
+        )
+        val missingCustomer = planner.calculate(deleted, 80L)
+        assertEquals(0L, missingCustomer.baseline.totalStake)
+        assertFalse(missingCustomer.alreadyGuaranteed)
+        assertNull(missingCustomer.guaranteedPlan)
+
+        val rateUnknown = planner.calculate(from(mapOf("00" to 1_000L), rate = 0L), 0L)
+        assertTrue(rateUnknown.missingHedgeRate)
+        assertFalse(rateUnknown.alreadyGuaranteed)
+        assertTrue(rateUnknown.plans.isEmpty())
+    }
 }
