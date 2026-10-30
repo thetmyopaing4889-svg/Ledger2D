@@ -74,7 +74,10 @@ internal fun CustomerRiskAnalysisWorkspace(
             val source = data.source
             val decision = data.decision
             val base = decision.baseline
-            if (base.totalStake <= 0L) {
+            if (decision.missingHedgeRate) {
+                Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အရှုံး/အမြတ် Analysis ကို အတည်မပြုနိုင်ပါ။",
+                    color = MaterialTheme.colorScheme.error)
+            } else if (base.totalStake <= 0L) {
                 Text("ဒီ Session မှာ ထိုးစာရင်းမရှိသေးပါ။", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
