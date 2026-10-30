@@ -1,5 +1,7 @@
 package com.myanmar.ledger2d.core.domain
 
+import java.math.BigInteger
+
 /** Purely presentational views over the already saved per-session 00..99 stakes. */
 enum class DigitViewFilter { ALL, STAKED, EMPTY }
 enum class DigitViewSort { NUMBER, STAKE_ASC, STAKE_DESC }
@@ -15,6 +17,33 @@ object DigitViewSelector {
             else -> null
         }
     }.take(2).joinToString("")
+
+    /**
+     * Match the ViewModel's effectiveLimits rule: an individual special limit replaces
+     * that owner's general limit; the stricter of agent/customer then wins.
+     * In aggregate mode only agent limits apply.
+     */
+    fun effectiveLimit(
+        digit: String,
+        agentAll: Long?,
+        agentSpecial: Map<String, Long>,
+        customerAll: Long?,
+        customerSpecial: Map<String, Long>,
+        aggregate: Boolean,
+    ): Long? {
+        val agent = agentSpecial[digit] ?: agentAll
+        if (aggregate) return agent
+        val customer = customerSpecial[digit] ?: customerAll
+        return listOfNotNull(agent, customer).minOrNull()
+    }
+
+    /** BigInteger prevents overflowing when displaying very large but valid stakes. */
+    fun percentUsed(stake: Long, limit: Long?): Int? {
+        if (limit == null || limit <= 0L) return null
+        return BigInteger.valueOf(stake).multiply(BigInteger.valueOf(100L))
+            .divide(BigInteger.valueOf(limit))
+            .min(BigInteger.valueOf(Int.MAX_VALUE.toLong())).toInt()
+    }
 
     fun select(
         amounts: Map<String, Long>,
