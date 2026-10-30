@@ -70,6 +70,7 @@ internal fun CustomerDigitViewsWorkspace(
     var view by rememberSaveable { mutableStateOf(DigitViewFilter.ALL) }
     var order by rememberSaveable { mutableStateOf(DigitViewSort.STAKE_DESC) }
     var search by rememberSaveable { mutableStateOf("") }
+    var selectedDigit by remember { mutableStateOf<String?>(null) }
     val rows = remember(amounts, view, order, search) {
         DigitViewSelector.select(amounts, view, order, search)
     }
@@ -176,7 +177,8 @@ internal fun CustomerDigitViewsWorkspace(
                     style = MaterialTheme.typography.bodyMedium)
             }
         } else {
-            rows.chunked(5).forEach { row ->
+            val columns = if (view == DigitViewFilter.STAKED) 3 else 5
+            rows.chunked(columns).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     row.forEach { item ->
                         val limit = DigitViewSelector.effectiveLimit(
@@ -193,13 +195,38 @@ internal fun CustomerDigitViewsWorkspace(
                             isSpecial = item.digit in specialDigits,
                             percentUsed = DigitViewSelector.percentUsed(item.stake, limit),
                             modifier = Modifier.weight(1f),
+                            onClick = { selectedDigit = item.digit },
                         )
                     }
-                    // Last row must keep exactly the same five-column widths.
-                    repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
+                    // Keep equal card widths even in the final incomplete row.
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
+    }
+    selectedDigit?.let { digit ->
+        val amount = amounts[digit] ?: 0L
+        val limit = DigitViewSelector.effectiveLimit(
+            digit, agentAll?.amount, agentSpecialAmounts,
+            customerAll?.amount, customerSpecialAmounts,
+            aggregate = customerId == -1L,
+        )
+        val percent = DigitViewSelector.percentUsed(amount, limit)
+        AlertDialog(
+            onDismissRequest = { selectedDigit = null },
+            title = { Text("ဂဏန်း $digit") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("ထိုးကြေး ${amount.mmk()}", fontWeight = FontWeight.Bold)
+                    Text("Limit: ${limit?.mmk() ?: "မသတ်မှတ်ထား"}")
+                    if (percent != null) Text("Limit သုံးစွဲမှု \$percent%")
+                    if (digit in specialDigits) Text("Special Limit သတ်မှတ်ထားသည်")
+                    if (digit in closedDigits) Text("ပိတ်ဂဏန်း ဖြစ်သည်")
+                    if (winner?.digit == digit) Text("ပေါက်ဂဏန်း ဖြစ်သည်")
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedDigit = null }) { Text("ပိတ်မည်") } },
+        )
     }
 }
 
@@ -268,6 +295,7 @@ private fun DigitViewCard(
     isSpecial: Boolean,
     percentUsed: Int?,
     modifier: Modifier,
+    onClick: () -> Unit,
 ) {
     val background = when {
         isWinner -> AppColors.GoldSoft
@@ -288,6 +316,7 @@ private fun DigitViewCard(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
+        onClick = onClick,
         modifier = modifier,
         shape = MaterialTheme.shapes.small,
         color = background,
