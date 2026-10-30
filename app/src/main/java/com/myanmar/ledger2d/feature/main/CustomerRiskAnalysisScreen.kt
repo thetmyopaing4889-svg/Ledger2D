@@ -97,7 +97,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("တကယ်ထွက်သောဂဏန်း: ${winner?.digit}", fontWeight = FontWeight.Bold)
                             if (actual != null) {
-                                Text("လက်ရှိစာရင်းအရ တကယ် ${if (actual < 0L) "ရှုံး" else if (actual == 0L) "အရင်းကျေ" else "မြတ်"}ငွေ",
+                                Text("မကာထားဟု ယူဆသည့် စာရင်းအရ ${if (actual < 0L) "ရှုံး" else if (actual == 0L) "အရင်းကျေ" else "မြတ်"}ငွေ",
                                     style = MaterialTheme.typography.labelSmall)
                                 Text("${signedRiskMoney(actual)} ကျပ်",
                                     style = MaterialTheme.typography.headlineSmall,
@@ -141,10 +141,12 @@ internal fun CustomerRiskAnalysisWorkspace(
                                 if (decision.alreadyGuaranteed) {
                                     Text("ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်ပြီးသားဖြစ်လို့ ထပ်မကာလည်းရသည်။")
                                 } else {
+                                    val riskReducing = decision.plans.any { it.upstreamTotal > 0L && it.worstLoss < base.worstLoss }
                                     Text("အန္တရာယ်အများဆုံးဂဏန်း: ${base.riskDigits.take(10).joinToString(", ")}။ " +
-                                        "ကာနည်းရွေးပြီး အရှုံးလျှော့နိုင်သည်။")
+                                        if (riskReducing) "ကာနည်းရွေးပြီး အများဆုံးရှုံးငွေ လျှော့နိုင်သည်။"
+                                        else "ဒီလျော်ကြေးအဆဖြင့် အရှုံးလျော့မည့် ကာနည်းမတွေ့ပါ။")
                                     val suggested = decision.plans.firstOrNull { it.id == "balance" }
-                                    if (suggested != null && suggested.upstreamTotal > 0L) {
+                                    if (suggested != null && suggested.upstreamTotal > 0L && suggested.worstLoss < base.worstLoss) {
                                         Text("မျှခြေနီးစပ်ရန်: ${suggested.upstreamTotal.riskMoney()} ကျပ် ကာလျှင် " +
                                             "အများဆုံး ${signedRiskMoney(suggested.bestProfit)} / −${suggested.worstLoss.riskMoney()} ကျပ်",
                                             style = MaterialTheme.typography.bodySmall)
