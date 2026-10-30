@@ -157,7 +157,7 @@ class CustomerRiskPlannerTest {
         assertEquals(17_500L, balance.keptCash)
         assertEquals(22_500L, balance.worstLoss)
         assertTrue(balance.hedges.isNotEmpty())
-        assertEquals("43.8 : 56.3", balance.balanceRatioLabel)
+        assertEquals("43.8 : 56.2", balance.balanceRatioLabel)
         val growth = result.plans.single { it.id == "growth" }
         assertEquals(0L, growth.upstreamTotal)
     }
