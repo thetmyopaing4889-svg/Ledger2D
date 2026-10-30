@@ -70,7 +70,10 @@ class CustomerRiskPlanner {
         require(source.totalBet >= 0L)
         val baseline = snapshot(source.totalBet, rows)
         if (source.totalBet == 0L || hedgeRate <= 0L) {
-            return CustomerRiskDecision(baseline, rows, emptyList(), null, baseline.worstProfit > 0,
+            // A missing agent rate makes the upstream hedge unknowable; in older
+            // rows it can also make a fallback scenario payout incorrectly zero.
+            // Never describe this as a mathematically guaranteed-profit sheet.
+            return CustomerRiskDecision(baseline, rows, emptyList(), null, false,
                 hedgeRate, hedgeRate <= 0L)
         }
 
