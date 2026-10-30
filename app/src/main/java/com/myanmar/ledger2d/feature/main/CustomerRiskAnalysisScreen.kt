@@ -35,7 +35,7 @@ private fun Long.riskMoney(): String = NumberFormat.getIntegerInstance(Locale.US
 private fun signedRiskMoney(value: Long): String =
     (if (value > 0L) "+" else if (value < 0L) "−" else "") + kotlin.math.abs(value).riskMoney()
 
-private data class RiskUiLoaded(val source: AnalysisResult, val decision: CustomerRiskDecision, val customerWarnings: List<com.myanmar.ledger2d.core.domain.CustomerLimitWarning>)
+private data class RiskUiLoaded(val source: AnalysisResult, val decision: CustomerRiskDecision, val customerWarnings: List<com.myanmar.ledger2d.core.domain.CustomerLimitWarning>, val savedRates: List<Long>)
 
 @Composable
 internal fun CustomerRiskAnalysisWorkspace(
@@ -55,7 +55,8 @@ internal fun CustomerRiskAnalysisWorkspace(
         val plan = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             CustomerRiskPlanner().calculate(result, rate)
         }
-        value = RiskUiLoaded(result, plan, warnings)
+        val savedRates = vm.analysisSavedPayoutRates(agentId,customerId,date,session)
+        value = RiskUiLoaded(result, plan, warnings, savedRates)
     }
     val winner by vm.winner(date, session).collectAsStateWithLifecycle(initialValue = null)
     var tab by rememberSaveable(agentId, customerId, date.toString(), session.name) { mutableStateOf("current") }
@@ -78,11 +79,8 @@ internal fun CustomerRiskAnalysisWorkspace(
             val source = data.source
             val decision = data.decision
             val base = decision.baseline
-            val mixedDigits = source.scenarios.count { row ->
-                row.stake > 0L && java.math.BigInteger.valueOf(row.payout) !=
-                    java.math.BigInteger.valueOf(row.stake)
-                        .multiply(java.math.BigInteger.valueOf(decision.hedgeRate))
-            }
+            val savedRates = data.savedRates
+            val differentRates = savedRates.size > 1 || savedRates.any { it != decision.hedgeRate }
             if (decision.missingHedgeRate) {
                 Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အရှုံး/အမြတ် Analysis ကို အတည်မပြုနိုင်ပါ။",
                     color = MaterialTheme.colorScheme.error)
@@ -108,15 +106,17 @@ internal fun CustomerRiskAnalysisWorkspace(
                     Column(Modifier.fillMaxWidth().padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("မူလစာရင်းနှင့် ကာမည့်အဆ", fontWeight = FontWeight.Bold)
-                        Text("မူလစာရင်း • သိမ်းထားသော Entry လျော်ကြေးအဆအလိုက်",
+                        Text("မူလစာရင်း၏ သိမ်းထားသော လျော်ကြေးအဆ: " +
+                            savedRates.joinToString(", ") { it.toString() + " ဆ" }
+                                .ifBlank { "ထိုးစာရင်းမရှိ" },
                             style = MaterialTheme.typography.bodySmall)
                         Text("မူလအများဆုံးလျော်ကြေး " + source.worstCasePayout.riskMoney() + " ကျပ်",
                             style = MaterialTheme.typography.bodySmall)
                         Text("အသစ်ကာမည့် ဒိုင်လျော်ကြေးအဆ " + decision.hedgeRate + " ဆ",
                             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                        if (mixedDigits > 0) Text(
-                            "ကာမည့်အဆနှင့် မတူသော မူလလျော်ကြေးရှိသည့်ဂဏန်း " +
-                                mixedDigits + " ကွက်ရှိသည်။ မူလစာရင်းကို အဆတစ်ခုတည်းဖြင့် ပြန်မတွက်ပါ။",
+                        if (differentRates) Text(
+                            "မူလစာရင်း၏ သိမ်းထားသောအဆနှင့် ကာမည့်အဆ မတူနိုင်ပါ။ " +
+                                "မူလလျော်ကြေးကို ထိုးစာရင်းတစ်ကြောင်းချင်း၏ သိမ်းထားသောအဆအတိုင်း တွက်ထားသည်။",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall)
                     }

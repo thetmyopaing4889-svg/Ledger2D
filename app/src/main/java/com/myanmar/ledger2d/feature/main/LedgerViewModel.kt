@@ -365,6 +365,14 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         return WeeklyReportCalculator().build(anyDate,calculations,winners)
     }
     suspend fun aggregateWeeklyCustomerReport(agentId:Long,anyDate:LocalDate,after:Boolean):WeeklyReport { val customers=container.customers.getForAgent(agentId); val reports=customers.map { weeklyCustomerReport(it.id,anyDate,after) }; if (reports.isEmpty()) return WeeklyReportCalculator().build(anyDate,emptyMap()); val calculations=mutableMapOf<Pair<LocalDate,DrawSession>,DrawCalculation>(); val winners=mutableMapOf<Pair<LocalDate,DrawSession>,String>(); reports.flatMap { it.rows }.groupBy { it.date to it.session }.forEach { (key, rows) -> rows.mapNotNull { it.calculation }.takeIf { it.isNotEmpty() }?.let { calcs -> calculations[key]=DrawCalculation(calcs.sumOf { it.totalBet },calcs.sumOf { it.distinctSlots },calcs.sumOf { it.winningStake },calcs.sumOf { it.payout },calcs.sumOf { it.commission },calcs.sumOf { it.profitLoss }) }; rows.mapNotNull { it.winningDigit }.firstOrNull()?.let { winners[key]=it } }; return WeeklyReportCalculator().build(anyDate,calculations,winners) }
+    /** Read the ACTUAL saved payout ratios, rather than inferring a weighted average. */
+    suspend fun analysisSavedPayoutRates(agentId:Long,customerId:Long,date:LocalDate,session:DrawSession):List<Long> {
+        val entries = if (customerId == -1L)
+            container.bets.observeAgentEntries(agentId,date,session).first()
+        else container.bets.observeCustomerEntries(customerId,date,session).first()
+        return entries.map { it.entry.payoutRate }.distinct().sorted()
+    }
+
     /** Per-customer 80/90/100% warnings for the selected agent's selected draw. */
     suspend fun customerLimitWarnings(agentId:Long,date:LocalDate,session:DrawSession):List<CustomerLimitWarning> {
         return container.customers.getForAgent(agentId).mapNotNull { customer ->

@@ -56,6 +56,12 @@ class RoomCustomerAggregateRiskTest {
             val originalSecond=bets.getEntry(second)!!.entry
             db.betDao().updateEntry(originalSecond.copy(payoutRate=85L))
             val vm=LedgerViewModel(AppContainer(db))
+            assertEquals(listOf(80L,85L),
+                vm.analysisSavedPayoutRates(agentA,-1L,day,DrawSession.MORNING))
+            assertEquals(listOf(90L),
+                vm.analysisSavedPayoutRates(agentB,-1L,day,DrawSession.MORNING))
+            assertEquals(listOf(80L),
+                vm.analysisSavedPayoutRates(agentA,-1L,day,DrawSession.EVENING))
             val morning=vm.aggregateAnalysis(agentA,day,DrawSession.MORNING)
             val digit33=morning.scenarios.single { it.digit=="33" }
             assertEquals(3_000L,morning.totalBet)
