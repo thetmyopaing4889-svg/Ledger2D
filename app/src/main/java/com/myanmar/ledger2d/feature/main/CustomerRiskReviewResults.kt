@@ -58,7 +58,8 @@ private fun RiskMoneyBox(title: String, amount: String, tint: Color, modifier: M
 @Composable
 private fun RiskMoneyRange(best: Long, loss: Long) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        RiskMoneyBox("အများဆုံးမြတ်နိုင်", signed(best), Color(0xFF18794E), Modifier.weight(1f))
+        RiskMoneyBox(if (best < 0L) "အကောင်းဆုံးရလဒ် (အရှုံး)" else "အများဆုံးမြတ်နိုင်",
+            signed(best), if (best < 0L) MaterialTheme.colorScheme.error else Color(0xFF18794E), Modifier.weight(1f))
         RiskMoneyBox("အများဆုံးရှုံးနိုင်", if (loss == 0L) "0" else "−${loss.rm()}",
             MaterialTheme.colorScheme.error, Modifier.weight(1f))
     }

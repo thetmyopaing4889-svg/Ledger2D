@@ -78,7 +78,7 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
             Text("စာရင်းချုပ်", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ReportLine("ထိုးကွက်ပေါင်း", "${t.slots} ကွက်")
+            ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
             ReportLine("စုစုပေါင်းထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်", true)
             HorizontalDivider()
             ReportLine("ပေါက်ကြေး", if (counts.completed > 0) "${t.winningStake.statementAmount()} ကျပ်" else "ရလဒ်မထွက်သေး")
