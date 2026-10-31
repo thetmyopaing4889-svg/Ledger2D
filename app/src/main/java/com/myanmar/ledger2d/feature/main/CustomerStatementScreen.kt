@@ -74,11 +74,17 @@ private fun displayGroups(draws: List<StatementDraw>, period: StatementPeriod, r
 
 /** Customer-facing, read-only statement. The existing agent/commission screens are untouched. */
 @Composable
-fun CustomerStatementScreen(vm: LedgerViewModel, onBack: () -> Unit) {
+fun CustomerStatementScreen(
+    vm: LedgerViewModel,
+    onBack: () -> Unit,
+    initialAgentId: Long? = null,
+    initialCustomerId: Long? = null,
+) {
     val context = LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
-    var agentId by rememberSaveable { mutableLongStateOf(context.defaultAgentId) }
-    var customerId by rememberSaveable { mutableLongStateOf(-1L) }
+    val linkedCustomer by vm.customer(initialCustomerId ?: 0L).collectAsStateWithLifecycle(initialValue = null)
+    var agentId by rememberSaveable { mutableLongStateOf(initialAgentId ?: context.defaultAgentId) }
+    var customerId by rememberSaveable { mutableLongStateOf(initialCustomerId ?: -1L) }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     var period by rememberSaveable { mutableStateOf(StatementPeriod.WEEK) }
     var anchorText by rememberSaveable { mutableStateOf(context.selectedDate) }
@@ -89,6 +95,11 @@ fun CustomerStatementScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     var search by rememberSaveable { mutableStateOf("") }
     val revision by vm.revision.collectAsStateWithLifecycle()
 
+    // Legacy customer-profile entry points should open the same statement,
+    // already scoped to their saved customer and agent.
+    LaunchedEffect(linkedCustomer?.id, linkedCustomer?.agentId) {
+        linkedCustomer?.let { agentId = it.agentId; customerId = it.id }
+    }
     LaunchedEffect(agents, agentId) {
         if (agentId <= 0L || agents.none { it.id == agentId }) {
             agentId = agents.firstOrNull()?.id ?: 0L

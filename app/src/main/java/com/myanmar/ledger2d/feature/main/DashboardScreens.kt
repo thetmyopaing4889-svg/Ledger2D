@@ -521,6 +521,10 @@ fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Un
 
 @Composable
 fun AllCustomerScopeScreen(vm: LedgerViewModel, agentId: Long, feature: String, onBack: () -> Unit) {
+    if (feature == "report") {
+        CustomerStatementScreen(vm, onBack, initialAgentId = agentId)
+        return
+    }
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }

@@ -1027,6 +1027,10 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
 
 @Composable
 fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Unit) {
+    if (scope == "customer") {
+        CustomerStatementScreen(vm, onBack, initialCustomerId = id)
+        return
+    }
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
