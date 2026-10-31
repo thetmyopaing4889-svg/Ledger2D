@@ -32,7 +32,26 @@ import java.time.LocalDate
     suspend fun forwardRate(customerId:Long,key:Long):Int?
     @Upsert suspend fun upsert(value:CustomerCommissionRuleEntity):Long
 }
+/** Lightweight, rate-preserving rows for a bounded customer-facing report. No database schema changes. */
+data class CustomerStatementRatedRow(
+    val customerId: Long,
+    val drawDate: LocalDate,
+    val drawSession: DrawSession,
+    val digit: String,
+    val payoutRate: Long,
+    val amount: Long,
+)
 @Dao interface BetDao {
+    @Query("""SELECT be.customerId AS customerId, be.drawDate AS drawDate,
+        be.drawSession AS drawSession, bl.digit AS digit,
+        be.payoutRate AS payoutRate, SUM(bl.amount) AS amount
+        FROM bet_entries be JOIN bet_lines bl ON bl.betEntryId = be.id
+        WHERE be.agentId = :agentId AND be.drawDate BETWEEN :start AND :end
+          AND (:customerId = -1 OR be.customerId = :customerId)
+        GROUP BY be.customerId, be.drawDate, be.drawSession, bl.digit, be.payoutRate
+        ORDER BY be.drawDate, be.drawSession, be.customerId, bl.digit""")
+    suspend fun statementRatedRows(agentId: Long, customerId: Long, start: LocalDate, end: LocalDate): List<CustomerStatementRatedRow>
+
     @Insert suspend fun insertEntry(value: BetEntryEntity): Long
     @Insert suspend fun insertLines(values: List<BetLineEntity>)
     @Update suspend fun updateEntry(value: BetEntryEntity)
