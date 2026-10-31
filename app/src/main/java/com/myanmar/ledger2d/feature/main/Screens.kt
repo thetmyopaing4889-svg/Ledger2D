@@ -1028,7 +1028,7 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
 @Composable
 fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Unit) {
     if (scope == "customer") {
-        CustomerStatementScreen(vm, onBack, initialCustomerId = id)
+        CustomerReviewWorkspace(vm, "report", onBack, initialCustomerId = id)
         return
     }
     val language = LocalLanguage.current
@@ -1136,6 +1136,10 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
 
 @Composable
 fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
+    CustomerReviewWorkspace(vm, "analysis", onBack, initialCustomerId = id)
+    return
+    // The legacy analysis display remains for compatibility; the new two-page
+    // workspace above is the only active customer-facing route.
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }

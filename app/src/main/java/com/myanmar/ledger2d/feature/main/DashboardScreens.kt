@@ -185,8 +185,8 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
 fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, onEditEntry: (Long) -> Unit) {
     // Customer-facing statements have their own date-range and all-customer navigation.
     // Keep the established selection and other workspaces unchanged.
-    if (feature == "report") {
-        CustomerStatementScreen(vm, onBack)
+    if (feature == "report" || feature == "analysis") {
+        CustomerReviewWorkspace(vm, feature, onBack)
         return
     }
     val agents by vm.agents.collectAsStateWithLifecycle()
@@ -521,8 +521,8 @@ fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Un
 
 @Composable
 fun AllCustomerScopeScreen(vm: LedgerViewModel, agentId: Long, feature: String, onBack: () -> Unit) {
-    if (feature == "report") {
-        CustomerStatementScreen(vm, onBack, initialAgentId = agentId)
+    if (feature == "report" || feature == "analysis") {
+        CustomerReviewWorkspace(vm, feature, onBack, initialAgentId = agentId)
         return
     }
     val language = LocalLanguage.current

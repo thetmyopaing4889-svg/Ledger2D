@@ -15,7 +15,6 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        manifestPlaceholders["appLabel"] = "Cherry 2D Ledger"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -25,15 +24,6 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
     buildTypes {
-        // Side-by-side, throwaway test app. Never replaces a user-owned ledger
-        // signed by a different CI runner's ephemeral Android debug key.
-        create("reportPreview") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".reportpreview"
-            versionNameSuffix = "-report-preview"
-            matchingFallbacks += listOf("debug")
-            manifestPlaceholders["appLabel"] = "Cherry 2D Report Test"
-        }
         release {
             // Keep the distributable release APK complete. R8/resource shrinking
             // reduced the CI artifact from about 17 MiB to about 1.5 MiB.

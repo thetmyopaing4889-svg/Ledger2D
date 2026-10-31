@@ -1,7 +1,7 @@
 name: Android CI
 on:
   push:
-    branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan, fix/0930-reference-primary-first-636, fix/build-666-candidate-acceptance, feature/hybrid-winning-number-auto-save-675, fix/closed-day-only-from-677-20261018, fix/build704-historical-rates-postresult-edits-20261023, fix/build720-four-regressions-20261025, fix/session-recalc-remove-settlement-20261025, fix/session-consistent-financials-20261027, fix/live-temporary-winner-20261028, feature/background-live-workmanager-from-742-20261029, feature/quick-entry-messenger-smart-input-20261029, feature/customer-analysis-rebuild, feature/customer-dashboard-batch-20261030, feature/bet-entries-dual-view-20261031, feature/customer-statements-20261031]
+    branches: [main, fix/403-live-integration-root-cause-20261007, refactor/daily-flow-refactor-plan, fix/0930-reference-primary-first-636, fix/build-666-candidate-acceptance, feature/hybrid-winning-number-auto-save-675, fix/closed-day-only-from-677-20261018, fix/build704-historical-rates-postresult-edits-20261023, fix/build720-four-regressions-20261025, fix/session-recalc-remove-settlement-20261025, fix/session-consistent-financials-20261027, fix/live-temporary-winner-20261028, feature/background-live-workmanager-from-742-20261029, feature/quick-entry-messenger-smart-input-20261029, feature/customer-analysis-rebuild, feature/customer-dashboard-batch-20261030, feature/bet-entries-dual-view-20261031, feature/customer-statements-20261031, feature/report-analysis-clean-pages-20261031]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -37,15 +37,6 @@ jobs:
           PY
       - name: Release APK verification
         run: ./gradlew --no-daemon assembleRelease
-      - name: Assemble isolated Report Test APK
-        run: ./gradlew --no-daemon assembleReportPreview
-      - name: Upload isolated Report Test APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ledger2d-report-test-apk
-          path: app/build/outputs/apk/reportPreview/app-reportPreview.apk
-          if-no-files-found: error
-          retention-days: 14
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
