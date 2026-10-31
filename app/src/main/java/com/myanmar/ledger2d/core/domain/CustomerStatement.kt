@@ -70,6 +70,19 @@ data class StatementTotals(
     val isComplete get() = awaitingDraws == 0
 }
 
+/** One morning/evening draw is one job, regardless of how many customers bet on it. */
+data class StatementDrawCounts(val jobs: Int, val completed: Int) {
+    val awaiting: Int get() = jobs - completed
+}
+
+fun statementDrawCounts(draws: List<StatementDraw>): StatementDrawCounts {
+    val jobs = draws.groupBy { it.date to it.session }
+    return StatementDrawCounts(
+        jobs = jobs.size,
+        completed = jobs.count { (_, lines) -> lines.all { it.resultKnown } },
+    )
+}
+
 data class CustomerStatement(
     val draws: List<StatementDraw>,
     val totals: StatementTotals,
