@@ -87,7 +87,7 @@ fun CustomerBetEntriesWorkspace(
                     }
                     HorizontalDivider()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(java.lang.String.valueOf(record.lines.size) + " ကွက်")
+                        Text(record.lines.size.toString() + " ကွက်")
                         Text(betEntryAmount(record).mmk(), fontWeight = FontWeight.Bold)
                     }
                 }
