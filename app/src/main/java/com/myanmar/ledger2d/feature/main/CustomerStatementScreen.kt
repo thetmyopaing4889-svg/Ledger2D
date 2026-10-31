@@ -86,9 +86,12 @@ fun CustomerStatementScreen(
     var agentId by rememberSaveable { mutableLongStateOf(initialAgentId ?: context.defaultAgentId) }
     var customerId by rememberSaveable { mutableLongStateOf(initialCustomerId ?: -1L) }
     val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     var period by rememberSaveable { mutableStateOf(StatementPeriod.WEEK) }
     var anchorText by rememberSaveable { mutableStateOf(context.selectedDate) }
-    var startText by rememberSaveable { mutableStateOf(context.selectedDate) }
+    var startText by rememberSaveable {
+        mutableStateOf(runCatching { LocalDate.parse(context.selectedDate).minusDays(6).toString() }.getOrElse { context.selectedDate })
+    }
     var endText by rememberSaveable { mutableStateOf(context.selectedDate) }
     var selectedDraw by rememberSaveable { mutableStateOf("both") }
     var view by rememberSaveable { mutableStateOf("summary") }
@@ -101,13 +104,13 @@ fun CustomerStatementScreen(
         linkedCustomer?.let { agentId = it.agentId; customerId = it.id }
     }
     LaunchedEffect(agents, agentId) {
-        if (agentId <= 0L || agents.none { it.id == agentId }) {
+        if (agents.isNotEmpty() && (agentId <= 0L || agents.none { it.id == agentId })) {
             agentId = agents.firstOrNull()?.id ?: 0L
             customerId = -1L
         }
     }
     LaunchedEffect(agentId, customers, customerId) {
-        if (customerId > 0 && customers.none { it.id == customerId }) customerId = -1L
+        if (customerId > 0 && customers.isNotEmpty() && customers.none { it.id == customerId }) customerId = -1L
     }
     val anchor = runCatching { LocalDate.parse(anchorText) }.getOrNull()
     val start = runCatching { LocalDate.parse(startText) }.getOrNull()
@@ -203,7 +206,7 @@ fun CustomerStatementScreen(
                             LinearProgressIndicator(Modifier.fillMaxWidth())
                             Text("စာရင်းတွက်နေသည်…", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
-                            CustomerStatementContent(report!!, customers, customerId, period, range, view, { view = it }, search, { search = it })
+                            CustomerStatementContent(report!!, customers, customerId, period, range, view, { view = it }, search, { search = it }, closedDays.map { it.date }.toSet())
                         }
                     }
                 }
@@ -355,6 +358,7 @@ private fun CustomerStatementContent(
     onView: (String) -> Unit,
     search: String,
     onSearch: (String) -> Unit,
+    closedDates: Set<LocalDate>,
 ) {
     val all = selectedCustomerId == -1L
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -367,7 +371,11 @@ private fun CustomerStatementContent(
             distinctCounts,
         )
         if (report.draws.isEmpty()) {
-            Text("ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (period == StatementPeriod.DAY && range.start in closedDates) "ရွေးထားသောနေ့သည် ပိတ်ရက်ဖြစ်သည်။ ထိုးစာရင်းမရှိပါ။"
+                else "ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         } else {
             if (all) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
