@@ -26,6 +26,21 @@ class CustomerRiskPlannerTest {
         return from(bets)
     }
 
+    @Test fun fortyFiveBetDigitsAreSeparatedFromAllOneHundredPossibleResults() {
+        // 33 losing digits x 3000 + 12 profitable digits x 500 = 105000.
+        val bets = (0..44).associate { i ->
+            i.toString().padStart(2, '0') to if (i < 33) 3_000L else 500L
+        }
+        val result = planner.calculate(from(bets, 80L), 80L).baseline
+        assertEquals(105_000L, result.totalStake)
+        assertEquals(45, result.coveredDigits)
+        assertEquals(33, result.losingDigits)
+        assertEquals(67, result.profitableDigits)
+        assertEquals(55, 100 - result.coveredDigits)
+        assertEquals(12, result.profitableDigits - (100 - result.coveredDigits))
+        assertEquals(0, result.breakEvenDigits)
+    }
+
     @Test fun baselineChecksAll100OutcomesWithoutCommission() {
         val result = planner.calculate(example(), 80L)
         assertEquals(43_500L, result.baseline.totalStake)
