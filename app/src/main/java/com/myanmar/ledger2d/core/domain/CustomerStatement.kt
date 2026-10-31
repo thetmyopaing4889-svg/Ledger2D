@@ -16,7 +16,7 @@ data class StatementRange(val start: LocalDate, val end: LocalDate) {
 object StatementPeriods {
     fun range(period: StatementPeriod, anchor: LocalDate, customStart: LocalDate, customEnd: LocalDate): StatementRange = when (period) {
         StatementPeriod.DAY -> StatementRange(anchor, anchor)
-        StatementPeriod.WEEK -> anchor.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).let { StatementRange(it, it.plusDays(6)) }
+        StatementPeriod.WEEK -> anchor.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).let { StatementRange(it, it.plusDays(4)) }
         StatementPeriod.MONTH -> StatementRange(anchor.withDayOfMonth(1), anchor.withDayOfMonth(anchor.lengthOfMonth()))
         StatementPeriod.YEAR -> StatementRange(anchor.withDayOfYear(1), anchor.withDayOfYear(anchor.lengthOfYear()))
         StatementPeriod.CUSTOM -> StatementRange(customStart, customEnd)
