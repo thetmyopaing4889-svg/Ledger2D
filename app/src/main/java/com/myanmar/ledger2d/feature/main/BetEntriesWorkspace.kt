@@ -156,7 +156,7 @@ fun CustomerBetEntriesWorkspace(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(names[id] ?: "Customer #" + id, fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary)
-                            Text(String.valueOf(groupTotal.entries) + " Entries",
+                            Text(groupTotal.entries.toString() + " Entries",
                                 style = MaterialTheme.typography.labelSmall)
                         }
                         customerEntries.forEachIndexed { index, record ->
@@ -198,7 +198,7 @@ private fun BetEntriesRow(
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            Text(String.valueOf(number).padStart(2, '0'),
+            Text(number.toString().padStart(2, '0'),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -206,7 +206,7 @@ private fun BetEntriesRow(
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 // Never format, normalize, reorder, or truncate the Messenger message.
                 Text(record.entry.sourceText, style = MaterialTheme.typography.bodyMedium)
-                Text(String.valueOf(record.lines.size) + " ကွက်",
+                Text(record.lines.size.toString() + " ကွက်",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -228,7 +228,7 @@ private fun TotalsBar(label: String, total: BetEntriesTotal) {
             horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontWeight = FontWeight.Bold)
-                Text(String.valueOf(total.entries) + " Entries • " + total.digits + " ကွက်",
+                Text(total.entries.toString() + " Entries • " + total.digits + " ကွက်",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
