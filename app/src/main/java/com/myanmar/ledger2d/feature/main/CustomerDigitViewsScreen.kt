@@ -287,7 +287,7 @@ private fun DigitViewTab(
 }
 
 @Composable
-private fun DigitViewCard(
+internal fun DigitViewCard(
     digit: String,
     amount: Long,
     isWinner: Boolean,
