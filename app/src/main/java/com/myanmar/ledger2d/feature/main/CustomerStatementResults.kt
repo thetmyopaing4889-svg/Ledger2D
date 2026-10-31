@@ -175,7 +175,7 @@ private fun ReportSectionCard(section: ReportSection, stakes: List<StatementStak
                         Text(section.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                         Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                     }
-                    TableRow("စုစုပေါင်း", summary, counts.awaiting == 0, strong = true)
+                    TableRow("စုစုပေါင်း", summary, counts.completed > 0, strong = true)
                 }
             }
             if (expanded) {
@@ -197,11 +197,11 @@ private fun ReportSectionCard(section: ReportSection, stakes: List<StatementStak
                     }
                 }
                 if (counts.awaiting > 0) {
-                    Text("— သည် ရလဒ်မထွက်သေးသော အကြိမ်များဖြစ်သည်။",
+                    Text("လျော်ငွေနှင့် ပေါက်ကြေးသည် ရလဒ်ထွက်ပြီးသား အကြိမ်များအတွက်သာဖြစ်သည်။ မထွက်သေးသော အကြိမ်တွင် — ပြထားသည်။",
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider()
-                TableRow("စုစုပေါင်း", summary, counts.awaiting == 0, true)
+                TableRow("စုစုပေါင်း", summary, counts.completed > 0, true)
             }
         }
     }
@@ -319,7 +319,7 @@ fun CustomerStatementResults(
                             Column(Modifier.padding(10.dp)) {
                                 Text("အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
                                 TableHeader()
-                                TableRow("စုစုပေါင်း", statement.totals, counts.awaiting == 0, true)
+                                TableRow("စုစုပေါင်း", statement.totals, counts.completed > 0, true)
                             }
                         }
                     }
