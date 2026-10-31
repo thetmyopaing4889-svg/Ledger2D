@@ -599,7 +599,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     var dateText by rememberSaveable(entryId) { mutableStateOf(if (entryId == 0L) language.selectedDate else nextDraw.date.toString()) }
     var session by rememberSaveable(entryId) { mutableStateOf(if (entryId == 0L) language.selectedSession else nextDraw.session) }
     var raw by rememberSaveable(entryId) { mutableStateOf("") }
-    var format by rememberSaveable { mutableStateOf(QuickFormat.MANUAL) }
+    var format by rememberSaveable(entryId) { mutableStateOf(QuickFormat.MANUAL) }
     var backdated by rememberSaveable(entryId) { mutableStateOf(entryId > 0L) }
     var showLateError by rememberSaveable { mutableStateOf(false) }
     var receiptId by rememberSaveable { mutableStateOf(0L) }
@@ -613,7 +613,7 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
             (it == now.toLocalDate() && !DrawSchedule.isSessionOpenForToday(session,now))
     } ?: false
     val visiblePreview = if (pastDraw && !backdated) null else preview
-    LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.lines.sortedBy { line -> line.digit }.joinToString("\n") { line -> line.digit+" "+line.amount }; format = QuickFormat.MANUAL } }
+    LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.entry.sourceText; format = QuickFormat.entries.firstOrNull { selected -> selected.name == it.entry.inputFormat } ?: QuickFormat.MANUAL } }
     LaunchedEffect(customerId,agentId,entryId,raw, format, date, session, backdated) { date?.let { vm.refreshPreview(customerId, agentId, it, session, raw, format, entryId, backdated) } }
     LaunchedEffect(submit) { if (submit is SubmitState.Success) { receiptId=(submit as SubmitState.Success).id; vm.resetSubmit() } }
     if (showLateError) AlertDialog(
@@ -623,7 +623,8 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
         confirmButton = { TextButton({ showLateError = false }) { Text("OK") } },
         dismissButton = { TextButton({ showLateError = false }) { Text("မလုပ်တော့ပါ") } }
     )
-    if (receiptId>0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text("စာရင်းသွင်းပြီးပါပြီ")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text("စာရင်းစုစုပေါင်း • " + ((preview.parse as? ParseResult.Success)?.total?.mmk() ?: "-"));Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw=""}){Text("ဒီထိုးသားအတွက် ဆက်သွင်းရန်")}},dismissButton={TextButton({receiptId=0L;onBack()}){Text("ပြီးပါပြီ")}})
+    if (receiptId>0L && entryId>0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text("စာရင်းပြင်ပြီးပါပြီ")},text={Text("မူရင်း Entry ကို ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ။")},confirmButton={TextButton({receiptId=0L;onBack()}){Text("ပြီးပါပြီ")}})
+    if (receiptId>0L && entryId==0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text("စာရင်းသွင်းပြီးပါပြီ")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text("စာရင်းစုစုပေါင်း • " + ((preview.parse as? ParseResult.Success)?.total?.mmk() ?: "-"));Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw=""}){Text("ဒီထိုးသားအတွက် ဆက်သွင်းရန်")}},dismissButton={TextButton({receiptId=0L;onBack()}){Text("ပြီးပါပြီ")}})
     AppScaffold(if (entryId == 0L) "2D Form\nစာရင်းသွင်းရန်" else "2D Form\nစာရင်းပြင်ရန်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {

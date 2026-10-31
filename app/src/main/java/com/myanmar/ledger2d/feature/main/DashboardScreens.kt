@@ -48,7 +48,7 @@ private val agentActions = listOf(
 
 private val customerActions = listOf(
     DashboardAction("Customer List", "ရွေးထားသော Agent အောက်ရှိ Customer များ", Icons.Default.List, "customerList"),
-    DashboardAction("စာရင်းမှတ်တမ်း", "Customer ၏ စာရင်းများ", Icons.Default.ReceiptLong, "history"),
+    DashboardAction("သွင်းထားသောစာရင်း", "Bet Entries • Messenger စာရင်းများ တိုက်စစ်ရန်", Icons.Default.ReceiptLong, "history"),
     DashboardAction("အစီရင်ခံစာ", "Customer အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("အမြန်သုံးသပ်ချက်", "အရှုံး/အမြတ်၊ ကာနည်းနှင့် အကြံပြုချက်", Icons.Default.Insights, "analysis"),
     DashboardAction("အကွက်စာရင်း", "00–99 • View, Sorting နှင့် Search", Icons.Default.GridView, "digits"),
@@ -214,7 +214,7 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
             } }
             if (agentId == 0L || customerId == 0L) item { UnavailableState("Agent နှင့် Customer ကို ရွေးပါ") }
             else when (feature) {
-                "history" -> item { CustomerHistoryWorkspace(vm, agentId, customerId, onEditEntry) }
+                "history" -> item { key(agentId, customerId, date, session) { CustomerBetEntriesWorkspace(vm, agentId, customerId, date, session, onEditEntry) } }
                 "analysis" -> item {
                     // Reset remembered content and any running analysis when scope changes.
                     key(agentId, customerId, date, session) {
@@ -333,52 +333,6 @@ private fun WeeklyReportTable(report: WeeklyReport) {
 @Composable private fun AgentClosedWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, onBack: () -> Unit) { val numbers by vm.closedNumbers(agentId,date,session).collectAsStateWithLifecycle(initialValue = emptyList()); var digit by rememberSaveable { mutableStateOf("") }; var pending by remember { mutableStateOf<ClosedNumberEntity?>(null) }; pending?.let { value -> AlertDialog(onDismissRequest = { pending = null }, title = { Text("ပိတ်ဂဏန်းဖယ်ရှားမည်လား") }, text = { Text("${value.digit} ကို ဒီဒိုင်အောက်က ထိုးသားများအားလုံးအတွက် ပြန်ဖွင့်မည်လား?") }, confirmButton = { TextButton({ vm.removeClosedNumber(value); pending = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pending = null }) { Text("မလုပ်ပါ") } }) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("ဒီဒိုင်အောက်က ထိုးသားအားလုံးအတွက် ပိတ်ဂဏန်း", style = MaterialTheme.typography.titleMedium); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(digit, { digit = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = { Text("ဂဏန်း 00–99") }); Button({ vm.addClosedNumber(agentId,date,session,digit); digit = "" }, enabled = com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit)) { Text("ပိတ်မည်") } }; numbers.forEach { number -> ListItem(headlineContent = { Text(number.digit, fontWeight = FontWeight.Bold) }, supportingContent = { Text("ပိတ်ထားသည်") }, trailingContent = { TextButton({ pending = number }) { Text("ဖယ်ရှားမည်") } }) } } }
 
 @Composable private fun AgentLimitWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, onBack: () -> Unit) { val all by vm.agentAllLimit(agentId,date,session).collectAsStateWithLifecycle(initialValue = null); val specials by vm.agentSpecialLimits(agentId,date,session).collectAsStateWithLifecycle(initialValue = emptyList()); var allText by rememberSaveable { mutableStateOf("") }; var digit by rememberSaveable { mutableStateOf("") }; var amount by rememberSaveable { mutableStateOf("") }; var pending by remember { mutableStateOf<AgentSpecialLimitEntity?>(null) }; LaunchedEffect(all,agentId,date,session) { allText = all?.amount?.toString() ?: "" }; pending?.let { value -> AlertDialog(onDismissRequest = { pending = null }, title = { Text("အထူးကန့်သတ်ချက်ဖယ်ရှားမည်လား") }, text = { Text("${value.digit} အတွက် limit ကို ဖယ်ရှားမည်လား?") }, confirmButton = { TextButton({ vm.removeAgentSpecialLimit(value); pending = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pending = null }) { Text("မလုပ်ပါ") } }) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Agent-wide limit", style = MaterialTheme.typography.titleMedium); OutlinedTextField(allText, { allText = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("အကွက်အားလုံးအတွက် limit") }); Button({ vm.updateAgentAllLimit(agentId,date,session,allText) {} }) { Text("သိမ်းမည်") }; HorizontalDivider(); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(digit, { digit = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = { Text("ဂဏန်း") }); OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, Modifier.weight(1f), label = { Text("ပမာဏ") }); Button({ vm.addAgentSpecialLimit(agentId,date,session,digit,amount); digit = ""; amount = "" }, enabled = com.myanmar.ledger2d.core.domain.BetParser.validDigit(digit) && (amount.toLongOrNull()?.let { value -> value > 0 } == true)) { Text("သိမ်းမည်") } }; specials.forEach { limit -> ListItem(headlineContent = { Text(limit.digit) }, supportingContent = { Text(limit.amount.mmk()) }, trailingContent = { TextButton({ pending = limit }) { Text("ဖယ်ရှားမည်") } }) } } }
-
-@Composable private fun CustomerHistoryWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, onEditEntry: (Long) -> Unit) {
-    val language = LocalLanguage.current
-    val selectedDate = runCatching { LocalDate.parse(language.selectedDate) }.getOrElse { LocalDate.now() }
-    val entries by (if (customerId == -1L) vm.agentEntries(agentId, selectedDate, language.selectedSession) else vm.customerEntries(customerId, selectedDate, language.selectedSession)).collectAsStateWithLifecycle(initialValue = emptyList())
-    var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
-    var deleteError by remember { mutableStateOf<String?>(null) }
-    deleteError?.let { msg -> AlertDialog(onDismissRequest={deleteError=null},title={Text("စာရင်းဖျက်မရပါ")},text={Text(msg)},confirmButton={TextButton({deleteError=null}){Text("OK")}}) }
-    var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
-    var actionEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
-    expandedEntry?.let { record ->
-        AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်") }, text = {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText), fontWeight = FontWeight.Bold)
-                HorizontalDivider()
-                LazyColumn(Modifier.heightIn(max = 340.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(record.lines, key = { it.id }) { line ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(line.digit, fontWeight = FontWeight.Bold); Text(line.amount.mmk()) }
-                    }
-                }
-                HorizontalDivider()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", fontWeight = FontWeight.Bold); Text(record.lines.sumOf { it.amount }.mmk(), fontWeight = FontWeight.Black) }
-                Text("${record.lines.size} ကွက်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        })
-    }
-    pendingDelete?.let { entry -> AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("စာရင်းဖျက်မည်လား") }, text = { Text("ဒီစာရင်းကို အပြီးဖျက်မလား?") }, confirmButton = { TextButton({ vm.deleteBet(entry){deleteError=it}; pendingDelete = null }) { Text("ဖျက်မည်") } }, dismissButton = { TextButton({ pendingDelete = null }) { Text("မလုပ်ပါ") } }) }
-    actionEntry?.let { entry -> AlertDialog(onDismissRequest = { actionEntry = null }, title = { Text("စာရင်းလုပ်ဆောင်ချက်") }, text = { Text(transactionDisplayText(entry.entry.inputFormat, entry.entry.sourceText)) }, confirmButton = { TextButton({ actionEntry = null; onEditEntry(entry.entry.id) }) { Text("ပြင်မည်") } }, dismissButton = { TextButton({ actionEntry = null; pendingDelete = entry.entry }) { Text("ဖျက်မည်") } }) }
-    if (entries.isEmpty()) EmptyState("စာရင်းမရှိသေးပါ", "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") else {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Text("စဉ်", Modifier.weight(.45f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold); Text("အကွက်", Modifier.weight(2f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold); Text("အကွက်အရေအတွက်", Modifier.weight(1.25f), style = MaterialTheme.typography.labelSmall, color = AppColors.Primary, fontWeight = FontWeight.SemiBold); Text("ငွေပမာဏ", Modifier.weight(1.1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End) }
-            HorizontalDivider()
-            entries.forEachIndexed { index, entry ->
-                val amount = entry.lines.sumOf { it.amount }
-                Row(Modifier.fillMaxWidth().combinedClickable(onClick = { expandedEntry = entry }, onLongClick = { actionEntry = entry }).padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${index + 1}", Modifier.weight(.45f), style = MaterialTheme.typography.bodySmall)
-                    Text(transactionDisplayText(entry.entry.inputFormat, entry.entry.sourceText), Modifier.weight(2f), style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                    Text("${entry.lines.size} ကွက်", Modifier.weight(1.25f), color = AppColors.Primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
-                    Text(amount.mmk(), Modifier.weight(1.1f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
-                }
-                HorizontalDivider()
-            }
-            Row(Modifier.fillMaxWidth().background(AppColors.Blush.copy(alpha = .45f), MaterialTheme.shapes.small).padding(horizontal = 8.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { Text("စုစုပေါင်း", Modifier.weight(.8f), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false); Spacer(Modifier.weight(1.65f)); Text("${entries.sumOf { it.lines.size }} ကွက်", Modifier.weight(1.25f), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = AppColors.Primary, textAlign = TextAlign.Start); Text(entries.sumOf { it.lines.sumOf { line -> line.amount } }.mmk(), Modifier.weight(1.1f), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = AppColors.Primary, textAlign = TextAlign.End) }
-        }
-    }
-}
 
 @Composable private fun CustomerAnalysisWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) { CustomerRiskAnalysisWorkspace(vm, agentId, customerId, date, session) }
 
