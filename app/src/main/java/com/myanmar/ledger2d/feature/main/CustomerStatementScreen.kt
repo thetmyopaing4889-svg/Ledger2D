@@ -271,12 +271,18 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
             if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("စုစုပေါင်းထိုးကြေး", t.totalBet, true)
             StatementMoneyLine("ရလဒ်ထွက်ပြီးသော အကြိမ်များ၏ ထိုးကြေး", t.completedBet)
-            StatementMoneyLine("ပေါက်ကြေး", t.winningStake, true)
-            StatementMoneyLine("ပြန်လျော်ငွေ", t.payout, true)
+            if (t.completedDraws > 0) {
+                StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", t.winningStake, true)
+                StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", t.payout, true)
+            } else if (t.awaitingDraws > 0) {
+                Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider()
             Text("ထိုးသား အနိုင်/အရှုံး (ရလဒ်ထွက်ပြီးသော အကြိမ်များအတွက်)", style = MaterialTheme.typography.labelMedium)
-            StatementMoneyLine("စုစုပေါင်း", t.customerWinLoss, strong = true, positiveGood = true)
+            if (t.completedDraws > 0) StatementMoneyLine("စုစုပေါင်း", t.customerWinLoss, strong = true, positiveGood = true)
+            else Text(if (t.awaitingDraws > 0) "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ" else "ထိုးစာရင်းမရှိပါ",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 "စာရင်းရှိသော အကြိမ် ${present} ခု • ရလဒ်ရပြီး ${completed} ခု • ရလဒ်မရသေး ${waiting} ခု",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
@@ -367,8 +373,10 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
                 if (unfinishedDrawCount == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, positiveGood = true)
                 else Text("ရလဒ်မရသေး ${unfinishedDrawCount} ကြိမ် • ရပြီးသားအကြိမ်များ အနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 if (expanded == id) {
-                    StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
-                    StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
+                    if (totals.completedDraws > 0) {
+                        StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
+                        StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
+                    } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider()
                     StatementGroupRows(group)
                 }
@@ -432,8 +440,10 @@ private fun CustomerStatementContent(
                                 Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                             }
                             StatementMoneyLine("ထိုးကြေး", totals.totalBet)
-                            StatementMoneyLine("ပေါက်ကြေး", totals.winningStake)
-                            StatementMoneyLine("ပြန်လျော်ငွေ", totals.payout)
+                            if (totals.completedDraws > 0) {
+                                StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
+                                StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
+                            } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (totals.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, true, true)
                             else Text("ရလဒ်မရသေး ${totals.awaitingDraws} ကြိမ် • ရပြီးသားအနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}", style = MaterialTheme.typography.bodySmall)
                             if (expanded) {
@@ -451,8 +461,10 @@ private fun CustomerStatementContent(
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("ဖော်ပြထားသော ထိုးသားများ၏ အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
                             StatementMoneyLine("ထိုးကြေး", shown.totalBet, true)
-                            StatementMoneyLine("ပေါက်ကြေး", shown.winningStake)
-                            StatementMoneyLine("ပြန်လျော်ငွေ", shown.payout, true)
+                            if (shown.completedDraws > 0) {
+                                StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", shown.winningStake)
+                                StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", shown.payout, true)
+                            } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (shown.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", shown.customerWinLoss, true, true)
                             else Text("ရလဒ်မရသေးသော အကြိမ်များ မပါဝင်သည့် အနိုင်/အရှုံး: ${shown.customerWinLoss.statementMoney()}",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
