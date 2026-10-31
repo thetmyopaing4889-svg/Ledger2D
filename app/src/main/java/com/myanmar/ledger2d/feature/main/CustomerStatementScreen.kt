@@ -395,8 +395,23 @@ private fun CustomerStatementContent(
                         }
                     }
                 }
-                Text("အထက်ပါ စာရင်းများ၏ စုစုပေါင်းကို Screen အပေါ်ဆုံးတွင် ဖော်ပြထားသည်။",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (people.isNotEmpty()) {
+                    val visibleIds = people.map { it.id }.toSet()
+                    val shown = CustomerStatementCalculator.totals(report.draws.filter { it.customerId in visibleIds })
+                    OutlinedCard {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text("ဖော်ပြထားသော ထိုးသားများ၏ အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
+                            StatementMoneyLine("ထိုးကြေး", shown.totalBet, true)
+                            StatementMoneyLine("ပေါက်ကြေး", shown.winningStake)
+                            StatementMoneyLine("ပြန်လျော်ငွေ", shown.payout, true)
+                            if (shown.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", shown.customerWinLoss, true, true)
+                            else Text("ရလဒ်မရသေးသော အကြိမ်များ မပါဝင်သည့် အနိုင်/အရှုံး: ${shown.customerWinLoss.statementMoney()}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            if (search.isNotBlank()) Text("အမည်ရှာဖွေမှုနှင့် ကိုက်ညီသော ထိုးသားများကိုသာ ပေါင်းထားသည်။",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
             } else {
                 Text("ကာလအလိုက် စာရင်းအသေးစိတ်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 val groups = displayGroups(report.draws, period, range)
