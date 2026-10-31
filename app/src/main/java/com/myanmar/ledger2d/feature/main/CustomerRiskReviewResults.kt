@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.layout.*
@@ -25,6 +27,8 @@ import java.util.Locale
 
 private fun Long.rm() = NumberFormat.getIntegerInstance(Locale.US).format(this)
 private fun signed(amount: Long) = (if (amount > 0) "+" else "") + amount.rm()
+private data class BudgetLoad(val budget: Long, val plan: RiskHedgePlan?)
+
 private data class ReviewRiskData(
     val source: AnalysisResult,
     val decision: CustomerRiskDecision,
@@ -110,6 +114,7 @@ private fun RiskPlanCard(plan: RiskHedgePlan, baseline: RiskSnapshot, allowCopy:
             RiskMoneyRange(plan.bestProfit, plan.worstLoss)
             RiskValue("ကာမီ အများဆုံးရှုံးနိုင်", "${baseline.worstLoss.rm()} ကျပ်")
             RiskValue("ကာပြီး အများဆုံးရှုံးနိုင်", "${plan.worstLoss.rm()} ကျပ်", emphasize = true)
+            RiskValue("ငွေပမာဏမျှခြေ", plan.balanceRatioLabel)
             if (plan.hedges.isEmpty()) Text("ကာရန်မလိုပါ။")
             else {
                 TextButton(onClick = { showList = !showList }) {
@@ -178,16 +183,17 @@ fun CustomerRiskReviewResults(
     var budgetText by rememberSaveable(agentId, customerId, date, session) { mutableStateOf("") }
     var budgetAmount by remember(agentId, customerId, date, session) { mutableStateOf<Long?>(null) }
     var budgetError by remember(agentId, customerId, date, session) { mutableStateOf("") }
-    val budgetPlan by produceState<RiskHedgePlan?>(
+    val budgetLoad by produceState<BudgetLoad?>(
         null, agentId, customerId, date, session, loaded, budgetAmount
     ) {
         value = null
-        if (budgetAmount != null && loaded != null) {
-            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                CustomerRiskPlanner().planForLossBudget(
-                    loaded!!.source, loaded!!.decision.hedgeRate, budgetAmount!!
-                )
+        val data = loaded
+        val requested = budgetAmount
+        if (requested != null && data != null) {
+            val plan = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                CustomerRiskPlanner().planForLossBudget(data.source, data.decision.hedgeRate, requested)
             }
+            value = BudgetLoad(requested, plan)
         }
     }
     LazyColumn(modifier, contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -288,11 +294,12 @@ fun CustomerRiskReviewResults(
                         } else {
                             item {
                                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        decision.plans.take(3).forEach { p ->
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        decision.plans.forEach { p ->
                                             FilterChip(chosen == p.id, onClick = { chosen = p.id }, label = {
                                                 Text(p.title, style = MaterialTheme.typography.labelSmall)
-                                            }, modifier = Modifier.weight(1f))
+                                            })
                                         }
                                     }
                                     FilterChip(chosen == "budget", onClick = { chosen = "budget" },
@@ -314,11 +321,14 @@ fun CustomerRiskReviewResults(
                                     }
                                 }
                             }
-                            val chosenPlan = if (chosen == "budget") budgetPlan else
+                            val matchingBudget = budgetLoad?.takeIf { it.budget == budgetAmount }
+                            val chosenPlan = if (chosen == "budget") matchingBudget?.plan else
                                 decision.plans.firstOrNull { it.id == chosen } ?: decision.plans.firstOrNull()
-                            if (chosen == "budget" && budgetAmount != null && budgetPlan == null) {
-                                item { Text("ကာနည်းတွက်နေသည်၊ သို့မဟုတ် သတ်မှတ်ထားသော အရှုံးကန့်သတ်အတွင်း ကာနည်းမရှိပါ။",
-                                    style = MaterialTheme.typography.bodySmall) }
+                            if (chosen == "budget" && budgetAmount != null && matchingBudget == null) {
+                                item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                            } else if (chosen == "budget" && matchingBudget != null && matchingBudget.plan == null) {
+                                item { Text("သတ်မှတ်ထားသော အရှုံးကန့်သတ်အတွင်း ကာနည်းမရှိပါ။",
+                                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                             }
                             if (chosenPlan != null) item { RiskPlanCard(chosenPlan, base, winner == null) }
                         }
