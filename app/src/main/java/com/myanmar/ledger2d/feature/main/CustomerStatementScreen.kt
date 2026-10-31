@@ -337,6 +337,7 @@ private fun StatementGroupRows(group: StatementDisplayGroup) {
     } else {
         byDate.forEach { (date, draws) ->
             val t = CustomerStatementCalculator.totals(draws)
+            val waiting = statementDrawCounts(draws).awaiting
             OutlinedCard(onClick = { openDay = if (openDay == date) null else date }) {
                 Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -344,8 +345,12 @@ private fun StatementGroupRows(group: StatementDisplayGroup) {
                         Icon(if (openDay == date) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                     }
                     StatementMoneyLine("ထိုးကြေး", t.totalBet)
-                    if (t.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", t.customerWinLoss, positiveGood = true)
-                    else Text("ရလဒ်မရသေး ${t.awaitingDraws} ကြိမ်", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    if (waiting == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", t.customerWinLoss, positiveGood = true)
+                    else Text(
+                        if (t.completedDraws > 0) "ရလဒ်မရသေး ${waiting} ကြိမ် • ရပြီးသားအနိုင်/အရှုံး ${t.customerWinLoss.statementMoney()}"
+                        else "ရလဒ်မရသေး ${waiting} ကြိမ် • အနိုင်/အရှုံး မတွက်ရသေး",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                    )
                     if (openDay == date) {
                         draws.groupBy { it.session }.toSortedMap(compareBy { it.ordinal }).values.forEach { StatementDrawCard(it) }
                     }
@@ -361,8 +366,7 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
     groups.forEach { group ->
         val id = group.key.toString()
         val totals = CustomerStatementCalculator.totals(group.draws)
-        val unfinishedDrawCount = group.draws.groupBy { it.date to it.session }
-            .count { (_, items) -> items.any { !it.resultKnown } }
+        val unfinishedDrawCount = statementDrawCounts(group.draws).awaiting
         OutlinedCard(onClick = { expanded = if (expanded == id) null else id }) {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -371,7 +375,11 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
                 }
                 StatementMoneyLine("ထိုးကြေး", totals.totalBet)
                 if (unfinishedDrawCount == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, positiveGood = true)
-                else Text("ရလဒ်မရသေး ${unfinishedDrawCount} ကြိမ် • ရပြီးသားအကြိမ်များ အနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                else Text(
+                    if (totals.completedDraws > 0) "ရလဒ်မရသေး ${unfinishedDrawCount} ကြိမ် • ရပြီးသားအကြိမ်များ၏ အနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}"
+                    else "ရလဒ်မရသေး ${unfinishedDrawCount} ကြိမ် • အနိုင်/အရှုံး မတွက်ရသေး",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                )
                 if (expanded == id) {
                     if (totals.completedDraws > 0) {
                         StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
@@ -400,8 +408,8 @@ private fun CustomerStatementContent(
 ) {
     val all = selectedCustomerId == -1L
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        val uniqueDraws = report.draws.groupBy { it.date to it.session }
-        val distinctCounts = if (all) uniqueDraws.size to uniqueDraws.count { (_, items) -> items.all { it.resultKnown } } else null
+        val counts = statementDrawCounts(report.draws)
+        val distinctCounts = if (all) counts.jobs to counts.completed else null
         StatementTotalCard(
             report.totals,
             if (all) "Customer အားလုံး — စုစုပေါင်းစာရင်း" else "ထိုးသား၏ စုစုပေါင်းစာရင်း",
@@ -445,7 +453,11 @@ private fun CustomerStatementContent(
                                 StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
                             } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (totals.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, true, true)
-                            else Text("ရလဒ်မရသေး ${totals.awaitingDraws} ကြိမ် • ရပြီးသားအနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}", style = MaterialTheme.typography.bodySmall)
+                            else Text(
+                                if (totals.completedDraws > 0) "ရလဒ်မရသေး ${totals.awaitingDraws} ကြိမ် • ရပြီးသားအနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}"
+                                else "ရလဒ်မရသေး ${totals.awaitingDraws} ကြိမ် • အနိုင်/အရှုံး မတွက်ရသေး",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                             if (expanded) {
                                 HorizontalDivider()
                                 val groups = displayGroups(report.draws.filter { it.customerId == customer.id }, period, range)
@@ -466,8 +478,11 @@ private fun CustomerStatementContent(
                                 StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", shown.payout, true)
                             } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (shown.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", shown.customerWinLoss, true, true)
-                            else Text("ရလဒ်မရသေးသော အကြိမ်များ မပါဝင်သည့် အနိုင်/အရှုံး: ${shown.customerWinLoss.statementMoney()}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            else Text(
+                                if (shown.completedDraws > 0) "ရလဒ်မရသေးသော အကြိမ်များ မပါဝင်သည့် အနိုင်/အရှုံး: ${shown.customerWinLoss.statementMoney()}"
+                                else "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                            )
                             if (search.isNotBlank()) Text("အမည်ရှာဖွေမှုနှင့် ကိုက်ညီသော ထိုးသားများကိုသာ ပေါင်းထားသည်။",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
