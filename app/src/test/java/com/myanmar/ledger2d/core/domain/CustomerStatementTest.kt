@@ -72,6 +72,25 @@ class CustomerStatementTest {
         assertEquals(111000L,all.totals.payout)
     }
 
+    @Test fun allCustomersShareOneMorningOrEveningJobRegardlessOfCustomerCount() {
+        val lines = listOf(
+            stake(1,am,"20",1000,80),
+            stake(2,am,"20",2000,80),
+            stake(3,am,"30",3000,80),
+            stake(1,pm,"40",100,80),
+            stake(2,pm,"41",200,80),
+        )
+        val result = CustomerStatementCalculator.build(lines, mapOf((monday to am) to "20"))
+        // Five customer/draw rows, but only TWO distinct draw jobs.
+        assertEquals(5, result.draws.size)
+        assertEquals(3, result.totals.completedDraws)
+        assertEquals(2, result.totals.awaitingDraws)
+        val counted = statementDrawCounts(result.draws)
+        assertEquals(2, counted.jobs)
+        assertEquals(1, counted.completed)
+        assertEquals(1, counted.awaiting)
+    }
+
     @Test fun drawAggregatesRecalculateAfterEditedOrDeletedEntries() {
         val base=listOf(stake(1,am,"20",500,80),stake(2,am,"20",1000,90))
         val win=mapOf((monday to am) to "20")
