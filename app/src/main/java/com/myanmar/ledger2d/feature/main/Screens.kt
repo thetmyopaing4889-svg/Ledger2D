@@ -584,7 +584,7 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
             item{ElevatedCard(shape=MaterialTheme.shapes.large){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("ဖောက်သည်အချက်အလက်",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodyMedium);if(profile.address.isNotBlank())Text(profile.address,color=MaterialTheme.colorScheme.onSurfaceVariant);if(profile.remark.isNotBlank())Text(profile.remark,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
             item{Button(onClick={onRoute("bet/${profile.agentId}/$id")},modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Add,null);Spacer(Modifier.width(8.dp));Text("စာရင်းသွင်းရန်",style=MaterialTheme.typography.titleMedium)}}
             item{Text("လုပ်ငန်းဆောင်တာများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
-            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.ReceiptLong,"စာရင်းမှတ်တမ်း","betHistory/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Insights,"အမြန်သုံးသပ်ချက်","analysis/$id",onRoute)}}}
+            item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.ReceiptLong,"သွင်းထားသောစာရင်း","betHistory/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Insights,"အမြန်သုံးသပ်ချက်","analysis/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.Assessment,"အစီရင်ခံစာ","report/customer/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Tune,"ကန့်သတ်ပမာဏ","limit/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.GridView,"အကွက်စာရင်း","digitList/${profile.agentId}/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Percent,"ကော်မရှင်","commission/$id",onRoute)}}}
             item{ActionTile(Icons.Default.EmojiEvents,"ထီပေါက်စဉ်","winning/customer/$id",onRoute)}
@@ -1196,7 +1196,8 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
     val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
-    val entries by vm.customerEntries(customerId, selectedDate, session).collectAsState(initial = emptyList())
+    val observedEntries by vm.customerEntries(customerId, selectedDate, session).collectAsState(initial = emptyList())
+    val entries = remember(observedEntries) { betEntriesInSubmissionOrder(observedEntries) }
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var deleteError by remember { mutableStateOf<String?>(null) }
     deleteError?.let{msg->AlertDialog(onDismissRequest={deleteError=null},title={Text("စာရင်းဖျက်မရပါ")},text={Text(msg)},confirmButton={TextButton({deleteError=null}){Text("OK")}})}
@@ -1204,7 +1205,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     expandedEntry?.let { record ->
         AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("${inputFormatDisplay(record.entry.inputFormat)} ${record.entry.sourceText}", fontWeight = FontWeight.Bold)
+                Text(record.entry.sourceText, fontWeight = FontWeight.Bold)
                 HorizontalDivider()
                 LazyColumn(Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(record.lines, key = { it.id }) { line -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(line.digit, fontWeight = FontWeight.Bold); Text(line.amount.mmk()) } }
@@ -1216,7 +1217,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         })
     }
     pendingDelete?.let { entry -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("စာရင်းဖျက်မည်လား")}, text={Text("ဒီစာရင်းကို အပြီးဖျက်မလား?")}, confirmButton={TextButton(onClick={vm.deleteBet(entry){deleteError=it};pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton(onClick={pendingDelete=null}){Text("မလုပ်ပါ")}}) }
-    AppScaffold("စာရင်းမှတ်တမ်း", onBack) { padding ->
+    AppScaffold("သွင်းထားသောစာရင်း", onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) } } }
             if (entries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") }
@@ -1225,7 +1226,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("${record.entry.drawDate} • ${record.entry.drawSession.label}", fontWeight = FontWeight.Bold)
-                            Text("${inputFormatDisplay(record.entry.inputFormat)} ${record.entry.sourceText}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(record.entry.sourceText, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             Text("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်", fontWeight = FontWeight.Bold)
                             TextButton(onClick = { expandedEntry = record }, contentPadding = PaddingValues(0.dp)) { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }
                         }
