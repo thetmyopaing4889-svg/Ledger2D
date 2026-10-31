@@ -39,7 +39,7 @@ class AnalysisDigitGroupsTest {
 
     @Test fun detailedRowsReuseHistoricalPayoutAndProfitRatherThanRecalculateOrAddCommission() {
         val stakes = mapOf("11" to 2000L, "22" to 1000L, "33" to 500L)
-        val source = from(stakes, overrides = mapOf("11" to 190_000L))
+        val source = from(stakes, overrides = mapOf("11" to 190_000L, "33" to 1_000L))
         val losing = AnalysisDigitGroups.select(source, AnalysisDigitGroup.STAKED_LOSS)
         assertEquals(listOf("11", "22"), losing.map { it.digit })
         assertEquals(190_000L, losing.first().payout)
