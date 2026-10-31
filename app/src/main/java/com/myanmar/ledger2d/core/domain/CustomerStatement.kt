@@ -87,6 +87,8 @@ data class CustomerStatement(
     val draws: List<StatementDraw>,
     val totals: StatementTotals,
     val customers: Map<Long, StatementTotals>,
+    /** Aggregated digit stakes keep their historical payout rate for report drill-down. */
+    val stakes: List<StatementStake> = emptyList(),
 )
 
 object CustomerStatementCalculator {
@@ -145,6 +147,7 @@ object CustomerStatementCalculator {
         return CustomerStatement(
             draws = draws, totals = totals(draws),
             customers = draws.groupBy { it.customerId }.mapValues { (_, items) -> totals(items) },
+            stakes = stakes.filter { selectedSession == null || it.session == selectedSession },
         )
     }
 }
