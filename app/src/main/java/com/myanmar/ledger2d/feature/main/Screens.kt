@@ -1137,47 +1137,6 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
 @Composable
 fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     CustomerReviewWorkspace(vm, "analysis", onBack, initialCustomerId = id)
-    return
-    // The legacy analysis display remains for compatibility; the new two-page
-    // workspace above is the only active customer-facing route.
-    val language = LocalLanguage.current
-    var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
-    var session by rememberSaveable { mutableStateOf(language.selectedSession) }
-    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }
-    val revision by vm.revision.collectAsStateWithLifecycle()
-    val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
-    val result by produceState<AnalysisResult?>(null, date, session, id, revision) { value = date?.let { vm.analysis(id, it, session) } }
-    AppScaffold("သုံးသပ်ချက်", onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item {
-                Text("လက်ရှိအကွက်အခြေအနေ သုံးသပ်ချက်", style = MaterialTheme.typography.titleMedium)
-                DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-                Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }, modifier = Modifier.padding(end = 8.dp)) } }
-            }
-            result?.let { analysis ->
-                item {
-                    AnalysisMetric("လက်ရှိအကွက်အရေအတွက်", analysis.distinctDigits.toString())
-                    AnalysisMetric("ထိုးကြေးစုစုပေါင်း", analysis.totalBet.mmk())
-                    AnalysisMetric("ကန့်သတ်ထားသောအကွက်", analysis.limitedDigits.toString())
-                    AnalysisMetric("80%+ သတိပေး", analysis.warningDigits.toString())
-                    AnalysisMetric("90%+ အလွန်နီး", analysis.nearDigits.toString())
-                    AnalysisMetric("100% ပြည့်ပြီး / ထပ်မလက်ခံ", analysis.fullDigits.toString())
-                    AnalysisMetric("အဆိုးဆုံးလျော်ပေးရနိုင်မှု", analysis.worstCasePayout.mmk())
-                    AnalysisMetric("အဆိုးဆုံး ရှုံး/မြတ်", analysis.worstCaseProfitLoss.mmk())
-                }
-                item {
-                    Text("ထိုးကြေးအများဆုံးအကွက်များ", style = MaterialTheme.typography.titleLarge)
-                    analysis.highest.forEach { Text("${it.first}  ${it.second.mmk()}") }
-                    Text("ပိတ်ထားသောအကွက်များ: ${analysis.closedDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}")
-                    Text("ထပ်မလက်ခံသင့်သောအကွက်များ: ${analysis.rejectDigits.sorted().joinToString(", ").ifBlank { "မရှိ" }}")
-                }
-                item {
-                    Text("အကွက်တစ်ခုချင်းစီအနိုင်ရပါက လက်ရှိ bet scenario", style = MaterialTheme.typography.titleLarge)
-                    analysis.scenarios.filter { it.stake > 0 }.forEach { scenario -> Text("${scenario.digit}: ထိုးကြေး ${scenario.stake.mmk()} • လျော် ${scenario.payout.mmk()} • ရှုံး/မြတ် ${scenario.profitLoss.mmk()}") }
-                }
-            }
-        }
-    }
 }
 @Composable fun AnalysisMetric(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(label, style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
