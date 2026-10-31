@@ -32,7 +32,7 @@ class RoomBulkCommissionTest {
             val bets=RoomBetRepository(db)
             val rates=RoomCommissionRepository(db)
             val future=DrawSchedule.nextDraw(LocalDateTime.now()).date.plusWeeks(1)
-            var past=future.minusDays(1)
+            var past=java.time.LocalDate.now().minusWeeks(1)
             while(!DrawSchedule.isWeekday(past))past=past.minusDays(1)
             fun line()=listOf(ExpandedBet("20",1_000))
             val xBefore=bets.confirm(x,a,past,DrawSession.MORNING,"20 1000",QuickFormat.MANUAL,line())
