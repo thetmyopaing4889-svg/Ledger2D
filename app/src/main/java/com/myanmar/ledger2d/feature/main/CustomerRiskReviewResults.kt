@@ -180,6 +180,9 @@ fun CustomerRiskReviewResults(
     var chosen by rememberSaveable(agentId, customerId, date, session) { mutableStateOf("balance") }
     var allRisk by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
     var breakdown by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
+    var selectedDigitGroup by rememberSaveable(agentId, customerId, date, session) {
+        mutableStateOf<AnalysisDigitGroup?>(null)
+    }
     var warningsOpen by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
     var limitDetailsOpen by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
     var budgetText by rememberSaveable(agentId, customerId, date, session) { mutableStateOf("") }
@@ -254,20 +257,25 @@ fun CustomerRiskReviewResults(
                         item {
                             OutlinedCard(Modifier.fillMaxWidth()) {
                                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    RiskValue("အန္တရာယ်ရှိသောဂဏန်း", "${base.losingDigits} ကွက်",
-                                        MaterialTheme.colorScheme.error, true)
+                                    AnalysisDigitGroupRow("အန္တရာယ်ရှိသောဂဏန်း",
+                                        AnalysisDigitGroups.select(source, AnalysisDigitGroup.STAKED_LOSS).size
+                                    ) { selectedDigitGroup = AnalysisDigitGroup.STAKED_LOSS }
                                     TextButton(onClick = { breakdown = !breakdown }) {
                                         Text(if (breakdown) "ဂဏန်းအရေအတွက် အသေးစိတ်ပိတ်ရန်" else "ဂဏန်းအရေအတွက် ဘယ်လိုရလဲ")
                                         Icon(if (breakdown) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                                     }
                                     if (breakdown) {
-                                        val uncovered = 100 - base.coveredDigits
-                                        val coveredWin = source.scenarios.count { it.stake > 0L && it.profitLoss > 0L }
-                                        val coveredLoss = source.scenarios.count { it.stake > 0L && it.profitLoss < 0L }
-                                        RiskValue("မထိုးထားတဲ့ဂဏန်း", "${uncovered} ကွက်")
-                                        RiskValue("ထိုးထားပြီး မြတ်နိုင်", "${coveredWin} ကွက်")
-                                        RiskValue("ထိုးထားပြီး ရှုံးနိုင်", "${coveredLoss} ကွက်")
-                                        RiskValue("အရင်းကျေ", "${base.breakEvenDigits} ကွက်")
+                                        val counts = AnalysisDigitGroups.counts(source)
+                                        listOf(
+                                            AnalysisDigitGroup.UNSTAKED to "မထိုးထားတဲ့ဂဏန်း",
+                                            AnalysisDigitGroup.STAKED_PROFIT to "ထိုးထားပြီး မြတ်နိုင်",
+                                            AnalysisDigitGroup.STAKED_LOSS to "ထိုးထားပြီး ရှုံးနိုင်",
+                                            AnalysisDigitGroup.BREAK_EVEN to "အရင်းကျေ",
+                                        ).forEach { (group, label) ->
+                                            AnalysisDigitGroupRow(label, counts.getValue(group)) {
+                                                selectedDigitGroup = group
+                                            }
+                                        }
                                     }
                                     HorizontalDivider()
                                     RiskDigitTable(source, allRisk, { allRisk = !allRisk })
@@ -398,6 +406,18 @@ fun CustomerRiskReviewResults(
                     }
                 }
             }
+        }
+    }
+    // Selecting a digit group only opens a read-only overlay. The Analysis
+    // screen, tab, customer, date and saved-rate calculations stay unchanged.
+    selectedDigitGroup?.let { group ->
+        loaded?.source?.let { source ->
+            AnalysisDigitDrilldown(
+                source = source,
+                group = group,
+                winningDigit = winner?.digit,
+                onClose = { selectedDigitGroup = null },
+            )
         }
     }
 }
