@@ -352,6 +352,10 @@ private fun CustomerDigitsWorkspace(
 }
 
 @Composable private fun CustomerCommissionWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession) {
+    if(customerId == -1L) {
+        CustomerBulkCommissionWorkspace(vm, agentId, date, session)
+        return
+    }
     val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
     val revision by vm.revision.collectAsStateWithLifecycle()
     val drawRate by produceState<Int?>(null,customerId,date,session,revision) {

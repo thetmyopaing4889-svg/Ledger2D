@@ -181,6 +181,39 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         }
     }
 
+
+    fun scheduleCommissionForAgent(
+        agentId:Long,percent:String,effectiveDate:LocalDate,effectiveSession:DrawSession,
+        onDone:(Int)->Unit,onError:(String)->Unit={}
+    ) {
+        val bp=commissionBasisPoints(percent) ?: return onError("ကော်မရှင်နှုန်း 0% မှ 100% အတွင်း ထည့်ပါ")
+        viewModelScope.launch {
+            mutationMutex.withLock {
+                runCatching { container.commissions.scheduleForAgent(agentId,bp,effectiveDate,effectiveSession) }
+                    .onSuccess { count->
+                        container.audit.record("COMMISSION_AGENT",agentId,"BULK_FORWARD",
+                            effectiveDate.toString()+"/"+effectiveSession.name+"/"+bp+"/"+count)
+                        changed();onDone(count)
+                    }.onFailure { onError(it.message ?: "Customer အားလုံးအတွက် ကော်မရှင် ပြောင်းမရပါ") }
+            }
+        }
+    }
+    fun overrideCommissionForAgentDraw(
+        agentId:Long,date:LocalDate,session:DrawSession,percent:String,
+        onDone:(Int)->Unit,onError:(String)->Unit={}
+    ) {
+        val bp=commissionBasisPoints(percent) ?: return onError("ကော်မရှင်နှုန်း 0% မှ 100% အတွင်း ထည့်ပါ")
+        viewModelScope.launch {
+            mutationMutex.withLock {
+                runCatching { container.commissions.overrideDrawForAgent(agentId,date,session,bp) }
+                    .onSuccess { count->
+                        container.audit.record("COMMISSION_AGENT",agentId,"BULK_DRAW",
+                            date.toString()+"/"+session.name+"/"+bp+"/"+count)
+                        changed();onDone(count)
+                    }.onFailure { onError(it.message ?: "ဒီ Session ကို ပြန်တွက်၍ မရပါ") }
+            }
+        }
+    }
     fun overrideSessionCommission(customerId:Long,date:LocalDate,session:DrawSession,percent:String,
         onDone:()->Unit,onError:(String)->Unit={}) {
         val bp=commissionBasisPoints(percent) ?: return onError("ကော်မရှင် 0 မှ 100% အထိသာ သတ်မှတ်ပါ")

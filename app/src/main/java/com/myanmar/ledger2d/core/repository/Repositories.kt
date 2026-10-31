@@ -24,6 +24,8 @@ interface CommissionRepository {
     suspend fun rateForDraw(customerId:Long,date:LocalDate,session:DrawSession):Int?
     suspend fun schedule(customerId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession)
     suspend fun overrideDraw(customerId:Long,date:LocalDate,session:DrawSession,rateBasisPoints:Int)
+    suspend fun scheduleForAgent(agentId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession):Int
+    suspend fun overrideDrawForAgent(agentId:Long,date:LocalDate,session:DrawSession,rateBasisPoints:Int):Int
 }
 interface CustomerRepository { fun observeForAgent(agentId: Long): Flow<List<CustomerEntity>>; fun observe(id: Long): Flow<CustomerEntity?>; suspend fun get(id: Long): CustomerEntity?; suspend fun getForAgent(agentId: Long): List<CustomerEntity>; suspend fun save(value: CustomerEntity): Long }
 interface BetRepository { fun observeCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitTotalRow>>; fun observeAgentTotalsWithCommission(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<DigitCommissionRow>>; fun observeEntry(id: Long): Flow<BetEntryWithLines?>; suspend fun getEntry(id: Long): BetEntryWithLines?; fun observeCustomerEntries(customerId: Long): Flow<List<BetEntryWithLines>>; fun observeCustomerEntries(customerId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; fun observeAgentEntries(agentId: Long, date: LocalDate, session: DrawSession): Flow<List<BetEntryWithLines>>; suspend fun getCustomerTotals(customerId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getAgentTotals(agentId: Long, date: LocalDate, session: DrawSession): Map<String, Long>; suspend fun getCustomerCommission(customerId: Long, date: LocalDate, session: DrawSession): Long; suspend fun getCustomerPayout(customerId: Long, date: LocalDate, session: DrawSession, winningDigit: String): Long; suspend fun getCustomerScenarioPayouts(customerId:Long,date:LocalDate,session:DrawSession):Map<String,Long>; suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long; suspend fun getAgentPayout(agentId: Long, date: LocalDate, session: DrawSession, winningDigit: String): Long; suspend fun getAgentScenarioPayouts(agentId:Long,date:LocalDate,session:DrawSession):Map<String,Long>; suspend fun confirm(customerId: Long, agentId: Long, date: LocalDate, session: DrawSession, source: String, format: QuickFormat, bets: List<ExpandedBet>, payoutRateOverride:Long?=null, commissionOverride:Int?=null): Long; suspend fun edit(entry: BetEntryEntity, bets: List<ExpandedBet>, format: QuickFormat); suspend fun delete(entry: BetEntryEntity) }
@@ -109,15 +111,45 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
             ?: customer.commissionRateBasisPoints
     }
 
-    override suspend fun schedule(customerId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession) = db.withTransaction {
+
+    // The same inner operations service both one-customer and agent-wide changes.
+    // A single outer Room transaction makes a bulk change all-or-nothing.
+    override suspend fun schedule(customerId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession) =
+        db.withTransaction { scheduleCustomer(customerId,rateBasisPoints,effectiveDate,effectiveSession) }
+
+    override suspend fun overrideDraw(customerId:Long,date:LocalDate,session:DrawSession,rateBasisPoints:Int) =
+        db.withTransaction { overrideCustomerDraw(customerId,date,session,rateBasisPoints) }
+
+    override suspend fun scheduleForAgent(
+        agentId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession
+    ):Int = db.withTransaction {
+        require(db.agentDao().get(agentId)!=null) { "Agent not found" }
+        val members=customers.getForAgent(agentId)
+        require(members.isNotEmpty()) { "ဒီ Agent မှာ Customer မရှိသေးပါ" }
+        members.forEach { scheduleCustomer(it.id,rateBasisPoints,effectiveDate,effectiveSession) }
+        members.size
+    }
+
+    override suspend fun overrideDrawForAgent(
+        agentId:Long,date:LocalDate,session:DrawSession,rateBasisPoints:Int
+    ):Int = db.withTransaction {
+        require(db.agentDao().get(agentId)!=null) { "Agent not found" }
+        val members=customers.getForAgent(agentId)
+        require(members.isNotEmpty()) { "ဒီ Agent မှာ Customer မရှိသေးပါ" }
+        members.forEach { overrideCustomerDraw(it.id,date,session,rateBasisPoints) }
+        members.size
+    }
+
+    private suspend fun scheduleCustomer(
+        customerId:Long,rateBasisPoints:Int,effectiveDate:LocalDate,effectiveSession:DrawSession
+    ) {
         require(rateBasisPoints in 0..10_000)
-        require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(effectiveDate))
+        require(DrawSchedule.isWeekday(effectiveDate))
         val next=DrawRatePolicy.currentSession(java.time.LocalDateTime.now())
         val key=DrawRatePolicy.key(effectiveDate,effectiveSession)
         require(key>=DrawRatePolicy.key(next.date,next.session)) { "ကော်မရှင်အသစ် စတင်မည့် Session ကို ပြန်စစ်ပါ" }
         val old=customers.get(customerId) ?: error("Customer not found")
         val now=System.currentTimeMillis()
-        // Freeze the old default for all historical draws on the first rate change.
         if(rules.forwardRate(customerId,Long.MAX_VALUE)==null)
             rules.upsert(CustomerCommissionRuleEntity(customerId=customerId,ruleType="FORWARD",
                 drawKey=Long.MIN_VALUE,rateBasisPoints=old.commissionRateBasisPoints,createdAt=now))
@@ -125,11 +157,8 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
         rules.upsert(CustomerCommissionRuleEntity(id=existing?.id?:0,customerId=customerId,
             ruleType="FORWARD",drawKey=key,rateBasisPoints=rateBasisPoints,
             createdAt=existing?.createdAt?:now))
-        // If this same draw had a manual correction, update its overriding rule
-        // as well so new entries never revert to a different commission.
+        // Preserve the existing single-customer semantics at the start draw.
         rules.get(customerId,"DRAW",key)?.let { rules.upsert(it.copy(rateBasisPoints=rateBasisPoints)) }
-        // Existing advance entries must obey the rate effective for *their*
-        // draw, including any later scheduled change or draw-only correction.
         bets.getEntriesForCustomerFromDate(customerId,effectiveDate).forEach { record ->
             val drawKey=DrawRatePolicy.key(record.entry.drawDate,record.entry.drawSession)
             if(drawKey>=key) {
@@ -144,12 +173,13 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
             }
         }
         customers.upsert(old.copy(commissionRateBasisPoints=rateBasisPoints,updatedAt=now))
-        Unit
     }
 
-    override suspend fun overrideDraw(customerId:Long,date:LocalDate,session:DrawSession,rateBasisPoints:Int) = db.withTransaction {
+    private suspend fun overrideCustomerDraw(
+        customerId:Long,date:LocalDate,session:DrawSession,rateBasisPoints:Int
+    ) {
         require(rateBasisPoints in 0..10_000)
-        require(com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(date))
+        require(DrawSchedule.isWeekday(date))
         val customer=customers.get(customerId) ?: error("Customer not found")
         val key=DrawRatePolicy.key(date,session)
         val now=System.currentTimeMillis()
@@ -166,8 +196,8 @@ class RoomCommissionRepository(private val db:LedgerDatabase):CommissionReposito
                 updatedAt=now
             ))
         }
-        Unit
     }
+
 }
 class RoomBetRepository(private val db: LedgerDatabase): BetRepository {
     private val dao=db.betDao()
