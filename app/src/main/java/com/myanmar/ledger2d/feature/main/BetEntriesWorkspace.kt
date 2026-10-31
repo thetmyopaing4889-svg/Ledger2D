@@ -4,6 +4,8 @@ package com.myanmar.ledger2d.feature.main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -74,11 +76,11 @@ fun CustomerBetEntriesWorkspace(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(record.entry.sourceText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     HorizontalDivider()
-                    Column(
+                    LazyColumn(
                         modifier = Modifier.heightIn(max = 330.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        record.lines.sortedBy { it.digit }.forEach { line ->
+                        items(record.lines.sortedBy { it.digit }, key = { it.id }) { line ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(line.digit)
                                 Text(line.amount.mmk(), fontWeight = FontWeight.Medium)
