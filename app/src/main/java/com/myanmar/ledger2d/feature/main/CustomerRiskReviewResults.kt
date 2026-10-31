@@ -181,6 +181,7 @@ fun CustomerRiskReviewResults(
     var allRisk by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
     var breakdown by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
     var warningsOpen by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
+    var limitDetailsOpen by rememberSaveable(agentId, customerId, date, session) { mutableStateOf(false) }
     var budgetText by rememberSaveable(agentId, customerId, date, session) { mutableStateOf("") }
     var budgetAmount by remember(agentId, customerId, date, session) { mutableStateOf<Long?>(null) }
     var budgetError by remember(agentId, customerId, date, session) { mutableStateOf("") }
@@ -345,6 +346,40 @@ fun CustomerRiskReviewResults(
                             item { RiskValue("အနည်းဆုံးသေချာမြတ်ငွေ", "${decision.guaranteedPlan.worstProfit.rm()} ကျပ်",
                                 Color(0xFF18794E), true) }
                             item { RiskPlanCard(decision.guaranteedPlan, base, winner == null) }
+                        }
+                    }
+                }
+                // Preserve the earlier limit, closed-number and highest-stake details,
+                // but keep them collapsed so the first view remains action-focused.
+                if (source.limitedDigits > 0 || source.closedDigits.isNotEmpty() ||
+                    source.rejectDigits.isNotEmpty() || source.highest.isNotEmpty()) item {
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Surface(
+                                onClick = { limitDetailsOpen = !limitDetailsOpen },
+                                color = Color.Transparent,
+                            ) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("အကွက်နှင့် Limit အသေးစိတ်", Modifier.weight(1f),
+                                        fontWeight = FontWeight.SemiBold)
+                                    Icon(if (limitDetailsOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+                                }
+                            }
+                            if (limitDetailsOpen) {
+                                RiskValue("Limit သတ်မှတ်ထားသောဂဏန်း", "${source.limitedDigits} ကွက်")
+                                RiskValue("Limit 80% နှင့်အထက်", "${source.warningDigits} ကွက်")
+                                RiskValue("Limit 90% နှင့်အထက်", "${source.nearDigits} ကွက်")
+                                RiskValue("Limit 100% နှင့်အထက်", "${source.fullDigits} ကွက်")
+                                RiskValue("အများဆုံးပြန်လျော်နိုင်ငွေ", "${source.worstCasePayout.rm()} ကျပ်")
+                                Text("ထိုးကြေးအများဆုံးဂဏန်း: " +
+                                    source.highest.joinToString(" • ") { "${it.first}=${it.second.rm()}" }.ifEmpty { "မရှိ" },
+                                    style = MaterialTheme.typography.bodySmall)
+                                Text("ပိတ်ဂဏန်း: " + source.closedDigits.sorted().joinToString(", ").ifEmpty { "မရှိ" },
+                                    style = MaterialTheme.typography.bodySmall)
+                                Text("ထပ်မလက်ခံသင့်သောဂဏန်း: " +
+                                    source.rejectDigits.sorted().joinToString(", ").ifEmpty { "မရှိ" },
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }
