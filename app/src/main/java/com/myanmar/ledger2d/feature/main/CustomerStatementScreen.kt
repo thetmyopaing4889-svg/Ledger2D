@@ -278,7 +278,7 @@ private fun StatementDrawCard(draws: List<StatementDraw>) {
 @Composable
 private fun StatementGroupRows(group: StatementDisplayGroup) {
     val byDate = group.draws.groupBy { it.date }.toSortedMap()
-    var openDay by rememberSaveable(group.key.toString()) { mutableStateOf<LocalDate?>(null) }
+    var openDay by remember(group.key) { mutableStateOf<LocalDate?>(null) }
     if (byDate.size == 1) {
         byDate.values.first().groupBy { it.session }.toSortedMap(compareBy { it.ordinal }).values.forEach { StatementDrawCard(it) }
     } else {
