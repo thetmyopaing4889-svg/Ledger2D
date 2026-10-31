@@ -42,6 +42,36 @@ private fun StatementPeriod.nameMm(): String = when (this) {
 private fun DrawSession.nameMm(): String = if (this == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်"
 private fun LocalDate.statementDate() = format(DateTimeFormatter.ofPattern("dd MMM yyyy"))
 private fun Long.statementMoney(): String = mmk()
+
+/** Statement dates must not inherit the betting form's weekend-to-Monday coercion. */
+@Composable
+private fun StatementDateField(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val display = runCatching { LocalDate.parse(value).statementDate() }.getOrElse { value }
+    OutlinedTextField(
+        value = display, onValueChange = {}, readOnly = true,
+        modifier = modifier.fillMaxWidth(), label = { Text(label) },
+        trailingIcon = { TextButton(onClick = { open = true }) { Text("ရွေး") } },
+        singleLine = true,
+    )
+    if (open) {
+        val utc = java.time.ZoneOffset.UTC
+        val selected = runCatching { LocalDate.parse(value).atStartOfDay(utc).toInstant().toEpochMilli() }.getOrNull()
+        val picker = rememberDatePickerState(initialSelectedDateMillis = selected)
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    picker.selectedDateMillis?.let { millis ->
+                        onChange(java.time.Instant.ofEpochMilli(millis).atZone(utc).toLocalDate().toString())
+                    }
+                    open = false
+                }) { Text("ရွေးမည်") }
+            },
+            dismissButton = { TextButton(onClick = { open = false }) { Text("မလုပ်ပါ") } },
+        ) { DatePicker(state = picker) }
+    }
+}
 private data class StatementDisplayGroup(val key: LocalDate, val title: String, val draws: List<StatementDraw>)
 
 private fun displayGroups(draws: List<StatementDraw>, period: StatementPeriod, range: StatementRange): List<StatementDisplayGroup> {
@@ -158,8 +188,8 @@ fun CustomerStatementScreen(
                         }
                         if (period == StatementPeriod.CUSTOM) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                DateInput(startText, { startText = it }, "စရက်", Modifier.weight(1f))
-                                DateInput(endText, { endText = it }, "ဆုံးရက်", Modifier.weight(1f))
+                                StatementDateField(startText, { startText = it }, "စရက်", Modifier.weight(1f))
+                                StatementDateField(endText, { endText = it }, "ဆုံးရက်", Modifier.weight(1f))
                             }
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -179,7 +209,7 @@ fun CustomerStatementScreen(
                                     if (anchor != null) anchorText = StatementPeriods.move(period, anchor, 1).toString()
                                 }) { Icon(Icons.Default.ChevronRight, "နောက်ကာလ") }
                             }
-                            DateInput(anchorText, { anchorText = it }, "ရက်စွဲရွေးရန်")
+                            StatementDateField(anchorText, { anchorText = it }, "ရက်စွဲရွေးရန်")
                         }
                         if (range == null) Text("စရက်၊ ဆုံးရက်နှင့် ရက်စွဲကို ပြန်စစ်ပါ", color = MaterialTheme.colorScheme.error)
                         Text("ကြည့်မည့်အကြိမ်", style = MaterialTheme.typography.labelMedium)
