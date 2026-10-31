@@ -217,7 +217,10 @@ private fun StatementMoneyLine(label: String, amount: Long, strong: Boolean = fa
 }
 
 @Composable
-private fun StatementTotalCard(t: StatementTotals, title: String, customerCount: Int? = null) {
+private fun StatementTotalCard(t: StatementTotals, title: String, customerCount: Int? = null, distinctDraws: Pair<Int, Int>? = null) {
+    val present = distinctDraws?.first ?: t.drawsWithBets
+    val completed = distinctDraws?.second ?: t.completedDraws
+    val waiting = present - completed
     ElevatedCard {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -231,7 +234,7 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
             Text("ထိုးသား အနိုင်/အရှုံး (ရလဒ်ထွက်ပြီးသော အကြိမ်များအတွက်)", style = MaterialTheme.typography.labelMedium)
             StatementMoneyLine("စုစုပေါင်း", t.customerWinLoss, strong = true, positiveGood = true)
             Text(
-                "စာရင်းရှိသော အကြိမ် ${t.drawsWithBets} ခု • ရလဒ်ရပြီး ${t.completedDraws} ခု • ရလဒ်မရသေး ${t.awaitingDraws} ခု",
+                "စာရင်းရှိသော အကြိမ် ${present} ခု • ရလဒ်ရပြီး ${completed} ခု • ရလဒ်မရသေး ${waiting} ခု",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
             )
             if (!t.isComplete) {
@@ -308,6 +311,8 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
     groups.forEach { group ->
         val id = group.key.toString()
         val totals = CustomerStatementCalculator.totals(group.draws)
+        val unfinishedDrawCount = group.draws.groupBy { it.date to it.session }
+            .count { (_, items) -> items.any { !it.resultKnown } }
         OutlinedCard(onClick = { expanded = if (expanded == id) null else id }) {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -315,8 +320,8 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
                     Icon(if (expanded == id) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                 }
                 StatementMoneyLine("ထိုးကြေး", totals.totalBet)
-                if (totals.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, positiveGood = true)
-                else Text("ရလဒ်မရသေး ${totals.awaitingDraws} ကြိမ် • ရပြီးသားအကြိမ်များ အနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (unfinishedDrawCount == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, positiveGood = true)
+                else Text("ရလဒ်မရသေး ${unfinishedDrawCount} ကြိမ် • ရပြီးသားအကြိမ်များ အနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 if (expanded == id) {
                     StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
                     StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
@@ -342,10 +347,13 @@ private fun CustomerStatementContent(
 ) {
     val all = selectedCustomerId == -1L
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val uniqueDraws = report.draws.groupBy { it.date to it.session }
+        val distinctCounts = if (all) uniqueDraws.size to uniqueDraws.count { (_, items) -> items.all { it.resultKnown } } else null
         StatementTotalCard(
             report.totals,
             if (all) "Customer အားလုံး — စုစုပေါင်းစာရင်း" else "ထိုးသား၏ စုစုပေါင်းစာရင်း",
             if (all) report.customers.size else null,
+            distinctCounts,
         )
         if (report.draws.isEmpty()) {
             Text("ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ", color = MaterialTheme.colorScheme.onSurfaceVariant)
