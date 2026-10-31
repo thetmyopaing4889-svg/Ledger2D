@@ -342,6 +342,31 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun deleteWinner(value:WinningNumberEntity,onError:(String)->Unit={} ){ viewModelScope.launch { runCatching { container.winners.delete(value) }.onSuccess { container.audit.record("WINNER",value.id,"DELETE","${value.date}/${value.session.name}"); changed() }.onFailure { onError(it.message ?: "ရလဒ်ဖျက်၍ မရပါ") } } }
     fun addClosedDay(date:LocalDate,onError:(String)->Unit={} ){ viewModelScope.launch { runCatching { container.closedDays.add(date) }.onSuccess { changed() }.onFailure { onError(it.message ?: "ပိတ်ရက်သိမ်း၍ မရပါ") } } }
     fun removeClosedDay(value:ClosedDayEntity){ viewModelScope.launch { runCatching { container.closedDays.remove(value) }.onSuccess { container.audit.record("CLOSED_DAY",value.id,"DELETE",value.date.toString()); changed() } } }
+    /** Customer-facing report is read-only; no commission or agent P/L is exposed. */
+    suspend fun customerStatement(
+        agentId: Long,
+        customerId: Long,
+        range: StatementRange,
+        selectedSession: DrawSession? = null,
+    ): CustomerStatement {
+        require(agentId > 0L && (customerId == -1L || customerId > 0L))
+        val rows = container.database.betDao()
+            .statementRatedRows(agentId, customerId, range.start, range.end)
+            .map {
+                StatementStake(
+                    customerId = it.customerId, date = it.drawDate,
+                    session = it.drawSession, digit = it.digit,
+                    payoutRate = it.payoutRate, amount = it.amount,
+                )
+            }
+        // Read only persisted, final winning numbers. UI-only LIVE provisional values
+        // must never affect a customer statement.
+        val winnersByDraw = container.winners.observeAll().first()
+            .filter { range.contains(it.date) }
+            .associate { (it.date to it.session) to it.digit }
+        return CustomerStatementCalculator.build(rows, winnersByDraw, selectedSession)
+    }
+
     private suspend fun customerFinancials(customerId:Long,date:LocalDate,session:DrawSession,winningDigit:String?):DrawCalculation {
         val totals=container.bets.getCustomerTotals(customerId,date,session)
         val base=ReportCalculator().calculate(totals,winningDigit,0,0)
