@@ -271,7 +271,7 @@ private fun AgentStatementTableRow(
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text(totals.profitLoss.agentResultMoney(), Modifier.width(132.dp),
             textAlign = TextAlign.End, style = style)
-        Text(totals.netProfitLoss.agentResultMoney(), Modifier.width(156.dp),
+        Text(totals.netProfitLoss.agentResultMoney(), Modifier.width(132.dp),
             textAlign = TextAlign.End, style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
