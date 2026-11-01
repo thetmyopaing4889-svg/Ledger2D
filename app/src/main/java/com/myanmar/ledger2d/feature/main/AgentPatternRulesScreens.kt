@@ -86,6 +86,8 @@ fun AgentClosedPatternWorkspace(
     key(agentId, date, session) {
         val current by vm.closedNumbers(agentId,date,session)
             .collectAsStateWithLifecycle(initialValue=emptyList())
+        val agent by vm.agent(agentId).collectAsStateWithLifecycle(initialValue=null)
+        val agentName = agent?.name ?: "ဒိုင် #$agentId"
         var format by rememberSaveable { mutableStateOf(QuickFormat.MANUAL) }
         var source by rememberSaveable { mutableStateOf("") }
         val selection = remember(format,source) { ClosedDigitSelector.select(format,source) }
@@ -96,20 +98,22 @@ fun AgentClosedPatternWorkspace(
         var pendingAction by remember { mutableStateOf<String?>(null) }
         var pendingOne by remember { mutableStateOf<ClosedNumberEntity?>(null) }
         var notice by remember { mutableStateOf("") }
+        var busy by remember { mutableStateOf(false) }
         if (pendingAction != null) {
             val closing = pendingAction == "close"
             val affected = if (closing) newlyClosed else alreadyClosed
             AlertDialog(
                 onDismissRequest = { pendingAction=null },
                 title = { Text(if (closing) "အုပ်စုလိုက်ပိတ်ရန် အတည်ပြုပါ" else "အုပ်စုလိုက်ပြန်ဖွင့်ရန် အတည်ပြုပါ") },
-                text = { Text("$date • ${session.label} • ${affected.size} ကွက် " +
+                text = { Text("$agentName • $date • ${session.label} • ${affected.size} ကွက် " +
                     if (closing) "ပိတ်မည်။" else "ပြန်ဖွင့်မည်။") },
                 confirmButton = {
                     TextButton(onClick = {
                         pendingAction=null
+                        busy=true
                         vm.updateClosedDigitGroup(agentId,date,session,affected,closing,
-                            onDone={ notice="${it} ကွက် ဆောင်ရွက်ပြီး" },
-                            onError={ notice=it })
+                            onDone={ busy=false; notice="${it} ကွက် ဆောင်ရွက်ပြီး" },
+                            onError={ busy=false; notice=it })
                     }) { Text("အတည်ပြုမည်") }
                 },
                 dismissButton = { TextButton(onClick = { pendingAction=null }) { Text("မလုပ်ပါ") } },
@@ -127,7 +131,7 @@ fun AgentClosedPatternWorkspace(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("ဒိုင်တစ်ယောက် • $date • ${session.label} အတွက်သာ",
+            Text("$agentName • $date • ${session.label} အတွက်သာ",
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text("ဒီ Session အတွက် ပိတ်ထားတာက နောက် Session နဲ့ တခြားဒိုင်ဆီ မကူးပါ။ " +
                 "လက်ခံပြီးသားစာရင်းကိုလည်း မဖျက်ပါ။",
@@ -138,10 +142,10 @@ fun AgentClosedPatternWorkspace(
                 Text("အသစ်ပိတ်မယ့် ${newlyClosed.size} ကွက် • ပိတ်ပြီးသား ${alreadyClosed.size} ကွက်",
                     style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick={pendingAction="close"},enabled=newlyClosed.isNotEmpty()) {
+                    Button(onClick={pendingAction="close"},enabled=!busy && newlyClosed.isNotEmpty()) {
                         Text("အုပ်စုလိုက်ပိတ်မည်")
                     }
-                    OutlinedButton(onClick={pendingAction="open"},enabled=alreadyClosed.isNotEmpty()) {
+                    OutlinedButton(onClick={pendingAction="open"},enabled=!busy && alreadyClosed.isNotEmpty()) {
                         Text("ရွေးထားတာ ပြန်ဖွင့်မည်")
                     }
                 }
@@ -180,6 +184,8 @@ fun AgentLimitPatternWorkspace(
             .collectAsStateWithLifecycle(initialValue=null)
         val specials by vm.agentSpecialLimits(agentId,date,session)
             .collectAsStateWithLifecycle(initialValue=emptyList())
+        val agent by vm.agent(agentId).collectAsStateWithLifecycle(initialValue=null)
+        val agentName = agent?.name ?: "ဒိုင် #$agentId"
         var allText by rememberSaveable { mutableStateOf("") }
         LaunchedEffect(all?.id,all?.amount) { allText=all?.amount?.toString().orEmpty() }
         var format by rememberSaveable { mutableStateOf(QuickFormat.MANUAL) }
@@ -191,24 +197,29 @@ fun AgentLimitPatternWorkspace(
         val limitMap = specials.associate { it.digit to it.amount }
         val needsUpdate = digits.count { limitMap[it] != amount }
         val alreadyCustom = digits.count { it in limitMap }
+        val replacements = digits.count { it in limitMap && limitMap[it] != amount }
+        val unchanged = digits.count { it in limitMap && limitMap[it] == amount }
         val removable = digits.filter { it in limitMap }
         var action by remember { mutableStateOf<String?>(null) }
         var pendingOne by remember { mutableStateOf<AgentSpecialLimitEntity?>(null) }
         var notice by remember { mutableStateOf("") }
+        var busy by remember { mutableStateOf(false) }
         if(action!=null) {
             val remove=action=="remove"
             val selected = if(remove) removable else digits
             AlertDialog(
                 onDismissRequest={action=null},
                 title={Text(if(remove) "Limit အုပ်စုလိုက်ဖယ်ရှားမည်လား" else "Limit အုပ်စုလိုက်သိမ်းမည်လား")},
-                text={ Text("$date • ${session.label} • ${selected.size} ကွက် " +
+                text={ Text("$agentName • $date • ${session.label} • ${selected.size} ကွက် " +
                     if(remove) "အထူး Limit ကို ဖယ်ရှားမည်။" else
-                        "တစ်ကွက်လျှင် ${amountText} ကျပ် သတ်မှတ်မည်။ ရှိပြီးသား Limit မတူပါက အစားထိုးမည်။") },
+                        "တစ်ကွက်လျှင် ${amountText} ကျပ် သတ်မှတ်မည်။ " +
+                        "ရှိပြီးသား Limit ${replacements} ကွက် အစားထိုးမည်။") },
                 confirmButton={ TextButton(onClick={
                     action=null
+                    busy=true
                     vm.updateAgentLimitGroup(agentId,date,session,selected,amount,remove,
-                        onDone={ notice="${it} ကွက် ဆောင်ရွက်ပြီး" },
-                        onError={ notice=it })
+                        onDone={ busy=false; notice="${it} ကွက် ဆောင်ရွက်ပြီး" },
+                        onError={ busy=false; notice=it })
                 }) { Text("အတည်ပြုမည်") } },
                 dismissButton={ TextButton(onClick={action=null}) { Text("မလုပ်ပါ") } },
             )
@@ -223,7 +234,7 @@ fun AgentLimitPatternWorkspace(
                 dismissButton={TextButton(onClick={pendingOne=null}) { Text("မလုပ်ပါ") }})
         }
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("ဒိုင်တစ်ယောက် • $date • ${session.label} အတွက်သာ",
+            Text("$agentName • $date • ${session.label} အတွက်သာ",
                 style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
             Text("အကွက်အားလုံးအတွက် Limit",style=MaterialTheme.typography.titleMedium,
                 fontWeight=FontWeight.Bold)
@@ -246,13 +257,14 @@ fun AgentLimitPatternWorkspace(
                     label={Text("တစ်ကွက်လျှင် Limit ပမာဏ (ကျပ်)")},
                     keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
                 )
-                Text("ရွေးထားတာ ${digits.size} ကွက် • အထူး Limit ရှိပြီးသား ${alreadyCustom} ကွက်",
+                Text("ရွေးထားတာ ${digits.size} ကွက် • အထူး Limit ရှိပြီးသား ${alreadyCustom} ကွက်" +
+                    " • အသစ် ${digits.size-alreadyCustom} • အစားထိုး ${replacements} • မပြောင်း ${unchanged}",
                     style=MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     Button(onClick={action="set"},
-                        enabled=amount!=null && needsUpdate>0) { Text("Limit အုပ်စုလိုက်သိမ်းမည်") }
+                        enabled=!busy && amount!=null && needsUpdate>0) { Text("Limit အုပ်စုလိုက်သိမ်းမည်") }
                     OutlinedButton(onClick={action="remove"},
-                        enabled=removable.isNotEmpty()) { Text("ရွေးထားတာ ဖယ်ရှားမည်") }
+                        enabled=!busy && removable.isNotEmpty()) { Text("ရွေးထားတာ ဖယ်ရှားမည်") }
                 }
             }
             Text("အထူး Limit က အကွက်အားလုံး Limit အပေါ် ဦးစားပေးသက်ရောက်သည်။ " +
