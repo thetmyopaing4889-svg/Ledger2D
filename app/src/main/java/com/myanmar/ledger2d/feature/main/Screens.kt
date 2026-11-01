@@ -238,7 +238,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(17.dp))
                 }
             }
-            Spacer(Modifier.height(if (compact) 12.dp else 34.dp))
+            Spacer(Modifier.height(if (compact) 22.dp else 34.dp))
         }
     }
 }
