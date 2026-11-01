@@ -212,9 +212,17 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
         }
         AgentStatementValue("စုစုပေါင်းထိုးကြေး", "${totals.totalStake.agentMoney()} ကျပ်", true)
         AgentStatementValue("ကော်မရှင် (သိမ်းထားသော Net)", "${totals.savedNetCommission.agentMoney()} ကျပ်")
+        if (totals.pendingDraws > 0) {
+            AgentStatementValue("ရလဒ်မထွက်သေးသော ထိုးကြေး", "${totals.pendingStake.agentMoney()} ကျပ်")
+            if (totals.completedDraws > 0)
+                AgentStatementValue("ရလဒ်ရပြီး ထိုးကြေး", "${totals.completedStake.agentMoney()} ကျပ်")
+        }
         HorizontalDivider()
-        AgentStatementValue("ပေါက်ကြေး", if (totals.completedDraws > 0) "${totals.winningStake.agentMoney()} ကျပ်" else "ရလဒ်မထွက်သေး")
-        AgentStatementValue("လျော်ပေးငွေ", if (totals.completedDraws > 0) "${totals.payout.agentMoney()} ကျပ်" else "—", true)
+        AgentStatementValue("ပေါက်ကြေး",
+            if (totals.draws == 0) "—" else if (totals.completedDraws > 0)
+                "${totals.winningStake.agentMoney()} ကျပ်" else "ရလဒ်မထွက်သေး")
+        AgentStatementValue("လျော်ပေးငွေ", if (totals.completedDraws > 0)
+            "${totals.payout.agentMoney()} ကျပ်" else "—", true)
         if (totals.pendingDraws > 0) {
             Text(
                 "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ " +
@@ -282,6 +290,9 @@ private fun AgentStatementDrawDetail(
         Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             if (showAgent) Text(agentName, fontWeight = FontWeight.Bold)
             AgentStatementValue("ပေါက်ဂဏန်း", draw.winner ?: "မထွက်သေး")
+            val savedRates = draw.stakes.map { it.savedPayoutRate }.distinct().sorted()
+            AgentStatementValue("မူလသိမ်းထားသော လျော်ကြေးအဆ",
+                savedRates.joinToString("/") { "${it} ဆ" }.ifEmpty { "—" })
             AgentStatementValue("ထိုးကြေး", "${draw.totalStake.agentMoney()} ကျပ်", true)
             AgentStatementValue("ကော်မရှင် (Net)", "${draw.commission.agentMoney()} ကျပ်")
             AgentStatementValue("ပေါက်ကြေး", draw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
