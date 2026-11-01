@@ -1,6 +1,8 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -8,6 +10,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -16,6 +19,9 @@ import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.DrawSchedule
+import com.myanmar.ledger2d.core.model.DrawIdentity
+import kotlinx.coroutines.delay
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
@@ -163,20 +169,44 @@ fun CustomerListWorkspaceScreen(
     }
 }
 
+/** Preview the next active draw without scheduling a rate change or touching old sessions. */
+internal fun nextAgentListDraw(now: LocalDateTime, holidays: Set<LocalDate>): DrawIdentity =
+    DrawSchedule.defaultWorkingContext(now, holidays)
+
 @Composable
 fun AgentInformationScreen(
     vm: LedgerViewModel, id: Long, onBack: () -> Unit,
     onEdit: (Long) -> Unit, onReport: (Long) -> Unit, onCustomers: (Long) -> Unit,
 ) {
     val agent by vm.agent(id).collectAsStateWithLifecycle(initialValue = null)
-    val profile = agent ?: return
     val customers by vm.customers(id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val revision by vm.revision.collectAsStateWithLifecycle()
-    val upcoming = remember(id) { DrawSchedule.nextDraw(LocalDateTime.now()) }
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    // Refresh while the information screen remains open so the "next draw"
+    // cannot stay on a completed session after the time boundary.
+    LaunchedEffect(id) {
+        while (true) {
+            now = LocalDateTime.now()
+            delay(30_000L)
+        }
+    }
+    val upcoming = remember(now, closedDays) {
+        nextAgentListDraw(now, closedDays.map { it.date }.toSet())
+    }
     val upcomingRate by produceState<Long?>(null, id, upcoming.date, upcoming.session, revision) {
         value = vm.agentRateForDraw(id, upcoming.date, upcoming.session)
     }
     val l = LocalLanguage.current
+    val profile = agent
+    if (profile == null) {
+        AppScaffold(l.translate("Agent Information"), onBack) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        return
+    }
     AppScaffold(
         l.translate("Agent Information"), onBack,
         action = {
@@ -193,6 +223,7 @@ fun AgentInformationScreen(
                 "Address" to profile.address,
                 "Remark" to profile.remark,
             ),
+            scrollContent = true,
         ) {
             HorizontalDivider()
             Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
@@ -236,9 +267,13 @@ fun CustomerInformationScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit,
 private fun InformationCard(
     padding: PaddingValues, title: String,
     fields: List<Pair<String, String>>,
+    scrollContent: Boolean = false,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val base = Modifier.fillMaxSize().padding(padding)
+    val contentModifier = if (scrollContent) base.verticalScroll(rememberScrollState()).padding(16.dp)
+        else base.padding(16.dp)
+    Column(contentModifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
