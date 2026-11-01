@@ -168,7 +168,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         onDispose{controller?.isAppearanceLightStatusBars=true}
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onNavigate:(String)->Unit={} ){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onCommissionDetails:()->Unit,onNavigate:(String)->Unit={} ){
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
     DarkStatusBarsEffect()
@@ -192,9 +192,9 @@ fun transactionDisplayText(format: String, raw: String): String {
                     ) {
                         HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
                         HomeWeeklyResults(vm)
+                        HomeCommissionCard(vm, onCommissionDetails)
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,l.translate("2D သုံးသပ်ချက်"),l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,l.translate("ဒေတာအသစ်"),l.translate("လာမည်"),Modifier.weight(1f))}
-                        if(agents.isEmpty()) HomeStartCta(onAddAgent)
                         HomeFooter()
                     }
                 }
@@ -375,20 +375,6 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable private fun rememberPressScale(label:String):Pair<MutableInteractionSource,Float>{val interaction=remember{MutableInteractionSource()};val pressed by interaction.collectIsPressedAsState();val scale by animateFloatAsState(if(pressed).965f else 1f,tween(AppMotion.Short),label=label);return interaction to scale}
-@Composable private fun HomeStartCta(onAdd:()->Unit){
-    val l=LocalLanguage.current
-    val (interaction,pressScale)=rememberPressScale("startCta")
-    Surface(onClick=onAdd,interactionSource=interaction,shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().graphicsLayer{scaleX=pressScale;scaleY=pressScale}){
-        Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
-            Surface(Modifier.size(42.dp),shape=CircleShape,color=Color.White.copy(alpha=.18f)){Icon(Icons.Default.Store,null,tint=Color.White,modifier=Modifier.padding(10.dp).fillMaxSize())}
-            Column(Modifier.weight(1f).padding(start=12.dp),verticalArrangement=Arrangement.spacedBy(1.dp)){
-                Text(l.translate("ပထမဆုံး ဒိုင်ကိုထည့်ပြီး စတင်ပါ"),style=MaterialTheme.typography.titleMedium,fontSize=15.sp,fontWeight=FontWeight.Bold,color=Color.White,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
-                Text(l.translate("ဒိုင်ထည့်ပြီးမှ စာရင်းစတင်နိုင်ပါမည်"),style=MaterialTheme.typography.labelSmall,color=Color.White.copy(alpha=.85f))
-            }
-            Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(22.dp))
-        }
-    }
-}
 @Composable private fun HomeFooter(){
     Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))

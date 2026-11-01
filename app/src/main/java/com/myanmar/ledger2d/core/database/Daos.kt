@@ -2,6 +2,7 @@ package com.myanmar.ledger2d.core.database
 
 import androidx.room.*
 import com.myanmar.ledger2d.core.model.DrawSession
+import com.myanmar.ledger2d.core.domain.CommissionLedgerLine
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
@@ -59,6 +60,19 @@ data class AgentStatementCommissionRow(
     val commission: Long,
 )
 @Dao interface BetDao {
+    /** Home + commission review share one reactive, session-snapshot-based source. */
+    @Query("""SELECT be.agentId AS agentId, a.name AS agentName,
+        be.customerId AS customerId, c.name AS customerName,
+        be.drawDate AS date, be.drawSession AS session,
+        SUM(be.commissionAmount) AS amount
+        FROM bet_entries be
+        INNER JOIN agents a ON a.id = be.agentId
+        INNER JOIN customers c ON c.id = be.customerId
+        WHERE be.drawDate <= :today
+        GROUP BY be.agentId, a.name, be.customerId, c.name, be.drawDate, be.drawSession
+        ORDER BY be.drawDate DESC, be.drawSession DESC, a.name, c.name""")
+    fun observeCommissionLedger(today: LocalDate): Flow<List<CommissionLedgerLine>>
+
     @Query("""SELECT be.agentId AS agentId, be.customerId AS customerId,
         be.drawDate AS drawDate, be.drawSession AS drawSession,
         bl.digit AS digit, be.payoutRate AS payoutRate, SUM(bl.amount) AS amount

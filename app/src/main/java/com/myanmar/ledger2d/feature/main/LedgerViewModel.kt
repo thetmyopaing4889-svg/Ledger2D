@@ -131,6 +131,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun betEntry(id:Long)=container.bets.observeEntry(id)
     fun agentTotals(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotals(agentId,date,session)
     fun agentTotalsWithCommission(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotalsWithCommission(agentId,date,session)
+    fun commissionLedger(through: LocalDate) = container.database.betDao().observeCommissionLedger(through)
     fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean=false,onDone:()->Unit,onError:(String)->Unit={}){
         val clean=name.trim();val parsed=rate.toLongOrNull()
         if(clean.isEmpty()||parsed==null||parsed<=0)return
