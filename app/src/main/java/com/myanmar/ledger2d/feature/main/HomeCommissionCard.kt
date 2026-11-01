@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,8 +26,10 @@ import java.text.NumberFormat
 import java.time.DayOfWeek
 import java.util.Locale
 
-private fun Long.cardMoney(): String = NumberFormat.getIntegerInstance(Locale.US).format(this) + " ကျပ်"
+private fun Long.cardNumber(): String = NumberFormat.getIntegerInstance(Locale.US).format(this)
+private fun Long.cardMoney(): String = cardNumber() + " ကျပ်"
 
+/** Compact by design: makes every Home feature visible without shrinking the bottom tiles. */
 @Composable
 internal fun HomeCommissionCard(vm: LedgerViewModel, onDetails: () -> Unit) {
     val today = DeviceCalendar.today()
@@ -40,53 +43,42 @@ internal fun HomeCommissionCard(vm: LedgerViewModel, onDetails: () -> Unit) {
     Card(
         onClick = onDetails,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(19.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, AppColors.Stone),
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Surface(shape = RoundedCornerShape(12.dp), color = AppColors.Blush) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Surface(shape = RoundedCornerShape(9.dp), color = AppColors.Blush) {
                     Icon(Icons.Default.AccountBalanceWallet, null, tint = AppColors.PrimaryDeep,
-                        modifier = Modifier.padding(9.dp).size(24.dp))
+                        modifier = Modifier.padding(5.dp).size(20.dp))
                 }
-                Text("ကော်မရှင်ရငွေ", modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,
+                Text("ကော်မရှင်ရငွေ", Modifier.weight(1f),
+                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall,
                     color = AppColors.Ink)
-                Icon(Icons.Default.ChevronRight, "အသေးစိတ်ကြည့်ရန်",
-                    tint = AppColors.PrimaryDeep, modifier = Modifier.size(23.dp))
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("ဒီနေ့ ရရှိသော ကော်မရှင်", modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelMedium)
                 if (isClosed) Text("ပိတ်ရက်", color = AppColors.PrimaryDeep,
-                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
+                    tint = AppColors.PrimaryDeep, modifier = Modifier.size(21.dp))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 CommissionSessionTile("မနက်အကြိမ်", money.morning, Modifier.weight(1f))
                 CommissionSessionTile("ညနေအကြိမ်", money.evening, Modifier.weight(1f))
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("ဒီနေ့ စုစုပေါင်း", Modifier.weight(1f), fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodyMedium, color = AppColors.Ink)
+                    fontSize = 12.sp, color = AppColors.Ink)
                 Text(money.todayTotal.cardMoney(), fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.End,
-                    color = AppColors.PrimaryDeep)
+                    fontSize = 16.sp, textAlign = TextAlign.End, color = AppColors.PrimaryDeep)
             }
             HorizontalDivider(color = AppColors.Stone)
-            Text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(money.toDateTotal.cardMoney(), fontWeight = FontWeight.Black,
-                fontSize = 23.sp, lineHeight = 29.sp, color = AppColors.PrimaryDeep)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("အသေးစိတ်ကြည့်ရန်", style = MaterialTheme.typography.labelMedium,
-                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
-                Icon(Icons.Default.ChevronRight, null, tint = AppColors.PrimaryDeep,
-                    modifier = Modifier.size(17.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(money.toDateTotal.cardMoney(), fontWeight = FontWeight.Black,
+                    fontSize = 21.sp, lineHeight = 24.sp, color = AppColors.PrimaryDeep)
             }
         }
     }
@@ -95,13 +87,13 @@ internal fun HomeCommissionCard(vm: LedgerViewModel, onDetails: () -> Unit) {
 @Composable
 private fun CommissionSessionTile(label: String, amount: Long, modifier: Modifier) {
     Surface(modifier = modifier, color = AppColors.Blush.copy(alpha = .5f),
-        shape = RoundedCornerShape(13.dp)) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
+        shape = RoundedCornerShape(10.dp)) {
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(label, fontSize = 10.sp,
                 color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
-            Text(amount.cardMoney(), fontSize = 17.sp, lineHeight = 22.sp,
-                fontWeight = FontWeight.Bold, color = AppColors.Ink)
+            Text(amount.cardNumber(), fontSize = 16.sp, lineHeight = 19.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, color = AppColors.Ink)
         }
     }
 }
