@@ -15,35 +15,122 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.design.LocalLanguage
+import com.myanmar.ledger2d.core.domain.DrawSchedule
+import java.time.LocalDateTime
+
+/**
+ * Search the existing agent records only; never merges the same customer name
+ * across independent agents and never changes stored payout rates.
+ */
+internal fun filterAgentsForList(agents: List<AgentEntity>, rawQuery: String): List<AgentEntity> {
+    val query = rawQuery.trim()
+    if (query.isEmpty()) return agents
+    return agents.filter { agent ->
+        agent.name.contains(query, ignoreCase = true) ||
+            agent.phone.contains(query, ignoreCase = true) ||
+            agent.address.contains(query, ignoreCase = true)
+    }
+}
 
 @Composable
-fun AgentListWorkspaceScreen(vm: LedgerViewModel, onBack: () -> Unit, onInfo: (Long) -> Unit, onAdd: () -> Unit) {
+fun AgentListWorkspaceScreen(
+    vm: LedgerViewModel, onBack: () -> Unit, onInfo: (Long) -> Unit, onAdd: () -> Unit,
+) {
     val agents by vm.agents.collectAsStateWithLifecycle()
     val l = LocalLanguage.current
+    var search by rememberSaveable { mutableStateOf("") }
+    val visible = remember(agents, search) { filterAgentsForList(agents, search) }
+
     AppScaffold(l.translate("Agent List"), onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(l.translate("Add Agent နဲ့ ဖန်တီးထားသော Agent များ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            if (agents.isEmpty()) item { EmptyState(l.translate("ဒိုင်မရှိသေးပါ"), l.translate("Home မှ ဒိုင်အသစ်ထည့်ရန်ကို အသုံးပြုပါ")) }
-            else items(agents, key = { it.id }) { agent ->
-                ElevatedCard(onClick = { onInfo(agent.id) }, modifier = Modifier.fillMaxWidth()) {
-                    ListItem(
-                        headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
-                        supportingContent = { Text("${agent.rate} Rate" + if (agent.phone.isNotBlank()) " • ${agent.phone}" else "") },
-                        leadingContent = { Icon(Icons.Default.Store, null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingContent = { Icon(Icons.Default.ChevronRight, l.translate("ကြည့်ရန်")) }
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Text("ဒိုင်စာရင်း • ${agents.size} ယောက်",
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            if (agents.isNotEmpty()) {
+                item {
+                    OutlinedTextField(
+                        value = search, onValueChange = { search = it },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        label = { Text("ဒိုင်အမည် / ဖုန်း / လိပ်စာ ရှာရန်") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (search.isNotEmpty()) IconButton(onClick = { search = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "ရှာဖွေမှုရှင်းရန်")
+                            }
+                        },
                     )
                 }
+                if (search.isNotBlank()) item {
+                    Text("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            item { OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(l.translate("ဒိုင်အသစ်ထည့်ရန်")) } }
+            when {
+                agents.isEmpty() -> item {
+                    EmptyState(l.translate("ဒိုင်မရှိသေးပါ"),
+                        l.translate("ဒိုင်အသစ်ထည့်ရန်ကို အသုံးပြုပါ"))
+                }
+                visible.isEmpty() -> item {
+                    EmptyState("ရှာဖွေမှုနှင့်ကိုက်ညီသောဒိုင် မရှိပါ",
+                        "ဒိုင်အမည်၊ ဖုန်း သို့မဟုတ် လိပ်စာ ပြန်စစ်ပါ")
+                }
+                else -> items(visible, key = { it.id }) { agent ->
+                    AgentListRow(vm, agent, onInfo = { onInfo(agent.id) })
+                }
+            }
+            item {
+                OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(l.translate("ဒိုင်အသစ်ထည့်ရန်"))
+                }
+            }
         }
     }
 }
 
 @Composable
-fun CustomerListWorkspaceScreen(vm: LedgerViewModel, onBack: () -> Unit, onInfo: (Long) -> Unit, onAdd: (Long) -> Unit) {
+private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> Unit) {
+    val customers by vm.customers(agent.id)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    ElevatedCard(onClick = onInfo, modifier = Modifier.fillMaxWidth()) {
+        ListItem(
+            headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
+            supportingContent = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ" +
+                        if (agent.phone.isNotBlank()) " • ${agent.phone}" else "")
+                    Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
+                        style = MaterialTheme.typography.labelSmall)
+                }
+            },
+            leadingContent = {
+                Icon(Icons.Default.Store, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary)
+            },
+            trailingContent = {
+                Icon(Icons.Default.ChevronRight, contentDescription = "ဒိုင်အချက်အလက်ကြည့်ရန်")
+            },
+        )
+    }
+}
+
+@Composable
+fun CustomerListWorkspaceScreen(
+    vm: LedgerViewModel, onBack: () -> Unit, onInfo: (Long) -> Unit,
+    onAdd: (Long) -> Unit, initialAgentId: Long? = null,
+) {
     val agents by vm.agents.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
-    var selectedAgent by rememberSaveable { mutableStateOf(language.defaultAgentId) }
+    var selectedAgent by rememberSaveable(initialAgentId) {
+        mutableStateOf(initialAgentId ?: language.defaultAgentId)
+    }
     LaunchedEffect(agents, language.defaultAgentId) {
         if (selectedAgent == 0L || agents.none { it.id == selectedAgent }) {
             selectedAgent = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L
@@ -72,12 +159,61 @@ fun CustomerListWorkspaceScreen(vm: LedgerViewModel, onBack: () -> Unit, onInfo:
 }
 
 @Composable
-fun AgentInformationScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit, onEdit: (Long) -> Unit) {
+fun AgentInformationScreen(
+    vm: LedgerViewModel, id: Long, onBack: () -> Unit,
+    onEdit: (Long) -> Unit, onReport: (Long) -> Unit, onCustomers: (Long) -> Unit,
+) {
     val agent by vm.agent(id).collectAsStateWithLifecycle(initialValue = null)
     val profile = agent ?: return
+    val customers by vm.customers(id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val revision by vm.revision.collectAsStateWithLifecycle()
+    val upcoming = remember(id) { DrawSchedule.nextDraw(LocalDateTime.now()) }
+    val upcomingRate by produceState<Long?>(null, id, upcoming.date, upcoming.session, revision) {
+        value = vm.agentRateForDraw(id, upcoming.date, upcoming.session)
+    }
     val l = LocalLanguage.current
-    AppScaffold(l.translate("Agent Information"), onBack, action = { IconButton({ onEdit(id) }) { Icon(Icons.Default.Edit, l.translate("ပြင်ရန်")) } }) { padding ->
-        InformationCard(padding, profile.name, listOf("Rate" to profile.rate.toString(), "Phone" to profile.phone, "Address" to profile.address, "Remark" to profile.remark))
+    AppScaffold(
+        l.translate("Agent Information"), onBack,
+        action = {
+            IconButton(onClick = { onEdit(id) }) {
+                Icon(Icons.Default.Edit, contentDescription = l.translate("ပြင်ရန်"))
+            }
+        },
+    ) { padding ->
+        InformationCard(
+            padding, profile.name,
+            listOf(
+                "သတ်မှတ်ထားသောအဆ" to "${profile.rate} ဆ",
+                "Phone" to profile.phone,
+                "Address" to profile.address,
+                "Remark" to profile.remark,
+            ),
+        ) {
+            HorizontalDivider()
+            Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
+                style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                "နောက်အကြိမ် • ${upcoming.date} • ${upcoming.session.label} • " +
+                    (upcomingRate?.let { "${it} ဆ" } ?: "အဆကိုဖတ်နေသည်"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (upcomingRate != null && upcomingRate != profile.rate) {
+                Text("အကြိမ်အလိုက်သက်ရောက်သည့် အဆနှင့် သတ်မှတ်ထားသောအဆ ကွာခြားနေသည်။",
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.labelSmall)
+            }
+            Button(onClick = { onReport(id) }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.ReceiptLong, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("ဒိုင်စာရင်းရှင်းတမ်းကြည့်ရန်")
+            }
+            OutlinedButton(onClick = { onCustomers(id) }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.People, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("ဒီဒိုင်အောက်ရှိ ထိုးသားများ")
+            }
+        }
     }
 }
 
@@ -92,7 +228,11 @@ fun CustomerInformationScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit,
 }
 
 @Composable
-private fun InformationCard(padding: PaddingValues, title: String, fields: List<Pair<String, String>>) {
+private fun InformationCard(
+    padding: PaddingValues, title: String,
+    fields: List<Pair<String, String>>,
+    footer: @Composable ColumnScope.() -> Unit = {},
+) {
     Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -100,6 +240,7 @@ private fun InformationCard(padding: PaddingValues, title: String, fields: List<
                 fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontWeight = FontWeight.SemiBold) }
                 }
+                footer()
             }
         }
     }
