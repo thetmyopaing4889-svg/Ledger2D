@@ -84,6 +84,6 @@ class AgentSessionRuleWriter(
 
     private fun validate(agentId: Long, digits: List<String>) {
         require(agentId > 0 && digits.isNotEmpty() && digits.size <= 100 &&
-            digits.all(BetParser::validDigit)) { "Invalid agent or 2D digits" }
+            digits.all { BetParser.validDigit(it) }) { "Invalid agent or 2D digits" }
     }
 }
