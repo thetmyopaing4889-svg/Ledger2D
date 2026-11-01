@@ -34,6 +34,22 @@ import java.util.Locale
 
 private fun Long.digitMoney() = NumberFormat.getIntegerInstance(Locale.US).format(this)
 
+/**
+ * Remember which draw and agent selection produced the visible rows.
+ * Without this key, the previous draw's totals can briefly appear under a
+ * newly selected date or session while Room emits its first new value.
+ */
+private data class DigitTotalsContext(
+    val date: LocalDate?,
+    val session: DrawSession,
+    val selectedAgent: Long,
+    val agentNames: List<Pair<Long, String>>,
+)
+private data class LoadedDigitTotals(
+    val context: DigitTotalsContext,
+    val groups: List<AgentDigitGroup>,
+)
+
 @Composable
 fun AgentDigitTotalsWorkspace(
     vm: LedgerViewModel,
@@ -60,17 +76,22 @@ fun AgentDigitTotalsWorkspace(
     }
 
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
-    // Existing per-agent Room flows already distribute each saved commission
-    // across digits without duplicating a multiline bet's commission.
-    // Combine those same rows for the 'all agents' screen.
-    val groups by produceState<List<AgentDigitGroup>?>(null, date, session, agents) {
+    // One selected agent subscribes to ONE Room flow. "All agents" combines
+    // independently recorded agent flows; it never de-duplicates forwarded bets.
+    // The context key prevents old draw values from showing under a new header.
+    val context = DigitTotalsContext(
+        date, session, selectedAgent, agents.map { it.id to it.name },
+    )
+    val loaded by produceState<LoadedDigitTotals?>(null, context) {
         value = null
-        if (date == null || agents.isEmpty()) {
-            value = emptyList()
+        val selectedAgents = if (selectedAgent == -1L) agents
+            else agents.filter { it.id == selectedAgent }
+        if (date == null || selectedAgents.isEmpty()) {
+            value = LoadedDigitTotals(context, emptyList())
         } else {
-            val sources = agents.map { vm.agentTotalsWithCommission(it.id, date, session) }
+            val sources = selectedAgents.map { vm.agentTotalsWithCommission(it.id, date, session) }
             combine(sources) { allRows: Array<List<DigitCommissionRow>> ->
-                agents.mapIndexed { index, agent ->
+                selectedAgents.mapIndexed { index, agent ->
                     AgentDigitGroup(
                         agentId = agent.id,
                         agentName = agent.name,
@@ -79,15 +100,15 @@ fun AgentDigitTotalsWorkspace(
                         },
                     )
                 }
-            }.collect { value = it }
+            }.collect { value = LoadedDigitTotals(context, it) }
         }
     }
+    val groups = if (loaded?.context == context) loaded?.groups else null
     val selectedName = if (selectedAgent == -1L) "ဒိုင်အားလုံး"
         else agents.firstOrNull { it.id == selectedAgent }?.name ?: "ဒိုင်ရွေးရန်"
-    val filteredGroups = groups?.filter { selectedAgent == -1L || it.agentId == selectedAgent }
-    val activeGroups = filteredGroups?.filter { it.digits.isNotEmpty() }
-    val combined = remember(filteredGroups) {
-        filteredGroups?.let { AgentDigitTotalsAggregator.combine(it) }
+    val activeGroups = groups?.filter { it.digits.isNotEmpty() }
+    val combined = remember(groups) {
+        groups?.let { AgentDigitTotalsAggregator.combine(it) }
     }
 
     AppScaffold("အကွက်စုစုပေါင်း", onBack, includeQuickEntryFab = false) { padding ->
@@ -120,10 +141,10 @@ fun AgentDigitTotalsWorkspace(
             }
             if (date == null) {
                 item { Text("ရက်စွဲ မှန်ကန်စွာရွေးပါ", color = MaterialTheme.colorScheme.error) }
-            } else if (groups == null) {
-                item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             } else if (agents.isEmpty()) {
                 item { Text("ဒိုင်မရှိသေးပါ။ ဒိုင်အသစ်ထည့်ပြီးမှ စာရင်းကြည့်နိုင်မယ်။") }
+            } else if (groups == null) {
+                item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             } else if (selectedAgent > 0 && agents.none { it.id == selectedAgent }) {
                 item { Text("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ") }
             } else {
