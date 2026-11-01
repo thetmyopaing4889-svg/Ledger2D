@@ -98,4 +98,53 @@ class AgentStatementTest {
         assertEquals(80000L, customer.payout)
         assertEquals(setOf("20"), customer.stakes.map { it.digit }.toSet())
     }
+
+    @Test fun mixedCompletedAndPendingSessionsKeepFourMoneyAmountsConsistent() {
+        val stakes = listOf(
+            bet(1, 10, "20", 1000, 80, DrawSession.MORNING),
+            bet(1, 10, "30", 500, 85, DrawSession.EVENING),
+        )
+        val commissions = listOf(
+            comm(1, 10, 150, DrawSession.MORNING),
+            comm(1, 10, 75, DrawSession.EVENING),
+        )
+        val statement = AgentStatementCalculator.build(
+            stakes, commissions,
+            mapOf((day to DrawSession.EVENING) to "30"),
+        )
+        assertEquals(1500L, statement.totals.totalStake)
+        assertEquals(225L, statement.totals.savedNetCommission)
+        assertEquals(1000L, statement.totals.pendingStake)
+        assertEquals(500L, statement.totals.completedStake)
+        assertEquals(500L, statement.totals.winningStake)
+        assertEquals(42500L, statement.totals.payout)
+        assertEquals(1, statement.totals.completedDraws)
+        assertEquals(1, statement.totals.pendingDraws)
+        assertNull(statement.draws.single { it.session == DrawSession.MORNING }.payout)
+        assertEquals(42500L, statement.draws.single { it.session == DrawSession.EVENING }.payout)
+    }
+
+    @Test fun reenteredAndDeletedFinalWinnerRecalculateWithoutChangingAcceptedBets() {
+        val stakes = listOf(bet(1, 10, "20", 1000, 80), bet(1, 10, "30", 2000, 85))
+        val commission = listOf(comm(1, 10, 300))
+        val original = AgentStatementCalculator.build(
+            stakes, commission, mapOf((day to DrawSession.MORNING) to "20"))
+        val edited = AgentStatementCalculator.build(
+            stakes, commission, mapOf((day to DrawSession.MORNING) to "30"))
+        val deleted = AgentStatementCalculator.build(stakes, commission, emptyMap())
+        assertEquals(80000L, original.totals.payout)
+        assertEquals(170000L, edited.totals.payout)
+        assertEquals(3000L, original.totals.totalStake)
+        assertEquals(3000L, edited.totals.totalStake)
+        assertEquals(3000L, deleted.totals.pendingStake)
+        assertEquals(300L, deleted.totals.savedNetCommission)
+        assertNull(deleted.draws.single().payout)
+    }
+
+    @Test fun trulyEmptyPeriodDoesNotLookLikeAPendingSession() {
+        val empty = AgentStatementCalculator.build(emptyList(), emptyList(), emptyMap())
+        assertEquals(0, empty.totals.draws)
+        assertEquals(0, empty.totals.pendingDraws)
+        assertEquals(0, empty.totals.completedDraws)
+    }
 }
