@@ -24,6 +24,9 @@ class AgentStatementTest {
         assertEquals(15000L, report.totals.savedNetCommission)
         assertEquals(2000L, report.totals.winningStake)
         assertEquals(160000L, report.totals.payout)
+        assertEquals(-60000L, report.totals.profitLoss)
+        assertEquals(-45000L, report.totals.netProfitLoss)
+        assertEquals(15000L, report.totals.completedNetCommission)
         assertEquals(1, report.totals.completedDraws)
         assertEquals(0, report.totals.pendingDraws)
     }
@@ -40,6 +43,9 @@ class AgentStatementTest {
         assertEquals(1, report.totals.pendingDraws)
         assertNull(report.draws.single().payout)
         assertNull(report.draws.single().winningStake)
+        assertNull(report.totals.profitLoss)
+        assertNull(report.totals.netProfitLoss)
+        assertEquals(0L, report.totals.completedNetCommission)
     }
 
     @Test fun winningDigitNotBetReturnsGenuineZeroAfterResult() {
@@ -51,6 +57,8 @@ class AgentStatementTest {
         assertEquals(0L, report.draws.single().winningStake)
         assertEquals(0L, report.draws.single().payout)
         assertEquals(1, report.totals.completedDraws)
+        assertEquals(2000L, report.totals.profitLoss)
+        assertEquals(2250L, report.totals.netProfitLoss)
     }
 
     @Test fun sameCustomerNameAtDifferentAgentsNeverMergesAccounts() {
@@ -97,6 +105,8 @@ class AgentStatementTest {
         assertEquals(120L, customer.commission)
         assertEquals(80000L, customer.payout)
         assertEquals(setOf("20"), customer.stakes.map { it.digit }.toSet())
+        assertEquals(-79000L, customer.profitLoss)
+        assertEquals(-78880L, customer.netProfitLoss)
     }
 
     @Test fun mixedCompletedAndPendingSessionsKeepFourMoneyAmountsConsistent() {
@@ -118,6 +128,11 @@ class AgentStatementTest {
         assertEquals(500L, statement.totals.completedStake)
         assertEquals(500L, statement.totals.winningStake)
         assertEquals(42500L, statement.totals.payout)
+        assertEquals(-42000L, statement.totals.profitLoss)
+        // The morning session's 150-kyat commission is still shown, but is not realized yet.
+        assertEquals(225L, statement.totals.savedNetCommission)
+        assertEquals(75L, statement.totals.completedNetCommission)
+        assertEquals(-41925L, statement.totals.netProfitLoss)
         assertEquals(1, statement.totals.completedDraws)
         assertEquals(1, statement.totals.pendingDraws)
         assertNull(statement.draws.single { it.session == DrawSession.MORNING }.payout)
@@ -139,6 +154,11 @@ class AgentStatementTest {
         assertEquals(3000L, deleted.totals.pendingStake)
         assertEquals(300L, deleted.totals.savedNetCommission)
         assertNull(deleted.draws.single().payout)
+        assertEquals(-77000L, original.totals.profitLoss)
+        assertEquals(-76700L, original.totals.netProfitLoss)
+        assertEquals(-167000L, edited.totals.profitLoss)
+        assertEquals(-166700L, edited.totals.netProfitLoss)
+        assertNull(deleted.totals.netProfitLoss)
     }
 
     @Test fun trulyEmptyPeriodDoesNotLookLikeAPendingSession() {

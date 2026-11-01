@@ -42,6 +42,10 @@ data class AgentStatementDraw(
         }
     }
     val slots: Int = stakes.map { it.digit }.distinct().size
+    /** Positive is the reseller's profit, negative their loss; pending has no final result. */
+    val profitLoss: Long? get() = payout?.let { Math.subtractExact(totalStake, it) }
+    /** Commission belongs to the reseller; retain the saved draw-specific NET amount. */
+    val netProfitLoss: Long? get() = profitLoss?.let { Math.addExact(it, commission) }
     val resultKnown: Boolean get() = winner != null
     fun forCustomer(id: Long): AgentStatementDraw = copy(
         stakes = stakes.filter { it.customerId == id },
@@ -59,8 +63,12 @@ data class AgentStatementTotals(
     val completedDraws: Int,
     val pendingDraws: Int,
     val digitSlots: Long,
+    /** Only commission from completed draws may contribute to realized net profit/loss. */
+    val completedNetCommission: Long = 0L,
 ) {
     val draws: Int get() = completedDraws + pendingDraws
+    val profitLoss: Long? get() = if (completedDraws > 0) Math.subtractExact(completedStake, payout) else null
+    val netProfitLoss: Long? get() = profitLoss?.let { Math.addExact(it, completedNetCommission) }
 }
 
 data class AgentStatement(val draws: List<AgentStatementDraw>) {
@@ -100,6 +108,7 @@ object AgentStatementCalculator {
     fun summarize(draws: List<AgentStatementDraw>): AgentStatementTotals {
         var stake = 0L
         var commission = 0L
+        var completedCommission = 0L
         var completedStake = 0L
         var payout = 0L
         var winningStake = 0L
@@ -113,6 +122,7 @@ object AgentStatementCalculator {
             slots = Math.addExact(slots, draw.slots.toLong())
             if (draw.resultKnown) {
                 completed++
+                completedCommission = Math.addExact(completedCommission, draw.commission)
                 completedStake = Math.addExact(completedStake, draw.totalStake)
                 payout = Math.addExact(payout, draw.payout ?: 0L)
                 winningStake = Math.addExact(winningStake, draw.winningStake ?: 0L)
@@ -121,6 +131,6 @@ object AgentStatementCalculator {
                 pendingStake = Math.addExact(pendingStake, draw.totalStake)
             }
         }
-        return AgentStatementTotals(stake, commission, completedStake, winningStake, payout, pendingStake, completed, pending, slots)
+        return AgentStatementTotals(stake, commission, completedStake, winningStake, payout, pendingStake, completed, pending, slots, completedCommission)
     }
 }

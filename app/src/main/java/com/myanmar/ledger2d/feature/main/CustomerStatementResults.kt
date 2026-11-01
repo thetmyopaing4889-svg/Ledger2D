@@ -286,6 +286,8 @@ fun CustomerStatementResults(
                                 ReportLine("ထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်")
                                 ReportLine("ပေါက်ကြေး", if (t.completedDraws > 0) "${t.winningStake.statementAmount()} ကျပ်" else "—")
                                 ReportLine("ပြန်လျော်ငွေ", if (t.completedDraws > 0) "${t.payout.statementAmount()} ကျပ်" else "—")
+                                ReportLine("ထိုးသားအနိုင်/အရှုံး",
+                                    if (t.completedDraws > 0) "${t.customerWinLoss.statementSigned()} ကျပ်" else "—", true)
                                 if (open) {
                                     statementSections(draws, period, range).forEach { section ->
                                         ReportSectionCard(section, statement.stakes.filter { it.customerId == customer.id })
@@ -304,6 +306,8 @@ fun CustomerStatementResults(
                                 ReportLine("ထိုးကြေး", "${sub.totalBet.statementAmount()} ကျပ်", true)
                                 ReportLine("ပေါက်ကြေး", if (subCounts.completed > 0) sub.winningStake.statementAmount() else "—")
                                 ReportLine("ပြန်လျော်ငွေ", if (subCounts.completed > 0) sub.payout.statementAmount() else "—")
+                                ReportLine("ထိုးသားအနိုင်/အရှုံး",
+                                    if (subCounts.completed > 0) "${sub.customerWinLoss.statementSigned()} ကျပ်" else "—", true)
                                 if (search.isNotBlank()) Text("ရှာဖွေထားသည့် ထိုးသားများအတွက်သာ", style = MaterialTheme.typography.labelSmall)
                             }
                         }
@@ -320,6 +324,8 @@ fun CustomerStatementResults(
                                 Text("အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
                                 TableHeader()
                                 TableRow("စုစုပေါင်း", statement.totals, counts.completed > 0, true)
+                                ReportLine("ထိုးသားအနိုင်/အရှုံး",
+                                    if (counts.completed > 0) "${statement.totals.customerWinLoss.statementSigned()} ကျပ်" else "—", true)
                             }
                         }
                     }

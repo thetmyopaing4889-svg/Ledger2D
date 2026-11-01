@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -212,8 +214,13 @@ private fun BetEntriesRow(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(betEntryAmount(record).mmk(), fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(betEntryAmount(record).mmk(), fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
+                IconButton(onClick = onActions) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "စာရင်းပြင်ရန် သို့မဟုတ် ဖျက်ရန်")
+                }
+            }
         }
     }
 }

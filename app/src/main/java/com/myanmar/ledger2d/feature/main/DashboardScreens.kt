@@ -42,7 +42,6 @@ private val agentActions = listOf(
     DashboardAction("အကွက်စုစုပေါင်း", "ဒိုင်အလိုက်နှင့် ဂဏန်းတူရာ အားလုံးပေါင်း", Icons.Default.GridView, "total"),
     DashboardAction("အစီရင်ခံစာ", "Agent အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("ပိတ်ဂဏန်း", "Agent အလိုက် လက်မခံမည့်ဂဏန်း", Icons.Default.Lock, "closed"),
-    DashboardAction("ထီပေါက်စဉ်", "Global result မှတွက်ထားသော Agent result", Icons.Default.EmojiEvents, "winning"),
     DashboardAction("ကန့်သတ်ပမာဏ", "Agent-wide limits", Icons.Default.Tune, "limit")
 )
 
@@ -52,8 +51,7 @@ private val customerActions = listOf(
     DashboardAction("အစီရင်ခံစာ", "Customer အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("အမြန်သုံးသပ်ချက်", "အရှုံး/အမြတ်၊ ကာနည်းနှင့် အကြံပြုချက်", Icons.Default.Insights, "analysis"),
     DashboardAction("အကွက်စာရင်း", "00–99 • View, Sorting နှင့် Search", Icons.Default.GridView, "digits"),
-    DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission"),
-    DashboardAction("ထီပေါက်စဉ်", "Global result မှတွက်ထားသော Customer result", Icons.Default.EmojiEvents, "winning")
+    DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission")
 )
 
 @Composable

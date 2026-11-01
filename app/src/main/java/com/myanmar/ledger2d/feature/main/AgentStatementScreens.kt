@@ -35,6 +35,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private fun Long.agentMoney(): String = NumberFormat.getIntegerInstance(Locale.US).format(this)
+private fun Long.agentSignedMoney(): String = if (this > 0L) "+${agentMoney()}" else agentMoney()
+private fun Long?.agentResultMoney(): String = this?.let { "${it.agentSignedMoney()} ကျပ်" } ?: "—"
 
 @Composable
 fun AgentStatementWorkspace(
@@ -224,10 +226,13 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
                 "${totals.winningStake.agentMoney()} ကျပ်" else "ရလဒ်မထွက်သေး")
         AgentStatementValue("လျော်ပေးငွေ", if (totals.completedDraws > 0)
             "${totals.payout.agentMoney()} ကျပ်" else "—", true)
+        AgentStatementValue("ရှုံး/မြတ် (ကော်မရှင်မပါ)", totals.profitLoss.agentResultMoney())
+        AgentStatementValue("အသားတင်ရှုံး/မြတ် (Net ပါ)", totals.netProfitLoss.agentResultMoney(), true)
         if (totals.pendingDraws > 0) {
             Text(
                 "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ " +
-                    "ပေါက်ကြေးနှင့် လျော်ငွေမှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာဖြစ်သည်။",
+                    "ပေါက်ကြေး၊ လျော်ငွေ၊ ရှုံး/မြတ်တို့မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာဖြစ်ပြီး " +
+                    "အသားတင်ရှုံး/မြတ်တွင် Pending Session ကော်မရှင် မပါဝင်ပါ။",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -239,7 +244,8 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
 private fun AgentStatementTableHeader(scroll: ScrollState) {
     Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ကော်မရှင်", "ပေါက်ကြေး", "လျော်ငွေ").forEachIndexed { i, name ->
+        listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ကော်မရှင်", "ပေါက်ကြေး", "လျော်ငွေ",
+            "ရှုံး/မြတ်", "အသားတင်ရှုံး/မြတ်").forEachIndexed { i, name ->
             Text(name, Modifier.width(if (i == 0) 120.dp else 132.dp),
                 fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall,
                 textAlign = if (i == 0) TextAlign.Start else TextAlign.End, maxLines = 2)
@@ -262,6 +268,11 @@ private fun AgentStatementTableRow(
             Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
         Text(if (totals.completedDraws > 0) totals.payout.agentMoney() else "—",
             Modifier.width(132.dp), textAlign = TextAlign.End, style = style,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+        Text(totals.profitLoss.agentResultMoney(), Modifier.width(132.dp),
+            textAlign = TextAlign.End, style = style)
+        Text(totals.netProfitLoss.agentResultMoney(), Modifier.width(156.dp),
+            textAlign = TextAlign.End, style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
 }
@@ -301,6 +312,8 @@ private fun AgentStatementDrawDetail(
             AgentStatementValue("ကော်မရှင် (Net)", "${draw.commission.agentMoney()} ကျပ်")
             AgentStatementValue("ပေါက်ကြေး", draw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
             AgentStatementValue("လျော်ပေးငွေ", draw.payout?.let { "${it.agentMoney()} ကျပ်" } ?: "—", true)
+            AgentStatementValue("ရှုံး/မြတ် (ကော်မရှင်မပါ)", draw.profitLoss.agentResultMoney())
+            AgentStatementValue("အသားတင်ရှုံး/မြတ် (Net ပါ)", draw.netProfitLoss.agentResultMoney(), true)
             val customerIds = (draw.stakes.map { it.customerId } + draw.commissions.map { it.customerId }).distinct()
             if (customerIds.isNotEmpty()) {
                 HorizontalDivider()
@@ -323,6 +336,8 @@ private fun AgentStatementDrawDetail(
                         AgentStatementValue("ကော်မရှင် (Net)", "${customerDraw.commission.agentMoney()} ကျပ်")
                         AgentStatementValue("ပေါက်ကြေး", customerDraw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
                         AgentStatementValue("လျော်ပေးငွေ", customerDraw.payout?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
+                        AgentStatementValue("ရှုံး/မြတ် (ကော်မရှင်မပါ)", customerDraw.profitLoss.agentResultMoney())
+                        AgentStatementValue("အသားတင်ရှုံး/မြတ် (Net ပါ)", customerDraw.netProfitLoss.agentResultMoney(), true)
                         AgentStatementDigitDetails(customerDraw)
                     }
                 }
@@ -354,6 +369,11 @@ private fun AgentStatementSectionCard(
                 }
             }
             if (open) {
+                if (showAgents) {
+                    val realSessions = section.draws.map { it.date to it.session }.toSet().size
+                    Text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${totals.draws} ကြိမ်",
+                        style = MaterialTheme.typography.labelSmall)
+                }
                 AgentStatementTableHeader(tableScroll)
                 val byDraw = section.draws.groupBy { it.date to it.session }
                     .toList().sortedWith(compareBy({ it.first.first }, { it.first.second.ordinal }))
@@ -441,6 +461,9 @@ fun AgentStatementResults(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (agentId == -1L) item {
+                val realSessions = data.draws.map { it.date to it.session }.toSet().size
+                Text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${data.totals.draws} ကြိမ်",
+                    style = MaterialTheme.typography.labelSmall)
                 Text("ဒိုင်အားလုံး စာရင်းပေါင်းသည် Agent အလိုက်သိမ်းထားသော စာရင်းများပေါင်းသာဖြစ်သည်။ " +
                     "Self/အခြားဒိုင်ဆီ ပြန်တင်ထားသောစာရင်းများ ပါနိုင်သဖြင့် မူလရောင်းအားအမှန်ဟု မသတ်မှတ်ပါ။",
                     style = MaterialTheme.typography.labelSmall,
