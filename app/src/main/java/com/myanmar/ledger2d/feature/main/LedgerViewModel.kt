@@ -342,6 +342,33 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun deleteWinner(value:WinningNumberEntity,onError:(String)->Unit={} ){ viewModelScope.launch { runCatching { container.winners.delete(value) }.onSuccess { container.audit.record("WINNER",value.id,"DELETE","${value.date}/${value.session.name}"); changed() }.onFailure { onError(it.message ?: "ရလဒ်ဖျက်၍ မရပါ") } } }
     fun addClosedDay(date:LocalDate,onError:(String)->Unit={} ){ viewModelScope.launch { runCatching { container.closedDays.add(date) }.onSuccess { changed() }.onFailure { onError(it.message ?: "ပိတ်ရက်သိမ်း၍ မရပါ") } } }
     fun removeClosedDay(value:ClosedDayEntity){ viewModelScope.launch { runCatching { container.closedDays.remove(value) }.onSuccess { container.audit.record("CLOSED_DAY",value.id,"DELETE",value.date.toString()); changed() } } }
+    /**
+     * Agent-facing read-only statement. -1 means all independent agent records,
+     * not de-duplicated sales. Commission is saved NET commission, never gross.
+     */
+    suspend fun agentStatement(
+        agentId: Long,
+        range: StatementRange,
+        selectedSession: DrawSession? = null,
+    ): AgentStatement {
+        require(agentId == -1L || agentId > 0L)
+        val bets = container.database.betDao()
+        val stakes = bets.agentStatementRatedRows(agentId, range.start, range.end).map {
+            AgentRatedStake(
+                it.agentId, it.customerId, it.drawDate, it.drawSession,
+                it.digit, it.amount, it.payoutRate,
+            )
+        }
+        val commission = bets.agentStatementCommissionRows(agentId, range.start, range.end).map {
+            AgentSavedCommission(it.agentId, it.customerId, it.drawDate, it.drawSession, it.commission)
+        }
+        // Only final winners saved in Room; provisional live UI is not a report result.
+        val savedWinners = container.winners.observeAll().first()
+            .filter { range.contains(it.date) }
+            .associate { (it.date to it.session) to it.digit }
+        return AgentStatementCalculator.build(stakes, commission, savedWinners, selectedSession)
+    }
+
     /** Customer-facing report is read-only; no commission or agent P/L is exposed. */
     suspend fun customerStatement(
         agentId: Long,
