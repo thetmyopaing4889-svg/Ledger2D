@@ -54,11 +54,24 @@ import java.time.LocalDateTime
         composable("agentDashboard"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");else->nav.navigate("agentWorkspace/$feature")}})}
         composable("agentWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "total";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else AgentFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()})}
         composable("agentList"){AgentListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("agentInfo/$it")},{nav.navigate("agentForm/0")})}
-        composable("agentInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentInformationScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){nav.navigate("agentForm/$it")}}
+        composable("agentInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->
+            AgentInformationScreen(vm,e.arguments!!.getLong("id"),
+                {nav.popBackStack()},
+                {nav.navigate("agentForm/$it")},
+                {nav.navigate("report/agent/$it")},
+                {nav.navigate("customerListForAgent/$it")})
+        }
         composable("agentScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AgentScopeScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()}){feature,id->when(feature){"total"->if(id==-1L)nav.navigate("allAgentFeature/total") else nav.navigate("total/$id");"report"->if(id==-1L)nav.navigate("allAgentFeature/report") else nav.navigate("report/agent/$id");"closed"->if(id==-1L)nav.navigate("allAgentFeature/closed") else nav.navigate("closed/$id");"winning"->nav.navigate("winning/view");"limit"->if(id==-1L)nav.navigate("allAgentFeature/limit") else nav.navigate("agentLimit/$id")}}}
         composable("allAgentFeature/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AllAgentFeatureScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()})}
         composable("customerDashboard"){CustomerDashboardScreen(vm,{nav.popBackStack()},{},{feature->when(feature){"customerList"->nav.navigate("customerList");else->nav.navigate("customerWorkspace/$feature")}})}
         composable("customerList"){CustomerListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("customerInfo/$it")},{agentId->nav.navigate("customerForm/$agentId/0")})}
+        composable("customerListForAgent/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->
+            CustomerListWorkspaceScreen(vm,
+                {nav.popBackStack()},
+                {nav.navigate("customerInfo/$it")},
+                {agentId->nav.navigate("customerForm/$agentId/0")},
+                initialAgentId=e.arguments!!.getLong("agentId"))
+        }
         composable("customerInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CustomerInformationScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){agentId,id->nav.navigate("customerForm/$agentId/$id")}}
         composable("customerWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "history";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else CustomerFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()},{entryId->nav.navigate("betEdit/$entryId")})}
         composable("customerScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->CustomerScopeScreen(vm,e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()}){feature,agentId,customerId->if(feature=="winning")nav.navigate("winning/view") else if(customerId==-1L)nav.navigate("allCustomerScope/$agentId/$feature") else when(feature){"history"->nav.navigate("betHistory/$customerId");"report"->nav.navigate("report/customer/$customerId");"analysis"->nav.navigate("analysis/$customerId");"digits"->nav.navigate("digitList/$agentId/$customerId");"commission"->nav.navigate("commission/$customerId")}}}
