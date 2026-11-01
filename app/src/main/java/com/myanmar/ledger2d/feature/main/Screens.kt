@@ -266,7 +266,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,iconTint:Color,modifier:Modifier,height:androidx.compose.ui.unit.Dp=88.dp){
     Surface(modifier.height(height),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
-        Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+        Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=if (height < 80.dp) 6.dp else 10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
             Text(label.uppercase(Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=0.8.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
             Row(Modifier.padding(top=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
                 Surface(Modifier.size(26.dp),shape=CircleShape,color=AppColors.Blush){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=iconTint,modifier=Modifier.size(14.dp))}}
