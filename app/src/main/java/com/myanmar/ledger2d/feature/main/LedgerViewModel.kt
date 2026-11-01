@@ -369,6 +369,10 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         return AgentStatementCalculator.build(stakes, commission, savedWinners, selectedSession)
     }
 
+    suspend fun agentStatementCustomerNames(agentIds: Set<Long>): Map<Long, String> =
+        agentIds.flatMap { id -> container.customers.getForAgent(id) }
+            .associate { it.id to it.name }
+
     /** Customer-facing report is read-only; no commission or agent P/L is exposed. */
     suspend fun customerStatement(
         agentId: Long,
