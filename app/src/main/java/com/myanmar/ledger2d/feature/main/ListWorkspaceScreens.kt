@@ -131,9 +131,14 @@ fun CustomerListWorkspaceScreen(
     var selectedAgent by rememberSaveable(initialAgentId) {
         mutableStateOf(initialAgentId ?: language.defaultAgentId)
     }
-    LaunchedEffect(agents, language.defaultAgentId) {
-        if (selectedAgent == 0L || agents.none { it.id == selectedAgent }) {
-            selectedAgent = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L
+    LaunchedEffect(agents, language.defaultAgentId, initialAgentId) {
+        // Keep the requested agent while the list is still loading. When opened
+        // from Agent Information, never switch silently to the global default.
+        if (agents.isNotEmpty() &&
+            (selectedAgent == 0L || agents.none { it.id == selectedAgent })) {
+            selectedAgent = agents.firstOrNull { it.id == initialAgentId }?.id
+                ?: agents.firstOrNull { it.id == language.defaultAgentId }?.id
+                ?: agents.first().id
         }
     }
     val customers by vm.customers(selectedAgent).collectAsStateWithLifecycle(initialValue = emptyList())
