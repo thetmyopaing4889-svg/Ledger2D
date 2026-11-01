@@ -39,7 +39,7 @@ private data class DashboardAction(val title: String, val subtitle: String, val 
 
 private val agentActions = listOf(
     DashboardAction("Agent List", "Add Agent ဖြင့် ဖန်တီးထားသော Agent များ", Icons.Default.List, "agentList"),
-    DashboardAction("စုစုပေါင်းစာရင်း", "Agent အလိုက် စာရင်းစုစုပေါင်း", Icons.Default.ReceiptLong, "total"),
+    DashboardAction("အကွက်စုစုပေါင်း", "ဒိုင်အလိုက်နှင့် ဂဏန်းတူရာ အားလုံးပေါင်း", Icons.Default.GridView, "total"),
     DashboardAction("အစီရင်ခံစာ", "Agent အလိုက် report", Icons.Default.Assessment, "report"),
     DashboardAction("ပိတ်ဂဏန်း", "Agent အလိုက် လက်မခံမည့်ဂဏန်း", Icons.Default.Lock, "closed"),
     DashboardAction("ထီပေါက်စဉ်", "Global result မှတွက်ထားသော Agent result", Icons.Default.EmojiEvents, "winning"),
@@ -142,6 +142,10 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
 
 @Composable
 fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    if (feature == "total") {
+        AgentDigitTotalsWorkspace(vm, onBack)
+        return
+    }
     if (feature == "report") {
         AgentStatementWorkspace(vm, onBack)
         return
@@ -508,6 +512,10 @@ private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: L
 
 @Composable
 fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    if (feature == "total") {
+        AgentDigitTotalsWorkspace(vm, onBack, initialAgentId = -1L)
+        return
+    }
     if (feature == "report") {
         AgentStatementWorkspace(vm, onBack, initialAgentId = -1L)
         return
