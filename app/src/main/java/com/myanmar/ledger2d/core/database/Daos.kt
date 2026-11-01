@@ -41,7 +41,42 @@ data class CustomerStatementRatedRow(
     val payoutRate: Long,
     val amount: Long,
 )
+/** Read-only grouped bet stakes. Preserves each entry's saved agent payout rate. */
+data class AgentStatementRatedRow(
+    val agentId: Long,
+    val customerId: Long,
+    val drawDate: LocalDate,
+    val drawSession: DrawSession,
+    val digit: String,
+    val payoutRate: Long,
+    val amount: Long,
+)
+data class AgentStatementCommissionRow(
+    val agentId: Long,
+    val customerId: Long,
+    val drawDate: LocalDate,
+    val drawSession: DrawSession,
+    val commission: Long,
+)
 @Dao interface BetDao {
+    @Query("""SELECT be.agentId AS agentId, be.customerId AS customerId,
+        be.drawDate AS drawDate, be.drawSession AS drawSession,
+        bl.digit AS digit, be.payoutRate AS payoutRate, SUM(bl.amount) AS amount
+        FROM bet_entries be JOIN bet_lines bl ON bl.betEntryId = be.id
+        WHERE be.drawDate BETWEEN :start AND :end AND (:agentId = -1 OR be.agentId = :agentId)
+        GROUP BY be.agentId, be.customerId, be.drawDate, be.drawSession, bl.digit, be.payoutRate
+        ORDER BY be.drawDate, be.drawSession, be.agentId, be.customerId, bl.digit""")
+    suspend fun agentStatementRatedRows(agentId: Long, start: LocalDate, end: LocalDate): List<AgentStatementRatedRow>
+
+    @Query("""SELECT be.agentId AS agentId, be.customerId AS customerId,
+        be.drawDate AS drawDate, be.drawSession AS drawSession,
+        SUM(be.commissionAmount) AS commission
+        FROM bet_entries be
+        WHERE be.drawDate BETWEEN :start AND :end AND (:agentId = -1 OR be.agentId = :agentId)
+        GROUP BY be.agentId, be.customerId, be.drawDate, be.drawSession
+        ORDER BY be.drawDate, be.drawSession, be.agentId, be.customerId""")
+    suspend fun agentStatementCommissionRows(agentId: Long, start: LocalDate, end: LocalDate): List<AgentStatementCommissionRow>
+
     @Query("""SELECT be.customerId AS customerId, be.drawDate AS drawDate,
         be.drawSession AS drawSession, bl.digit AS digit,
         be.payoutRate AS payoutRate, SUM(bl.amount) AS amount
