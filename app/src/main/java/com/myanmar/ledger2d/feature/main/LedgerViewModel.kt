@@ -2,7 +2,6 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.withTransaction
 import com.myanmar.ledger2d.AppContainer
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.domain.*
@@ -261,90 +260,33 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         viewModelScope.launch{val id=container.closedNumbers.add(agentId,date,session,digit);container.audit.record("CLOSED_NUMBER",id,"CREATE",date.toString()+"/"+session+"/"+digit);changed()}
     }
     fun removeClosedNumber(value:ClosedNumberEntity){viewModelScope.launch{container.closedNumbers.remove(value);container.audit.record("CLOSED_NUMBER",value.id,"DELETE",value.drawDate.toString()+"/"+value.drawSession);changed()}}
-    /** Entire selection is saved in ONE transaction, only in the chosen draw. */
+    /** Batch operations share an atomic, directly integration-tested writer. */
+    private val sessionRuleWriter by lazy {
+        com.myanmar.ledger2d.core.repository.AgentSessionRuleWriter(
+            container.database, container.audit
+        )
+    }
+
     fun updateClosedDigitGroup(
         agentId: Long, date: LocalDate, session: DrawSession,
         digits: List<String>, close: Boolean,
         onDone: (Int) -> Unit, onError: (String) -> Unit,
     ) {
-        if (agentId <= 0 || digits.isEmpty() || digits.any { !BetParser.validDigit(it) }) {
-            onError("ပိတ်မည့်ဂဏန်းများကို ပြန်စစ်ပါ")
-            return
-        }
         viewModelScope.launch {
-            runCatching {
-                container.database.withTransaction {
-                    val dao = container.database.closedNumberDao()
-                    var count = 0
-                    digits.distinct().forEach { digit ->
-                        val old = dao.get(agentId, date, session, digit)
-                        if (close && old == null) {
-                            val now = System.currentTimeMillis()
-                            val id = dao.upsert(ClosedNumberEntity(
-                                agentId = agentId, digit = digit, drawDate = date,
-                                drawSession = session, createdAt = now, updatedAt = now,
-                            ))
-                            container.audit.record("CLOSED_NUMBER", id, "CREATE",
-                                "$date/$session/$digit/group")
-                            count++
-                        } else if (!close && old != null) {
-                            dao.delete(old)
-                            container.audit.record("CLOSED_NUMBER", old.id, "DELETE",
-                                "$date/$session/$digit/group")
-                            count++
-                        }
-                    }
-                    count
-                }
-            }.onSuccess { changed(); onDone(it) }
+            runCatching { sessionRuleWriter.closed(agentId, date, session, digits, close) }
+                .onSuccess { changed(); onDone(it) }
                 .onFailure { onError(it.message ?: "ပိတ်ဂဏန်းသိမ်းခြင်း မအောင်မြင်ပါ") }
         }
     }
 
-    /** An atomic per-draw batch of agent special limits, never customer limits. */
     fun updateAgentLimitGroup(
         agentId: Long, date: LocalDate, session: DrawSession,
         digits: List<String>, amount: Long?, remove: Boolean,
         onDone: (Int) -> Unit, onError: (String) -> Unit,
     ) {
-        if (agentId <= 0 || digits.isEmpty() ||
-            digits.any { !BetParser.validDigit(it) } ||
-            (!remove && (amount == null || amount <= 0L))) {
-            onError("ဂဏန်းနှင့် Limit ပမာဏကို ပြန်စစ်ပါ")
-            return
-        }
         viewModelScope.launch {
             runCatching {
-                container.database.withTransaction {
-                    val dao = container.database.agentLimitDao()
-                    var count = 0
-                    digits.distinct().forEach { digit ->
-                        val old = dao.getSpecial(agentId, date, session, digit)
-                        if (remove) {
-                            if (old != null) {
-                                dao.deleteSpecial(old)
-                                container.audit.record("AGENT_SPECIAL_LIMIT", old.id, "DELETE",
-                                    "$date/$session/$digit/group")
-                                count++
-                            }
-                        } else if (old?.amount != amount) {
-                            val now = System.currentTimeMillis()
-                            val row = AgentSpecialLimitEntity(
-                                id = old?.id ?: 0L, agentId = agentId, digit = digit,
-                                amount = requireNotNull(amount), drawDate = date,
-                                drawSession = session,
-                                createdAt = old?.createdAt ?: now, updatedAt = now,
-                            )
-                            val id = dao.upsert(row)
-                            container.audit.record("AGENT_SPECIAL_LIMIT",
-                                if (old == null) id else old.id,
-                                if (old == null) "CREATE" else "UPDATE",
-                                "$date/$session/$digit/group")
-                            count++
-                        }
-                    }
-                    count
-                }
+                sessionRuleWriter.specialLimits(agentId, date, session, digits, amount, remove)
             }.onSuccess { changed(); onDone(it) }
                 .onFailure { onError(it.message ?: "Limit သိမ်းခြင်း မအောင်မြင်ပါ") }
         }
