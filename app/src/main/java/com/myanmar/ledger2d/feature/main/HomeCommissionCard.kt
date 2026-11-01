@@ -28,8 +28,8 @@ import java.util.Locale
 private fun Long.cardAmount() = NumberFormat.getIntegerInstance(Locale.US).format(this)
 
 /**
- * All four commission values in a single compact two-column strip.
- * The Header, Weekly Results, buttons and 76dp Analysis/Data tiles keep their old sizes.
+ * Home-only commission presentation; saved snapshot totals and detail reports
+ * remain unchanged. Two columns keep the four sums legible without a tall card.
  */
 @Composable
 internal fun HomeCommissionCard(
@@ -48,60 +48,93 @@ internal fun HomeCommissionCard(
     Card(
         onClick = onDetails,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(17.dp),
+        shape = RoundedCornerShape(19.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, AppColors.Stone),
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.AccountBalanceWallet, null,
-                        tint = AppColors.PrimaryDeep, modifier = Modifier.size(14.dp))
-                    Text("ကော်မရှင်ရငွေ", color = AppColors.Ink,
-                        fontSize = 12.sp, lineHeight = 16.sp,
-                        fontWeight = FontWeight.Bold, maxLines = 1)
-                    if (isClosed) Text("ပိတ်ရက်", color = AppColors.PrimaryDeep,
-                        fontSize = 9.sp, maxLines = 1)
-                }
-                Text(
-                    "မနက် ${totals.morning.cardAmount()}  •  ညနေ ${totals.evening.cardAmount()}",
-                    fontSize = 10.sp, lineHeight = 13.sp,
-                    color = AppColors.Ink, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "ဒီနေ့စုစုပေါင်း ${totals.todayTotal.cardAmount()}",
-                    fontSize = 11.sp, lineHeight = 15.sp,
-                    fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Icon(Icons.Default.AccountBalanceWallet, null,
+                    tint = AppColors.PrimaryDeep, modifier = Modifier.size(20.dp))
+                Text("ကော်မရှင်ရငွေ", modifier = Modifier.weight(1f),
+                    fontSize = 14.sp, lineHeight = 19.sp,
+                    fontWeight = FontWeight.Bold, color = AppColors.Ink)
+                if (isClosed) Text("ပိတ်ရက်", fontSize = 10.sp,
+                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.Bold)
+                Text("အသေးစိတ်", fontSize = 11.sp,
+                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
+                    tint = AppColors.PrimaryDeep, modifier = Modifier.size(18.dp))
             }
-            VerticalDivider(Modifier.height(40.dp), color = AppColors.Stone)
-            Column(Modifier.weight(1.0f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    "ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း",
-                    fontSize = 10.sp, lineHeight = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1.12f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    HomeCommissionAmountRow("မနက်အကြိမ်", totals.morning, false)
+                    HomeCommissionAmountRow("ညနေအကြိမ်", totals.evening, false)
+                    HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
+                    HomeCommissionAmountRow("ဒီနေ့စုစုပေါင်း", totals.todayTotal, true)
+                }
+                VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        "ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း",
+                        fontSize = 11.sp, lineHeight = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                    )
                     Text(
                         totals.toDateTotal.cardAmount() + " ကျပ်",
-                        modifier = Modifier.weight(1f),
-                        fontSize = 15.sp, lineHeight = 19.sp,
-                        fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 17.sp,
+                        lineHeight = 20.sp, fontWeight = FontWeight.Black,
+                        color = AppColors.PrimaryDeep, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    Icon(Icons.Default.ChevronRight, "အသေးစိတ်ကြည့်ရန်",
-                        tint = AppColors.PrimaryDeep, modifier = Modifier.size(15.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeCommissionAmountRow(label: String, amount: Long, emphasis: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            fontSize = if (emphasis) 11.sp else 10.sp,
+            lineHeight = 14.sp, color = if (emphasis) AppColors.PrimaryDeep
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (emphasis) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            amount.cardAmount(),
+            fontSize = if (amount.cardAmount().length > 11) 11.sp else 14.sp,
+            lineHeight = 18.sp,
+            color = if (emphasis) AppColors.PrimaryDeep else AppColors.Ink,
+            fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

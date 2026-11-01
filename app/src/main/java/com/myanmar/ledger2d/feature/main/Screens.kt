@@ -193,10 +193,10 @@ fun transactionDisplayText(format: String, raw: String): String {
                 ) {
                     HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
                     HomeWeeklyResults(vm)
-                    // Commission alone adapts to the remaining height; other tiles stay unchanged.
-                    HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f,fill=false))
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeAction(Icons.Default.PersonAdd,l.translate("ဒိုင်အသစ်"),onAddAgent,Modifier.weight(1f));HomeAction(Icons.Default.GroupAdd,l.translate("ထိုးသားအသစ်"),onAddCustomer,Modifier.weight(1f))}
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){HomeFutureAction(Icons.Default.PieChart,l.translate("2D သုံးသပ်ချက်"),l.translate("လာမည်"),Modifier.weight(1f));HomeFutureAction(Icons.Default.Storage,l.translate("ဒေတာအသစ်"),l.translate("လာမည်"),Modifier.weight(1f))}
+                    // Only the commission area and quick actions change; retain original
+                    // Header, LIVE, Weekly Results, bottom navigation and footer.
+                    HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
+                    HomeQuickActionsRow(onAddAgent, onAddCustomer)
                     HomeFooter()
                 }
             }
@@ -357,22 +357,93 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable private fun HomeMetric(label:String,value:String,modifier:Modifier=Modifier)=Surface(modifier,color=MaterialTheme.colorScheme.surface.copy(alpha=.72f),shape=MaterialTheme.shapes.medium){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){Text(label,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}
-@Composable private fun HomeAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,onClick:()->Unit,modifier:Modifier=Modifier){val (interaction,pressScale)=rememberPressScale("homeAction");ElevatedCard(onClick=onClick,interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){Row(Modifier.fillMaxSize().padding(horizontal=9.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){Surface(Modifier.size(40.dp),color=AppColors.Blush,shape=CircleShape,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.75f))){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(10.dp).fillMaxSize())};Text(title,style=MaterialTheme.typography.labelMedium,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(21.dp))}}}
-@Composable private fun HomeFutureAction(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,badge:String,modifier:Modifier=Modifier){
-    val l=LocalLanguage.current
-    val (interaction,pressScale)=rememberPressScale("futureAction")
-    ElevatedCard(onClick={},interactionSource=interaction,modifier=modifier.height(76.dp).graphicsLayer{scaleX=pressScale;scaleY=pressScale},shape=RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=Color.White),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
-        Box(Modifier.fillMaxSize().border(1.dp,AppColors.Stone.copy(alpha=.8f),RoundedCornerShape(20.dp))){
-            Row(Modifier.fillMaxSize().padding(start=11.dp,end=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                Surface(Modifier.size(38.dp),color=AppColors.Blush,shape=CircleShape){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(19.dp))}}
-                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)){
-                    Text(title,color=AppColors.Ink,style=MaterialTheme.typography.titleSmall,fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
-                    Text(l.translate("လာမာလုပ်ဆောင်ချက်"),style=MaterialTheme.typography.labelSmall,fontSize=9.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,softWrap=false)
+/**
+ * KBZPay-style four-across icon shortcuts. Keeping the icon and label in one
+ * touch target frees a whole 76dp card row for the Home commission summary.
+ */
+@Composable private fun HomeQuickActionsRow(onAddAgent: () -> Unit, onAddCustomer: () -> Unit) {
+    val language = LocalLanguage.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        HomeQuickAction(
+            Icons.Default.PersonAdd,
+            language.translate("ဒိုင်အသစ်"),
+            onClick = onAddAgent,
+            modifier = Modifier.weight(1f),
+        )
+        HomeQuickAction(
+            Icons.Default.GroupAdd,
+            language.translate("ထိုးသားအသစ်"),
+            onClick = onAddCustomer,
+            modifier = Modifier.weight(1f),
+        )
+        HomeQuickAction(
+            Icons.Default.PieChart,
+            "2D Analysis",
+            onClick = null,
+            modifier = Modifier.weight(1f),
+            comingSoon = true,
+        )
+        HomeQuickAction(
+            Icons.Default.Storage,
+            "Better Data",
+            onClick = null,
+            modifier = Modifier.weight(1f),
+            comingSoon = true,
+        )
+    }
+}
+
+@Composable private fun HomeQuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    comingSoon: Boolean = false,
+) {
+    val tapModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
+    Column(
+        modifier.then(tapModifier).padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Surface(
+                modifier = Modifier.size(45.dp),
+                shape = CircleShape,
+                color = AppColors.Blush,
+                border = BorderStroke(1.dp, AppColors.Stone.copy(alpha = .75f)),
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.size(23.dp))
                 }
-                Surface(shape=RoundedCornerShape(9.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.PrimaryDeep.copy(alpha=.5f))){Text(badge,Modifier.padding(horizontal=7.dp,vertical=3.dp),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)}
-                Icon(Icons.Default.ChevronRight,null,tint=AppColors.PrimaryDeep.copy(alpha=.75f),modifier=Modifier.size(18.dp))
+            }
+            if (comingSoon) {
+                Surface(
+                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-2).dp),
+                    shape = RoundedCornerShape(5.dp),
+                    color = AppColors.PrimaryDeep,
+                ) {
+                    Text(
+                        "Soon",
+                        modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
+                        fontSize = 8.sp, lineHeight = 10.sp,
+                        color = Color.White, fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         }
+        Text(
+            label,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp),
+            fontSize = 11.sp, lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold, color = AppColors.Ink,
+            maxLines = 2, textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 @Composable private fun rememberPressScale(label:String):Pair<MutableInteractionSource,Float>{val interaction=remember{MutableInteractionSource()};val pressed by interaction.collectIsPressedAsState();val scale by animateFloatAsState(if(pressed).965f else 1f,tween(AppMotion.Short),label=label);return interaction to scale}
