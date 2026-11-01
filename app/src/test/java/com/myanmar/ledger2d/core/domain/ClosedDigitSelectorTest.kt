@@ -13,7 +13,7 @@ class ClosedDigitSelectorTest {
         val input = when (format) {
             QuickFormat.MANUAL -> return digits(format, source)
             QuickFormat.HEAD, QuickFormat.TAIL, QuickFormat.ROUND,
-            QuickFormat.COMBINATION, QuickFormat.COMBINATION_DOUBLES -> "$"+"source.1"
+            QuickFormat.COMBINATION, QuickFormat.COMBINATION_DOUBLES -> source + ".1"
             else -> "1"
         }
         return (engine.expand(input, format) as ParseResult.Success).bets
