@@ -1027,6 +1027,10 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
 
 @Composable
 fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Unit) {
+    if (scope == "agent") {
+        AgentStatementWorkspace(vm, onBack, initialAgentId = id.takeIf { it > 0L })
+        return
+    }
     if (scope == "customer") {
         CustomerReviewWorkspace(vm, "report", onBack, initialCustomerId = id)
         return
