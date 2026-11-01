@@ -60,6 +60,7 @@ internal fun HomeCommissionCard(vm: LedgerViewModel, onDetails: () -> Unit) {
                     color = AppColors.Ink)
                 if (isClosed) Text("ပိတ်ရက်", color = AppColors.PrimaryDeep,
                     fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Text("အသေးစိတ်", fontSize = 10.sp, color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
                 Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
                     tint = AppColors.PrimaryDeep, modifier = Modifier.size(21.dp))
             }
