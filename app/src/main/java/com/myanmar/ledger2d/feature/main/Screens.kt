@@ -720,23 +720,9 @@ fun TotalListScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     AgentDigitTotalsWorkspace(vm, onBack, initialAgentId = agentId)
 }
 
-@Composable fun ClosedNumberScreen(vm:LedgerViewModel,agentId:Long,onBack:()->Unit){
-    val language=LocalLanguage.current
-    var dateText by rememberSaveable{mutableStateOf(language.selectedDate)}
-    var session by rememberSaveable{mutableStateOf(language.selectedSession)}
-    val date=runCatching{LocalDate.parse(dateText)}.getOrElse{LocalDate.now()}
-    val numbers by vm.closedNumbers(agentId,date,session).collectAsStateWithLifecycle(initialValue=emptyList())
-    var digit by rememberSaveable{mutableStateOf("")}
-    var pendingDelete by remember{mutableStateOf<ClosedNumberEntity?>(null)}
-    pendingDelete?.let{value->AlertDialog(onDismissRequest={pendingDelete=null},title={Text("ပိတ်ဂဏန်းဖျက်မည်လား")},text={Text(value.digit+" ကို ဒီ Session အတွက် ဖယ်ရှားမည်လား?")},confirmButton={TextButton({vm.removeClosedNumber(value);pendingDelete=null}){Text("ဖျက်မည်")}},dismissButton={TextButton({pendingDelete=null}){Text("မလုပ်ပါ")}})}
-    AppScaffold("ပိတ်ဂဏန်း",onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
-        DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ")
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;language.setSession(draw)},label={Text(draw.label)})}}
-        Text("ရွေးထားသော Session အတွက်သာ ပိတ်ဂဏန်းသတ်မှတ်ပါ",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){OutlinedTextField(digit,{digit=it.filter{ch->ch in '0'..'9'}.take(2)},Modifier.weight(1f),label={Text("ဂဏန်း 00–99")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),shape=MaterialTheme.shapes.medium);Button({vm.addClosedNumber(agentId,date,session,digit);digit=""},enabled=BetParser.validDigit(digit),shape=MaterialTheme.shapes.medium){Text("ပိတ်မည်")}}
-        if(numbers.isEmpty()) EmptyState("ပိတ်ဂဏန်း မရှိသေးပါ","ဒီ Session အတွက် ပိတ်ဂဏန်းမရှိပါ")
-        else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(numbers,key={it.id}){n->ElevatedCard(shape=MaterialTheme.shapes.medium){ListItem(headlineContent={Text(n.digit,fontWeight=FontWeight.Black,style=MaterialTheme.typography.titleLarge)},supportingContent={Text("ဒီ Session အတွက် ပိတ်ထားသည်")},trailingContent={TextButton({pendingDelete=n}){Text("ဖယ်ရှားမည်")}})}}}
-    }}
+@Composable
+fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
+    ClosedPatternStandaloneScreen(vm, agentId, onBack)
 }
 @Composable fun FormatScreen(onBack:()->Unit){
     val rows = listOf(
