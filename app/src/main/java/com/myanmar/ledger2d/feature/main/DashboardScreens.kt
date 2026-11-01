@@ -142,6 +142,10 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
 
 @Composable
 fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    if (feature == "report") {
+        AgentStatementWorkspace(vm, onBack)
+        return
+    }
     val agents by vm.agents.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
@@ -504,6 +508,10 @@ private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: L
 
 @Composable
 fun AllAgentFeatureScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit) {
+    if (feature == "report") {
+        AgentStatementWorkspace(vm, onBack, initialAgentId = -1L)
+        return
+    }
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
