@@ -41,4 +41,25 @@ class AgentListFilterTest {
         assertTrue(filterAgentsForList(agents, "Not present").isEmpty())
         assertEquals(3, agents.size)
     }
+
+    @Test fun nextAgentDateSkipsClosedWorkingDay() {
+        val monday = java.time.LocalDate.of(2026, 11, 2)
+        val tuesday = monday.plusDays(1)
+        val date = nextAgentListDraw(java.time.LocalDateTime.of(2026, 11, 1, 18, 0), setOf(monday))
+        assertEquals(tuesday, date.date)
+        assertEquals(com.myanmar.ledger2d.core.model.DrawSession.MORNING, date.session)
+    }
+
+    @Test fun nextAgentDrawUpdatesWhenMorningAndEveningCutoffsPass() {
+        val d = java.time.LocalDate.of(2026, 11, 2)
+        val morning = nextAgentListDraw(java.time.LocalDateTime.of(2026, 11, 2, 11, 59), emptySet())
+        val evening = nextAgentListDraw(java.time.LocalDateTime.of(2026, 11, 2, 12, 1), emptySet())
+        val next = nextAgentListDraw(java.time.LocalDateTime.of(2026, 11, 2, 16, 30), emptySet())
+        assertEquals(d, morning.date)
+        assertEquals(com.myanmar.ledger2d.core.model.DrawSession.MORNING, morning.session)
+        assertEquals(d, evening.date)
+        assertEquals(com.myanmar.ledger2d.core.model.DrawSession.EVENING, evening.session)
+        assertEquals(d.plusDays(1), next.date)
+        assertEquals(com.myanmar.ledger2d.core.model.DrawSession.MORNING, next.session)
+    }
 }
