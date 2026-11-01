@@ -2,6 +2,7 @@
 
 package com.myanmar.ledger2d.feature.main
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -235,29 +236,32 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
 }
 
 @Composable
-private fun AgentStatementTableHeader() {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+private fun AgentStatementTableHeader(scroll: ScrollState) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ကော်မရှင်", "ပေါက်ကြေး", "လျော်ငွေ").forEachIndexed { i, name ->
-            Text(name, Modifier.weight(if (i == 0) 1.45f else 1f),
+            Text(name, Modifier.width(if (i == 0) 120.dp else 132.dp),
                 fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall,
                 textAlign = if (i == 0) TextAlign.Start else TextAlign.End, maxLines = 2)
         }
     }
     HorizontalDivider()
 }
-
 @Composable
-private fun AgentStatementTableRow(label: String, totals: AgentStatementTotals, bold: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+private fun AgentStatementTableRow(
+    label: String, totals: AgentStatementTotals, scroll: ScrollState, bold: Boolean = false,
+) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val style = MaterialTheme.typography.labelSmall
-        Text(label, Modifier.weight(1.45f), style = style,
+        Text(label, Modifier.width(120.dp), style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
-        Text(totals.totalStake.agentMoney(), Modifier.weight(1f), textAlign = TextAlign.End, style = style)
-        Text(totals.savedNetCommission.agentMoney(), Modifier.weight(1f), textAlign = TextAlign.End, style = style)
+        Text(totals.totalStake.agentMoney(), Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
+        Text(totals.savedNetCommission.agentMoney(), Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
         Text(if (totals.completedDraws > 0) totals.winningStake.agentMoney() else "—",
-            Modifier.weight(1f), textAlign = TextAlign.End, style = style)
+            Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
         Text(if (totals.completedDraws > 0) totals.payout.agentMoney() else "—",
-            Modifier.weight(1f), textAlign = TextAlign.End, style = style,
+            Modifier.width(132.dp), textAlign = TextAlign.End, style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
 }
@@ -336,6 +340,7 @@ private fun AgentStatementSectionCard(
 ) {
     var open by rememberSaveable(section.start) { mutableStateOf(false) }
     var openedDraw by rememberSaveable(section.start) { mutableStateOf<String?>(null) }
+    val tableScroll = rememberScrollState()
     val totals = AgentStatementCalculator.summarize(section.draws)
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -345,11 +350,11 @@ private fun AgentStatementSectionCard(
                         Text(section.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                         Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                     }
-                    AgentStatementTableRow("စုစုပေါင်း", totals, true)
+                    AgentStatementTableRow("စုစုပေါင်း", totals, tableScroll, true)
                 }
             }
             if (open) {
-                AgentStatementTableHeader()
+                AgentStatementTableHeader(tableScroll)
                 val byDraw = section.draws.groupBy { it.date to it.session }
                     .toList().sortedWith(compareBy({ it.first.first }, { it.first.second.ordinal }))
                 byDraw.forEach { (key, draws) ->
@@ -361,7 +366,7 @@ private fun AgentStatementSectionCard(
                         Column(Modifier.fillMaxWidth().padding(horizontal = 5.dp)) {
                             AgentStatementTableRow(
                                 "${key.first.dayOfMonth} ${if (key.second == DrawSession.MORNING) "မနက်" else "ညနေ"}",
-                                AgentStatementCalculator.summarize(draws),
+                                AgentStatementCalculator.summarize(draws), tableScroll,
                             )
                         }
                     }
@@ -374,7 +379,7 @@ private fun AgentStatementSectionCard(
                     }
                 }
                 HorizontalDivider()
-                AgentStatementTableRow("စုစုပေါင်း", totals, true)
+                AgentStatementTableRow("စုစုပေါင်း", totals, tableScroll, true)
             }
         }
     }
@@ -499,8 +504,9 @@ fun AgentStatementResults(
                         OutlinedCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Text("အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
-                                AgentStatementTableHeader()
-                                AgentStatementTableRow("စုစုပေါင်း", data.totals, true)
+                                val bottomScroll = rememberScrollState()
+                                AgentStatementTableHeader(bottomScroll)
+                                AgentStatementTableRow("စုစုပေါင်း", data.totals, bottomScroll, true)
                             }
                         }
                     }
