@@ -41,6 +41,25 @@ internal fun betEntriesTotal(entries: List<BetEntryWithLines>): BetEntriesTotal 
         amount = entries.fold(0L) { total, record -> Math.addExact(total, betEntryAmount(record)) },
     )
 
+internal fun voucherSelectedEntryIds(
+    entries: List<BetEntryWithLines>,
+    customerId: Long,
+    date: LocalDate,
+    session: DrawSession,
+    requestedIds: Collection<Long>,
+): List<Long> {
+    if (customerId <= 0L) return emptyList()
+    val requested = requestedIds.toSet()
+    return betEntriesInSubmissionOrder(entries)
+        .filter { record ->
+            record.entry.id in requested &&
+                record.entry.customerId == customerId &&
+                record.entry.drawDate == date &&
+                record.entry.drawSession == session
+        }
+        .map { it.entry.id }
+}
+
 @Composable
 fun CustomerBetEntriesWorkspace(
     vm: LedgerViewModel,
@@ -49,6 +68,7 @@ fun CustomerBetEntriesWorkspace(
     date: LocalDate,
     session: DrawSession,
     onEditEntry: (Long) -> Unit,
+    onVoucherPreview: (List<Long>) -> Unit,
 ) {
     val customerList by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val entriesFlow = remember(agentId, customerId, date, session) {
@@ -63,6 +83,16 @@ fun CustomerBetEntriesWorkspace(
     var actions by remember { mutableStateOf<BetEntryWithLines?>(null) }
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var error by remember { mutableStateOf("") }
+    var voucherMode by rememberSaveable(agentId, customerId, date.toString(), session.name) { mutableStateOf(false) }
+    var voucherIds by rememberSaveable(agentId, customerId, date.toString(), session.name) {
+        mutableStateOf(arrayListOf<Long>())
+    }
+    val selectedVoucherIds = voucherSelectedEntryIds(entries, customerId, date, session, voucherIds)
+    val toggleVoucherId: (Long) -> Unit = { id ->
+        if (entries.any { it.entry.id == id }) {
+            voucherIds = ArrayList(if (id in voucherIds) voucherIds.filterNot { it == id } else voucherIds + id)
+        }
+    }
 
     if (error.isNotBlank()) AlertDialog(
         onDismissRequest = { error = "" },
@@ -76,7 +106,7 @@ fun CustomerBetEntriesWorkspace(
             title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(record.entry.sourceText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     HorizontalDivider()
                     LazyColumn(
                         modifier = Modifier.heightIn(max = 330.dp),
@@ -103,7 +133,7 @@ fun CustomerBetEntriesWorkspace(
         AlertDialog(
             onDismissRequest = { actions = null },
             title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းလုပ်ဆောင်ချက်")) },
-            text = { Text(record.entry.sourceText) },
+            text = { Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText)) },
             confirmButton = {
                 TextButton({ actions = null; onEditEntry(record.entry.id) }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြင်မည်")) }
             },
@@ -128,6 +158,39 @@ fun CustomerBetEntriesWorkspace(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (customerId > 0L && entries.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = {
+                    voucherMode = !voucherMode
+                    voucherIds = arrayListOf()
+                }) {
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                        if (voucherMode) "မလုပ်တော့ပါ" else "ဘောင်ချာထုတ်ရန်",
+                        if (voucherMode) "Cancel" else "Create voucher",
+                    ))
+                }
+            }
+            if (voucherMode) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                        "စာရင်းများကို ရွေးပါ", "Select transactions",
+                    ), style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = {
+                        voucherIds = if (selectedVoucherIds.size == entries.size) arrayListOf()
+                            else ArrayList(entries.map { it.entry.id })
+                    }) {
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                            if (selectedVoucherIds.size == entries.size) "အားလုံးဖြုတ်" else "အားလုံးရွေး",
+                            if (selectedVoucherIds.size == entries.size) "Clear all" else "Select all",
+                        ))
+                    }
+                }
+            }
+        }
         if (customerId == -1L) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး • ") + entries.size + " Entries",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -179,9 +242,27 @@ fun CustomerBetEntriesWorkspace(
                     if (customerId == -1L) names[record.entry.customerId] ?: "Customer #" + record.entry.customerId else null,
                     onDetails = { expanded = record },
                     onActions = { actions = record },
+                    selectionMode = voucherMode && customerId > 0L,
+                    selected = record.entry.id in selectedVoucherIds,
+                    onToggleSelection = { toggleVoucherId(record.entry.id) },
                 )
             }
             TotalsBar("စုစုပေါင်း", betEntriesTotal(entries))
+        }
+        if (voucherMode && customerId > 0L && entries.isNotEmpty()) {
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                "ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု",
+                "${selectedVoucherIds.size} selected",
+            ), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Button(
+                onClick = { onVoucherPreview(selectedVoucherIds) },
+                enabled = selectedVoucherIds.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                    "ဘောင်ချာအကြိုကြည့်ရန်", "Preview voucher",
+                ))
+            }
         }
     }
 }
@@ -193,23 +274,33 @@ private fun BetEntriesRow(
     customer: String?,
     onDetails: () -> Unit,
     onActions: () -> Unit,
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+    onToggleSelection: (() -> Unit)? = null,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onDetails, onLongClick = onActions),
+        modifier = Modifier.fillMaxWidth().combinedClickable(
+            onClick = { if (selectionMode) onToggleSelection?.invoke() else onDetails() },
+            onLongClick = { if (!selectionMode) onActions() },
+        ),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            Text(number.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            if (selectionMode) {
+                Checkbox(checked = selected, onCheckedChange = { onToggleSelection?.invoke() })
+            } else {
+                Text(number.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (customer != null) Text(customer, fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 // Never format, normalize, reorder, or truncate the Messenger message.
-                Text(record.entry.sourceText, style = MaterialTheme.typography.bodyMedium)
+                Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText), style = MaterialTheme.typography.bodyMedium)
                 Text(record.lines.size.toString() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကွက်", " digits"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -217,8 +308,10 @@ private fun BetEntriesRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(betEntryAmount(record).mmk(), fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
-                IconButton(onClick = onActions) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "စာရင်းပြင်ရန် သို့မဟုတ် ဖျက်ရန်")
+                if (!selectionMode) {
+                    IconButton(onClick = onActions) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "စာရင်းပြင်ရန် သို့မဟုတ် ဖျက်ရန်")
+                    }
                 }
             }
         }

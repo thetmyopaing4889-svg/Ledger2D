@@ -17,6 +17,25 @@ class HistoryDisplayTest {
         assertEquals("ပါဝါ 1000", transactionDisplayText("POWER", "1000"))
     }
 
+    @Test fun allChipFormatsRetainTheirLabelsInHistory() {
+        val formats = mapOf(
+            "POWER" to "ပါဝါ", "ASTROLOGY" to "နက္ခတ်",
+            "DOUBLES" to "အပူး", "SIBLINGS" to "ညီအကို",
+            "ROUND" to "ပတ်သီး", "HEAD" to "ထိပ်စည်း",
+            "TAIL" to "နောက်ပိတ်", "COMBINATION" to "အခွေ",
+            "COMBINATION_DOUBLES" to "အခွေပူး",
+            "EVEN_ODD" to "စုံမ", "ODD_EVEN" to "မစုံ",
+            "EVEN_EVEN" to "စုံစုံ", "ODD_ODD" to "မမ",
+        )
+        formats.forEach { (format, label) ->
+            assertEquals("$label 1000", transactionDisplayText(format, "1000"))
+        }
+    }
+
+    @Test fun formattedHistoryPreservesLineBreaks() {
+        assertEquals("ပါဝါ 1000\n2000", transactionDisplayText("POWER", "1000\n2000"))
+    }
+
     @Test fun manualHistoryNeverGetsPrefixed() {
         assertEquals("20 1000", transactionDisplayText("MANUAL", "20 1000"))
     }

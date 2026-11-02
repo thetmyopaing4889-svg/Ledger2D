@@ -188,7 +188,13 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
 }
 
 @Composable
-fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, onEditEntry: (Long) -> Unit) {
+fun CustomerFeatureWorkspaceScreen(
+    vm: LedgerViewModel,
+    feature: String,
+    onBack: () -> Unit,
+    onEditEntry: (Long) -> Unit,
+    onVoucherPreview: (Long, LocalDate, DrawSession, List<Long>) -> Unit,
+) {
     // Customer-facing statements have their own date-range and all-customer navigation.
     // Keep the established selection and other workspaces unchanged.
     if (feature == "report" || feature == "analysis") {
@@ -226,7 +232,9 @@ fun CustomerFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack:
             } }
             if (agentId == 0L || customerId == 0L) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent နှင့် Customer ကို ရွေးပါ")) }
             else when (feature) {
-                "history" -> item { key(agentId, customerId, date, session) { CustomerBetEntriesWorkspace(vm, agentId, customerId, date, session, onEditEntry) } }
+                "history" -> item { key(agentId, customerId, date, session) { CustomerBetEntriesWorkspace(vm, agentId, customerId, date, session, onEditEntry) { selectedIds ->
+                    onVoucherPreview(customerId, date, session, selectedIds)
+                } } }
                 "analysis" -> item {
                     // Reset remembered content and any running analysis when scope changes.
                     key(agentId, customerId, date, session) {

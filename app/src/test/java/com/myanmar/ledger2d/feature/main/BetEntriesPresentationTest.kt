@@ -33,6 +33,22 @@ class BetEntriesPresentationTest {
         assertEquals(3000L, betEntriesTotal(grouped.getValue(20L)).amount)
     }
 
+    @Test fun voucherSelectionRejectsAllCustomerAndCrossDrawTransactions() {
+        val a = entry(1L, 10L, "1000", 1000L)
+        val b = entry(2L, 20L, "2000", 2000L)
+        val c = entry(3L, 10L, "3000", 3000L)
+        val evening = entry(4L, 10L, "4000", 4000L).let {
+            it.copy(entry = it.entry.copy(drawSession = DrawSession.EVENING))
+        }
+        val records = listOf(c, evening, b, a)
+        assertEquals(
+            listOf(1L, 3L),
+            voucherSelectedEntryIds(records, 10L, date, DrawSession.MORNING, listOf(3L, 2L, 4L, 1L)),
+        )
+        assertEquals(emptyList<Long>(), voucherSelectedEntryIds(records, -1L, date, DrawSession.MORNING, listOf(1L)))
+        assertEquals(emptyList<Long>(), voucherSelectedEntryIds(records, 10L, date.plusDays(1), DrawSession.MORNING, listOf(1L)))
+    }
+
     @Test fun originalMultilineMessengerTextSurvivesWithoutAddedFormatOrReordering() {
         val raw = "4567အခွေပူး2000\n8ပတ်သီး3000\n20.30R500"
         val record = entry(5, 10, raw, 8000)

@@ -19,7 +19,9 @@ import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.feature.live.LiveScreen
 import kotlinx.coroutines.flow.first
+import java.time.LocalDate
 import java.time.LocalDateTime
+import com.myanmar.ledger2d.core.model.DrawSession
 
 @Composable fun LedgerNav(container:AppContainer,modifier:Modifier=Modifier,startAtWelcome:Boolean=false){
     val nav=rememberNavController()
@@ -35,6 +37,13 @@ import java.time.LocalDateTime
     }
     val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
+    val openVoucherPreview: (Long, LocalDate, DrawSession, List<Long>) -> Unit =
+        { customerId, date, session, selectedIds ->
+            if (customerId > 0L && selectedIds.isNotEmpty()) {
+                nav.currentBackStackEntry?.savedStateHandle?.set("voucherSelectedIds", ArrayList(selectedIds))
+                nav.navigate("voucherPreview/$customerId/$date/${session.name}")
+            }
+        }
     CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
     NavHost(
         nav,
@@ -74,7 +83,7 @@ import java.time.LocalDateTime
                 initialAgentId=e.arguments!!.getLong("agentId"))
         }
         composable("customerInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CustomerInformationScreen(vm,e.arguments!!.getLong("id"),{nav.popBackStack()}){agentId,id->nav.navigate("customerForm/$agentId/$id")}}
-        composable("customerWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "history";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else CustomerFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()},{entryId->nav.navigate("betEdit/$entryId")})}
+        composable("customerWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "history";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else CustomerFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()},{entryId->nav.navigate("betEdit/$entryId")},openVoucherPreview)}
         composable("customerScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->CustomerScopeScreen(vm,e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()}){feature,agentId,customerId->if(feature=="winning")nav.navigate("winning/view") else if(customerId==-1L)nav.navigate("allCustomerScope/$agentId/$feature") else when(feature){"history"->nav.navigate("betHistory/$customerId");"report"->nav.navigate("report/customer/$customerId");"analysis"->nav.navigate("analysis/$customerId");"digits"->nav.navigate("digitList/$agentId/$customerId");"commission"->nav.navigate("commission/$customerId")}}}
         composable("allCustomerScope/{agentId}/{feature}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("feature"){type=NavType.StringType})){e->AllCustomerScopeScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()})}
         composable("addCustomerHome"){AddCustomerFromHomeScreen(vm,{nav.popBackStack()}){nav.navigate("customerForm/$it/0")}}
@@ -82,7 +91,25 @@ import java.time.LocalDateTime
         composable("customerForm/{agentId}/{id}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("id"){type=NavType.LongType})){e->CustomerFormScreen(vm,e.arguments!!.getLong("id"),e.arguments!!.getLong("agentId")){nav.popBackStack()}}
         composable("analysis/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AnalysisScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
         composable("bet/{agentId}/{customerId}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("customerId"){type=NavType.LongType})){e->BettingScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getLong("customerId"),onBack={nav.popBackStack()})}
-        composable("betHistory/{customerId}",listOf(navArgument("customerId"){type=NavType.LongType})){e->BetHistoryScreen(vm,e.arguments!!.getLong("customerId"),{nav.navigate("betEdit/${it.entry.id}")}){nav.popBackStack()}}
+        composable("betHistory/{customerId}",listOf(navArgument("customerId"){type=NavType.LongType})){e->BetHistoryScreen(vm,e.arguments!!.getLong("customerId"),{nav.navigate("betEdit/${it.entry.id}")},{nav.popBackStack()}) { date, session, selectedIds ->
+            openVoucherPreview(e.arguments!!.getLong("customerId"), date, session, selectedIds)
+        }}
+        composable(
+            "voucherPreview/{customerId}/{date}/{session}",
+            listOf(
+                navArgument("customerId") { type = NavType.LongType },
+                navArgument("date") { type = NavType.StringType },
+                navArgument("session") { type = NavType.StringType },
+            ),
+        ) { entry ->
+            val selectedIds = nav.previousBackStackEntry?.savedStateHandle
+                ?.get<ArrayList<Long>>("voucherSelectedIds")
+            if (entry.arguments!!.getLong("customerId") > 0L && !selectedIds.isNullOrEmpty()) {
+                VoucherPreviewPlaceholderScreen { nav.popBackStack() }
+            } else {
+                LaunchedEffect(Unit) { nav.popBackStack() }
+            }
+        }
         composable("betEdit/{entryId}",listOf(navArgument("entryId"){type=NavType.LongType})){e->val entryId=e.arguments!!.getLong("entryId");val entry by vm.betEntry(entryId).collectAsStateWithLifecycle(initialValue=null);entry?.let{BettingScreen(vm,it.entry.agentId,it.entry.customerId,onBack={nav.popBackStack()},entryId=entryId)}}
         composable("digitList/{agentId}/{customerId}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("customerId"){type=NavType.LongType})){e->DigitListScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getLong("customerId")){nav.popBackStack()}}
         composable("total/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->TotalListScreen(vm,e.arguments!!.getLong("agentId")){nav.popBackStack()}}

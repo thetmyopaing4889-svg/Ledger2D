@@ -126,8 +126,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         "နောက်ပိတ်", "နောက်", "စုံမ", "မစုံ", "စုံစုံ", "မမ",
     )
     if (explicitLabels.any { original.contains(it, ignoreCase = true) }) return original
-    val value = original.replace(Regex("[Rr]"), " ").replace(Regex("\\s+"), " ")
-    return "${inputFormatDisplay(format)} $value".trim()
+    return "${inputFormatDisplay(format)} $original".trim()
 }
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
@@ -1207,7 +1206,13 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         }
     }
 }
-@Composable fun BetHistoryScreen(vm: LedgerViewModel, customerId: Long, onEdit: (BetEntryWithLines) -> Unit, onBack: () -> Unit) {
+@Composable fun BetHistoryScreen(
+    vm: LedgerViewModel,
+    customerId: Long,
+    onEdit: (BetEntryWithLines) -> Unit,
+    onBack: () -> Unit,
+    onVoucherPreview: (LocalDate, DrawSession, List<Long>) -> Unit,
+) {
     val language = LocalLanguage.current
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
@@ -1215,6 +1220,9 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
     val observedEntries by vm.customerEntries(customerId, selectedDate, session).collectAsState(initial = emptyList())
     val entries = remember(observedEntries) { betEntriesInSubmissionOrder(observedEntries) }
+    var voucherMode by rememberSaveable(customerId, dateText, session.name) { mutableStateOf(false) }
+    var voucherIds by rememberSaveable(customerId, dateText, session.name) { mutableStateOf(arrayListOf<Long>()) }
+    val selectedVoucherIds = voucherSelectedEntryIds(entries, customerId, selectedDate, session, voucherIds)
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var deleteError by remember { mutableStateOf<String?>(null) }
     deleteError?.let{msg->AlertDialog(onDismissRequest={deleteError=null},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းဖျက်မရပါ"))},text={Text(msg)},confirmButton={TextButton({deleteError=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("OK"))}})}
@@ -1222,7 +1230,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     expandedEntry?.let { record ->
         AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်မည်")) } }, title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်ကြည့်ရန်")) }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(record.entry.sourceText, fontWeight = FontWeight.Bold)
+                Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText), fontWeight = FontWeight.Bold)
                 HorizontalDivider()
                 LazyColumn(Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(record.lines, key = { it.id }) { line -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(line.digit, fontWeight = FontWeight.Bold); Text(line.amount.mmk()) } }
@@ -1237,19 +1245,57 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သွင်းထားသောစာရင်း"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }) } } }
+            if (entries.isNotEmpty()) item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { voucherMode = !voucherMode; voucherIds = arrayListOf() }) {
+                        Text(language.text(
+                            if (voucherMode) "မလုပ်တော့ပါ" else "ဘောင်ချာထုတ်ရန်",
+                            if (voucherMode) "Cancel" else "Create voucher",
+                        ))
+                    }
+                }
+                if (voucherMode) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(language.text("စာရင်းများကို ရွေးပါ", "Select transactions"))
+                        TextButton(onClick = {
+                            voucherIds = if (selectedVoucherIds.size == entries.size) arrayListOf()
+                                else ArrayList(entries.map { it.entry.id })
+                        }) {
+                            Text(language.text(
+                                if (selectedVoucherIds.size == entries.size) "အားလုံးဖြုတ်" else "အားလုံးရွေး",
+                                if (selectedVoucherIds.size == entries.size) "Clear all" else "Select all",
+                            ))
+                        }
+                    }
+                }
+            }
             if (entries.isEmpty()) item { EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") }
             items(entries, key = { it.entry.id }) { record ->
                 ElevatedCard {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        if (voucherMode) {
+                            Checkbox(checked = record.entry.id in selectedVoucherIds, onCheckedChange = { checked ->
+                                voucherIds = ArrayList(if (checked) voucherIds + record.entry.id
+                                    else voucherIds.filterNot { it == record.entry.id })
+                            })
+                        }
                         Column(Modifier.weight(1f)) {
                             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${record.entry.drawDate} • ${record.entry.drawSession.label}", "${record.entry.drawDate} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(record.entry.drawSession.label)}"), fontWeight = FontWeight.Bold)
-                            Text(record.entry.sourceText, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(transactionDisplayText(record.entry.inputFormat, record.entry.sourceText), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်", "${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} digits"), fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { expandedEntry = record }, contentPadding = PaddingValues(0.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်ကြည့်ရန်")) }
+                            if (!voucherMode) TextButton(onClick = { expandedEntry = record }, contentPadding = PaddingValues(0.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်ကြည့်ရန်")) }
                         }
-                        Column { TextButton(onClick = { onEdit(record) }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြင်မည်")) }; TextButton(onClick = { pendingDelete = record.entry }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }
+                        if (!voucherMode) Column { TextButton(onClick = { onEdit(record) }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြင်မည်")) }; TextButton(onClick = { pendingDelete = record.entry }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }
                     }
                 }
+            }
+            if (voucherMode && entries.isNotEmpty()) item {
+                Text(language.text("ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု", "${selectedVoucherIds.size} selected"))
+                Button(
+                    onClick = { onVoucherPreview(selectedDate, session, selectedVoucherIds) },
+                    enabled = selectedVoucherIds.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                ) { Text(language.text("ဘောင်ချာအကြိုကြည့်ရန်", "Preview voucher")) }
             }
         }
     }
