@@ -50,7 +50,7 @@ private fun StatementDateField(value: String, onChange: (String) -> Unit, label:
     val display = runCatching { LocalDate.parse(value).statementDate() }.getOrElse { value }
     OutlinedTextField(
         value = display, onValueChange = {}, readOnly = true,
-        modifier = modifier.fillMaxWidth(), label = { Text(label) },
+        modifier = modifier.fillMaxWidth(), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) },
         trailingIcon = { TextButton(onClick = { open = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး")) } },
         singleLine = true,
     )
@@ -164,13 +164,13 @@ fun CustomerStatementScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား စာရင်းရှင်းတမ်း"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     ScopeDropdown(
-                        "Agent ရွေးရန်",
-                        agents.firstOrNull { it.id == agentId }?.name ?: "Agent ရွေးရန်",
+                        com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
+                        agents.firstOrNull { it.id == agentId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
                         agents.map { it.id to it.name }, agentId,
                     ) { agentId = it; customerId = -1L; view = "summary"; search = "" }
                     ScopeDropdown(
-                        "ထိုးသား ရွေးရန်",
-                        if (customerId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး") else customers.firstOrNull { it.id == customerId }?.name ?: "ထိုးသား ရွေးရန်",
+                        com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား ရွေးရန်"),
+                        if (customerId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး") else customers.firstOrNull { it.id == customerId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား ရွေးရန်"),
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name },
                         customerId,
                         enabled = agentId > 0L,
@@ -183,7 +183,7 @@ fun CustomerStatementScreen(
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်ရှုမည့်ကာလ"), fontWeight = FontWeight.Bold)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             StatementPeriod.entries.forEach { option ->
-                                FilterChip(period == option, { period = option }, label = { Text(option.nameMm()) })
+                                FilterChip(period == option, { period = option }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(option.nameMm())) })
                             }
                         }
                         if (period == StatementPeriod.CUSTOM) {
@@ -304,7 +304,7 @@ private fun StatementDrawCard(draws: List<StatementDraw>) {
     OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(first.session.nameMm(), fontWeight = FontWeight.Bold)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(first.session.nameMm()), fontWeight = FontWeight.Bold)
                 Text(if (winner == null) "ရလဒ်မရသေး" else "ပေါက်ဂဏန်း $winner",
                     color = if (winner == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium)

@@ -100,7 +100,7 @@ internal fun HomeCommissionCard(
                         maxLines = 2,
                     )
                     Text(
-                        totals.toDateTotal.cardAmount() + " ကျပ်",
+                        totals.toDateTotal.cardAmount() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကျပ်", " MMK"),
                         fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 17.sp,
                         lineHeight = 20.sp, fontWeight = FontWeight.Black,
                         color = AppColors.PrimaryDeep, maxLines = 2,
