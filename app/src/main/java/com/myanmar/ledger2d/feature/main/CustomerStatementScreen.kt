@@ -268,7 +268,7 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
     ElevatedCard {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("စုစုပေါင်းထိုးကြေး", t.totalBet, true)
             StatementMoneyLine("ရလဒ်ထွက်ပြီးသော အကြိမ်များ၏ ထိုးကြေး", t.completedBet)
             if (t.completedDraws > 0) {
@@ -277,7 +277,7 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
             } else if (t.awaitingDraws > 0) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား အနိုင်/အရှုံး (ရလဒ်ထွက်ပြီးသော အကြိမ်များအတွက်)"), style = MaterialTheme.typography.labelMedium)
             if (t.completedDraws > 0) StatementMoneyLine("စုစုပေါင်း", t.customerWinLoss, strong = true, positiveGood = true)
@@ -309,7 +309,7 @@ private fun StatementDrawCard(draws: List<StatementDraw>) {
                     color = if (winner == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium)
             }
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကွက်ပေါင်း ${totals.slots} ကွက်"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("ထိုးကွက်ပေါင်း ${totals.slots} ကွက်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("ထိုးကြေး", totals.totalBet)
             if (winner == null) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေး၊ ပြန်လျော်ငွေ၊ အနိုင်/အရှုံးကို ရလဒ်ရမှ တွက်မည်။"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)

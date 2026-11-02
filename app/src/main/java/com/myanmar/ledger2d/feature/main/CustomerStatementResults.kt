@@ -76,7 +76,7 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းရှိသော ထိုးသား $customerCount ယောက်"),
+            if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
             ReportLine("စုစုပေါင်းထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်", true)
@@ -87,7 +87,7 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
                 if (counts.completed > 0) "${t.customerWinLoss.statementSigned()} ကျပ်" else "မတွက်ရသေး",
                 true, if (counts.completed == 0) null else if (t.customerWinLoss < 0) MaterialTheme.colorScheme.error else Color(0xFF18794E))
             if (counts.awaiting > 0)
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ အနိုင်/အရှုံးမှာ ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။"),
+                Text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ အနိုင်/အရှုံးမှာ ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။",
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
@@ -235,7 +235,7 @@ fun CustomerStatementResults(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(subtitle, fontWeight = FontWeight.SemiBold)
-                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${range.start.reviewDate()}${if (range.start == range.end) ")" else " – ${range.end.reviewDate()}"}" +
+                        Text("${range.start.reviewDate()}${if (range.start == range.end) "" else " – ${range.end.reviewDate()}"}" +
                             " • " + (session?.reviewLabel() ?: "နှစ်ကြိမ်လုံး"),
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
