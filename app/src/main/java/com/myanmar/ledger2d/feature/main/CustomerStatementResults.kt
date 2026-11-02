@@ -62,10 +62,10 @@ private fun statementSections(draws: List<StatementDraw>, period: StatementPerio
 private fun ReportLine(label: String, value: String, emph: Boolean = false, tint: Color? = null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (emph) FontWeight.Bold else FontWeight.Normal)
-        Text(value, fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
+        Text(if (com.myanmar.ledger2d.core.design.LocalLanguage.current.code == "en") com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(value).replace(" ကျပ်", " MMK").replace(" ကွက်", " digits") else value, fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
             color = tint ?: MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
     }
@@ -76,7 +76,7 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်",
+            if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်","Customers with entries: $customerCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
             ReportLine("စုစုပေါင်းထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်", true)
@@ -87,7 +87,7 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
                 if (counts.completed > 0) "${t.customerWinLoss.statementSigned()} ကျပ်" else "မတွက်ရသေး",
                 true, if (counts.completed == 0) null else if (t.customerWinLoss < 0) MaterialTheme.colorScheme.error else Color(0xFF18794E))
             if (counts.awaiting > 0)
-                Text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ အနိုင်/အရှုံးမှာ ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ အနိုင်/အရှုံးမှာ ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။","Results confirmed: ${counts.completed} • Pending: ${counts.awaiting}. Win/loss includes confirmed sessions only."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
@@ -251,8 +251,8 @@ fun CustomerStatementResults(
             item { ReportTotalsCard(statement.totals, if (customerId == -1L) statement.customers.size else null, counts) }
             if (statement.draws.isEmpty()) {
                 item {
-                    Text(if (range.start == range.end && closed.any { it.date == range.start }) "ပိတ်ရက်ဖြစ်သည်။ ထိုးစာရင်းမရှိပါ။"
-                        else "ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ။")
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (range.start == range.end && closed.any { it.date == range.start }) "ပိတ်ရက်ဖြစ်သည်။ ထိုးစာရင်းမရှိပါ။"
+                        else "ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ။"))
                 }
             } else {
                 if (customerId == -1L) item {

@@ -463,11 +463,11 @@ internal fun CustomerRiskAnalysisWorkspace(
             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
         val reduction = oldLoss - plan.worstLoss
         val lossChange = when {
-            reduction > 0L -> "အများဆုံးရှုံးငွေ ${reduction.riskMoney()} ကျပ် လျော့မည်။"
-            reduction < 0L -> "အများဆုံးရှုံးငွေ ${(-reduction).riskMoney()} ကျပ် ပိုတိုးမည်။"
-            else -> "အများဆုံးရှုံးငွေ မပြောင်းပါ။"
+            reduction > 0L -> com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အများဆုံးရှုံးငွေ ${reduction.riskMoney()} ကျပ် လျော့မည်။","Maximum loss decreases by ${reduction.riskMoney()} MMK.")
+            reduction < 0L -> com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အများဆုံးရှုံးငွေ ${(-reduction).riskMoney()} ကျပ် ပိုတိုးမည်။","Maximum loss increases by ${(-reduction).riskMoney()} MMK.")
+            else -> com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အများဆုံးရှုံးငွေ မပြောင်းပါ။")
         }
-        Text(lossChange + " အမြတ်ဖြစ်မယ့်ဂဏန်း ${oldWinning} → ${plan.profitableDigits} ကွက်။",
+        Text(lossChange + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" အမြတ်ဖြစ်မယ့်ဂဏန်း ${oldWinning} → ${plan.profitableDigits} ကွက်။"," Profitable digits: ${oldWinning} → ${plan.profitableDigits}."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
