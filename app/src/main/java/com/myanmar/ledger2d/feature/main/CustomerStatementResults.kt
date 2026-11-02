@@ -71,8 +71,30 @@ private fun ReportLine(label: String, value: String, emph: Boolean = false, tint
     }
 }
 
+/** Settlement uses confirmed draws only. Positive means the customer pays the reseller. */
 @Composable
-private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: StatementDrawCounts) {
+private fun CustomerSettlementLine(balance: Long?, byCustomer: Pair<Long, Long>? = null) {
+    val language = com.myanmar.ledger2d.core.design.LocalLanguage.current
+    if (balance == null) {
+        ReportLine(language.text("ငွေရှင်းရလဒ်", "Settlement"), language.text("ရလဒ်မထွက်သေး", "Pending result"), true)
+        return
+    }
+    if (byCustomer != null) {
+        ReportLine(language.text("ထိုးသားများက User ကို ပေးရန်", "Customers pay user"), "${byCustomer.first.statementAmount()} ကျပ်", true)
+        ReportLine(language.text("User က ထိုးသားများကို ပေးရန်", "User pays customers"), "${byCustomer.second.statementAmount()} ကျပ်", true)
+        return
+    }
+    val label = when {
+        balance > 0L -> language.text("ထိုးသားက User ကို ပေးရန်", "Customer pays user")
+        balance < 0L -> language.text("User က ထိုးသားကို ပေးရန်", "User pays customer")
+        else -> language.text("ပေးရန်/ရရန်မရှိ", "Nothing to settle")
+    }
+    val absolute = if (balance < 0L) Math.negateExact(balance) else balance
+    ReportLine(label, "${absolute.statementAmount()} ကျပ်", true)
+}
+
+@Composable
+private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: StatementDrawCounts, draws: List<StatementDraw>? = null) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -83,11 +105,10 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
             HorizontalDivider()
             ReportLine("ပေါက်ကြေး", if (counts.completed > 0) "${t.winningStake.statementAmount()} ကျပ်" else "ရလဒ်မထွက်သေး")
             ReportLine("ပြန်လျော်ငွေ", if (counts.completed > 0) "${t.payout.statementAmount()} ကျပ်" else "—")
-            ReportLine("ထိုးသားအနိုင်/အရှုံး",
-                if (counts.completed > 0) "${t.customerWinLoss.statementSigned()} ကျပ်" else "မတွက်ရသေး",
-                true, if (counts.completed == 0) null else if (t.customerWinLoss < 0) MaterialTheme.colorScheme.error else Color(0xFF18794E))
+            HorizontalDivider()
+            CustomerSettlementLine(t.settlementAmount, draws?.let { CustomerStatementCalculator.settlementByCustomer(it) })
             if (counts.awaiting > 0)
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ အနိုင်/အရှုံးမှာ ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။","Results confirmed: ${counts.completed} • Pending: ${counts.awaiting}. Win/loss includes confirmed sessions only."),
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။","Results confirmed: ${counts.completed} • Pending: ${counts.awaiting}. Settlement includes confirmed draws only."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
@@ -154,7 +175,7 @@ private fun ReportDrawDetail(draws: List<StatementDraw>, rows: List<StatementSta
             if (winner != null) {
                 ReportLine("ပေါက်ကြေး", "${totals.winningStake.statementAmount()} ကျပ်")
                 ReportLine("ပြန်လျော်ငွေ", "${totals.payout.statementAmount()} ကျပ်")
-                ReportLine("ထိုးသားအနိုင်/အရှုံး", "${totals.customerWinLoss.statementSigned()} ကျပ်", true)
+                CustomerSettlementLine(totals.settlementAmount, if (draws.map { it.customerId }.distinct().size > 1) CustomerStatementCalculator.settlementByCustomer(draws) else null)
             }
             StatementDigitBreakdown(rows, winner)
         }
@@ -202,6 +223,7 @@ private fun ReportSectionCard(section: ReportSection, stakes: List<StatementStak
                 }
                 HorizontalDivider()
                 TableRow("စုစုပေါင်း", summary, counts.completed > 0, true)
+                CustomerSettlementLine(summary.settlementAmount, if (section.draws.map { it.customerId }.distinct().size > 1) CustomerStatementCalculator.settlementByCustomer(section.draws) else null)
             }
         }
     }
@@ -248,7 +270,7 @@ fun CustomerStatementResults(
             item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         } else {
             val counts = statementDrawCounts(statement.draws)
-            item { ReportTotalsCard(statement.totals, if (customerId == -1L) statement.customers.size else null, counts) }
+            item { ReportTotalsCard(statement.totals, if (customerId == -1L) statement.customers.size else null, counts, if (customerId == -1L) statement.draws else null) }
             if (statement.draws.isEmpty()) {
                 item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (range.start == range.end && closed.any { it.date == range.start }) "ပိတ်ရက်ဖြစ်သည်။ ထိုးစာရင်းမရှိပါ။"
@@ -286,8 +308,7 @@ fun CustomerStatementResults(
                                 ReportLine("ထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်")
                                 ReportLine("ပေါက်ကြေး", if (t.completedDraws > 0) "${t.winningStake.statementAmount()} ကျပ်" else "—")
                                 ReportLine("ပြန်လျော်ငွေ", if (t.completedDraws > 0) "${t.payout.statementAmount()} ကျပ်" else "—")
-                                ReportLine("ထိုးသားအနိုင်/အရှုံး",
-                                    if (t.completedDraws > 0) "${t.customerWinLoss.statementSigned()} ကျပ်" else "—", true)
+                                CustomerSettlementLine(t.settlementAmount)
                                 if (open) {
                                     statementSections(draws, period, range).forEach { section ->
                                         ReportSectionCard(section, statement.stakes.filter { it.customerId == customer.id })
@@ -298,16 +319,16 @@ fun CustomerStatementResults(
                     }
                     item {
                         val ids = list.map { it.id }.toSet()
-                        val sub = CustomerStatementCalculator.totals(statement.draws.filter { it.customerId in ids })
-                        val subCounts = statementDrawCounts(statement.draws.filter { it.customerId in ids })
+                        val shownDraws = statement.draws.filter { it.customerId in ids }
+                        val sub = CustomerStatementCalculator.totals(shownDraws)
+                        val subCounts = statementDrawCounts(shownDraws)
                         OutlinedCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                                 ReportLine("ထိုးကြေး", "${sub.totalBet.statementAmount()} ကျပ်", true)
                                 ReportLine("ပေါက်ကြေး", if (subCounts.completed > 0) sub.winningStake.statementAmount() else "—")
                                 ReportLine("ပြန်လျော်ငွေ", if (subCounts.completed > 0) sub.payout.statementAmount() else "—")
-                                ReportLine("ထိုးသားအနိုင်/အရှုံး",
-                                    if (subCounts.completed > 0) "${sub.customerWinLoss.statementSigned()} ကျပ်" else "—", true)
+                                CustomerSettlementLine(sub.settlementAmount, CustomerStatementCalculator.settlementByCustomer(shownDraws))
                                 if (search.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှာဖွေထားသည့် ထိုးသားများအတွက်သာ"), style = MaterialTheme.typography.labelSmall)
                             }
                         }
@@ -324,8 +345,7 @@ fun CustomerStatementResults(
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                                 TableHeader()
                                 TableRow("စုစုပေါင်း", statement.totals, counts.completed > 0, true)
-                                ReportLine("ထိုးသားအနိုင်/အရှုံး",
-                                    if (counts.completed > 0) "${statement.totals.customerWinLoss.statementSigned()} ကျပ်" else "—", true)
+                                CustomerSettlementLine(statement.totals.settlementAmount, if (customerId == -1L) CustomerStatementCalculator.settlementByCustomer(statement.draws) else null)
                             }
                         }
                     }
