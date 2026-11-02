@@ -43,7 +43,7 @@ class UiLabelCatalogTest {
     }
 
     @Test fun multilineEntryWarningIsTranslated() {
-        val warning = "ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။"
+        val warning = "ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။"
         assertEquals("The result is already available. Enable backdated entry to preview this bet.",
             UiLabelCatalog.lookup("en", warning))
     }
