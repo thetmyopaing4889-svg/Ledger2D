@@ -66,10 +66,11 @@ private fun ReportLine(label: String, value: String, emph: Boolean = false, tint
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (emph) FontWeight.Bold else FontWeight.Normal)
-        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value), fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
-            color = tint ?: MaterialTheme.colorScheme.onSurface,
-            style = if (emph) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.End)
+        com.myanmar.ledger2d.core.design.PremiumMoneyText(
+            com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value),
+            modifier = Modifier.weight(1.15f), emphasis = emph,
+            color = tint ?: MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -99,7 +100,8 @@ private fun CustomerSettlementLine(balance: Long?, byCustomer: Pair<Long, Long>?
 private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: StatementDrawCounts, draws: List<StatementDraw>? = null) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            com.myanmar.ledger2d.core.design.PremiumSectionHeading(
+                com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"))
             if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်","Customers with entries: $customerCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
