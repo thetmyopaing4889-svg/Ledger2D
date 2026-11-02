@@ -54,6 +54,8 @@ data class StatementDraw(
     val resultKnown get() = winner != null
     /** Positive means the CUSTOMER won; negative means the CUSTOMER lost. */
     val customerWinLoss: Long? get() = payout?.let { Math.subtractExact(it, totalBet) }
+    /** Positive: customer pays reseller. Negative: reseller pays customer. */
+    val settlementAmount: Long? get() = payout?.let { Math.subtractExact(totalBet, it) }
 }
 
 data class StatementTotals(
@@ -68,6 +70,8 @@ data class StatementTotals(
     val awaitingDraws: Int,
 ) {
     val isComplete get() = awaitingDraws == 0
+    /** Confirmed draws only: pending stakes cannot become a final settlement. */
+    val settlementAmount: Long? get() = if (completedDraws > 0) Math.subtractExact(completedBet, payout) else null
 }
 
 /** One morning/evening draw is one job, regardless of how many customers bet on it. */
@@ -92,6 +96,18 @@ data class CustomerStatement(
 )
 
 object CustomerStatementCalculator {
+    /** Keep independent customers' opposite-direction balances separate. */
+    fun settlementByCustomer(draws: List<StatementDraw>): Pair<Long, Long> {
+        var customerPays = 0L
+        var resellerPays = 0L
+        for (customerDraws in draws.groupBy { it.customerId }.values) {
+            val balance = totals(customerDraws).settlementAmount ?: continue
+            if (balance > 0L) customerPays = Math.addExact(customerPays, balance)
+            if (balance < 0L) resellerPays = Math.subtractExact(resellerPays, balance)
+        }
+        return customerPays to resellerPays
+    }
+
     fun totals(draws: List<StatementDraw>): StatementTotals {
         var bet = 0L; var completedBet = 0L; var winning = 0L; var payout = 0L
         var slots = 0L; var completed = 0
