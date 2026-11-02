@@ -275,11 +275,13 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
 private fun AgentStatementTableHeader(scroll: ScrollState) {
     Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Keep the list readable on a phone. Commission and payout are in expanded detail.
         val headers = if (com.myanmar.ledger2d.core.design.LocalLanguage.current.code == "en")
-            listOf("Date / draw", "Stake", "Commission", "Winning stake", "Payout", "To settle")
-        else listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ကော်မရှင်", "ပေါက်ကြေး", "လျော်ငွေ", "ရှင်းရန်")
+            listOf("Date / draw", "Stake", "To settle")
+        else listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ရှင်းရန်")
+        val widths = listOf(104.dp, 100.dp, 114.dp)
         headers.forEachIndexed { i, name ->
-            Text(name, Modifier.width(if (i == 0) 120.dp else 132.dp),
+            Text(name, Modifier.width(widths[i]),
                 fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall,
                 textAlign = if (i == 0) TextAlign.Start else TextAlign.End, maxLines = 2)
         }
@@ -294,17 +296,11 @@ private fun AgentStatementTableRow(
     Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val style = MaterialTheme.typography.labelSmall
-        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.statementTitle(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, label), Modifier.width(120.dp), style = style,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
-        Text(totals.totalStake.agentMoney(), Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
-        Text(totals.savedNetCommission.agentMoney(), Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
-        Text(if (totals.completedDraws > 0) totals.winningStake.agentMoney() else "—",
-            Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
-        Text(if (totals.completedDraws > 0) totals.payout.agentMoney() else "—",
-            Modifier.width(132.dp), textAlign = TextAlign.End, style = style,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.statementTitle(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, label), Modifier.width(104.dp), style = style,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, maxLines = 2)
+        Text(totals.totalStake.agentMoney(), Modifier.width(100.dp), textAlign = TextAlign.End, style = style, maxLines = 2)
         Text(if (aggregateAgents) "—" else totals.settlementAmount?.agentSignedMoney() ?: "—",
-            Modifier.width(132.dp), textAlign = TextAlign.End, style = style,
+            Modifier.width(114.dp), textAlign = TextAlign.End, style = style, maxLines = 2,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
 }
