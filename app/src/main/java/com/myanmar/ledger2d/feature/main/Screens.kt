@@ -230,10 +230,10 @@ fun transactionDisplayText(format: String, raw: String): String {
             IconButton(onClick=onSettings,modifier=Modifier.size(44.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(23.dp))}
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally){
-            Surface(Modifier.height(40.dp).fillMaxWidth(.52f),shape=RoundedCornerShape(20.dp),color=Color.White.copy(alpha=.14f),border=BorderStroke(1.dp,Color.White.copy(alpha=.55f))){
+            Surface(Modifier.height(48.dp).fillMaxWidth(.80f),shape=RoundedCornerShape(22.dp),color=Color.White.copy(alpha=.14f),border=BorderStroke(1.dp,Color.White.copy(alpha=.55f))){
                 Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(17.dp))
-                    Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=13.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
+                    Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=13.sp,lineHeight=19.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=2,softWrap=true)
                     Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(17.dp))
                 }
             }
@@ -299,7 +299,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 
 @Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.7f))){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
-@Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(38.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
+@Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(44.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
 
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,String>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
     val l=LocalLanguage.current
