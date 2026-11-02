@@ -362,7 +362,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
                 cell("${index + 1}", widths[0])
                 cell(row.date.displayDate(), widths[1])
                 cell(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(row.session.label), widths[2])
-                cell(row.winningDigit ?: "—", widths[3], TextAlign.Center, bold = row.winningDigit != null, color = if (row.winningDigit != null) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                cell(row.winningDigit ?: "—", widths[3], TextAlign.Center, bold = row.winningDigit != null, color = if (row.winningDigit != null) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant)
                 cell(if (closedOrEmpty) "0" else "${calc!!.distinctSlots}", widths[4], TextAlign.End)
                 cell((calc?.totalBet ?: 0L).mmk(), widths[5], TextAlign.End)
                 cell((calc?.winningStake ?: 0L).mmk(), widths[6], TextAlign.End)
@@ -550,7 +550,7 @@ private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: L
         if (totals.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီအချိန်အတွက် အတည်ပြုထားသော စာရင်းမရှိသေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         else totals.forEach { row -> Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)) { Row(Modifier.fillMaxWidth()) {
             Text(row.digit, Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text(row.amount.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Primary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text(row.amount.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text(row.commission.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Secondary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text((row.amount - row.commission).mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = androidx.compose.ui.text.style.TextAlign.End)
         }; HorizontalDivider() } }
