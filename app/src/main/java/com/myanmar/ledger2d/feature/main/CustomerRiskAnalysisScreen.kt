@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.design.AppColors
+import com.myanmar.ledger2d.core.design.PremiumPanel
 import com.myanmar.ledger2d.core.domain.AnalysisResult
 import com.myanmar.ledger2d.core.domain.CustomerRiskDecision
 import com.myanmar.ledger2d.core.domain.CustomerRiskPlanner
@@ -112,8 +113,8 @@ internal fun CustomerRiskAnalysisWorkspace(
             } else if (base.totalStake <= 0L) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session မှာ ထိုးစာရင်းမရှိသေးပါ။"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                PremiumPanel(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စုစုပေါင်းထိုးကြေး"), style = MaterialTheme.typography.labelSmall)
                             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${base.totalStake.riskMoney()} ကျပ်", "${base.totalStake.riskMoney()} MMK"),
