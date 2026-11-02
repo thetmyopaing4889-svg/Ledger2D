@@ -1266,7 +1266,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
     val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
-    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
+    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){
         Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
