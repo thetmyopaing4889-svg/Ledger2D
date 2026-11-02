@@ -304,7 +304,9 @@ private fun WeeklyReportTable(report: WeeklyReport) {
     @Composable fun cell(text: String, width: androidx.compose.ui.unit.Dp, align: TextAlign = TextAlign.Left, bold: Boolean = false, color: Color = MaterialTheme.colorScheme.onSurface) {
         Text(text, Modifier.width(width).padding(horizontal = 8.dp), textAlign = align, maxLines = 2, style = MaterialTheme.typography.labelSmall, fontWeight = if (bold) FontWeight.Black else FontWeight.Normal, color = color)
     }
-    val header = listOf("စဉ်", "ရက်စွဲ", "အချိန်", "ထွက်ဂဏန်း", "အကွက်", "ထိုးကြေး", "ပေါက်ကြေး", "လျော်ပေးငွေ", "ကော်မရှင်", "အရှုံး/အမြတ်")
+    val header = if (com.myanmar.ledger2d.core.design.LocalLanguage.current.code == "en")
+        listOf("No.", "Date", "Session", "Winner", "Digits", "Stake", "Winning stake", "Payout", "Commission", "Profit / Loss")
+    else listOf("စဉ်", "ရက်စွဲ", "အချိန်", "ထွက်ဂဏန်း", "အကွက်", "ထိုးကြေး", "ပေါက်ကြေး", "လျော်ပေးငွေ", "ကော်မရှင်", "အရှုံး/အမြတ်")
     Column(Modifier.fillMaxWidth().horizontalScroll(scroll).background(Color.White, MaterialTheme.shapes.medium).padding(vertical = 8.dp)) {
         Row(Modifier.width(998.dp).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             header.forEachIndexed { index, value -> cell(value, widths[index], if (index >= 4) TextAlign.End else TextAlign.Left, bold = true, color = AppColors.PrimaryDeep) }
@@ -316,7 +318,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
             Row(Modifier.width(998.dp).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 cell("${index + 1}", widths[0])
                 cell(row.date.displayDate(), widths[1])
-                cell(row.session.label, widths[2])
+                cell(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(row.session.label), widths[2])
                 cell(row.winningDigit ?: "—", widths[3], TextAlign.Center, bold = row.winningDigit != null, color = if (row.winningDigit != null) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 cell(if (closedOrEmpty) "0" else "${calc!!.distinctSlots}", widths[4], TextAlign.End)
                 cell((calc?.totalBet ?: 0L).mmk(), widths[5], TextAlign.End)
@@ -329,7 +331,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
         }
         Row(Modifier.width(998.dp).background(AppColors.Blush).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             cell("", widths[0])
-            cell("စုစုပေါင်း", widths[1], bold = true)
+            cell(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စုစုပေါင်း"), widths[1], bold = true)
             cell("", widths[2])
             cell("", widths[3])
             cell("$totalSlots", widths[4], TextAlign.End, bold = true)
@@ -486,7 +488,7 @@ private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: L
     val totalBet = totals.sumOf { it.amount }
     val totalCommission = totals.sumOf { it.commission }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("${date.displayDate()} • ${session.label}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("${date.displayDate()} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Surface(Modifier.fillMaxWidth(), color = AppColors.Wine, shape = MaterialTheme.shapes.large, shadowElevation = 4.dp) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စုစုပေါင်းအနှစ်ချုပ်"), color = AppColors.GoldSoft, fontWeight = FontWeight.Bold)
