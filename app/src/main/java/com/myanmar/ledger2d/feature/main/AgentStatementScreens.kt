@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.*
+import com.myanmar.ledger2d.core.design.PremiumSettlementPanel
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.text.NumberFormat
 import java.time.DayOfWeek
@@ -201,6 +202,7 @@ private fun AgentStatementValue(label: String, amount: String, bold: Boolean = f
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, amount), style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
+            style = if (bold) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.End)
     }
 }
@@ -255,11 +257,13 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
         AgentStatementValue("လျော်ပေးငွေ", if (totals.completedDraws > 0)
             "${totals.payout.agentMoney()} ကျပ်" else "—", true)
         HorizontalDivider()
+        PremiumSettlementPanel {
         if (totals.draws == 0)
             AgentStatementValue(
                 com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ငွေရှင်းရလဒ်", "Settlement"),
                 com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးစာရင်းမရှိပါ", "No entries"), true)
         else AgentSettlementLine(totals.settlementAmount, allAgentDraws?.let { AgentStatementCalculator.settlementByAgent(it) })
+        }
         if (totals.pendingDraws > 0) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
                 "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာဖြစ်ပြီး မပြီးသေးသောအကြိမ်၏ ထိုးကြေးနှင့် ကော်မရှင်မပါဝင်ပါ။",
