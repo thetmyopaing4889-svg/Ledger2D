@@ -102,4 +102,33 @@ class CustomerStatementTest {
         assertEquals(1,corrected.customers.size)
         assertEquals(0L,CustomerStatementCalculator.build(emptyList(),win).totals.totalBet)
     }
+
+    @Test fun settlementShowsCustomerPayableAndResellerPayableWithConfirmedResultsOnly() {
+        val noWin = CustomerStatementCalculator.build(listOf(stake(1, am, "20", 1000, 80)), mapOf((monday to am) to "40"))
+        assertEquals(1000L, noWin.totals.settlementAmount)
+        assertEquals(1000L, noWin.draws.single().settlementAmount)
+
+        val win = CustomerStatementCalculator.build(listOf(stake(1, am, "20", 1000, 80)), mapOf((monday to am) to "20"))
+        assertEquals(-79000L, win.totals.settlementAmount)
+        assertEquals(-79000L, win.draws.single().settlementAmount)
+
+        val pending = CustomerStatementCalculator.build(listOf(stake(1, am, "20", 1000, 80)), emptyMap())
+        assertNull(pending.totals.settlementAmount)
+        assertNull(pending.draws.single().settlementAmount)
+
+        val mixed = CustomerStatementCalculator.build(
+            listOf(stake(1, am, "20", 1000, 80), stake(1, pm, "30", 5000, 85)),
+            mapOf((monday to am) to "40"))
+        assertEquals(6000L, mixed.totals.totalBet)
+        assertEquals(1000L, mixed.totals.settlementAmount)
+        assertEquals(1, mixed.totals.awaitingDraws)
+    }
+
+    @Test fun allCustomersDoNotCancelOneCustomersDebtAgainstAnother() {
+        val data = CustomerStatementCalculator.build(
+            listOf(stake(1, am, "20", 1000, 80), stake(2, am, "30", 1000, 80)),
+            mapOf((monday to am) to "20"))
+        assertEquals(1000L to 79000L, CustomerStatementCalculator.settlementByCustomer(data.draws))
+        assertEquals(-78000L, data.totals.settlementAmount)
+    }
 }
