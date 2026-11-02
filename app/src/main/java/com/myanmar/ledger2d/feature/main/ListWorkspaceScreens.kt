@@ -229,8 +229,10 @@ fun AgentInformationScreen(
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အောက်ရှိထိုးသား ${customers.size} ယောက်", "Customers under agent: ${customers.size}"),
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                "နောက်အကြိမ် • ${upcoming.date} • ${upcoming.session.label} • " +
-                    (upcomingRate?.let { "${it} ဆ" } ?: "အဆကိုဖတ်နေသည်"),
+                l.text(
+                    "နောက်အကြိမ် • ${upcoming.date} • ${upcoming.session.label} • " + (upcomingRate?.let { "${it} ဆ" } ?: "အဆကိုဖတ်နေသည်"),
+                    "Next draw • ${upcoming.date} • ${l.translate(upcoming.session.label)} • " + (upcomingRate?.let { "${it}x" } ?: "Loading rate…"),
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
