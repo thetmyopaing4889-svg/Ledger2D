@@ -123,7 +123,7 @@ fun AgentClosedPatternWorkspace(
             AlertDialog(
                 onDismissRequest = { pendingOne=null },
                 title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်းပြန်ဖွင့်ရန်")) },
-                text = { Text("$date • ${session.label} • ${row.digit}") },
+                text = { Text("$date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${row.digit}") },
                 confirmButton = { TextButton(onClick={
                     vm.removeClosedNumber(row); pendingOne=null
                 }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } },
@@ -227,7 +227,7 @@ fun AgentLimitPatternWorkspace(
         pendingOne?.let { row ->
             AlertDialog(onDismissRequest={pendingOne=null},
                 title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး Limit ဖယ်ရှားရန်"))},
-                text={Text("$date • ${session.label} • ${row.digit} • ${row.amount.mmk()}")},
+                text={Text("$date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${row.digit} • ${row.amount.mmk()}")},
                 confirmButton={TextButton(onClick={
                     vm.removeAgentSpecialLimit(row);pendingOne=null
                 }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) }},
