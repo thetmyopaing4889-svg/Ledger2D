@@ -19,6 +19,15 @@ class UiLabelCatalogTest {
         assertEquals("Select customer", UiLabelCatalog.lookup("en", "ထိုးသားရွေးရန်"))
     }
 
+    @Test fun compactLabelsAndWarningsHaveEnglishTranslations() {
+        assertEquals("Mon", UiLabelCatalog.lookup("en", "တနင်္လာ"))
+        assertEquals("Over", UiLabelCatalog.lookup("en", "ကျော်"))
+        assertEquals("Saving…", UiLabelCatalog.lookup("en", "သိမ်းဆည်းနေသည်…"))
+        assertEquals("New winning digit", UiLabelCatalog.lookup("en", "ပေါက်ဂဏန်းအသစ်"))
+        assertEquals("Recalculate this session for all customers",
+            UiLabelCatalog.lookup("en", "Customer အားလုံး ဒီ Session ပြန်တွက်မည်"))
+    }
+
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
         assertNull(UiLabelCatalog.lookup("en", "မောင်မောင်"))
         assertNull(UiLabelCatalog.lookup("my", "Custom agent name"))

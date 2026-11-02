@@ -518,8 +518,8 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     if(pendingRateChange) AlertDialog(
         onDismissRequest={pendingRateChange=false},
         title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်လျော်ကြေးအဆ ပြောင်းလဲမည်လား"))},
-        text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒိုင်: $name\\nSession: $effectiveDateText • ${effectiveSession.label}\\n", "Agent: $name\\nSession: $effectiveDateText • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(effectiveSession.label)}\\n") +
-            com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အဆ: ${selectedRate?:existing?.rate} → $rate ဆ\\n", "Rate: ${selectedRate?:existing?.rate} → ${rate}x\\n") +
+        text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒိုင်: $name\nSession: $effectiveDateText • ${effectiveSession.label}\n", "Agent: $name\\nSession: $effectiveDateText • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(effectiveSession.label)}\\n") +
+            com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အဆ: ${selectedRate?:existing?.rate} → $rate ဆ\n", "Rate: ${selectedRate?:existing?.rate} → ${rate}x\\n") +
             if(mode=="DRAW") com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသော Session တစ်ခုတည်းကိုသာ ပြန်တွက်မည်။")
             else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသော Session ကစပြီး နောက်ပိုင်းသက်ဆိုင်ရာစာရင်းတွေကို ပြန်တွက်မည်။"))},
         confirmButton={TextButton({pendingRateChange=false;applyChange()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြောင်းမည်"))}},
