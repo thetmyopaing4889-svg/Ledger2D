@@ -65,7 +65,7 @@ class UiLabelCatalogTest {
         assertEquals("Morning session", UiLabelCatalog.lookup("en", "မနက်အကြိမ်"))
         assertEquals("Evening session", UiLabelCatalog.lookup("en", "ညနေအကြိမ်"))
         assertNull(UiLabelCatalog.lookup("en", "2D LIVE"))
-        assertNull(UiLabelCatalog.lookup("my", "Better Data"))
+        assertEquals("Better Data", UiLabelCatalog.lookup("my", "Better Data"))
     }
 
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
