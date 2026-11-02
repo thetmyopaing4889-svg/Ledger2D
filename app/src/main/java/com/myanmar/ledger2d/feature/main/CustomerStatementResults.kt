@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.domain.*
+import com.myanmar.ledger2d.core.design.PremiumSettlementPanel
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.text.NumberFormat
 import java.time.DayOfWeek
@@ -67,7 +68,8 @@ private fun ReportLine(label: String, value: String, emph: Boolean = false, tint
             fontWeight = if (emph) FontWeight.Bold else FontWeight.Normal)
         Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value), fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
             color = tint ?: MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
+            style = if (emph) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End)
     }
 }
 
@@ -110,11 +112,13 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
             ReportLine("ပေါက်ကြေး", if (counts.completed > 0) "${t.winningStake.statementAmount()} ကျပ်" else "ရလဒ်မထွက်သေး")
             ReportLine("ပြန်လျော်ငွေ", if (counts.completed > 0) "${t.payout.statementAmount()} ကျပ်" else "—")
             HorizontalDivider()
+            PremiumSettlementPanel {
             if (counts.jobs == 0)
                 ReportLine(
                     com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ငွေရှင်းရလဒ်", "Settlement"),
                     com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးစာရင်းမရှိပါ", "No entries"), true)
             else CustomerSettlementLine(t.settlementAmount, draws?.let { CustomerStatementCalculator.settlementByCustomer(it) })
+            }
             if (counts.awaiting > 0)
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။","Results confirmed: ${counts.completed} • Pending: ${counts.awaiting}. Settlement includes confirmed draws only."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
