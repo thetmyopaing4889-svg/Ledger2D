@@ -217,8 +217,8 @@ fun transactionDisplayText(format: String, raw: String): String {
             }
             Spacer(Modifier.width(44.dp))
             Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
-                Text("Cherry 2D",color=Color.White,fontSize=24.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,lineHeight=28.sp,maxLines=1,softWrap=false)
-                Text("For Myanmar 2D Agents",color=Color.White.copy(alpha=.92f),fontSize=12.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Cherry 2D"),color=Color.White,fontSize=24.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,lineHeight=28.sp,maxLines=1,softWrap=false)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("For Myanmar 2D Agents"),color=Color.White.copy(alpha=.92f),fontSize=12.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
             }
             Spacer(Modifier.width(44.dp))
             IconButton(onClick=onSettings,modifier=Modifier.size(44.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(23.dp))}
@@ -248,7 +248,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
             Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
-                Text("2D LIVE",Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("2D LIVE"),Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
                 Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(30.dp))
             }
         }
@@ -289,7 +289,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
         }
     }
-    selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text(l.translate("ပိတ်မည်"))}},title={Text("${item.date.displayDate()} • ${l.translate(if(item.session == DrawSession.MORNING) "မနက်" else "ညနေ")}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(l.translate("ပေါက်ဂဏန်း"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ထိုးကြေး"));Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ကော်မရှင်"));Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
+    selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text(l.translate("ပိတ်မည်"))}},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${item.date.displayDate()} • ${l.translate(if(item.session == DrawSession.MORNING) ")မနက်" else "ညနေ")}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(l.translate("ပေါက်ဂဏန်း"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ထိုးကြေး"));Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ကော်မရှင်"));Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
 }
 
 @Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.7f))){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
@@ -450,7 +450,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeFooter(){
     Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
-        Text("Cherry 2D • For Myanmar 2D Agents",Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
     }
 }
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
@@ -461,19 +461,19 @@ fun transactionDisplayText(format: String, raw: String): String {
     LaunchedEffect(customers, agentId, l.defaultCustomerId) {
         if (customers.none { it.id == customerId }) customerId = if (agentId == l.defaultAgentId) customers.firstOrNull { it.id == l.defaultCustomerId }?.id ?: 0L else 0L
     }
-    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack,includeQuickEntryFab=false){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0){customerId=it};if(agentId>0&&customerId>0)Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Text("${agents.firstOrNull{it.id==agentId}?.name} • ${customers.firstOrNull{it.id==customerId}?.name} • ${l.selectedSession.label}",Modifier.fillMaxWidth().padding(14.dp),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer)};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
+    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack,includeQuickEntryFab=false){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0){customerId=it};if(agentId>0&&customerId>0)Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${agents.firstOrNull{it.id==agentId}?.name} • ${customers.firstOrNull{it.id==customerId}?.name} • ${l.selectedSession.label}"),Modifier.fillMaxWidth().padding(14.dp),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer)};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
 }
 @Composable private fun SelectionField(label:String,selected:String,options:List<Pair<Long,String>>,value:Long,enabled:Boolean=true,onSelect:(Long)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded=expanded&&enabled,onExpandedChange={if(enabled)expanded=!expanded}){OutlinedTextField(selected,{},Modifier.fillMaxWidth().menuAnchor(),enabled=enabled,readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded&&enabled)},shape=MaterialTheme.shapes.medium);ExposedDropdownMenu(expanded=expanded&&enabled,onDismissRequest={expanded=false}){options.forEach{(id,title)->DropdownMenuItem(text={Text(title)},onClick={onSelect(id);expanded=false})}}}}
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle()
-    AppScaffold("ဒိုင်များ", action={
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်များ"), action={
         IconButton(onClick=onSettings){Icon(Icons.Default.Settings, "ဆက်တင်များ")}
-    }, fab={ExtendedFloatingActionButton(onClick=onAdd, modifier=Modifier.padding(horizontal=8.dp, vertical=8.dp), shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Add, null);Spacer(Modifier.width(8.dp));Text("ဒိုင်အသစ်ထည့်ရန်", style=MaterialTheme.typography.labelLarge)}}){padding->
+    }, fab={ExtendedFloatingActionButton(onClick=onAdd, modifier=Modifier.padding(horizontal=8.dp, vertical=8.dp), shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Add, null);Spacer(Modifier.width(8.dp));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အသစ်ထည့်ရန်"), style=MaterialTheme.typography.labelLarge)}}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding=PaddingValues(horizontal=16.dp, vertical=10.dp), verticalArrangement=Arrangement.spacedBy(14.dp)){
-            item{Column(Modifier.padding(horizontal=4.dp)){Text("လုပ်ငန်းအခြေအနေ", style=MaterialTheme.typography.headlineSmall, fontWeight=FontWeight.Bold);Text("ဒိုင်များနှင့် စာရင်းများကို စီမံပါ", style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)}}
-            if(agents.isEmpty()) item{Surface(color=MaterialTheme.colorScheme.surface, shape=MaterialTheme.shapes.large, tonalElevation=2.dp){EmptyState("ဒိုင်မရှိသေးပါ", "အောက်က ခလုတ်ကိုနှိပ်၍ ပထမဆုံးဒိုင်ကို စတင်ထည့်ပါ")}} else {
-                item{Text("ဒိုင်စာရင်း", style=MaterialTheme.typography.titleLarge, fontWeight=FontWeight.Bold)}
-                items(agents,key={it.id}){agent->ElevatedCard(onClick={onAgent(agent.id)}, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large){ListItem(headlineContent={Text(agent.name,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}, supportingContent={Text("နှုန်းထား ${agent.rate}" + if(agent.phone.isNotBlank()) "  •  ${agent.phone}" else "",style=MaterialTheme.typography.bodySmall)}, leadingContent={Surface(color=MaterialTheme.colorScheme.primaryContainer, shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Store, null, tint=MaterialTheme.colorScheme.primary, modifier=Modifier.padding(10.dp))}}, trailingContent={IconButton({onEdit(agent.id)}){Icon(Icons.Default.Edit, "ပြင်မည်")}})}}
+            item{Column(Modifier.padding(horizontal=4.dp)){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လုပ်ငန်းအခြေအနေ"), style=MaterialTheme.typography.headlineSmall, fontWeight=FontWeight.Bold);Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်များနှင့် စာရင်းများကို စီမံပါ"), style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)}}
+            if(agents.isEmpty()) item{Surface(color=MaterialTheme.colorScheme.surface, shape=MaterialTheme.shapes.large, tonalElevation=2.dp){EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်မရှိသေးပါ"), "အောက်က ခလုတ်ကိုနှိပ်၍ ပထမဆုံးဒိုင်ကို စတင်ထည့်ပါ")}} else {
+                item{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်း"), style=MaterialTheme.typography.titleLarge, fontWeight=FontWeight.Bold)}
+                items(agents,key={it.id}){agent->ElevatedCard(onClick={onAgent(agent.id)}, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.large){ListItem(headlineContent={Text(agent.name,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}, supportingContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှုန်းထား ${agent.rate}") + if(agent.phone.isNotBlank()) "  •  ${agent.phone}" else "",style=MaterialTheme.typography.bodySmall)}, leadingContent={Surface(color=MaterialTheme.colorScheme.primaryContainer, shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Store, null, tint=MaterialTheme.colorScheme.primary, modifier=Modifier.padding(10.dp))}}, trailingContent={IconButton({onEdit(agent.id)}){Icon(Icons.Default.Edit, "ပြင်မည်")}})}}
             }
             item{Spacer(Modifier.height(84.dp))}
         }
@@ -517,13 +517,13 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     }
     if(pendingRateChange) AlertDialog(
         onDismissRequest={pendingRateChange=false},
-        title={Text("ဒိုင်လျော်ကြေးအဆ ပြောင်းလဲမည်လား")},
-        text={Text("ဒိုင်: $name\nSession: $effectiveDateText • ${effectiveSession.label}\n" +
+        title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်လျော်ကြေးအဆ ပြောင်းလဲမည်လား"))},
+        text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်: $name\nSession: $effectiveDateText • ${effectiveSession.label}\n") +
             "အဆ: ${selectedRate?:existing?.rate} → $rate ဆ\n" +
             if(mode=="DRAW")"ရွေးထားသော Session တစ်ခုတည်းကိုသာ ပြန်တွက်မည်။"
             else "ရွေးထားသော Session ကစပြီး နောက်ပိုင်းသက်ဆိုင်ရာစာရင်းတွေကို ပြန်တွက်မည်။")},
-        confirmButton={TextButton({pendingRateChange=false;applyChange()}){Text("ပြောင်းမည်")}},
-        dismissButton={TextButton({pendingRateChange=false}){Text("မလုပ်တော့ပါ")}}
+        confirmButton={TextButton({pendingRateChange=false;applyChange()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြောင်းမည်"))}},
+        dismissButton={TextButton({pendingRateChange=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်တော့ပါ"))}}
     )
     AppScaffold(if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){
         Input(name,{name=it},"အမည်",true)
@@ -531,12 +531,12 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone)
         Input(rate,{rate=it.filter(Char::isDigit)},"နှုန်းထား",true,KeyboardType.Number)
         if(id>0L && activeRate!=null && activeRate!=existing?.rate)
-            Text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ"),
                 color=MaterialTheme.colorScheme.secondary)
         if(id>0L) {
             FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                FilterChip(mode=="FORWARD",{mode="FORWARD";saveError=""},label={Text("ပုံမှန်နှုန်းပြောင်းရန်")})
-                FilterChip(mode=="DRAW",{mode="DRAW";saveError=""},label={Text("Session သီးသန့်ပြင်ရန်")})
+                FilterChip(mode=="FORWARD",{mode="FORWARD";saveError=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပုံမှန်နှုန်းပြောင်းရန်"))})
+                FilterChip(mode=="DRAW",{mode="DRAW";saveError=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Session သီးသန့်ပြင်ရန်"))})
             }
         }
         if(rateIsChanging) {
@@ -576,10 +576,10 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
             if(id==0L){
                 Input(commission,{ commission=it.filter{ch->ch.isDigit()||ch=='.'}; error="" },
                     "ကော်မရှင် (%)",true,KeyboardType.Decimal)
-                Text("ကော်မရှင်ကို 0% သတ်မှတ်လိုပါက 0 ဟု ကိုယ်တိုင်ထည့်ပါ။ မဖြည့်ဘဲ 0% အလိုအလျောက်မသတ်မှတ်ပါ။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်ကို 0% သတ်မှတ်လိုပါက 0 ဟု ကိုယ်တိုင်ထည့်ပါ။ မဖြည့်ဘဲ 0% အလိုအလျောက်မသတ်မှတ်ပါ။"),
                     style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }else{
-                Text("ရှိပြီးသား ကော်မရှင်ကို ပြောင်းလိုပါက Customer Dashboard → ကော်မရှင်တွင် Session ရွေးပြီး ပြင်ပါ။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှိပြီးသား ကော်မရှင်ကို ပြောင်းလိုပါက Customer Dashboard → ကော်မရှင်တွင် Session ရွေးပြီး ပြင်ပါ။"),
                     style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Input(remark,{remark=it},"မှတ်ချက်")
@@ -596,8 +596,8 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
 @Composable fun DateInput(value:String,onValue:(String)->Unit,label:String,modifier:Modifier=Modifier,enabled:Boolean=true){
     var open by rememberSaveable{mutableStateOf(false)}
     val display=runCatching{LocalDate.parse(value).displayDate()}.getOrElse{value}
-    OutlinedTextField(value=display,onValueChange={},modifier=modifier.fillMaxWidth(),label={Text(label)},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text("ရွေး")}},shape=MaterialTheme.shapes.medium)
-    if(open){val initial=runCatching{LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()}.getOrNull();val state=rememberDatePickerState(initialSelectedDateMillis=initial);DatePickerDialog(onDismissRequest={open=false},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{var picked=java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate();while(!DrawSchedule.isWeekday(picked)) picked=picked.plusDays(1);onValue(picked.toString())};open=false}){Text("ရွေးမည်")}},dismissButton={TextButton(onClick={open=false}){Text("မလုပ်ပါ")}}){DatePicker(state)}}
+    OutlinedTextField(value=display,onValueChange={},modifier=modifier.fillMaxWidth(),label={Text(label)},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး"))}},shape=MaterialTheme.shapes.medium)
+    if(open){val initial=runCatching{LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()}.getOrNull();val state=rememberDatePickerState(initialSelectedDateMillis=initial);DatePickerDialog(onDismissRequest={open=false},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{var picked=java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate();while(!DrawSchedule.isWeekday(picked)) picked=picked.plusDays(1);onValue(picked.toString())};open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးမည်"))}},dismissButton={TextButton(onClick={open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}}){DatePicker(state)}}
 }
 @Composable private fun FormActions(cancel:()->Unit,save:()->Unit,enabled:Boolean){val l=LocalLanguage.current;Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){OutlinedButton(cancel,Modifier.weight(1f)){Text(l.text("မလုပ်တော့ပါ","Cancel"))};Button(save,Modifier.weight(1f),enabled=enabled){Text(l.text("သိမ်းမည်","Save"))}}}
 @Composable fun AgentDetailScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit, onRoute: (String) -> Unit) {
@@ -609,9 +609,9 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
     }
     AppScaffold(profile.name,onBack,action={IconButton({onRoute("agentForm/$id")}){Icon(Icons.Default.Edit,"ပြင်ရန်")}}){p->
         LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(horizontal=16.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large){Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Store,null,tint=MaterialTheme.colorScheme.onPrimary,modifier=Modifier.padding(14.dp))};Column{Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("လက်ရှိလျော်ကြေးအဆ ${activeRate?:profile.rate} ဆ",style=MaterialTheme.typography.bodyMedium);if(activeRate!=null&&activeRate!=profile.rate) Text("သတ်မှတ်ထားသော နောက်အဆ ${profile.rate} ဆ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.secondary);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
-            item{Button(onClick={onRoute("customers/$id")},modifier=Modifier.fillMaxWidth().height(54.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.People,null);Spacer(Modifier.width(10.dp));Text("ထိုးသားများ",style=MaterialTheme.typography.titleMedium)}}
-            item{Text("စီမံခန့်ခွဲရန်",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            item{Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.large){Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){Surface(color=MaterialTheme.colorScheme.primary,shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Store,null,tint=MaterialTheme.colorScheme.onPrimary,modifier=Modifier.padding(14.dp))};Column{Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လက်ရှိလျော်ကြေးအဆ ${activeRate?:profile.rate} ဆ"),style=MaterialTheme.typography.bodyMedium);if(activeRate!=null&&activeRate!=profile.rate) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော နောက်အဆ ${profile.rate} ဆ"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.secondary);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
+            item{Button(onClick={onRoute("customers/$id")},modifier=Modifier.fillMaxWidth().height(54.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.People,null);Spacer(Modifier.width(10.dp));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားများ"),style=MaterialTheme.typography.titleMedium)}}
+            item{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စီမံခန့်ခွဲရန်"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.ReceiptLong,"စုစုပေါင်းစာရင်း","total/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Assessment,"အစီရင်ခံစာ","report/agent/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.Lock,"ပိတ်ဂဏန်း","closed/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.EmojiEvents,"ထီပေါက်စဉ်","winning/agent/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.Tune,"ကန့်သတ်ပမာဏ","agentLimit/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.MenuBook,"လမ်းညွှန်","format",onRoute)}}}
@@ -630,18 +630,18 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
 }
 @Composable fun CustomerListScreen(vm:LedgerViewModel,agentId:Long,onBack:()->Unit,onCustomer:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit){
     val list by vm.customers(agentId).collectAsState(initial=emptyList())
-    AppScaffold("ထိုးသားများ",onBack,fab={ExtendedFloatingActionButton(onClick=onAdd){Icon(Icons.Default.Add,null);Spacer(Modifier.width(6.dp));Text("ထိုးသားအသစ်ထည့်ရန်")}}){padding->LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        item{Text("ဒီအေးဂျင့်အောက်ရှိ ထိုးသားများ",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-        if(list.isEmpty())item{EmptyState("ထိုးသားမရှိသေးပါ","အောက်က + ခလုတ်ကိုနှိပ်၍ စတင်ပါ")} else items(list,key={it.id}){customer->ListItem(headlineContent={Text(customer.name,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}, supportingContent={if(customer.phone.isNotBlank()) Text(customer.phone,style=MaterialTheme.typography.bodySmall)}, leadingContent={Icon(Icons.Default.Person, null, tint=MaterialTheme.colorScheme.primary)}, trailingContent={IconButton({onEdit(customer.id)}){Icon(Icons.Default.Edit, "ပြင်မည်")}}, modifier=Modifier.fillMaxWidth().clickable{onCustomer(customer.id)})}
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားများ"),onBack,fab={ExtendedFloatingActionButton(onClick=onAdd){Icon(Icons.Default.Add,null);Spacer(Modifier.width(6.dp));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားအသစ်ထည့်ရန်"))}}){padding->LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        item{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီအေးဂျင့်အောက်ရှိ ထိုးသားများ"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+        if(list.isEmpty())item{EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားမရှိသေးပါ"),"အောက်က + ခလုတ်ကိုနှိပ်၍ စတင်ပါ")} else items(list,key={it.id}){customer->ListItem(headlineContent={Text(customer.name,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}, supportingContent={if(customer.phone.isNotBlank()) Text(customer.phone,style=MaterialTheme.typography.bodySmall)}, leadingContent={Icon(Icons.Default.Person, null, tint=MaterialTheme.colorScheme.primary)}, trailingContent={IconButton({onEdit(customer.id)}){Icon(Icons.Default.Edit, "ပြင်မည်")}}, modifier=Modifier.fillMaxWidth().clickable{onCustomer(customer.id)})}
     }}
 }
 @Composable fun CustomerDetailScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit, onRoute: (String) -> Unit) {
     val customer by vm.customer(id).collectAsState(initial=null); val profile=customer ?: return
     AppScaffold(profile.name,onBack,action={IconButton({onRoute("customerForm/${profile.agentId}/$id")}){Icon(Icons.Default.Edit,"ပြင်ရန်")}}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(horizontal=16.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            item{ElevatedCard(shape=MaterialTheme.shapes.large){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("ဖောက်သည်အချက်အလက်",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodyMedium);if(profile.address.isNotBlank())Text(profile.address,color=MaterialTheme.colorScheme.onSurfaceVariant);if(profile.remark.isNotBlank())Text(profile.remark,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
-            item{Button(onClick={onRoute("bet/${profile.agentId}/$id")},modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Add,null);Spacer(Modifier.width(8.dp));Text("စာရင်းသွင်းရန်",style=MaterialTheme.typography.titleMedium)}}
-            item{Text("လုပ်ငန်းဆောင်တာများ",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            item{ElevatedCard(shape=MaterialTheme.shapes.large){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Text(profile.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖောက်သည်အချက်အလက်"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary);if(profile.phone.isNotBlank())Text(profile.phone,style=MaterialTheme.typography.bodyMedium);if(profile.address.isNotBlank())Text(profile.address,color=MaterialTheme.colorScheme.onSurfaceVariant);if(profile.remark.isNotBlank())Text(profile.remark,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+            item{Button(onClick={onRoute("bet/${profile.agentId}/$id")},modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Add,null);Spacer(Modifier.width(8.dp));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်းရန်"),style=MaterialTheme.typography.titleMedium)}}
+            item{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လုပ်ငန်းဆောင်တာများ"),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.ReceiptLong,"သွင်းထားသောစာရင်း","betHistory/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Insights,"အမြန်သုံးသပ်ချက်","analysis/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.Assessment,"အစီရင်ခံစာ","report/customer/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Tune,"ကန့်သတ်ပမာဏ","limit/$id",onRoute)}}}
             item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Column(Modifier.weight(1f)){ActionTile(Icons.Default.GridView,"အကွက်စာရင်း","digitList/${profile.agentId}/$id",onRoute)};Column(Modifier.weight(1f)){ActionTile(Icons.Default.Percent,"ကော်မရှင်","commission/$id",onRoute)}}}
@@ -676,31 +676,31 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     LaunchedEffect(submit) { if (submit is SubmitState.Success) { receiptId=(submit as SubmitState.Success).id; vm.resetSubmit() } }
     if (showLateError) AlertDialog(
         onDismissRequest = { showLateError = false },
-        title = { Text("စာရင်းသွင်း၍ မရပါ") },
-        text = { Text("ဒီ Session အတွက် ပုံမှန်စာရင်းလက်ခံချိန် ကျော်လွန်ပါပြီ။ လက်ကျန်စာရင်းကို နောက်ကြောင်းပြန်သွင်းရန် လိုအပ်ပါက သီးခြားအတည်ပြုပါ။") },
-        confirmButton = { TextButton({ showLateError = false }) { Text("OK") } },
-        dismissButton = { TextButton({ showLateError = false }) { Text("မလုပ်တော့ပါ") } }
+        title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်း၍ မရပါ")) },
+        text = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session အတွက် ပုံမှန်စာရင်းလက်ခံချိန် ကျော်လွန်ပါပြီ။ လက်ကျန်စာရင်းကို နောက်ကြောင်းပြန်သွင်းရန် လိုအပ်ပါက သီးခြားအတည်ပြုပါ။")) },
+        confirmButton = { TextButton({ showLateError = false }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("OK")) } },
+        dismissButton = { TextButton({ showLateError = false }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်တော့ပါ")) } }
     )
-    if (receiptId>0L && entryId>0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text("စာရင်းပြင်ပြီးပါပြီ")},text={Text("မူရင်း Entry ကို ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ။")},confirmButton={TextButton({receiptId=0L;onBack()}){Text("ပြီးပါပြီ")}})
-    if (receiptId>0L && entryId==0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text("စာရင်းသွင်းပြီးပါပြီ")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text("စာရင်းစုစုပေါင်း • " + ((preview.parse as? ParseResult.Success)?.total?.mmk() ?: "-"));Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw=""}){Text("ဒီထိုးသားအတွက် ဆက်သွင်းရန်")}},dismissButton={TextButton({receiptId=0L;onBack()}){Text("ပြီးပါပြီ")}})
+    if (receiptId>0L && entryId>0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းပြင်ပြီးပါပြီ"))},text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မူရင်း Entry ကို ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ။"))},confirmButton={TextButton({receiptId=0L;onBack()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြီးပါပြီ"))}})
+    if (receiptId>0L && entryId==0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်းပြီးပါပြီ"))},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင် • ထိုးသား • ${session.label}"),fontWeight=FontWeight.Bold);Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ • $dateText"));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းစုစုပေါင်း • ") + ((preview.parse as? ParseResult.Success)?.total?.mmk() ?: "-"));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Entry #$receiptId"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw=""}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီထိုးသားအတွက် ဆက်သွင်းရန်"))}},dismissButton={TextButton({receiptId=0L;onBack()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြီးပါပြီ"))}})
     AppScaffold(if (entryId == 0L) "2D Form\nစာရင်းသွင်းရန်" else "2D Form\nစာရင်းပြင်ရန်", onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ") }
-                item { Text("ထိုးမည့်အချိန်", style = MaterialTheme.typography.titleLarge); SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) { DrawSession.entries.forEachIndexed { i, draw -> SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(i, 2)) { Text(draw.label) } } } }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးမည့်အချိန်"), style = MaterialTheme.typography.titleLarge); SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) { DrawSession.entries.forEachIndexed { i, draw -> SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(i, 2)) { Text(draw.label) } } } }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = backdated, onCheckedChange = { backdated = it })
-                        Column { Text("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း", fontWeight = FontWeight.SemiBold); Text("အချိန်လွန်စာရင်းသွင်းခြင်း", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Column { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း"), fontWeight = FontWeight.SemiBold); Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်လွန်စာရင်းသွင်းခြင်း"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
                 if(backdated&&entryId==0L)item {
-                    Text("နောက်ကြောင်းပြန်စာရင်းကို ရွေးထားသော Session ၏ ဒိုင်အဆနဲ့ Customer ကော်မရှင်အတိုင်း အလိုအလျောက်တွက်မည်။ နှုန်းပြောင်းရန် Dashboard မှ Session ရွေးပြီး ပြင်ပါ။",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နောက်ကြောင်းပြန်စာရင်းကို ရွေးထားသော Session ၏ ဒိုင်အဆနဲ့ Customer ကော်မရှင်အတိုင်း အလိုအလျောက်တွက်မည်။ နှုန်းပြောင်းရန် Dashboard မှ Session ရွေးပြီး ပြင်ပါ။"),
                         style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text("စာရင်းထည့်ရန်") }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
-                item { Text("အမြန်ထည့်သွင်းပုံများ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
-                item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။") else PreviewCard(visiblePreview ?: BetPreview(emptyInput=true)) }
+                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းထည့်ရန်")) }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမြန်ထည့်သွင်းပုံများ"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
+                item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။")) else PreviewCard(visiblePreview ?: BetPreview(emptyInput=true)) }
                 item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }
             }
             Surface(shadowElevation = 10.dp) {
@@ -713,14 +713,14 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     ElevatedCard{
         Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
-                Text("အကြိုကြည့်ရှုရန်",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိုကြည့်ရှုရန်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
                 if (!preview.emptyInput) when(val parsed=preview.parse){
-                    is ParseResult.Error -> Text("မပြည့်စုံသေးပါ",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.labelMedium)
-                    is ParseResult.Success -> Text("${parsed.bets.size} ကွက် • ${parsed.total.mmk()}",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)
+                    is ParseResult.Error -> Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မပြည့်စုံသေးပါ"),color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.labelMedium)
+                    is ParseResult.Success -> Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${parsed.bets.size} ကွက် • ${parsed.total.mmk()}"),color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)
                 }
             }
             if (preview.emptyInput) {
-                Text("Messenger စာရင်းကို အပေါ်မှာ ကူးထည့်ပါ။ ဂဏန်း၊ ထိုးကြေးနဲ့ Limit ကို ဒီနေရာမှာ အကြိုကြည့်နိုင်ပါတယ်။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Messenger စာရင်းကို အပေါ်မှာ ကူးထည့်ပါ။ ဂဏန်း၊ ထိုးကြေးနဲ့ Limit ကို ဒီနေရာမှာ အကြိုကြည့်နိုင်ပါတယ်။"),
                     color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium)
             } else when(val parsed=preview.parse){
                 is ParseResult.Error -> Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
@@ -729,14 +729,14 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                     // blocked digit or exceeded limit instead of just a generic error.
                     if(preview.issues.isNotEmpty()) Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){
                         Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
-                            Text("လက်မခံနိုင်သော စာရင်းများ",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer)
-                            preview.issues.forEach { issue->Text("• $issue",color=MaterialTheme.colorScheme.onErrorContainer) }
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လက်မခံနိုင်သော စာရင်းများ"),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer)
+                            preview.issues.forEach { issue->Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("• $issue"),color=MaterialTheme.colorScheme.onErrorContainer) }
                         }
                     }
                 }
                 is ParseResult.Success -> {
                     if(preview.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    if(preview.issues.isNotEmpty()) Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){Text("ချန်ထားသောစာရင်း",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer);preview.issues.forEach{Text("• $it",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onErrorContainer)}}}
+                    if(preview.issues.isNotEmpty()) Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(3.dp)){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ချန်ထားသောစာရင်း"),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onErrorContainer);preview.issues.forEach{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("• $it"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onErrorContainer)}}}
                     preview.validation?.rows?.let { rows ->
                         FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalArrangement=Arrangement.spacedBy(6.dp),maxItemsInEachRow=2){
                             rows.forEach{r->
@@ -747,9 +747,9 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                                             Text(r.digit,fontWeight=FontWeight.Black)
                                             Text(if(r.isClosed)"ပိတ်" else if(r.exceedsLimit)"ကျော်" else "အဆင်ပြေ",color=if(bad)MaterialTheme.colorScheme.error else AppColors.Success,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold)
                                         }
-                                        Text("လက်ရှိ ${r.currentTotal} • ယခု ${r.thisInput}",style=MaterialTheme.typography.bodySmall)
-                                        Text("ကန့်သတ် ${r.limit?.toString()?:"မရှိ"} • ပြီးနောက် ${r.afterInput}",style=MaterialTheme.typography.labelSmall)
-                                        r.remaining?.let{Text("ကျန် ${it}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)}
+                                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လက်ရှိ ${r.currentTotal} • ယခု ${r.thisInput}"),style=MaterialTheme.typography.bodySmall)
+                                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကန့်သတ် ${r.limit?.toString()?:")မရှိ"} • ပြီးနောက် ${r.afterInput}",style=MaterialTheme.typography.labelSmall)
+                                        r.remaining?.let{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကျန် ${it}"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)}
                                     }
                                 }
                             }
@@ -771,7 +771,7 @@ private fun previewError(message:String):String = when{
 }
 
 @Composable fun DigitListScreen(vm:LedgerViewModel,agentId:Long,customerId:Long,onBack:()->Unit){val language=LocalLanguage.current;var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }; var session by rememberSaveable { mutableStateOf(language.selectedSession) }
-    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }; val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }; val totals by vm.customerTotals(customerId,selectedDate,session).collectAsState(initial=emptyList());val all by vm.allLimit(customerId,selectedDate,session).collectAsState(initial=null);val special by vm.specialLimits(customerId,selectedDate,session).collectAsState(initial=emptyList());val closed by vm.closedNumbers(agentId,selectedDate,session).collectAsState(initial=emptyList());val amounts=totals.associate{it.digit to it.amount};val specialMap=special.associate{it.digit to it.amount};val closedSet=closed.map{it.digit}.toSet();AppScaffold("အကွက်စာရင်း",onBack){p->LazyVerticalGrid(GridCells.Fixed(5),Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(8.dp),horizontalArrangement=Arrangement.spacedBy(5.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){item(span={GridItemSpan(5)}){Column{DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ");Row{DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;language.setSession(draw)},label={Text(draw.label)},modifier=Modifier.padding(end=8.dp))}}}};item(span={GridItemSpan(5)}){Text("ကန့်သတ်ချက်: ${all?.amount?:"မရှိ"}",Modifier.padding(10.dp),style=MaterialTheme.typography.titleLarge)};items((0..99).toList()){n->val digit=n.toString().padStart(2,'0');val isClosed=digit in closedSet;val isSpecial=digit in specialMap;Surface(color=when{isClosed->MaterialTheme.colorScheme.errorContainer;isSpecial->MaterialTheme.colorScheme.secondaryContainer;else->MaterialTheme.colorScheme.surfaceVariant},shape=MaterialTheme.shapes.small){Column(Modifier.aspectRatio(.84f).padding(6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(digit,fontWeight=FontWeight.Black);Text((amounts[digit]?:0L).mmk(),style=MaterialTheme.typography.labelSmall);if(isClosed)Text("ပိတ်",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error) else if(isSpecial)Text("အထူး ${specialMap[digit]!!.mmk()}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.secondary)}}}}}}
+    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }; val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }; val totals by vm.customerTotals(customerId,selectedDate,session).collectAsState(initial=emptyList());val all by vm.allLimit(customerId,selectedDate,session).collectAsState(initial=null);val special by vm.specialLimits(customerId,selectedDate,session).collectAsState(initial=emptyList());val closed by vm.closedNumbers(agentId,selectedDate,session).collectAsState(initial=emptyList());val amounts=totals.associate{it.digit to it.amount};val specialMap=special.associate{it.digit to it.amount};val closedSet=closed.map{it.digit}.toSet();AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စာရင်း"),onBack){p->LazyVerticalGrid(GridCells.Fixed(5),Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(8.dp),horizontalArrangement=Arrangement.spacedBy(5.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){item(span={GridItemSpan(5)}){Column{DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ");Row{DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;language.setSession(draw)},label={Text(draw.label)},modifier=Modifier.padding(end=8.dp))}}}};item(span={GridItemSpan(5)}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကန့်သတ်ချက်: ${all?.amount?:")မရှိ"}",Modifier.padding(10.dp),style=MaterialTheme.typography.titleLarge)};items((0..99).toList()){n->val digit=n.toString().padStart(2,'0');val isClosed=digit in closedSet;val isSpecial=digit in specialMap;Surface(color=when{isClosed->MaterialTheme.colorScheme.errorContainer;isSpecial->MaterialTheme.colorScheme.secondaryContainer;else->MaterialTheme.colorScheme.surfaceVariant},shape=MaterialTheme.shapes.small){Column(Modifier.aspectRatio(.84f).padding(6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(digit,fontWeight=FontWeight.Black);Text((amounts[digit]?:0L).mmk(),style=MaterialTheme.typography.labelSmall);if(isClosed)Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error) else if(isSpecial)Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး ${specialMap[digit]!!.mmk()}"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.secondary)}}}}}}
 @Composable
 fun TotalListScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     // Legacy route now uses the same digit calculation and layout as Agent Dashboard.
@@ -800,13 +800,13 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
         "မမ" to "ရှေ့မ၊ နောက်မ • 25 ကွက် • မမ1000",
         "R / ပြောင်းပြန်" to "11R1000 → 11 တစ်ကွက် 2000 ကျပ် • R/r/ပြန်/ပြောင်းပြန်",
     )
-    AppScaffold("ထည့်သွင်းပုံ",onBack){ p->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထည့်သွင်းပုံ"),onBack){ p->
         LazyColumn(
             Modifier.fillMaxSize().padding(p),
             contentPadding=PaddingValues(AppDimens.screen),
             verticalArrangement=Arrangement.spacedBy(10.dp)
         ) {
-            item { Text("ထည့်သွင်းပုံ လမ်းညွှန်",style=MaterialTheme.typography.headlineSmall) }
+            item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထည့်သွင်းပုံ လမ်းညွှန်"),style=MaterialTheme.typography.headlineSmall) }
             items(rows){(title,body)->
                 OutlinedCard {
                     Column(Modifier.padding(16.dp)) {
@@ -818,7 +818,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
         }
     }
 }
-@Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold("ကော်မရှင်နှုန်းထား",onBack){p->FormColumn(p){Text("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။",Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value){value="";onBack()}},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
+@Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်နှုန်းထား"),onBack){p->FormColumn(p){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ"),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။"),Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value){value="";onBack()}},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
 @Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val language=LocalLanguage.current
     var dateText by rememberSaveable{mutableStateOf(language.selectedDate)}
@@ -831,16 +831,16 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     var amount by rememberSaveable{mutableStateOf("")}
     var pendingSpecial by remember{mutableStateOf<SpecialLimitEntity?>(null)}
     LaunchedEffect(all,date,session){allText=all?.amount?.toString()?:""}
-    pendingSpecial?.let{value->AlertDialog(onDismissRequest={pendingSpecial=null},title={Text("အထူးကန့်သတ်ချက်ဖျက်မည်လား")},text={Text(value.digit+" အတွက် "+value.amount.mmk()+" ကန့်သတ်ချက်ကို ဖျက်မည်လား?")},confirmButton={TextButton({vm.removeSpecialLimit(value);pendingSpecial=null}){Text("ဖျက်မည်")}},dismissButton={TextButton({pendingSpecial=null}){Text("မလုပ်ပါ")}})}
-    AppScaffold("ကန့်သတ်ပမာဏ",onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    pendingSpecial?.let{value->AlertDialog(onDismissRequest={pendingSpecial=null},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူးကန့်သတ်ချက်ဖျက်မည်လား"))},text={Text(value.digit+" အတွက် "+value.amount.mmk()+" ကန့်သတ်ချက်ကို ဖျက်မည်လား?")},confirmButton={TextButton({vm.removeSpecialLimit(value);pendingSpecial=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်"))}},dismissButton={TextButton({pendingSpecial=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}})}
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကန့်သတ်ပမာဏ"),onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item{DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ");Row{DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;language.setSession(draw)},label={Text(draw.label)})}}}
-        item{Text("ဒီ Session အတွက် အားလုံးကန့်သတ်ချက်",style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"မထည့်ပါက ကန့်သတ်ချက်မရှိပါ",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,date,session,allText){}}){Text("သိမ်းမည်")}}
-        item{HorizontalDivider();Text("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်",style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"ဂဏန်း",keyboard=KeyboardType.Number);Input(amount,{amount=it},"ပမာဏ",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,date,session,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text("သိမ်းမည်")}}
-        items(specials){limit->Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(limit.digit+"  →  "+limit.amount.mmk());TextButton({pendingSpecial=limit}){Text("ဖယ်ရှားမည်")}}}
+        item{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session အတွက် အားလုံးကန့်သတ်ချက်"),style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"မထည့်ပါက ကန့်သတ်ချက်မရှိပါ",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,date,session,allText){}}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သိမ်းမည်"))}}
+        item{HorizontalDivider();Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်"),style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"ဂဏန်း",keyboard=KeyboardType.Number);Input(amount,{amount=it},"ပမာဏ",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,date,session,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သိမ်းမည်"))}}
+        items(specials){limit->Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(limit.digit+"  →  "+limit.amount.mmk());TextButton({pendingSpecial=limit}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်"))}}}
     }}
 }
 @Composable fun WinningHubScreen(onInput: () -> Unit, onView: () -> Unit, onBack: () -> Unit) {
-    AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်စဉ်"), onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ResultViewCard("ပေါက်ဂဏန်းထည့်ရန်", "ထွက်ဂဏန်းကို ရက်နှင့်အချိန်အလိုက် ထည့်ရန်", Icons.Default.Edit, onInput, Modifier.fillMaxWidth())
             ResultViewCard("ထီပေါက်စဉ်ကြည့်ရန်", "ရက်အလိုက်၊ အပတ်စဉ်၊ လစဉ် ကြည့်ရန်", Icons.Default.CalendarMonth, onView, Modifier.fillMaxWidth())
@@ -875,19 +875,19 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     pendingDelete?.let { winner ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("ပေါက်ဂဏန်းဖျက်မည်လား") },
-            text = { Text("${winner.date} ${winner.session.label} မှ ${winner.digit} ကို ဖျက်မလား?") },
-            confirmButton = { TextButton(onClick = { vm.deleteWinner(winner) { notice = it }; pendingDelete = null }) { Text("ဖျက်မည်") } },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("မလုပ်ပါ") } },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းဖျက်မည်လား")) },
+            text = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${winner.date} ${winner.session.label} မှ ${winner.digit} ကို ဖျက်မလား?")) },
+            confirmButton = { TextButton(onClick = { vm.deleteWinner(winner) { notice = it }; pendingDelete = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်")) } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
         )
     }
 
-    AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်စဉ်"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("ထီပေါက်စဉ်", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("ရက်စွဲနှင့် အချိန်အလိုက် ရလဒ်များကို စီမံပါ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်စဉ်"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲနှင့် အချိန်အလိုက် ရလဒ်များကို စီမံပါ"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (mode == "view") item {
@@ -912,13 +912,13 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                                 }
                             }
                             if (existing != null) {
-                                Text("${existing.date} ${existing.session.label} • လက်ရှိ ${existing.digit}", color = MaterialTheme.colorScheme.primary)
-                                Text("ပေါက်ဂဏန်းအသစ် ထည့်ပြီး ပြင်ဆင်ပါ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${existing.date} ${existing.session.label} • လက်ရှိ ${existing.digit}"), color = MaterialTheme.colorScheme.primary)
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းအသစ် ထည့်ပြီး ပြင်ဆင်ပါ"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Input(digit, { digit = it.filter { ch -> ch in '0'..'9' }.take(2) }, "ပေါက်ဂဏန်း 00–99", true, KeyboardType.Number)
                             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.primary)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedButton({ digit = "" }, Modifier.weight(1f)) { Text("ရှင်းမည်") }
+                                OutlinedButton({ digit = "" }, Modifier.weight(1f)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှင်းမည်")) }
                                 Button(
                                     onClick = {
                                         runCatching { LocalDate.parse(date) }.getOrNull()?.let { parsedDate ->
@@ -935,7 +935,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                 }
             } else if (mode == "view" && resultView.isNotBlank()) {
                 val selected = runCatching { LocalDate.parse(date) }.getOrElse { LocalDate.now() }
-                item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(when(resultView) { "daily" -> "ရက်အလိုက်ရလဒ်"; "weekly" -> "အပတ်စဉ်ရလဒ်"; else -> "လစဉ်ရလဒ်" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); TextButton({ resultView = ""; showForm = true }) { Text("ပြန်ထည့်ရန်") } } }
+                item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(when(resultView) { "daily" -> "ရက်အလိုက်ရလဒ်"; "weekly" -> "အပတ်စဉ်ရလဒ်"; else -> "လစဉ်ရလဒ်" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); TextButton({ resultView = ""; showForm = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ထည့်ရန်")) } } }
                 item {
                     when (resultView) {
                         "daily" -> WinningDayCard(selected, displayWinners.filter { it.date == selected }, closedDays.any { it.date == selected })
@@ -951,7 +951,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                     }
                 }
             } else if (mode == "view" && displayWinners.isEmpty()) {
-                item { EmptyState("မှတ်တမ်းမရှိသေးပါ", "အသစ်ထည့်ရန်မှ ပေါက်ဂဏန်းကို ထည့်ပါ") }
+                item { EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မှတ်တမ်းမရှိသေးပါ"), "အသစ်ထည့်ရန်မှ ပေါက်ဂဏန်းကို ထည့်ပါ") }
             } else if (mode == "view") {
                 displayWinners.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) ->
                     item {
@@ -968,10 +968,10 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                                         if (winner != null) {
                                             val isLocalWinner = winners.any { it.date == winner.date && it.session == winner.session }
                                             if (isLocalWinner) {
-                                                TextButton({ date = winner.date.toString(); session = winner.session; digit = winner.digit; showForm = true }) { Text("ပြင်မည်") }
-                                                TextButton({ pendingDelete = winner }) { Text("ဖျက်မည်") }
+                                                TextButton({ date = winner.date.toString(); session = winner.session; digit = winner.digit; showForm = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြင်မည်")) }
+                                                TextButton({ pendingDelete = winner }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်")) }
                                             } else {
-                                                Text("History Result", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("History Result"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
                                     }
@@ -1032,7 +1032,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = if (compact) 7.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.width(if (compact) 92.dp else 110.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(dateLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                if (closed) Text("ပိတ်ရက်", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                if (closed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             }
             DrawSession.entries.forEach { draw ->
                 val winner = winners.firstOrNull { it.session == draw }
@@ -1058,7 +1058,7 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
     val report by produceState<DrawReport?>(null, date, session, id, scope, revision) {
         value = date?.let { if (scope == "agent") vm.agentReport(id, it, session, true) else vm.customerReport(id, it, session, true) }
     }
-    AppScaffold("ထီပေါက်စဉ်", onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်စဉ်"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
@@ -1067,7 +1067,7 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
             item {
                 val historicalDigit = history.firstOrNull { it.date == date }?.let { if (session == DrawSession.MORNING) it.morning2d else it.evening2d }
                 val shownDigit = localWinner?.digit ?: historicalDigit?.takeIf { BetParser.validDigit(it) }
-                if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (shownDigit == null) UnavailableState("ထီပေါက်ဂဏန်း မရှိသေးပါ") else ReportCard(report!!.calculation, shownDigit)
+                if (report == null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲကို စစ်ဆေးပါ")) else if (shownDigit == null) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်ဂဏန်း မရှိသေးပါ")) else ReportCard(report!!.calculation, shownDigit)
             }
         }
     }
@@ -1100,7 +1100,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
     val weeklyReport by produceState<WeeklyReport?>(null, date, id, after, weekly, revision) {
         value = if (scope == "customer" && weekly && date != null) vm.weeklyCustomerReport(id, date, after) else null
     }
-    AppScaffold("အစီရင်ခံစာ", onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစီရင်ခံစာ"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 BilingualText(if (scope == "customer") "ရက်အလိုက်" else "ထိုးသားအလိုက်\nCustomer-by-customer", primaryStyle=MaterialTheme.typography.headlineSmall)
@@ -1111,7 +1111,7 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                     FilterChip(selected=after, onClick={after=true}, label={BilingualText("ဂဏန်းထွက်ပြီးချိန်\nAfter", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
                 }
                 if (scope == "customer") {
-                    Row { FilterChip(!weekly, { weekly = false }, label = { Text("ရက်အလိုက်") }, modifier = Modifier.padding(end = 8.dp)); FilterChip(weekly, { weekly = true }, label = { Text("အပတ်စဉ်") }) }
+                    Row { FilterChip(!weekly, { weekly = false }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်အလိုက်")) }, modifier = Modifier.padding(end = 8.dp)); FilterChip(weekly, { weekly = true }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အပတ်စဉ်")) }) }
                 }
             }
             if (scope == "customer" && weekly) {
@@ -1122,15 +1122,15 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                     item { AnalysisMetric("အပတ်စဉ် ထိုးကြေးစုစုပေါင်း", report.totalBet.mmk()); AnalysisMetric("အပတ်စဉ် ကော်မရှင်", report.commission.mmk()); if (after) AnalysisMetric("အပတ်စဉ် လျော်ပေးငွေ", report.payout.mmk()); AnalysisMetric("အပတ်စဉ် ရှုံး/မြတ်", report.profitLoss.mmk()) }
                 }
             } else if (scope == "agent" && after && report?.winnerAvailable != true) {
-                item { UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") }
+                item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ")) }
             } else if (scope == "agent") {
                 item {
                     Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small).padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("ဖောက်သည်", Modifier.weight(1.2f), fontWeight = FontWeight.Bold)
-                        Text("ထိုးကြေး", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Text("လျော်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Text("ကော်မရှင်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Text("ရှုံး/မြတ်", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖောက်သည်"), Modifier.weight(1.2f), fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေး"), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လျော်"), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်"), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှုံး/မြတ်"), Modifier.weight(1f), fontWeight = FontWeight.Bold)
                     }
                 }
                 items(customerRows) { row ->
@@ -1147,20 +1147,20 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
                     ReportCard(total, null)
                 }
             } else {
-                item { if (report == null) Text("ရက်စွဲကို စစ်ဆေးပါ") else if (after && !report!!.winnerAvailable) UnavailableState("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ") else ReportCard(report!!.calculation, report!!.winningDigit) }
+                item { if (report == null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲကို စစ်ဆေးပါ")) else if (after && !report!!.winnerAvailable) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ")) else ReportCard(report!!.calculation, report!!.winningDigit) }
             }
         }
     }
 }
 
-@Composable private fun WeeklyDayCard(rows: List<com.myanmar.ledger2d.core.domain.WeeklyDrawRow>, after: Boolean) { OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(rows.first().date.displayDate(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> Surface(Modifier.fillMaxWidth(), color = if (row.session == DrawSession.MORNING) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .35f), shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(row.session.label, fontWeight = FontWeight.Bold); if (after && row.winningDigit != null) Text("ပေါက်ဂဏန်း ${row.winningDigit}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }; if (row.calculation == null) Text("အချက်အလက် မရှိသေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) else { Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ကော်မရှင် ${row.calculation.commission.mmk()}"); if (after) Text("လျော် ${row.calculation.payout.mmk()} • ရှုံး/မြတ် ${row.calculation.profitLoss.mmk()}") } } } } } } }
+@Composable private fun WeeklyDayCard(rows: List<com.myanmar.ledger2d.core.domain.WeeklyDrawRow>, after: Boolean) { OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(rows.first().date.displayDate(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> Surface(Modifier.fillMaxWidth(), color = if (row.session == DrawSession.MORNING) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .35f), shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(row.session.label, fontWeight = FontWeight.Bold); if (after && row.winningDigit != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်း ${row.winningDigit}"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }; if (row.calculation == null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချက်အလက် မရှိသေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) else { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ကော်မရှင် ${row.calculation.commission.mmk()}")); if (after) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လျော် ${row.calculation.payout.mmk()} • ရှုံး/မြတ် ${row.calculation.profitLoss.mmk()}")) } } } } } } }
 
 @Composable fun ReportCard(c: DrawCalculation, winner: String?) {
     val profitColor = if (c.profitLoss < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     ElevatedCard(shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column { Text("အစီရင်ခံစာ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black); Text(if (winner == null) "ဂဏန်းမထွက်ခင် • Before" else "ပေါက်ဂဏန်း $winner", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Column { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစီရင်ခံစာ"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black); Text(if (winner == null) "ဂဏန်းမထွက်ခင် • Before" else "ပေါက်ဂဏန်း $winner", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             HorizontalDivider()
@@ -1198,14 +1198,14 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var notice by rememberSaveable { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<ClosedDayEntity?>(null) }
-    pendingDelete?.let { day -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("ပိတ်ရက်ဖျက်မည်လား")}, text={Text("${day.date.displayDate()} ကို ပြန်ဖွင့်မည်လား?")}, confirmButton={TextButton({vm.removeClosedDay(day);pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton({pendingDelete=null}){Text("မလုပ်ပါ")}}) }
-    AppScaffold("ပိတ်ရက်", onBack) { padding ->
+    pendingDelete?.let { day -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်ဖျက်မည်လား"))}, text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${day.date.displayDate()} ကို ပြန်ဖွင့်မည်လား?"))}, confirmButton={TextButton({vm.removeClosedDay(day);pendingDelete=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်"))}}, dismissButton={TextButton({pendingDelete=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}}) }
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("သတ်မှတ်ထားသော ပိတ်ရက်များတွင် စာရင်းအသစ် လက်မခံပါ", style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော ပိတ်ရက်များတွင် စာရင်းအသစ် လက်မခံပါ"), style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
             DateInput(dateText, { dateText = it }, "ရက်စွဲ")
-            Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text("ပိတ်ရက်သတ်မှတ်မည်") }
+            Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်သတ်မှတ်မည်")) }
             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.error)
-            if(days.isEmpty()) EmptyState("ပိတ်ရက် မရှိသေးပါ", "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=MaterialTheme.shapes.medium) { ListItem(headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text("စာရင်းအသစ် လက်မခံပါ")}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text("ဖယ်ရှားမည်") } }) } } }
+            if(days.isEmpty()) EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက် မရှိသေးပါ"), "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=MaterialTheme.shapes.medium) { ListItem(headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းအသစ် လက်မခံပါ"))}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }) } } }
         }
     }
 }
@@ -1219,10 +1219,10 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val entries = remember(observedEntries) { betEntriesInSubmissionOrder(observedEntries) }
     var pendingDelete by remember { mutableStateOf<BetEntryEntity?>(null) }
     var deleteError by remember { mutableStateOf<String?>(null) }
-    deleteError?.let{msg->AlertDialog(onDismissRequest={deleteError=null},title={Text("စာရင်းဖျက်မရပါ")},text={Text(msg)},confirmButton={TextButton({deleteError=null}){Text("OK")}})}
+    deleteError?.let{msg->AlertDialog(onDismissRequest={deleteError=null},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းဖျက်မရပါ"))},text={Text(msg)},confirmButton={TextButton({deleteError=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("OK"))}})}
     var expandedEntry by remember { mutableStateOf<BetEntryWithLines?>(null) }
     expandedEntry?.let { record ->
-        AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text("ပိတ်မည်") } }, title = { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }, text = {
+        AlertDialog(onDismissRequest = { expandedEntry = null }, confirmButton = { TextButton({ expandedEntry = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်မည်")) } }, title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်ကြည့်ရန်")) }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(record.entry.sourceText, fontWeight = FontWeight.Bold)
                 HorizontalDivider()
@@ -1230,26 +1230,26 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                     items(record.lines, key = { it.id }) { line -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(line.digit, fontWeight = FontWeight.Bold); Text(line.amount.mmk()) } }
                 }
                 HorizontalDivider()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", fontWeight = FontWeight.Bold); Text(record.lines.sumOf { it.amount }.mmk(), fontWeight = FontWeight.Black) }
-                Text("${record.lines.size} entries", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Total"), fontWeight = FontWeight.Bold); Text(record.lines.sumOf { it.amount }.mmk(), fontWeight = FontWeight.Black) }
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${record.lines.size} entries"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         })
     }
-    pendingDelete?.let { entry -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text("စာရင်းဖျက်မည်လား")}, text={Text("ဒီစာရင်းကို အပြီးဖျက်မလား?")}, confirmButton={TextButton(onClick={vm.deleteBet(entry){deleteError=it};pendingDelete=null}){Text("ဖျက်မည်")}}, dismissButton={TextButton(onClick={pendingDelete=null}){Text("မလုပ်ပါ")}}) }
-    AppScaffold("သွင်းထားသောစာရင်း", onBack) { padding ->
+    pendingDelete?.let { entry -> AlertDialog(onDismissRequest={pendingDelete=null}, title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းဖျက်မည်လား"))}, text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီစာရင်းကို အပြီးဖျက်မလား?"))}, confirmButton={TextButton(onClick={vm.deleteBet(entry){deleteError=it};pendingDelete=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်"))}}, dismissButton={TextButton(onClick={pendingDelete=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}}) }
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သွင်းထားသောစာရင်း"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ"); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(draw.label) }) } } }
-            if (entries.isEmpty()) item { EmptyState("စာရင်းမရှိသေးပါ", "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") }
+            if (entries.isEmpty()) item { EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "အတည်ပြုထားသော စာရင်းမရှိသေးပါ") }
             items(entries, key = { it.entry.id }) { record ->
                 ElevatedCard {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("${record.entry.drawDate} • ${record.entry.drawSession.label}", fontWeight = FontWeight.Bold)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${record.entry.drawDate} • ${record.entry.drawSession.label}"), fontWeight = FontWeight.Bold)
                             Text(record.entry.sourceText, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                            Text("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်", fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { expandedEntry = record }, contentPadding = PaddingValues(0.dp)) { Text("အကွက်အသေးစိတ်ကြည့်ရန်") }
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${record.lines.sumOf { it.amount }.mmk()} • ${record.lines.size} အကွက်"), fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { expandedEntry = record }, contentPadding = PaddingValues(0.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်ကြည့်ရန်")) }
                         }
-                        Column { TextButton(onClick = { onEdit(record) }) { Text("ပြင်မည်") }; TextButton(onClick = { pendingDelete = record.entry }) { Text("ဖယ်ရှားမည်") } }
+                        Column { TextButton(onClick = { onEdit(record) }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြင်မည်")) }; TextButton(onClick = { pendingDelete = record.entry }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }
                     }
                 }
             }
@@ -1283,7 +1283,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             }
         }}
         Text(language.text("ဘာသာစကား","Language"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-        OutlinedCard{Column{ListItem(headlineContent={Text("မြန်မာ")},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text("English")},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
+        OutlinedCard{Column{ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မြန်မာ"))},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("English"))},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
         Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }}
 }
@@ -1291,9 +1291,9 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
 
 @Composable fun OperationalBottomBar(selected:String,onNavigate:(String)->Unit,onQuickEntry:()->Unit){
     NavigationBar(containerColor=MaterialTheme.colorScheme.surface){
-        NavigationBarItem(selected=="home",{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text("ယနေ့")})
-        NavigationBarItem(selected=="ledger",{onNavigate("ledger")},icon={Icon(Icons.Default.ListAlt,null)},label={Text("စာရင်း")})
-        NavigationBarItem(selected=="quick",onQuickEntry,icon={Icon(Icons.Default.AddCircle,null)},label={Text("သွင်းရန်")})
-        NavigationBarItem(selected=="manage",{onNavigate("manage")},icon={Icon(Icons.Default.Settings,null)},label={Text("စီမံရန်")})
+        NavigationBarItem(selected=="home",{onNavigate("home")},icon={Icon(Icons.Default.Home,null)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ယနေ့"))})
+        NavigationBarItem(selected=="ledger",{onNavigate("ledger")},icon={Icon(Icons.Default.ListAlt,null)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်း"))})
+        NavigationBarItem(selected=="quick",onQuickEntry,icon={Icon(Icons.Default.AddCircle,null)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သွင်းရန်"))})
+        NavigationBarItem(selected=="manage",{onNavigate("manage")},icon={Icon(Icons.Default.Settings,null)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စီမံရန်"))})
     }
 }

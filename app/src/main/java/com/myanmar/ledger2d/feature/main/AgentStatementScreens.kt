@@ -71,7 +71,7 @@ fun AgentStatementWorkspace(
         "pm" -> DrawSession.EVENING
         else -> null
     }
-    val chosenAgent = if (agentId == -1L) "ဒိုင်အားလုံး"
+    val chosenAgent = if (agentId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")
         else agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်"
     val valid = agents.isNotEmpty() && (agentId == -1L || agents.any { it.id == agentId }) && range != null
 
@@ -86,17 +86,17 @@ fun AgentStatementWorkspace(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                item { Text("ဒိုင်စာရင်းရှင်းတမ်း ရွေးချယ်ရန်",
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်း ရွေးချယ်ရန်"),
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 item {
                     ScopeDropdown(
                         "ဒိုင်ရွေးရန်", chosenAgent,
-                        listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name },
+                        listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId,
                     ) { agentId = it }
                 }
                 item {
-                    Text("အချိန်ကာလ", fontWeight = FontWeight.SemiBold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         listOf(
@@ -134,7 +134,7 @@ fun AgentStatementWorkspace(
                     }
                 }
                 item {
-                    Text("အကြိမ်ရွေးရန်", fontWeight = FontWeight.SemiBold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်")
@@ -144,12 +144,12 @@ fun AgentStatementWorkspace(
                     }
                 }
                 if (range == null) item {
-                    Text("ရွေးထားတဲ့ရက်စွဲတွေကို ပြန်စစ်ပါ", color = MaterialTheme.colorScheme.error)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတဲ့ရက်စွဲတွေကို ပြန်စစ်ပါ"), color = MaterialTheme.colorScheme.error)
                 }
                 item {
                     Button(onClick = { results = true }, enabled = valid,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                        Text("စာရင်းကြည့်မည်")
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းကြည့်မည်"))
                         Spacer(Modifier.width(8.dp))
                         Icon(Icons.Default.ChevronRight, null)
                     }
@@ -209,8 +209,8 @@ private fun AgentStatementValue(label: String, amount: String, bold: Boolean = f
 private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?, compact: Boolean = false) {
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         if (!compact) {
-            Text("စာရင်းချုပ်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (agentCount != null) Text("စာရင်းရှိသောဒိုင် $agentCount ယောက်",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (agentCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းရှိသောဒိုင် $agentCount ယောက်"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         AgentStatementValue("စုစုပေါင်းထိုးကြေး", "${totals.totalStake.agentMoney()} ကျပ်", true)
@@ -280,7 +280,7 @@ private fun AgentStatementTableRow(
 @Composable
 private fun AgentStatementDigitDetails(draw: AgentStatementDraw) {
     val rows = draw.stakes.groupBy { it.digit }.toSortedMap()
-    Text("ဂဏန်းအလိုက် ထိုးကြေး", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းအလိုက် ထိုးကြေး"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
     rows.forEach { (digit, stakes) ->
         val stake = stakes.sumOf { it.stake }
         val payout = if (draw.winner == digit) stakes.sumOf { Math.multiplyExact(it.stake, it.savedPayoutRate) } else 0L
@@ -317,7 +317,7 @@ private fun AgentStatementDrawDetail(
             val customerIds = (draw.stakes.map { it.customerId } + draw.commissions.map { it.customerId }).distinct()
             if (customerIds.isNotEmpty()) {
                 HorizontalDivider()
-                Text("ထိုးသားအလိုက် အသေးစိတ်", fontWeight = FontWeight.SemiBold,
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားအလိုက် အသေးစိတ်"), fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.bodySmall)
                 customerIds.sortedBy { customerNames[it] ?: it.toString() }.forEach { customerId ->
                     val customerDraw = draw.forCustomer(customerId)
@@ -371,7 +371,7 @@ private fun AgentStatementSectionCard(
             if (open) {
                 if (showAgents) {
                     val realSessions = section.draws.map { it.date to it.session }.toSet().size
-                    Text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${totals.draws} ကြိမ်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${totals.draws} ကြိမ်"),
                         style = MaterialTheme.typography.labelSmall)
                 }
                 AgentStatementTableHeader(tableScroll)
@@ -435,12 +435,12 @@ fun AgentStatementResults(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(subtitle, fontWeight = FontWeight.SemiBold)
-                    Text("${range.start.reviewDate()}${if (range.start == range.end) "" else " – ${range.end.reviewDate()}"}" +
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${range.start.reviewDate()}${if (range.start == range.end) ")" else " – ${range.end.reviewDate()}"}" +
                         " • " + (session?.reviewLabel() ?: "နှစ်ကြိမ်လုံး"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onReselect) { Text("ပြန်ရွေးရန်") }
+                TextButton(onClick = onReselect) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ရွေးရန်")) }
             }
         }
         val data = statement
@@ -455,33 +455,33 @@ fun AgentStatementResults(
                 }
             }
             item {
-                Text("ကော်မရှင်သည် App မှာ သိမ်းထားသော Net Commission ဖြစ်သည်။ " +
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်သည် App မှာ သိမ်းထားသော Net Commission ဖြစ်သည်။ ") +
                     "ဒိုင်မှပေးရမည့် Gross Commission သို့မဟုတ် လက်တွေ့ငွေလွှဲပြီးကြောင်း အတည်ပြုချက် မဟုတ်ပါ။",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (agentId == -1L) item {
                 val realSessions = data.draws.map { it.date to it.session }.toSet().size
-                Text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${data.totals.draws} ကြိမ်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${data.totals.draws} ကြိမ်"),
                     style = MaterialTheme.typography.labelSmall)
-                Text("ဒိုင်အားလုံး စာရင်းပေါင်းသည် Agent အလိုက်သိမ်းထားသော စာရင်းများပေါင်းသာဖြစ်သည်။ " +
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး စာရင်းပေါင်းသည် Agent အလိုက်သိမ်းထားသော စာရင်းများပေါင်းသာဖြစ်သည်။ ") +
                     "Self/အခြားဒိုင်ဆီ ပြန်တင်ထားသောစာရင်းများ ပါနိုင်သဖြင့် မူလရောင်းအားအမှန်ဟု မသတ်မှတ်ပါ။",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (data.draws.isEmpty()) {
-                item { Text("ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ။") }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသောကာလအတွက် ထိုးစာရင်းမရှိပါ။")) }
             } else {
                 if (agentId == -1L) item {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(view == "agents", { view = "agents" }, label = { Text("ဒိုင်တစ်ယောက်ချင်း") })
-                        FilterChip(view == "total", { view = "total" }, label = { Text("အားလုံးစုစုပေါင်း") })
+                        FilterChip(view == "agents", { view = "agents" }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်တစ်ယောက်ချင်း")) })
+                        FilterChip(view == "total", { view = "total" }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အားလုံးစုစုပေါင်း")) })
                     }
                 }
                 if (agentId == -1L && view == "agents") {
                     item {
-                        OutlinedTextField(search, { search = it }, label = { Text("ဒိုင်အမည်ရှာရန်") },
+                        OutlinedTextField(search, { search = it }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အမည်ရှာရန်")) },
                             modifier = Modifier.fillMaxWidth(), singleLine = true)
                     }
                     val shown = data.agentIds.sortedBy { agentNames[it] ?: it.toString() }
@@ -510,15 +510,15 @@ fun AgentStatementResults(
                         val totals = AgentStatementCalculator.summarize(data.draws.filter { it.agentId in included })
                         OutlinedCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                                 AgentStatementSummary(totals, null, compact = true)
-                                if (search.isNotBlank()) Text("ရှာထားသည့်ဒိုင်များအတွက်သာ",
+                                if (search.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှာထားသည့်ဒိုင်များအတွက်သာ"),
                                     style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
                 } else {
-                    item { Text("ကာလအလိုက် စာရင်း", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                    item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာလအလိုက် စာရင်း"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                     val sections = agentReportSections(data.draws, period, range)
                     items(sections, key = { it.start }) { section ->
                         AgentStatementSectionCard(section, customers, agentNames, showAgents = agentId == -1L)
@@ -526,7 +526,7 @@ fun AgentStatementResults(
                     item {
                         OutlinedCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                Text("အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                                 val bottomScroll = rememberScrollState()
                                 AgentStatementTableHeader(bottomScroll)
                                 AgentStatementTableRow("စုစုပေါင်း", data.totals, bottomScroll, true)

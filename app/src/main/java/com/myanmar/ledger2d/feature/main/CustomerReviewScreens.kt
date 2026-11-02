@@ -41,7 +41,7 @@ internal fun ReviewDatePicker(value: String, title: String, modifier: Modifier =
         value = runCatching { LocalDate.parse(value).reviewDate() }.getOrDefault(value),
         onValueChange = {}, modifier = modifier.fillMaxWidth(), readOnly = true,
         singleLine = true, label = { Text(title) },
-        trailingIcon = { TextButton(onClick = { open = true }) { Text("ရွေး") } },
+        trailingIcon = { TextButton(onClick = { open = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး")) } },
     )
     if (open) {
         val selected = runCatching { LocalDate.parse(value).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull()
@@ -54,9 +54,9 @@ internal fun ReviewDatePicker(value: String, title: String, modifier: Modifier =
                         onChange(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString())
                     }
                     open = false
-                }) { Text("ရွေးမည်") }
+                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးမည်")) }
             },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("မလုပ်ပါ") } },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
         ) { DatePicker(picker) }
     }
 }
@@ -122,7 +122,7 @@ fun CustomerReviewWorkspace(
     }
     val canView = agentId > 0L && customerId != 0L && range != null && (mode != "analysis" || draw != null)
     val selectedAgentName = agents.firstOrNull { it.id == agentId }?.name ?: "Agent"
-    val selectedCustomerName = if (customerId == -1L) "Customer အားလုံး"
+    val selectedCustomerName = if (customerId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")
         else customers.firstOrNull { it.id == customerId }?.name ?: "Customer"
 
     AppScaffold(
@@ -142,18 +142,18 @@ fun CustomerReviewWorkspace(
                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 item {
-                    ScopeDropdown("Agent", selectedAgentName, agents.map { it.id to it.name }, agentId) {
+                    ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent"), selectedAgentName, agents.map { it.id to it.name }, agentId) {
                         agentId = it; customerId = -1L
                     }
                 }
                 item {
-                    ScopeDropdown("ထိုးသား", selectedCustomerName,
-                        listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name },
+                    ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား"), selectedCustomerName,
+                        listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name },
                         customerId, enabled = agentId > 0L) { customerId = it }
                 }
                 if (mode == "report") {
                     item {
-                        Text("အချိန်ကာလ", fontWeight = FontWeight.SemiBold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.SemiBold)
                         Row(
                             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -197,7 +197,7 @@ fun CustomerReviewWorkspace(
                     }
                 }
                 item {
-                    Text("အကြိမ်ရွေးရန်", fontWeight = FontWeight.SemiBold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(
                         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -214,7 +214,7 @@ fun CustomerReviewWorkspace(
                     }
                 }
                 if (range == null) item {
-                    Text("ရွေးထားတဲ့ရက်စွဲတွေကို ပြန်စစ်ပါ", color = MaterialTheme.colorScheme.error)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတဲ့ရက်စွဲတွေကို ပြန်စစ်ပါ"), color = MaterialTheme.colorScheme.error)
                 }
                 item {
                     Button(

@@ -51,7 +51,7 @@ private fun StatementDateField(value: String, onChange: (String) -> Unit, label:
     OutlinedTextField(
         value = display, onValueChange = {}, readOnly = true,
         modifier = modifier.fillMaxWidth(), label = { Text(label) },
-        trailingIcon = { TextButton(onClick = { open = true }) { Text("ရွေး") } },
+        trailingIcon = { TextButton(onClick = { open = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး")) } },
         singleLine = true,
     )
     if (open) {
@@ -66,9 +66,9 @@ private fun StatementDateField(value: String, onChange: (String) -> Unit, label:
                         onChange(java.time.Instant.ofEpochMilli(millis).atZone(utc).toLocalDate().toString())
                     }
                     open = false
-                }) { Text("ရွေးမည်") }
+                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးမည်")) }
             },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("မလုပ်ပါ") } },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
         ) { DatePicker(state = picker) }
     }
 }
@@ -154,7 +154,7 @@ fun CustomerStatementScreen(
         else -> null
     }
 
-    AppScaffold("အစီရင်ခံစာ", onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစီရင်ခံစာ"), onBack) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -162,7 +162,7 @@ fun CustomerStatementScreen(
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("ထိုးသား စာရင်းရှင်းတမ်း", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား စာရင်းရှင်းတမ်း"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     ScopeDropdown(
                         "Agent ရွေးရန်",
                         agents.firstOrNull { it.id == agentId }?.name ?: "Agent ရွေးရန်",
@@ -170,8 +170,8 @@ fun CustomerStatementScreen(
                     ) { agentId = it; customerId = -1L; view = "summary"; search = "" }
                     ScopeDropdown(
                         "ထိုးသား ရွေးရန်",
-                        if (customerId == -1L) "Customer အားလုံး" else customers.firstOrNull { it.id == customerId }?.name ?: "ထိုးသား ရွေးရန်",
-                        listOf(-1L to "Customer အားလုံး") + customers.map { it.id to it.name },
+                        if (customerId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး") else customers.firstOrNull { it.id == customerId }?.name ?: "ထိုးသား ရွေးရန်",
+                        listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name },
                         customerId,
                         enabled = agentId > 0L,
                     ) { customerId = it; search = "" }
@@ -180,7 +180,7 @@ fun CustomerStatementScreen(
             item {
                 OutlinedCard {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("ကြည့်ရှုမည့်ကာလ", fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်ရှုမည့်ကာလ"), fontWeight = FontWeight.Bold)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             StatementPeriod.entries.forEach { option ->
                                 FilterChip(period == option, { period = option }, label = { Text(option.nameMm()) })
@@ -211,8 +211,8 @@ fun CustomerStatementScreen(
                             }
                             StatementDateField(anchorText, { anchorText = it }, "ရက်စွဲရွေးရန်")
                         }
-                        if (range == null) Text("စရက်၊ ဆုံးရက်နှင့် ရက်စွဲကို ပြန်စစ်ပါ", color = MaterialTheme.colorScheme.error)
-                        Text("ကြည့်မည့်အကြိမ်", style = MaterialTheme.typography.labelMedium)
+                        if (range == null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စရက်၊ ဆုံးရက်နှင့် ရက်စွဲကို ပြန်စစ်ပါ"), color = MaterialTheme.colorScheme.error)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်မည့်အကြိမ်"), style = MaterialTheme.typography.labelMedium)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်").forEach { (id, label) ->
                                 FilterChip(selectedDraw == id, { selectedDraw = id }, label = { Text(label) })
@@ -222,7 +222,7 @@ fun CustomerStatementScreen(
                 }
             }
             if (agentId <= 0L || range == null) {
-                item { Text("Agent နှင့် မှန်ကန်သော ရက်စွဲကို ရွေးပါ", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent နှင့် မှန်ကန်သော ရက်စွဲကို ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 // Recreate the producer when the selection changes: old customer's totals
                 // cannot flash under the new customer's name while a query is running.
@@ -234,7 +234,7 @@ fun CustomerStatementScreen(
                         }
                         if (report == null) {
                             LinearProgressIndicator(Modifier.fillMaxWidth())
-                            Text("စာရင်းတွက်နေသည်…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းတွက်နေသည်…"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             CustomerStatementContent(report!!, customers, customerId, period, range, view, { view = it }, search, { search = it }, closedDays.map { it.date }.toSet())
                         }
@@ -268,18 +268,18 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
     ElevatedCard {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("စုစုပေါင်းထိုးကြေး", t.totalBet, true)
             StatementMoneyLine("ရလဒ်ထွက်ပြီးသော အကြိမ်များ၏ ထိုးကြေး", t.completedBet)
             if (t.completedDraws > 0) {
                 StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", t.winningStake, true)
                 StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", t.payout, true)
             } else if (t.awaitingDraws > 0) {
-                Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider()
-            Text("ထိုးသား အနိုင်/အရှုံး (ရလဒ်ထွက်ပြီးသော အကြိမ်များအတွက်)", style = MaterialTheme.typography.labelMedium)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား အနိုင်/အရှုံး (ရလဒ်ထွက်ပြီးသော အကြိမ်များအတွက်)"), style = MaterialTheme.typography.labelMedium)
             if (t.completedDraws > 0) StatementMoneyLine("စုစုပေါင်း", t.customerWinLoss, strong = true, positiveGood = true)
             else Text(if (t.awaitingDraws > 0) "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ" else "ထိုးစာရင်းမရှိပါ",
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -288,7 +288,7 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
             )
             if (!t.isComplete) {
-                Text("သတိပြုရန် — အနိုင်/အရှုံးမှာ ရလဒ်ရပြီးသား အကြိမ်များအတွက်သာဖြစ်ပြီး ကျန်အကြိမ်များ မပါသေးပါ။", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတိပြုရန် — အနိုင်/အရှုံးမှာ ရလဒ်ရပြီးသား အကြိမ်များအတွက်သာဖြစ်ပြီး ကျန်အကြိမ်များ မပါသေးပါ။"), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -309,13 +309,13 @@ private fun StatementDrawCard(draws: List<StatementDraw>) {
                     color = if (winner == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium)
             }
-            Text("ထိုးကွက်ပေါင်း ${totals.slots} ကွက်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကွက်ပေါင်း ${totals.slots} ကွက်"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("ထိုးကြေး", totals.totalBet)
             if (winner == null) {
-                Text("ပေါက်ကြေး၊ ပြန်လျော်ငွေ၊ အနိုင်/အရှုံးကို ရလဒ်ရမှ တွက်မည်။", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေး၊ ပြန်လျော်ငွေ၊ အနိုင်/အရှုံးကို ရလဒ်ရမှ တွက်မည်။"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 StatementMoneyLine("ပေါက်ကြေး", totals.winningStake)
-                Text("လျော်ကြေးအဆ: " + when {
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လျော်ကြေးအဆ: ") + when {
                     payoutRates.isEmpty() -> "—"
                     payoutRates.size == 1 -> "${payoutRates.first()} ဆ"
                     else -> payoutRates.sorted().joinToString(" / ") { "$it ဆ" }
@@ -384,7 +384,7 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
                     if (totals.completedDraws > 0) {
                         StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
                         StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
-                    } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider()
                     StatementGroupRows(group)
                 }
@@ -425,19 +425,19 @@ private fun CustomerStatementContent(
         } else {
             if (all) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(view == "summary", { onView("summary") }, label = { Text("ကာလအလိုက် စုစုပေါင်း") })
-                    FilterChip(view == "customers", { onView("customers") }, label = { Text("ထိုးသားတစ်ယောက်ချင်း") })
+                    FilterChip(view == "summary", { onView("summary") }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာလအလိုက် စုစုပေါင်း")) })
+                    FilterChip(view == "customers", { onView("customers") }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားတစ်ယောက်ချင်း")) })
                 }
             }
             if (all && view == "customers") {
                 OutlinedTextField(
                     value = search, onValueChange = onSearch,
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    label = { Text("ထိုးသားအမည် ရှာရန်") },
+                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားအမည် ရှာရန်")) },
                 )
                 var expandedCustomer by rememberSaveable { mutableLongStateOf(0L) }
                 val people = customers.filter { report.customers.containsKey(it.id) && it.name.contains(search, ignoreCase = true) }
-                if (people.isEmpty()) Text("ကိုက်ညီသော ထိုးသားမရှိပါ")
+                if (people.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကိုက်ညီသော ထိုးသားမရှိပါ"))
                 people.forEach { customer ->
                     val totals = report.customers[customer.id] ?: return@forEach
                     val expanded = expandedCustomer == customer.id
@@ -451,7 +451,7 @@ private fun CustomerStatementContent(
                             if (totals.completedDraws > 0) {
                                 StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", totals.winningStake)
                                 StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", totals.payout)
-                            } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (totals.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", totals.customerWinLoss, true, true)
                             else Text(
                                 if (totals.completedDraws > 0) "ရလဒ်မရသေး ${totals.awaitingDraws} ကြိမ် • ရပြီးသားအနိုင်/အရှုံး ${totals.customerWinLoss.statementMoney()}"
@@ -471,25 +471,25 @@ private fun CustomerStatementContent(
                     val shown = CustomerStatementCalculator.totals(report.draws.filter { it.customerId in visibleIds })
                     OutlinedCard {
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text("ဖော်ပြထားသော ထိုးသားများ၏ အောက်ဆုံးစုစုပေါင်း", fontWeight = FontWeight.Bold)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖော်ပြထားသော ထိုးသားများ၏ အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                             StatementMoneyLine("ထိုးကြေး", shown.totalBet, true)
                             if (shown.completedDraws > 0) {
                                 StatementMoneyLine("ပေါက်ကြေး (ရလဒ်ရပြီး)", shown.winningStake)
                                 StatementMoneyLine("ပြန်လျော်ငွေ (ရလဒ်ရပြီး)", shown.payout, true)
-                            } else Text("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (shown.awaitingDraws == 0) StatementMoneyLine("ထိုးသား အနိုင်/အရှုံး", shown.customerWinLoss, true, true)
                             else Text(
                                 if (shown.completedDraws > 0) "ရလဒ်မရသေးသော အကြိမ်များ မပါဝင်သည့် အနိုင်/အရှုံး: ${shown.customerWinLoss.statementMoney()}"
                                 else "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
                             )
-                            if (search.isNotBlank()) Text("အမည်ရှာဖွေမှုနှင့် ကိုက်ညီသော ထိုးသားများကိုသာ ပေါင်းထားသည်။",
+                            if (search.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမည်ရှာဖွေမှုနှင့် ကိုက်ညီသော ထိုးသားများကိုသာ ပေါင်းထားသည်။"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             } else {
-                Text("ကာလအလိုက် စာရင်းအသေးစိတ်", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာလအလိုက် စာရင်းအသေးစိတ်"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 val groups = displayGroups(report.draws, period, range)
                 StatementBucketList(groups)
             }
