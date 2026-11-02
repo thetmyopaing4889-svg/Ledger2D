@@ -65,7 +65,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
         if (agentId > 0L && agents.none { it.id == agentId }) agentId = -1L
     }
     val selectedName = if (agentId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")
-        else agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်"
+        else agents.firstOrNull { it.id == agentId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်")
     val valid = range != null && (agentId == -1L || agents.any { it.id == agentId })
     val filtered = if (range != null) CommissionLedgerCalculator.select(allRows, range, agentId, draw)
         else emptyList()
@@ -84,9 +84,9 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         listOf(
-                            StatementPeriod.DAY to "ရက်", StatementPeriod.WEEK to "ပတ်",
-                            StatementPeriod.MONTH to "လ", StatementPeriod.YEAR to "နှစ်",
-                            StatementPeriod.CUSTOM to "စိတ်ကြိုက်",
+                            StatementPeriod.DAY to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်"), StatementPeriod.WEEK to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပတ်"),
+                            StatementPeriod.MONTH to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လ"), StatementPeriod.YEAR to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်"),
+                            StatementPeriod.CUSTOM to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်"),
                         ).forEach { (id, title) ->
                             FilterChip(!allTime && period == id, onClick = {
                                 period = id; allTime = false
@@ -134,7 +134,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်")
+                        listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"))
                             .forEach { (key, name) ->
                                 FilterChip(sessionChoice == key, onClick = { sessionChoice = key },
                                     label = { Text(name) })

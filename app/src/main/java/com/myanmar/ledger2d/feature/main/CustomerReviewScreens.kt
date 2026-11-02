@@ -159,9 +159,9 @@ fun CustomerReviewWorkspace(
                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                         ) {
                             listOf(
-                                StatementPeriod.DAY to "ရက်", StatementPeriod.WEEK to "ပတ်",
-                                StatementPeriod.MONTH to "လ", StatementPeriod.YEAR to "နှစ်",
-                                StatementPeriod.CUSTOM to "စိတ်ကြိုက်",
+                                StatementPeriod.DAY to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်"), StatementPeriod.WEEK to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပတ်"),
+                                StatementPeriod.MONTH to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လ"), StatementPeriod.YEAR to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်"),
+                                StatementPeriod.CUSTOM to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်"),
                             ).forEach { (p, title) ->
                                 FilterChip(period == p, onClick = { period = p }, label = { Text(title) })
                             }
@@ -203,8 +203,8 @@ fun CustomerReviewWorkspace(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         val choices = if (mode == "report")
-                            listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်")
-                        else listOf("am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်")
+                            listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"))
+                        else listOf("am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"))
                         choices.forEach { (id, title) ->
                             FilterChip(
                                 selected = (if (mode == "analysis" && drawChoice == "both") "am" else drawChoice) == id,

@@ -214,7 +214,7 @@ fun CustomerStatementScreen(
                         if (range == null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စရက်၊ ဆုံးရက်နှင့် ရက်စွဲကို ပြန်စစ်ပါ"), color = MaterialTheme.colorScheme.error)
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်မည့်အကြိမ်"), style = MaterialTheme.typography.labelMedium)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်").forEach { (id, label) ->
+                            listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်")).forEach { (id, label) ->
                                 FilterChip(selectedDraw == id, { selectedDraw = id }, label = { Text(label) })
                             }
                         }

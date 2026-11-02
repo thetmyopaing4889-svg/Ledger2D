@@ -72,7 +72,7 @@ fun AgentStatementWorkspace(
         else -> null
     }
     val chosenAgent = if (agentId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")
-        else agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်"
+        else agents.firstOrNull { it.id == agentId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်")
     val valid = agents.isNotEmpty() && (agentId == -1L || agents.any { it.id == agentId }) && range != null
 
     AppScaffold(
@@ -100,9 +100,9 @@ fun AgentStatementWorkspace(
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         listOf(
-                            StatementPeriod.DAY to "ရက်", StatementPeriod.WEEK to "ပတ်",
-                            StatementPeriod.MONTH to "လ", StatementPeriod.YEAR to "နှစ်",
-                            StatementPeriod.CUSTOM to "စိတ်ကြိုက်",
+                            StatementPeriod.DAY to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်"), StatementPeriod.WEEK to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပတ်"),
+                            StatementPeriod.MONTH to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လ"), StatementPeriod.YEAR to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်"),
+                            StatementPeriod.CUSTOM to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်"),
                         ).forEach { (p, label) ->
                             FilterChip(period == p, onClick = { period = p }, label = { Text(label) })
                         }
@@ -137,7 +137,7 @@ fun AgentStatementWorkspace(
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်")
+                        listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"))
                             .forEach { (id, label) ->
                                 FilterChip(drawChoice == id, onClick = { drawChoice = id }, label = { Text(label) })
                             }

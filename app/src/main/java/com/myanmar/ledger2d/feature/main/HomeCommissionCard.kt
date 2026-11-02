@@ -83,10 +83,10 @@ internal fun HomeCommissionCard(
                     modifier = Modifier.weight(1.12f),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    HomeCommissionAmountRow("မနက်အကြိမ်", totals.morning, false)
-                    HomeCommissionAmountRow("ညနေအကြိမ်", totals.evening, false)
+                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), totals.morning, false)
+                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"), totals.evening, false)
                     HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
-                    HomeCommissionAmountRow("ဒီနေ့စုစုပေါင်း", totals.todayTotal, true)
+                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီနေ့စုစုပေါင်း"), totals.todayTotal, true)
                 }
                 VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
                 Column(
