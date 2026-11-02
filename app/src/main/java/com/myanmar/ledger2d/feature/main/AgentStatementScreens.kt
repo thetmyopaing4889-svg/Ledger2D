@@ -200,7 +200,7 @@ private fun AgentStatementValue(label: String, amount: String, bold: Boolean = f
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, amount), style = MaterialTheme.typography.bodyMedium,
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, amount),
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
             style = if (bold) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.End)
