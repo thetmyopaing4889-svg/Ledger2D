@@ -502,7 +502,15 @@ object UiLabelCatalog {
         "ငွေကြေးမျှခြေ" to "Money balance",
         "ထိုးစာရင်းမရှိ" to "No bets recorded",
         "ပေါက်ရင် ပြန်လျော်ငွေ" to "Payout if winning",
-        "မထွက်သေး" to "Pending"
+        "မထွက်သေး" to "Pending",
+        "အောက်က + ခလုတ်ကိုနှိပ်၍ စတင်ပါ" to "Tap + to get started",
+        "လက်ရှိလျော်ကြေးအဆ" to "Effective payout rate",
+        "သတ်မှတ်ထားသော နောက်အဆ" to "Configured next payout rate",
+        "ဂဏန်းမထွက်ခင်" to "Before result",
+        "စုစုပေါင်းအကွက်" to "Total digits",
+        "ရှုံး / မြတ်" to "Profit / Loss",
+        "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ" to "Select a date to mark it closed",
+        "စာရင်းအသစ် လက်မခံပါ" to "No new bets accepted"
     )
     private val uiMyanmar = mapOf(
         "Agent" to "ဒိုင်",
