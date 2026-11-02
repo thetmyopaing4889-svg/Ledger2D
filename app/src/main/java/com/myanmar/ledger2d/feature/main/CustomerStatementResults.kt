@@ -336,7 +336,11 @@ fun CustomerStatementResults(
                                 ReportLine("ထိုးကြေး", "${sub.totalBet.statementAmount()} ကျပ်", true)
                                 ReportLine("ပေါက်ကြေး", if (subCounts.completed > 0) sub.winningStake.statementAmount() else "—")
                                 ReportLine("ပြန်လျော်ငွေ", if (subCounts.completed > 0) sub.payout.statementAmount() else "—")
-                                CustomerSettlementLine(sub.settlementAmount, CustomerStatementCalculator.settlementByCustomer(shownDraws))
+                                if (shownDraws.isEmpty())
+                                    ReportLine(
+                                        com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ငွေရှင်းရလဒ်", "Settlement"),
+                                        com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးစာရင်းမရှိပါ", "No entries"), true)
+                                else CustomerSettlementLine(sub.settlementAmount, CustomerStatementCalculator.settlementByCustomer(shownDraws))
                                 if (search.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှာဖွေထားသည့် ထိုးသားများအတွက်သာ"), style = MaterialTheme.typography.labelSmall)
                             }
                         }
