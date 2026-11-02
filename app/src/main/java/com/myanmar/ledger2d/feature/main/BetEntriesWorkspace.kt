@@ -91,7 +91,7 @@ fun CustomerBetEntriesWorkspace(
                     }
                     HorizontalDivider()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(record.lines.size.toString() + " ကွက်")
+                        Text(record.lines.size.toString() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကွက်", " digits"))
                         Text(betEntryAmount(record).mmk(), fontWeight = FontWeight.Bold)
                     }
                 }
@@ -210,7 +210,7 @@ private fun BetEntriesRow(
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 // Never format, normalize, reorder, or truncate the Messenger message.
                 Text(record.entry.sourceText, style = MaterialTheme.typography.bodyMedium)
-                Text(record.lines.size.toString() + " ကွက်",
+                Text(record.lines.size.toString() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကွက်", " digits"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -237,7 +237,7 @@ private fun TotalsBar(label: String, total: BetEntriesTotal) {
             horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontWeight = FontWeight.Bold)
-                Text(total.entries.toString() + " Entries • " + total.digits + " ကွက်",
+                Text(total.entries.toString() + " Entries • " + total.digits + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကွက်", " digits"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

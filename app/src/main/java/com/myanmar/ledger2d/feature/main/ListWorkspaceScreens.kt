@@ -54,7 +54,7 @@ fun AgentListWorkspaceScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("ဒိုင်စာရင်း • ${agents.size} ယောက်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒိုင်စာရင်း • ${agents.size} ယောက်", "Agent list • ${agents.size}"),
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             if (agents.isNotEmpty()) {
@@ -72,7 +72,7 @@ fun AgentListWorkspaceScreen(
                     )
                 }
                 if (search.isNotBlank()) item {
-                    Text("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်", "Agents found: ${visible.size}"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -110,9 +110,9 @@ private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> 
             headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
             supportingContent = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ" +
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ", "Payout rate: ${agent.rate}x") +
                         if (agent.phone.isNotBlank()) " • ${agent.phone}" else "")
-                    Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အောက်ရှိထိုးသား ${customers.size} ယောက်", "Customers under agent: ${customers.size}"),
                         style = MaterialTheme.typography.labelSmall)
                 }
             },
@@ -226,7 +226,7 @@ fun AgentInformationScreen(
             scrollContent = true,
         ) {
             HorizontalDivider()
-            Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အောက်ရှိထိုးသား ${customers.size} ယောက်", "Customers under agent: ${customers.size}"),
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(
                 "နောက်အကြိမ် • ${upcoming.date} • ${upcoming.session.label} • " +

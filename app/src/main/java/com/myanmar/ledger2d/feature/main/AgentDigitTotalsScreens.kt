@@ -187,7 +187,7 @@ fun AgentDigitTotalsWorkspace(
                     item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီရက်/အကြိမ်အတွက် ထိုးစာရင်းမရှိသေးပါ။")) }
                 } else if (selectedAgent == -1L && allView == "perAgent") {
                     item {
-                        Text("ဒိုင်အလိုက် ဂဏန်းစုစုပေါင်း (${activeGroups.orEmpty().size} ဒိုင်)",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒိုင်အလိုက် ဂဏန်းစုစုပေါင်း (${activeGroups.orEmpty().size} ဒိုင်)", "Digit totals by agent (${activeGroups.orEmpty().size})"),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                     items(activeGroups.orEmpty(), key = { it.agentId }) { group ->
@@ -198,7 +198,7 @@ fun AgentDigitTotalsWorkspace(
                     }
                 } else {
                     item {
-                        Text(if (selectedAgent == -1L) "ဂဏန်းတူရာ အားလုံးပေါင်း"
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (selectedAgent == -1L) "ဂဏန်းတူရာ အားလုံးပေါင်း"
                             else "ဂဏန်းအလိုက် စုစုပေါင်း",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဇယားကို ဘေးတိုက်ဆွဲကြည့်နိုင်သည်"),
@@ -222,9 +222,9 @@ private fun DigitTotalsAgentCard(group: AgentDigitGroup) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(group.agentName, fontWeight = FontWeight.Bold)
-                        Text("ဂဏန်း ${group.digits.size} ကွက် • ထိုးကြေး ${group.totalStake.digitMoney()} ကျပ်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်း ${group.digits.size} ကွက် • ထိုးကြေး ${group.totalStake.digitMoney()} ကျပ်", "Digits: ${group.digits.size} • Stake: ${group.totalStake.digitMoney()} MMK"),
                             style = MaterialTheme.typography.bodySmall)
-                        Text("Net ကော်မရှင် ${group.totalNetCommission.digitMoney()} ကျပ်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Net ကော်မရှင် ${group.totalNetCommission.digitMoney()} ကျပ်", "Net commission: ${group.totalNetCommission.digitMoney()} MMK"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
