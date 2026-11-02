@@ -200,10 +200,10 @@ private fun AgentStatementValue(label: String, amount: String, bold: Boolean = f
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, amount),
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
-            style = if (bold) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.End)
+        com.myanmar.ledger2d.core.design.PremiumMoneyText(
+            com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, amount),
+            modifier = Modifier.weight(1.15f), emphasis = bold
+        )
     }
 }
 
@@ -234,7 +234,8 @@ private fun AgentSettlementLine(balance: Long?, byAgent: Pair<Long, Long>? = nul
 private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?, compact: Boolean = false, allAgentDraws: List<AgentStatementDraw>? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         if (!compact) {
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            com.myanmar.ledger2d.core.design.PremiumSectionHeading(
+                com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"))
             if (agentCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသောဒိုင် $agentCount ယောက်", "Agents with entries: $agentCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
