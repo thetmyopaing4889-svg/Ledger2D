@@ -54,7 +54,7 @@ fun AgentListWorkspaceScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်း • ${agents.size} ယောက်"),
+                Text("ဒိုင်စာရင်း • ${agents.size} ယောက်",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             if (agents.isNotEmpty()) {
@@ -72,7 +72,7 @@ fun AgentListWorkspaceScreen(
                     )
                 }
                 if (search.isNotBlank()) item {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်"),
+                    Text("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -110,9 +110,9 @@ private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> 
             headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
             supportingContent = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ") +
+                    Text("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ" +
                         if (agent.phone.isNotBlank()) " • ${agent.phone}" else "")
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ရှိထိုးသား ${customers.size} ယောက်"),
+                    Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
                         style = MaterialTheme.typography.labelSmall)
                 }
             },
@@ -156,7 +156,7 @@ fun CustomerListWorkspaceScreen(
             item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent) { selectedAgent = it } }
             if (selectedAgent == 0L) item { UnavailableState(l.translate("Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ")) }
             else {
-                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$agentName ${l.translate(")အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                item { Text("$agentName ${l.translate("အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
                 else items(customers, key = { it.id }) { customer ->
                     ElevatedCard(onClick = { onInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) {
@@ -226,7 +226,7 @@ fun AgentInformationScreen(
             scrollContent = true,
         ) {
             HorizontalDivider()
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ရှိထိုးသား ${customers.size} ယောက်"),
+            Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(
                 "နောက်အကြိမ် • ${upcoming.date} • ${upcoming.session.label} • " +

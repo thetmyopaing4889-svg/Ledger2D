@@ -55,7 +55,7 @@ internal fun AnalysisDigitGroupRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$count ကွက်"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text("$count ကွက်", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(4.dp))
             if (enabled) Icon(Icons.Default.ChevronRight, contentDescription = "ဂဏန်းစာရင်းကြည့်ရန်",
                 modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
@@ -92,7 +92,7 @@ internal fun AnalysisDigitDrilldown(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(group.mmTitle(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${rows.size} ကွက် • ဂဏန်းကိုနှိပ်၍ ငွေစာရင်းကြည့်နိုင်သည်"),
+                        Text("${rows.size} ကွက် • ဂဏန်းကိုနှိပ်၍ ငွေစာရင်းကြည့်နိုင်သည်",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = onClose) {
@@ -135,7 +135,7 @@ internal fun AnalysisDigitDrilldown(
     selected?.let { scenario ->
         AlertDialog(
             onDismissRequest = { selected = null },
-            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း ${scenario.digit}")) },
+            title = { Text("ဂဏန်း ${scenario.digit}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     AnalysisDigitDetailLine("ထိုးကြေး", "${scenario.stake.analysisAmount()} ကျပ်")
