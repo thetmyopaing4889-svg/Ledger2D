@@ -709,8 +709,8 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     }
 }
 @Composable private fun PreviewCard(preview:BetPreview){
-    ElevatedCard{
-        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+    PremiumPanel(Modifier.fillMaxWidth()){
+        Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)){
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိုကြည့်ရှုရန်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
                 if (!preview.emptyInput) when(val parsed=preview.parse){
@@ -1190,7 +1190,12 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     CustomerReviewWorkspace(vm, "analysis", onBack, initialCustomerId = id)
 }
 @Composable fun AnalysisMetric(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
+    Row(Modifier.fillMaxWidth().padding(vertical=12.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) {
+        Text(LocalLanguage.current.translate(label), Modifier.weight(1f), style=MaterialTheme.typography.bodyMedium,
+            color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style=MaterialTheme.typography.titleSmall, fontWeight=FontWeight.Bold,
+            textAlign=TextAlign.End, color=AppColors.PrimaryDeep)
+    }
 }
 @Composable fun ClosedDayScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     val days by vm.closedDays.collectAsStateWithLifecycle()
