@@ -40,7 +40,7 @@ internal fun ReviewDatePicker(value: String, title: String, modifier: Modifier =
     OutlinedTextField(
         value = runCatching { LocalDate.parse(value).reviewDate() }.getOrDefault(value),
         onValueChange = {}, modifier = modifier.fillMaxWidth(), readOnly = true,
-        singleLine = true, label = { Text(title) },
+        singleLine = true, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(title)) },
         trailingIcon = { TextButton(onClick = { open = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး")) } },
     )
     if (open) {

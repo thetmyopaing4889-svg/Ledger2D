@@ -479,7 +479,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         }
     }
 }
-@Composable fun EmptyState(title:String,subtitle:String){Column(Modifier.fillMaxWidth().padding(vertical=52.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(title,style=MaterialTheme.typography.headlineSmall,textAlign=TextAlign.Center);Spacer(Modifier.height(8.dp));Text(subtitle,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)}}
+@Composable fun EmptyState(title:String,subtitle:String){Column(Modifier.fillMaxWidth().padding(vertical=52.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(title),style=MaterialTheme.typography.headlineSmall,textAlign=TextAlign.Center);Spacer(Modifier.height(8.dp));Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(subtitle),color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)}}
 @Composable
 fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val existing by vm.agent(id).collectAsState(initial=null)
@@ -596,7 +596,7 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
 @Composable fun DateInput(value:String,onValue:(String)->Unit,label:String,modifier:Modifier=Modifier,enabled:Boolean=true){
     var open by rememberSaveable{mutableStateOf(false)}
     val display=runCatching{LocalDate.parse(value).displayDate()}.getOrElse{value}
-    OutlinedTextField(value=display,onValueChange={},modifier=modifier.fillMaxWidth(),label={Text(label)},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး"))}},shape=MaterialTheme.shapes.medium)
+    OutlinedTextField(value=display,onValueChange={},modifier=modifier.fillMaxWidth(),label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label))},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး"))}},shape=MaterialTheme.shapes.medium)
     if(open){val initial=runCatching{LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()}.getOrNull();val state=rememberDatePickerState(initialSelectedDateMillis=initial);DatePickerDialog(onDismissRequest={open=false},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{var picked=java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate();while(!DrawSchedule.isWeekday(picked)) picked=picked.plusDays(1);onValue(picked.toString())};open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးမည်"))}},dismissButton={TextButton(onClick={open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}}){DatePicker(state)}}
 }
 @Composable private fun FormActions(cancel:()->Unit,save:()->Unit,enabled:Boolean){val l=LocalLanguage.current;Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){OutlinedButton(cancel,Modifier.weight(1f)){Text(l.text("မလုပ်တော့ပါ","Cancel"))};Button(save,Modifier.weight(1f),enabled=enabled){Text(l.text("သိမ်းမည်","Save"))}}}
@@ -1191,7 +1191,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     CustomerReviewWorkspace(vm, "analysis", onBack, initialCustomerId = id)
 }
 @Composable fun AnalysisMetric(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(label, style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
+    Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
 }
 @Composable fun ClosedDayScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     val days by vm.closedDays.collectAsStateWithLifecycle()
