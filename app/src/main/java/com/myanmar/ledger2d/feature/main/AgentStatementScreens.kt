@@ -238,7 +238,7 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
         }
         AgentStatementValue("ထိုးကွက်", "${totals.digitSlots} ကွက်")
         AgentStatementValue("စုစုပေါင်းထိုးကြေး", "${totals.totalStake.agentMoney()} ကျပ်", true)
-        AgentStatementValue("ကော်မရှင် (သိမ်းထားသော Net)", "${totals.savedNetCommission.agentMoney()} ကျပ်")
+        AgentStatementValue("ကော်မရှင်", "${totals.savedNetCommission.agentMoney()} ကျပ်")
         if (totals.pendingDraws > 0) {
             AgentStatementValue("ရလဒ်မထွက်သေးသော ထိုးကြေး", "${totals.pendingStake.agentMoney()} ကျပ်")
             if (totals.completedDraws > 0)
@@ -253,10 +253,9 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
         HorizontalDivider()
         AgentSettlementLine(totals.settlementAmount, allAgentDraws?.let { AgentStatementCalculator.settlementByAgent(it) })
         if (totals.pendingDraws > 0) {
-            Text(
-                "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ " +
-                    "ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။ " +
-                    "ရလဒ်မထွက်သေးသော အကြိမ်များ၏ ထိုးကြေးနှင့်ကော်မရှင် မပါဝင်ပါ။",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာဖြစ်ပြီး မပြီးသေးသောအကြိမ်၏ ထိုးကြေးနှင့် ကော်မရှင်မပါဝင်ပါ။",
+                "Confirmed agent/draws: ${totals.completedDraws} • Pending: ${totals.pendingDraws}. Settlement excludes pending stakes and commissions."),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -334,7 +333,7 @@ private fun AgentStatementDrawDetail(
             AgentStatementValue("မူလသိမ်းထားသော လျော်ကြေးအဆ",
                 savedRates.joinToString("/") { "${it} ဆ" }.ifEmpty { "—" })
             AgentStatementValue("ထိုးကြေး", "${draw.totalStake.agentMoney()} ကျပ်", true)
-            AgentStatementValue("ကော်မရှင် (Net)", "${draw.commission.agentMoney()} ကျပ်")
+            AgentStatementValue("ကော်မရှင်", "${draw.commission.agentMoney()} ကျပ်")
             AgentStatementValue("ပေါက်ကြေး", draw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
             AgentStatementValue("လျော်ပေးငွေ", draw.payout?.let { "${it.agentMoney()} ကျပ်" } ?: "—", true)
             AgentSettlementLine(draw.settlementAmount)
@@ -357,7 +356,7 @@ private fun AgentStatementDrawDetail(
                     }
                     if (open) {
                         AgentStatementValue("ထိုးကြေး", "${customerDraw.totalStake.agentMoney()} ကျပ်")
-                        AgentStatementValue("ကော်မရှင် (Net)", "${customerDraw.commission.agentMoney()} ကျပ်")
+                        AgentStatementValue("ကော်မရှင်", "${customerDraw.commission.agentMoney()} ကျပ်")
                         AgentStatementValue("ပေါက်ကြေး", customerDraw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
                         AgentStatementValue("လျော်ပေးငွေ", customerDraw.payout?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
                         AgentSettlementLine(customerDraw.settlementAmount)
