@@ -125,8 +125,18 @@ fun transactionDisplayText(format: String, raw: String): String {
         "အပူး", "ပူး", "ညီအကို", "ညီကို", "ထိပ်စည်း", "ထိပ်",
         "နောက်ပိတ်", "နောက်", "စုံမ", "မစုံ", "စုံစုံ", "မမ",
     )
-    if (explicitLabels.any { original.contains(it, ignoreCase = true) }) return original
-    return "${inputFormatDisplay(format)} $original".trim()
+    val reverseParser = com.myanmar.ledger2d.core.domain.BetParser()
+    // A chip is only a fallback. Explicit labels and reverse commands win per line.
+    // Keep each original Messenger line intact instead of assigning the fallback
+    // chip to a different format that was explicitly typed in the same paste.
+    return original.split("\n").joinToString("\n") { line ->
+        val value = line.trim()
+        if (value.isEmpty() ||
+            explicitLabels.any { value.contains(it, ignoreCase = true) } ||
+            reverseParser.isExplicitReverse(value)
+        ) line
+        else "${inputFormatDisplay(format)} $value"
+    }
 }
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){

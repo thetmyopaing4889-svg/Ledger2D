@@ -36,6 +36,25 @@ class HistoryDisplayTest {
         assertEquals("ပါဝါ 1000\n2000", transactionDisplayText("POWER", "1000\n2000"))
     }
 
+    @Test fun mixedExplicitAndFallbackFormatsRemainUnambiguous() {
+        assertEquals(
+            "9ပတ်သီး1000\nပါဝါ 1000",
+            transactionDisplayText("POWER", "9ပတ်သီး1000\n1000"),
+        )
+    }
+
+    @Test fun reverseCommandOverridesSelectedChip() {
+        assertEquals("20.39R2000", transactionDisplayText("POWER", "20.39R2000"))
+        assertEquals(
+            "20.39R2000\nပါဝါ 1000",
+            transactionDisplayText("POWER", "20.39R2000\n1000"),
+        )
+    }
+
+    @Test fun eachUnlabeledFormatLineShowsItsOwnLabel() {
+        assertEquals("ပါဝါ 1000\nပါဝါ 2000", transactionDisplayText("POWER", "1000\n2000"))
+    }
+
     @Test fun manualHistoryNeverGetsPrefixed() {
         assertEquals("20 1000", transactionDisplayText("MANUAL", "20 1000"))
     }
