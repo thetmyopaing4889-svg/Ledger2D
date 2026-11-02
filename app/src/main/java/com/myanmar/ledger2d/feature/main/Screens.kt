@@ -131,10 +131,9 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 @Composable private fun UiText(my:String, en:String){ Text(if(LocalLanguage.current.code=="en") en else my) }
 @Composable private fun BilingualText(text:String, modifier:Modifier=Modifier, primaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.titleMedium, secondaryStyle:androidx.compose.ui.text.TextStyle=MaterialTheme.typography.labelMedium, color:Color=MaterialTheme.colorScheme.onSurface){
-    val parts=text.split("\n", limit=2)
     val language=LocalLanguage.current
-    val value = if(language.code=="en") if(parts.size>1) parts[1] else language.translate(parts.first()) else parts.first()
-    Text(value, modifier, style=primaryStyle, color=color)
+    val titlePart=com.myanmar.ledger2d.core.design.UiLabelCatalog.preferredTitlePart(language.code, text)
+    Text(language.translate(titlePart), modifier, style=primaryStyle, color=color)
 }
 @Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,includeQuickEntryFab:Boolean=true,content:@Composable (PaddingValues) -> Unit){
     OperationalScaffold(title,onBack,action,fab,content,null,includeQuickEntryFab)

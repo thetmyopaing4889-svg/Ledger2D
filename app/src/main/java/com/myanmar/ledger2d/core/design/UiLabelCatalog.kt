@@ -549,6 +549,22 @@ object UiLabelCatalog {
         "No entries" to "စာရင်းမရှိသေးပါ",
         "Result pending" to "ရလဒ်မရသေး"
     )
+    /**
+     * Existing screen titles use both Myanmar-first and English-first formats.
+     * Do not assume the second line is always English.
+     */
+    fun preferredTitlePart(code: String, title: String): String {
+        val parts = title.split("\\n", limit = 2)
+        if (parts.size == 1) return title
+        val firstIsMyanmar = parts[0].any { it in '\\u1000'..'\\u109F' }
+        val secondIsMyanmar = parts[1].any { it in '\\u1000'..'\\u109F' }
+        return when {
+            firstIsMyanmar && !secondIsMyanmar -> if (code == "en") parts[1] else parts[0]
+            !firstIsMyanmar && secondIsMyanmar -> if (code == "en") parts[0] else parts[1]
+            else -> parts[0]
+        }
+    }
+
     fun lookup(code: String, label: String): String? = when(code) {
         "my" -> uiMyanmar[label]
         "en" -> uiEnglish[label]
