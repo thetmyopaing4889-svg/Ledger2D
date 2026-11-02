@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -54,19 +55,61 @@ private val customerActions = listOf(
     DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission")
 )
 
+
+/** The same feature tile is used by both dashboards to keep rhythm and text hierarchy equal. */
+@Composable
+private fun PremiumDashboardFeature(action: DashboardAction, onClick: () -> Unit) {
+    PremiumPanel(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = Color(0xFFF4E8F0),
+                border = BorderStroke(1.dp, AppColors.PanelBorder)
+            ) {
+                Icon(
+                    action.icon, null, tint = AppColors.PrimaryDeep,
+                    modifier = Modifier.padding(11.dp).size(23.dp)
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(LocalLanguage.current.translate(action.title),
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(LocalLanguage.current.translate(action.subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = AppColors.Secondary)
+        }
+    }
+}
+
+@Composable
+private fun PremiumDashboardIntro(title: String, description: String) {
+    AuroraGlassCard(Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.titleLarge,
+            color = Color.White, fontWeight = FontWeight.Bold)
+        Text(description, style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = .85f))
+    }
+}
+
 @Composable
 fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (Long) -> Unit, onAddAgent: () -> Unit, onFeature: (String) -> Unit) {
     val l = LocalLanguage.current
     AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                PremiumDashboardIntro(
+                    l.text("ဒိုင်လုပ်ငန်း စီမံခန့်ခွဲမှု", "Agent workspace"),
+                    l.text("ဒိုင်စာရင်း၊ ပိတ်ဂဏန်း၊ ကန့်သတ်ချက်နှင့် ငွေစာရင်းရှင်းတမ်း", "Manage agents, limits and account statements.")
+                )
+            }
             items(agentActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=Color.White), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal=14.dp, vertical=10.dp), verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Surface(color=AppColors.GoldSoft, shape=MaterialTheme.shapes.small, border=BorderStroke(1.dp, AppColors.Stone)) { Icon(action.icon, null, tint=AppColors.PrimaryDeep, modifier=Modifier.padding(9.dp).size(22.dp)) }
-                        Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(2.dp)) { Text(l.translate(action.title), fontWeight=FontWeight.Bold); Text(l.translate(action.subtitle), style=MaterialTheme.typography.labelSmall, color=MaterialTheme.colorScheme.onSurfaceVariant, maxLines=1) }
-                        Icon(Icons.Default.ChevronRight, null, tint=AppColors.Primary)
-                    }
-                }
+                PremiumDashboardFeature(action) { onFeature(action.key) }
             }
         }
     }
@@ -99,14 +142,14 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                PremiumDashboardIntro(
+                    l.text("ထိုးသားစာရင်း စီမံခန့်ခွဲမှု", "Customer workspace"),
+                    l.text("ထိုးသားများ၊ ထိုးကွက်မှတ်တမ်း၊ ကော်မရှင်နှင့် ငွေစာရင်းရှင်းတမ်း", "Manage customers, entries, commissions and statements.")
+                )
+            }
             items(customerActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(8.dp).size(22.dp)) }
-                        Text(l.translate(action.title), Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary)
-                    }
-                }
+                PremiumDashboardFeature(action) { onFeature(action.key) }
             }
         }
     }
