@@ -206,10 +206,16 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit,modifier:Modifier=Modifier,height:androidx.compose.ui.unit.Dp=188.dp){
     val configuration=LocalConfiguration.current
-    val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH))
+    val dateLocale = if (LocalLanguage.current.code == "en") Locale.ENGLISH else Locale.forLanguageTag("my-MM")
+    val dateText = today.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM yyyy", dateLocale))
     Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(height).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
-        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
-        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0xFF1E050D).copy(alpha=.30f),Color.Transparent,Color(0xFF1E050D).copy(alpha=.28f)))))
+        // Restrained aurora layers replace the busy illustration; text stays high contrast.
+        Box(Modifier.matchParentSize().background(Brush.linearGradient(
+            listOf(AppColors.Obsidian, AppColors.Plum, AppColors.PrimaryDeep))))
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 65.dp, y = (-68).dp).size(230.dp)
+            .background(Brush.radialGradient(listOf(AppColors.AuroraRose.copy(alpha = .40f), Color.Transparent)), CircleShape))
+        Box(Modifier.align(Alignment.BottomStart).offset(x = (-44).dp, y = 64.dp).size(215.dp)
+            .background(Brush.radialGradient(listOf(AppColors.AuroraViolet.copy(alpha = .28f), Color.Transparent)), CircleShape))
         Row(Modifier.fillMaxWidth().padding(start=24.dp,end=24.dp).statusBarsPadding(),verticalAlignment=Alignment.CenterVertically){
             Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){
                 Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(23.dp))
