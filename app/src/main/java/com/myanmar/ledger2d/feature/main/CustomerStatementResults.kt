@@ -102,11 +102,19 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
             ReportLine("စုစုပေါင်းထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်", true)
+            if (t.awaitingDraws > 0 && t.completedDraws > 0)
+                ReportLine(
+                    com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ထိုးကြေး", "Confirmed stake"),
+                    "${t.completedBet.statementAmount()} ကျပ်")
             HorizontalDivider()
             ReportLine("ပေါက်ကြေး", if (counts.completed > 0) "${t.winningStake.statementAmount()} ကျပ်" else "ရလဒ်မထွက်သေး")
             ReportLine("ပြန်လျော်ငွေ", if (counts.completed > 0) "${t.payout.statementAmount()} ကျပ်" else "—")
             HorizontalDivider()
-            CustomerSettlementLine(t.settlementAmount, draws?.let { CustomerStatementCalculator.settlementByCustomer(it) })
+            if (counts.jobs == 0)
+                ReportLine(
+                    com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ငွေရှင်းရလဒ်", "Settlement"),
+                    com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးစာရင်းမရှိပါ", "No entries"), true)
+            else CustomerSettlementLine(t.settlementAmount, draws?.let { CustomerStatementCalculator.settlementByCustomer(it) })
             if (counts.awaiting > 0)
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။","Results confirmed: ${counts.completed} • Pending: ${counts.awaiting}. Settlement includes confirmed draws only."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
