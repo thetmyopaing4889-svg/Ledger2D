@@ -448,7 +448,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeFooter(){
     Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
-        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=2,softWrap=true,textAlign=TextAlign.Center)
     }
 }
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
