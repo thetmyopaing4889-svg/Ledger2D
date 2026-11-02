@@ -192,7 +192,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("တကယ်ထွက်သောဂဏန်း: ${winner?.digit}", "Actual winning digit: ${winner?.digit}"), fontWeight = FontWeight.Bold)
                             if (actual != null) {
-                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မကာထားဟု ယူဆသည့် စာရင်းအရ ${if (actual < 0L) \"ရှုံး\" else if (actual == 0L) \"အရင်းကျေ\" else \"မြတ်\"}ငွေ", "Without cover: ") + (if (actual < 0L) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရှုံး", "Loss") else if (actual == 0L) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အရင်းကျေ", "Break-even") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မြတ်", "Profit")),
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မကာထားဟု ယူဆသည့် စာရင်းအရ ", "Without cover: ") + (if (actual < 0L) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရှုံး", "Loss") else if (actual == 0L) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အရင်းကျေ", "Break-even") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မြတ်", "Profit")),
                                     style = MaterialTheme.typography.labelSmall)
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${signedRiskMoney(actual)} ကျပ်", "${signedRiskMoney(actual)} MMK"),
                                     style = MaterialTheme.typography.headlineSmall,
@@ -237,7 +237,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်ပြီးသားဖြစ်လို့ ထပ်မကာလည်းရသည်။"))
                                 } else {
                                     val riskReducing = decision.plans.any { it.upstreamTotal > 0L && it.worstLoss < base.worstLoss }
-                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အန္တရာယ်အများဆုံးဂဏန်း: ${base.riskDigits.take(10).joinToString(\", \")}။ ", "Highest-risk digits: ${base.riskDigits.take(10).joinToString(\", \")}. ") +
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အန္တရာယ်အများဆုံးဂဏန်း: ${base.riskDigits.take(10).joinToString(", ")}။ ", "Highest-risk digits: ${base.riskDigits.take(10).joinToString(", ")}. ") +
                                         if (riskReducing) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ကာနည်းရွေးပြီး အများဆုံးရှုံးငွေ လျှော့နိုင်သည်။", "A cover plan may reduce the worst loss.")
                                         else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီလျော်ကြေးအဆဖြင့် အရှုံးလျော့မည့် ကာနည်းမတွေ့ပါ။", "No loss-reducing cover is available at this payout rate."))
                                     val suggested = decision.plans.firstOrNull { it.id == "balance" }
@@ -459,7 +459,7 @@ internal fun CustomerRiskAnalysisWorkspace(
             }
         }
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မကာခင် ${signedRiskMoney(oldProfit)} / −${oldLoss.riskMoney()} → ", "Before cover: ${signedRiskMoney(oldProfit)} / −${oldLoss.riskMoney()} → ") +
-            com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ကာပြီး ${signedRiskMoney(plan.bestProfit)} / ${if (plan.worstLoss == 0L) \"0\" else \"−${plan.worstLoss.riskMoney()}\"} ကျပ်", "After cover: ${signedRiskMoney(plan.bestProfit)} / ${if (plan.worstLoss == 0L) \"0\" else \"−${plan.worstLoss.riskMoney()}\"} MMK"),
+            com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ကာပြီး ${signedRiskMoney(plan.bestProfit)} / ${if (plan.worstLoss == 0L) "0" else "−${plan.worstLoss.riskMoney()}"} ကျပ်", "After cover: ${signedRiskMoney(plan.bestProfit)} / ${if (plan.worstLoss == 0L) "0" else "−${plan.worstLoss.riskMoney()}"} MMK"),
             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
         val reduction = oldLoss - plan.worstLoss
         val lossChange = when {
