@@ -83,10 +83,10 @@ internal fun HomeCommissionCard(
                     modifier = Modifier.weight(1.12f),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), totals.morning, false)
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"), totals.evening, false)
+                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်အကြိမ်", "AM"), totals.morning, false)
+                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ညနေအကြိမ်", "PM"), totals.evening, false)
                     HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီနေ့စုစုပေါင်း"), totals.todayTotal, true)
+                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
                 }
                 VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
                 Column(
@@ -94,7 +94,7 @@ internal fun HomeCommissionCard(
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        "ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း",
+                        com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total to date"),
                         fontSize = 11.sp, lineHeight = 15.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,

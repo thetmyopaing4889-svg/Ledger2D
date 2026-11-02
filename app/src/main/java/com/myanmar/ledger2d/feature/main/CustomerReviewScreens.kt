@@ -126,8 +126,8 @@ fun CustomerReviewWorkspace(
         else customers.firstOrNull { it.id == customerId }?.name ?: "Customer"
 
     AppScaffold(
-        title = if (resultPage) if (mode == "report") "စာရင်းရှင်းတမ်း" else "အရှုံးအမြတ်သုံးသပ်ချက်"
-                else "စာရင်းရွေးချယ်ရန်",
+        title = com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (resultPage) if (mode == "report") "စာရင်းရှင်းတမ်း" else "အရှုံးအမြတ်သုံးသပ်ချက်"
+                else "စာရင်းရွေးချယ်ရန်"),
         onBack = { if (resultPage) resultPage = false else onBack() },
         includeQuickEntryFab = false,
     ) { padding ->
@@ -138,7 +138,7 @@ fun CustomerReviewWorkspace(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
-                    Text(if (mode == "report") "စာရင်းရှင်းတမ်း ရွေးချယ်ရန်" else "သုံးသပ်မည့်စာရင်း ရွေးချယ်ရန်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (mode == "report") "စာရင်းရှင်းတမ်း ရွေးချယ်ရန်" else "သုံးသပ်မည့်စာရင်း ရွေးချယ်ရန်"),
                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 item {
@@ -222,7 +222,7 @@ fun CustomerReviewWorkspace(
                         enabled = canView,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     ) {
-                        Text(if (mode == "report") "စာရင်းကြည့်မည်" else "သုံးသပ်ချက်ကြည့်မည်")
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (mode == "report") "စာရင်းကြည့်မည်" else "သုံးသပ်ချက်ကြည့်မည်"))
                         Spacer(Modifier.width(8.dp))
                         Icon(Icons.Default.ChevronRight, null)
                     }

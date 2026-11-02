@@ -268,7 +268,7 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
     ElevatedCard {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (customerCount != null) Text("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်", "Customers with entries: ${customerCount}"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("စုစုပေါင်းထိုးကြေး", t.totalBet, true)
             StatementMoneyLine("ရလဒ်ထွက်ပြီးသော အကြိမ်များ၏ ထိုးကြေး", t.completedBet)
             if (t.completedDraws > 0) {
@@ -277,11 +277,11 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
             } else if (t.awaitingDraws > 0) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေးနှင့် ပြန်လျော်ငွေ — ရလဒ်မရသေး"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အကြိမ်/ထိုးသားအလိုက် ထိုးကွက်ပေါင်း ${t.slots} ကွက်", "Bets by draw/customer: ${t.slots}"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား အနိုင်/အရှုံး (ရလဒ်ထွက်ပြီးသော အကြိမ်များအတွက်)"), style = MaterialTheme.typography.labelMedium)
             if (t.completedDraws > 0) StatementMoneyLine("စုစုပေါင်း", t.customerWinLoss, strong = true, positiveGood = true)
-            else Text(if (t.awaitingDraws > 0) "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ" else "ထိုးစာရင်းမရှိပါ",
+            else Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (t.awaitingDraws > 0) "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ" else "ထိုးစာရင်းမရှိပါ"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 "စာရင်းရှိသော အကြိမ် ${present} ခု • ရလဒ်ရပြီး ${completed} ခု • ရလဒ်မရသေး ${waiting} ခု",
@@ -305,11 +305,11 @@ private fun StatementDrawCard(draws: List<StatementDraw>) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(first.session.nameMm()), fontWeight = FontWeight.Bold)
-                Text(if (winner == null) "ရလဒ်မရသေး" else "ပေါက်ဂဏန်း $winner",
+                Text(if (winner == null) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရလဒ်မရသေး") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ပေါက်ဂဏန်း $winner", "Winning digit: $winner"),
                     color = if (winner == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium)
             }
-            Text("ထိုးကွက်ပေါင်း ${totals.slots} ကွက်", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးကွက်ပေါင်း ${totals.slots} ကွက်", "Total bets: ${totals.slots}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("ထိုးကြေး", totals.totalBet)
             if (winner == null) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ကြေး၊ ပြန်လျော်ငွေ၊ အနိုင်/အရှုံးကို ရလဒ်ရမှ တွက်မည်။"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)

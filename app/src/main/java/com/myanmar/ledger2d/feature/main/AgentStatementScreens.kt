@@ -76,7 +76,7 @@ fun AgentStatementWorkspace(
     val valid = agents.isNotEmpty() && (agentId == -1L || agents.any { it.id == agentId }) && range != null
 
     AppScaffold(
-        title = if (results) "ဒိုင်စာရင်းရှင်းတမ်း" else "စာရင်းရွေးချယ်ရန်",
+        title = com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (results) "ဒိုင်စာရင်းရှင်းတမ်း" else "စာရင်းရွေးချယ်ရန်"),
         onBack = { if (results) results = false else onBack() },
         includeQuickEntryFab = false,
     ) { padding ->
@@ -210,7 +210,7 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         if (!compact) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (agentCount != null) Text("စာရင်းရှိသောဒိုင် $agentCount ယောက်",
+            if (agentCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသောဒိုင် $agentCount ယောက်", "Agents with entries: $agentCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         AgentStatementValue("စုစုပေါင်းထိုးကြေး", "${totals.totalStake.agentMoney()} ကျပ်", true)
@@ -371,7 +371,7 @@ private fun AgentStatementSectionCard(
             if (open) {
                 if (showAgents) {
                     val realSessions = section.draws.map { it.date to it.session }.toSet().size
-                    Text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${totals.draws} ကြိမ်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${totals.draws} ကြိမ်", "Sessions: ${realSessions} • Agent records: ${totals.draws}"),
                         style = MaterialTheme.typography.labelSmall)
                 }
                 AgentStatementTableHeader(tableScroll)
@@ -462,7 +462,7 @@ fun AgentStatementResults(
             }
             if (agentId == -1L) item {
                 val realSessions = data.draws.map { it.date to it.session }.toSet().size
-                Text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${data.totals.draws} ကြိမ်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${data.totals.draws} ကြိမ်", "Sessions: ${realSessions} • Agent records: ${data.totals.draws}"),
                     style = MaterialTheme.typography.labelSmall)
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး စာရင်းပေါင်းသည် Agent အလိုက်သိမ်းထားသော စာရင်းများပေါင်းသာဖြစ်သည်။ ") +
                     "Self/အခြားဒိုင်ဆီ ပြန်တင်ထားသောစာရင်းများ ပါနိုင်သဖြင့် မူလရောင်းအားအမှန်ဟု မသတ်မှတ်ပါ။",

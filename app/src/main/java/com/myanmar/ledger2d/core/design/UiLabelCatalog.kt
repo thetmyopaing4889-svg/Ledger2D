@@ -307,7 +307,13 @@ object UiLabelCatalog {
         "Bet Entries • Messenger စာရင်းများ တိုက်စစ်ရန်" to "Review bet entries and Messenger lists",
         "အရှုံး/အမြတ်၊ ကာနည်းနှင့် အကြံပြုချက်" to "Profit/loss, cover options, and suggestions",
         "00–99 • View, Sorting နှင့် Search" to "00–99 • view, sort, and search",
-        "ထိုးသားအားလုံး၏ ကော်မရှင်" to "Commission for all customers"
+        "ထိုးသားအားလုံး၏ ကော်မရှင်" to "Commission for all customers",
+        "သုံးသပ်မည့်စာရင်း ရွေးချယ်ရန်" to "Choose entries to analyze",
+        "သုံးသပ်ချက်ကြည့်မည်" to "View analysis",
+        "ရလဒ်မရသေး" to "Result pending",
+        "ရလဒ်မရသေး၍ အနိုင်/အရှုံး မတွက်ရသေးပါ" to "Result pending; win/loss not calculated",
+        "ထိုးစာရင်းမရှိပါ" to "No entries",
+        "Agent" to "Agent"
     )
     private val uiMyanmar = mapOf(
         "Agent" to "ဒိုင်",
