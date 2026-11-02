@@ -149,7 +149,7 @@ fun AgentDigitTotalsWorkspace(
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ")) }
             } else {
                 item {
-                    Text("${date} • ${session.label} • ${selectedName}",
+                    Text("${date} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${selectedName}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
