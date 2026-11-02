@@ -1,9 +1,7 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ChevronRight
@@ -17,10 +15,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.AuroraGlassCard
+import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.CommissionLedgerCalculator
 import com.myanmar.ledger2d.core.domain.DeviceCalendar
 import java.text.NumberFormat
@@ -30,8 +28,8 @@ import java.util.Locale
 private fun Long.cardAmount() = NumberFormat.getIntegerInstance(Locale.US).format(this)
 
 /**
- * Home-only commission presentation; saved snapshot totals and detail reports
- * remain unchanged. Two columns keep the four sums legible without a tall card.
+ * Premium presentation only: retain every original session-snapshot commission amount.
+ * The lifetime amount is given a full line so it is never squeezed into a half-width card.
  */
 @Composable
 internal fun HomeCommissionCard(
@@ -39,6 +37,7 @@ internal fun HomeCommissionCard(
     onDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val language = LocalLanguage.current
     val today = DeviceCalendar.today()
     val ledger = remember(today) { vm.commissionLedger(today) }
     val lines by ledger.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -49,88 +48,95 @@ internal fun HomeCommissionCard(
 
     AuroraGlassCard(
         modifier = modifier.fillMaxWidth().clickable(onClick = onDetails),
-        animated = true
+        animated = true,
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-            ) {
-                Icon(Icons.Default.AccountBalanceWallet, null,
-                    tint = AppColors.ChampagneGold, modifier = Modifier.size(20.dp))
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်ရငွေ"), modifier = Modifier.weight(1f),
-                    fontSize = 16.sp, lineHeight = 24.sp,
-                    fontWeight = FontWeight.Bold, color = Color.White)
-                if (isClosed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), fontSize = 10.sp,
-                    color = AppColors.ChampagneGold, fontWeight = FontWeight.Bold)
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အသေးစိတ်"), fontSize = 11.sp,
-                    color = AppColors.ChampagneGold, fontWeight = FontWeight.SemiBold)
-                Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
-                    tint = AppColors.ChampagneGold, modifier = Modifier.size(18.dp))
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1.12f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်အကြိမ်", "AM"), totals.morning, false)
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ညနေအကြိမ်", "PM"), totals.evening, false)
-                    HorizontalDivider(color = Color.White.copy(alpha = .20f))
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
-                }
-                VerticalDivider(modifier = Modifier.height(80.dp), color = Color.White.copy(alpha = .25f))
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total to date"),
-                        fontSize = 12.sp, lineHeight = 19.sp,
-                        color = Color.White.copy(alpha = .78f),
-                        maxLines = 2,
-                    )
-                    Text(
-                        totals.toDateTotal.cardAmount() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကျပ်", " MMK"),
-                        fontSize = if (totals.toDateTotal.cardAmount().length > 13) 16.sp else 21.sp,
-                        lineHeight = 29.sp, fontWeight = FontWeight.Bold,
-                        color = Color.White, maxLines = 3, softWrap = true,
-                    )
-                }
-            }
+            Icon(Icons.Default.AccountBalanceWallet, null,
+                tint = AppColors.ChampagneGold, modifier = Modifier.size(22.dp))
+            Text(
+                language.translate("ကော်မရှင်ရငွေ"),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+            )
+            if (isClosed) Text(
+                language.translate("ပိတ်ရက်"),
+                style = MaterialTheme.typography.labelMedium,
+                color = AppColors.ChampagneGold,
+            )
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = language.translate("ကော်မရှင်အသေးစိတ်ကြည့်ရန်"),
+                tint = AppColors.ChampagneGold,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Text(
+            language.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total commission to date"),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = .80f),
+        )
+        Text(
+            totals.toDateTotal.cardAmount() + language.text(" ကျပ်", " MMK"),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            softWrap = true,
+        )
+        HorizontalDivider(color = Color.White.copy(alpha = .24f))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            CommissionGlassMetric(
+                language.text("မနက်အကြိမ်", "AM"),
+                totals.morning,
+                modifier = Modifier.weight(1f)
+            )
+            CommissionGlassMetric(
+                language.text("ညနေအကြိမ်", "PM"),
+                totals.evening,
+                modifier = Modifier.weight(1f)
+            )
+            CommissionGlassMetric(
+                language.text("ဒီနေ့စုစုပေါင်း", "Today total"),
+                totals.todayTotal,
+                modifier = Modifier.weight(1.1f),
+                emphasis = true
+            )
         }
     }
 }
 
 @Composable
-private fun HomeCommissionAmountRow(label: String, amount: Long, emphasis: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
+private fun CommissionGlassMetric(
+    label: String,
+    amount: Long,
+    modifier: Modifier = Modifier,
+    emphasis: Boolean = false,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             label,
-            modifier = Modifier.weight(1f),
-            fontSize = if (emphasis) 13.sp else 12.sp,
-            lineHeight = 19.sp, color = if (emphasis) AppColors.ChampagneGold
-                else Color.White.copy(alpha = .78f),
-            fontWeight = if (emphasis) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 2, overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (emphasis) AppColors.ChampagneGold else Color.White.copy(alpha = .8f),
+            fontWeight = if (emphasis) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
             amount.cardAmount(),
-            fontSize = if (amount.cardAmount().length > 11) 14.sp else 16.sp,
-            lineHeight = 23.sp,
+            style = MaterialTheme.typography.titleSmall,
             color = Color.White,
-            fontWeight = FontWeight.Bold, maxLines = 2, softWrap = true,
+            fontWeight = FontWeight.Bold,
+            softWrap = true,
         )
     }
 }
