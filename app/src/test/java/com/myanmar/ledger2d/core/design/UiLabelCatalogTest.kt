@@ -28,6 +28,13 @@ class UiLabelCatalogTest {
             UiLabelCatalog.lookup("en", "Customer အားလုံး ဒီ Session ပြန်တွက်မည်"))
     }
 
+    @Test fun myanmarModeKeepsShortActionsInMyanmar() {
+        assertEquals("အတည်ပြုမည်", UiLabelCatalog.lookup("my", "Confirm"))
+        assertEquals("အဆင်ပြေ", UiLabelCatalog.lookup("my", "OK"))
+        assertEquals("ဒိုင်", UiLabelCatalog.lookup("my", "Agent"))
+        assertEquals("ထိုးသား", UiLabelCatalog.lookup("my", "Customer"))
+    }
+
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
         assertNull(UiLabelCatalog.lookup("en", "မောင်မောင်"))
         assertNull(UiLabelCatalog.lookup("my", "Custom agent name"))

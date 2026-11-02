@@ -542,7 +542,12 @@ object UiLabelCatalog {
         "No customers yet" to "ထိုးသားမရှိသေးပါ",
         "No agents yet" to "ဒိုင်မရှိသေးပါ",
         "Today" to "ဒီနေ့",
-        "View" to "ကြည့်ရန်"
+        "View" to "ကြည့်ရန်",
+        "Confirm" to "အတည်ပြုမည်",
+        "OK" to "အဆင်ပြေ",
+        "History Result" to "အတိတ်ရလဒ်",
+        "No entries" to "စာရင်းမရှိသေးပါ",
+        "Result pending" to "ရလဒ်မရသေး"
     )
     fun lookup(code: String, label: String): String? = when(code) {
         "my" -> uiMyanmar[label]

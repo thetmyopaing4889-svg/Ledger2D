@@ -916,7 +916,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းအသစ် ထည့်ပြီး ပြင်ဆင်ပါ"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Input(digit, { digit = it.filter { ch -> ch in '0'..'9' }.take(2) }, "ပေါက်ဂဏန်း 00–99", true, KeyboardType.Number)
-                            if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.primary)
+                            if (notice.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(notice), color = MaterialTheme.colorScheme.primary)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 OutlinedButton({ digit = "" }, Modifier.weight(1f)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှင်းမည်")) }
                                 Button(
