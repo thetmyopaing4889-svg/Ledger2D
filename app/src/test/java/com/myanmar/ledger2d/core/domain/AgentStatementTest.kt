@@ -167,4 +167,43 @@ class AgentStatementTest {
         assertEquals(0, empty.totals.pendingDraws)
         assertEquals(0, empty.totals.completedDraws)
     }
+
+    @Test fun agentSettlementDeductsSavedCustomerCommissionsAndPayout() {
+        val noWin = AgentStatementCalculator.build(
+            listOf(bet(1, 10, "20", 115000, 80)),
+            listOf(comm(1, 10, 17250)),
+            mapOf((day to DrawSession.MORNING) to "40"))
+        assertEquals(97750L, noWin.totals.settlementAmount)
+        assertEquals(97750L, noWin.draws.single().settlementAmount)
+
+        val winning = AgentStatementCalculator.build(
+            listOf(bet(1, 10, "20", 200000, 80)),
+            listOf(comm(1, 10, 30000)),
+            mapOf((day to DrawSession.MORNING) to "20"))
+        assertEquals(-15830000L, winning.totals.settlementAmount)
+
+        val pending = AgentStatementCalculator.build(
+            listOf(bet(1, 10, "20", 2000, 80)),
+            listOf(comm(1, 10, 300)), emptyMap())
+        assertNull(pending.draws.single().settlementAmount)
+        assertNull(pending.totals.settlementAmount)
+    }
+
+    @Test fun incompleteAndMultipleAgentSettlementsKeepMoneyDirectionsSeparate() {
+        val stakes = listOf(
+            bet(1, 10, "20", 1000, 80),
+            bet(1, 10, "30", 5000, 80, DrawSession.EVENING),
+            bet(2, 11, "30", 2000, 80))
+        val commissions = listOf(
+            comm(1, 10, 100),
+            comm(1, 10, 500, DrawSession.EVENING),
+            comm(2, 11, 200))
+        val winners = mapOf((day to DrawSession.MORNING) to "20")
+        val report = AgentStatementCalculator.build(stakes, commissions, winners)
+        // Morning agent 1: 1000 - 100 - 80000 = -79100; agent 2: 2000 - 200 = +1800.
+        // The pending evening 5000 stake / 500 commission must not be settled yet.
+        assertEquals(-77300L, report.totals.settlementAmount)
+        assertEquals(1800L to 79100L, AgentStatementCalculator.settlementByAgent(report.draws))
+        assertEquals(5000L, report.totals.pendingStake)
+    }
 }
