@@ -42,6 +42,12 @@ class UiLabelCatalogTest {
         assertEquals("ဂဏန်းမထွက်ခင်", UiLabelCatalog.preferredTitlePart("my", "ဂဏန်းမထွက်ခင်\nBefore"))
     }
 
+    @Test fun multilineEntryWarningIsTranslated() {
+        val warning = "ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။"
+        assertEquals("The result is already available. Enable backdated entry to preview this bet.",
+            UiLabelCatalog.lookup("en", warning))
+    }
+
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
         assertNull(UiLabelCatalog.lookup("en", "မောင်မောင်"))
         assertNull(UiLabelCatalog.lookup("my", "Custom agent name"))

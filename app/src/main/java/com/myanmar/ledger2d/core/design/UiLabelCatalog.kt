@@ -481,7 +481,8 @@ object UiLabelCatalog {
         "အကြိမ်အလိုက် ကွက်ပေါင်း" to "Digits by session",
         "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း" to "Digits by customer/session",
         "မတွက်ရသေး" to "Not calculated",
-        "ပထမဆုံးရက်" to "First date"
+        "ပထမဆုံးရက်" to "First date",
+        "ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။" to "The result is already available. Enable backdated entry to preview this bet."
     )
     private val uiMyanmar = mapOf(
         "Agent" to "ဒိုင်",
