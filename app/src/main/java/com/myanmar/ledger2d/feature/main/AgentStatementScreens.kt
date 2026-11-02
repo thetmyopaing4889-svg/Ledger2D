@@ -236,6 +236,7 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
             if (agentCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသောဒိုင် $agentCount ယောက်", "Agents with entries: $agentCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        AgentStatementValue("ထိုးကွက်", "${totals.digitSlots} ကွက်")
         AgentStatementValue("စုစုပေါင်းထိုးကြေး", "${totals.totalStake.agentMoney()} ကျပ်", true)
         AgentStatementValue("ကော်မရှင် (သိမ်းထားသော Net)", "${totals.savedNetCommission.agentMoney()} ကျပ်")
         if (totals.pendingDraws > 0) {
@@ -397,6 +398,10 @@ private fun AgentStatementSectionCard(
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လုပ်ငန်း Session ${realSessions} ကြိမ် • ဒိုင်အလိုက်စာရင်း ${totals.draws} ကြိမ်", "Sessions: ${realSessions} • Agent records: ${totals.draws}"),
                         style = MaterialTheme.typography.labelSmall)
                 }
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                    "ငွေရှင်းကော်လံ: + ဆို User က ဒိုင်ကို ပေးရန်၊ − ဆို ဒိုင်က User ကို ပေးရန်။",
+                    "Settlement column: + user pays agent; − agent pays user."),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 AgentStatementTableHeader(tableScroll)
                 val byDraw = section.draws.groupBy { it.date to it.session }
                     .toList().sortedWith(compareBy({ it.first.first }, { it.first.second.ordinal }))
@@ -557,6 +562,10 @@ fun AgentStatementResults(
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                                 val bottomScroll = rememberScrollState()
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                                    "ငွေရှင်းကော်လံ: + ဆို User က ဒိုင်ကို ပေးရန်၊ − ဆို ဒိုင်က User ကို ပေးရန်။",
+                                    "Settlement column: + user pays agent; − agent pays user."),
+                                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 AgentStatementTableHeader(bottomScroll)
                                 AgentStatementTableRow("စုစုပေါင်း", data.totals, bottomScroll, true, agentId == -1L)
                                 AgentSettlementLine(data.totals.settlementAmount, if (agentId == -1L) AgentStatementCalculator.settlementByAgent(data.draws) else null)
