@@ -48,6 +48,17 @@ class UiLabelCatalogTest {
             UiLabelCatalog.lookup("en", warning))
     }
 
+    @Test fun riskTabsAndReportNumbersSwitchLanguageWithoutChangingAmounts() {
+        assertEquals("Current", UiLabelCatalog.lookup("en", "လက်ရှိ"))
+        assertEquals("Guaranteed profit", UiLabelCatalog.lookup("en", "အမြတ်သေချာ"))
+        assertEquals("80,000 MMK", UiLabelCatalog.reportValue("en", "80,000 ကျပ်"))
+        assertEquals("80,000 ကျပ်", UiLabelCatalog.reportValue("my", "80,000 ကျပ်"))
+        assertEquals("80x", UiLabelCatalog.reportValue("en", "80 ဆ"))
+        assertEquals("12 digits", UiLabelCatalog.reportValue("en", "12 ကွက်"))
+        assertEquals("2 Nov AM", UiLabelCatalog.statementTitle("en", "2 Nov မနက်"))
+        assertEquals("2 Nov မနက်", UiLabelCatalog.statementTitle("my", "2 Nov မနက်"))
+    }
+
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
         assertNull(UiLabelCatalog.lookup("en", "မောင်မောင်"))
         assertNull(UiLabelCatalog.lookup("my", "Custom agent name"))

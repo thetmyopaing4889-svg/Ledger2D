@@ -65,7 +65,7 @@ private fun ReportLine(label: String, value: String, emph: Boolean = false, tint
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (emph) FontWeight.Bold else FontWeight.Normal)
-        Text(if (com.myanmar.ledger2d.core.design.LocalLanguage.current.code == "en") com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(value).replace(" ကျပ်", " MMK").replace(" ကွက်", " digits") else value, fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value), fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
             color = tint ?: MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
     }
@@ -107,7 +107,7 @@ private fun TableHeader() {
 private fun TableRow(title: String, t: StatementTotals, known: Boolean, strong: Boolean = false) {
     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         val style = MaterialTheme.typography.labelSmall
-        Text(title, Modifier.weight(1.4f), style = style, fontWeight = if (strong) FontWeight.Bold else FontWeight.Normal)
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.statementTitle(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, title), Modifier.weight(1.4f), style = style, fontWeight = if (strong) FontWeight.Bold else FontWeight.Normal)
         Text(t.totalBet.statementAmount(), Modifier.weight(1.05f), textAlign = TextAlign.End, style = style,
             fontWeight = if (strong) FontWeight.Bold else FontWeight.Normal)
         Text(if (known) t.winningStake.statementAmount() else "—", Modifier.weight(1.05f), textAlign = TextAlign.End, style = style)

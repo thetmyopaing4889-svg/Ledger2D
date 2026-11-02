@@ -482,7 +482,27 @@ object UiLabelCatalog {
         "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း" to "Digits by customer/session",
         "မတွက်ရသေး" to "Not calculated",
         "ပထမဆုံးရက်" to "First date",
-        "ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။" to "The result is already available. Enable backdated entry to preview this bet."
+        "ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။" to "The result is already available. Enable backdated entry to preview this bet.",
+        "ယနေ့စာရင်း" to "Today's ledger",
+        "ဒိုင်ထည့်ပြီးမှ ယနေ့စာရင်းကို ကြည့်နိုင်ပါမည်" to "Add an agent before viewing today's ledger.",
+        "လက်ရှိ" to "Current",
+        "50/50 မျှခြေ" to "50/50 balance",
+        "အမြတ်သေချာ" to "Guaranteed profit",
+        "အရှုံးဖြစ်မယ့်ဂဏန်း မရှိပါ" to "No loss-risk digits",
+        "ရောင်းရငွေထက် ပိုရှုံးနိုင်သည်" to "Potential loss exceeds total stake",
+        "အရှုံးဖြစ်နိုင်သော ဂဏန်းများရှိသည်" to "Some digits may cause a loss",
+        "အများဆုံးလျော်ကြေး" to "Maximum payout",
+        "ထိုးကြေးအများဆုံးဂဏန်း" to "Highest-stake digits",
+        "Limit 80% နှင့်အထက်" to "Limit ≥ 80%",
+        "Limit 90% နှင့်အထက်" to "Limit ≥ 90%",
+        "Limit 100% နှင့်အထက်" to "Limit ≥ 100%",
+        "အနည်းဆုံးသေချာမြတ်ငွေ" to "Minimum guaranteed profit",
+        "ဒိုင်ဆီကာရန်" to "Forward to agent",
+        "ကိုယ်တိုင်ကျန်ငွေ" to "Amount retained",
+        "ငွေကြေးမျှခြေ" to "Money balance",
+        "ထိုးစာရင်းမရှိ" to "No bets recorded",
+        "ပေါက်ရင် ပြန်လျော်ငွေ" to "Payout if winning",
+        "မထွက်သေး" to "Pending"
     )
     private val uiMyanmar = mapOf(
         "Agent" to "ဒိုင်",
@@ -564,6 +584,30 @@ object UiLabelCatalog {
             !firstIsMyanmar && secondIsMyanmar -> if (code == "en") parts[0] else parts[1]
             else -> parts[0]
         }
+    }
+
+    /**
+     * Render-only formatting for calculated statement/risk amounts.
+     * Never pass customer names or user-entered bet text through this formatter.
+     */
+    fun reportValue(code: String, value: String): String {
+        if (code != "en") return value
+        return (lookup("en", value) ?: value)
+            .replace(" ကျပ်", " MMK")
+            .replace(" ကွက်", " digits")
+            .replace(" ဆ", "x")
+            .replace(" ကြိမ်", " sessions")
+            .replace("မထွက်သေး", "Pending")
+            .replace("မတွက်ရသေး", "Not calculated")
+            .replace("မရှိ", "None")
+    }
+
+    fun statementTitle(code: String, title: String): String {
+        if (code != "en") return title
+        return (lookup("en", title) ?: title)
+            .replace("မနက်", "AM")
+            .replace("ညနေ", "PM")
+            .replace("စုစုပေါင်း", "Total")
     }
 
     fun lookup(code: String, label: String): String? = when(code) {

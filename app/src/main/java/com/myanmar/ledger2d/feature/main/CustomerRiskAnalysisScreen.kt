@@ -223,7 +223,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                             Icon(if (base.worstLoss == 0L) Icons.Default.CheckCircle else Icons.Default.Warning,
                                 null, tint = if (base.worstLoss == 0L) AppColors.Success else MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp))
-                            Text(warning, fontWeight = FontWeight.SemiBold)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(warning), fontWeight = FontWeight.SemiBold)
                         }
                         RiskOutcomeCounts(base.profitableDigits, base.losingDigits, base.breakEvenDigits)
                         Surface(shape = MaterialTheme.shapes.medium,
@@ -399,7 +399,7 @@ internal fun CustomerRiskAnalysisWorkspace(
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
         Box(Modifier.padding(horizontal = 5.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                 textAlign = TextAlign.Center, maxLines = 2)
         }
@@ -421,7 +421,7 @@ internal fun CustomerRiskAnalysisWorkspace(
     Surface(modifier = modifier, shape = MaterialTheme.shapes.medium,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(amount, style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black, color = tint, maxLines = 1)
@@ -490,9 +490,9 @@ internal fun CustomerRiskAnalysisWorkspace(
 
 @Composable private fun RiskDetailRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, Modifier.weight(1.15f), style = MaterialTheme.typography.bodySmall,
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value), Modifier.weight(1.15f), style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
     }
 }
