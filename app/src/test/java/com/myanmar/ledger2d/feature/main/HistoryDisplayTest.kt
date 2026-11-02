@@ -33,7 +33,7 @@ class HistoryDisplayTest {
     }
 
     @Test fun formattedHistoryPreservesLineBreaks() {
-        assertEquals("ပါဝါ 1000\n2000", transactionDisplayText("POWER", "1000\n2000"))
+        assertEquals("ပါဝါ 1000\nပါဝါ 2000", transactionDisplayText("POWER", "1000\n2000"))
     }
 
     @Test fun mixedExplicitAndFallbackFormatsRemainUnambiguous() {
