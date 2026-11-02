@@ -241,8 +241,12 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
         AgentStatementValue("ကော်မရှင်", "${totals.savedNetCommission.agentMoney()} ကျပ်")
         if (totals.pendingDraws > 0) {
             AgentStatementValue("ရလဒ်မထွက်သေးသော ထိုးကြေး", "${totals.pendingStake.agentMoney()} ကျပ်")
-            if (totals.completedDraws > 0)
+            if (totals.completedDraws > 0) {
                 AgentStatementValue("ရလဒ်ရပြီး ထိုးကြေး", "${totals.completedStake.agentMoney()} ကျပ်")
+                AgentStatementValue(
+                    com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ကော်မရှင်", "Confirmed commission"),
+                    "${totals.completedNetCommission.agentMoney()} ကျပ်")
+            }
         }
         HorizontalDivider()
         AgentStatementValue("ပေါက်ကြေး",
@@ -251,7 +255,11 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
         AgentStatementValue("လျော်ပေးငွေ", if (totals.completedDraws > 0)
             "${totals.payout.agentMoney()} ကျပ်" else "—", true)
         HorizontalDivider()
-        AgentSettlementLine(totals.settlementAmount, allAgentDraws?.let { AgentStatementCalculator.settlementByAgent(it) })
+        if (totals.draws == 0)
+            AgentStatementValue(
+                com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ငွေရှင်းရလဒ်", "Settlement"),
+                com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးစာရင်းမရှိပါ", "No entries"), true)
+        else AgentSettlementLine(totals.settlementAmount, allAgentDraws?.let { AgentStatementCalculator.settlementByAgent(it) })
         if (totals.pendingDraws > 0) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
                 "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာဖြစ်ပြီး မပြီးသေးသောအကြိမ်၏ ထိုးကြေးနှင့် ကော်မရှင်မပါဝင်ပါ။",
