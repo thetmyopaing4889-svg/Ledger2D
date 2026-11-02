@@ -18,7 +18,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.domain.*
-import com.myanmar.ledger2d.core.design.PremiumSettlementPanel
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.text.NumberFormat
 import java.time.DayOfWeek
@@ -66,11 +65,9 @@ private fun ReportLine(label: String, value: String, emph: Boolean = false, tint
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (emph) FontWeight.Bold else FontWeight.Normal)
-        com.myanmar.ledger2d.core.design.PremiumMoneyText(
-            com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value),
-            modifier = Modifier.weight(1.15f), emphasis = emph,
-            color = tint ?: MaterialTheme.colorScheme.onSurface
-        )
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, value), fontWeight = if (emph) FontWeight.Bold else FontWeight.Medium,
+            color = tint ?: MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
     }
 }
 
@@ -100,8 +97,7 @@ private fun CustomerSettlementLine(balance: Long?, byCustomer: Pair<Long, Long>?
 private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: StatementDrawCounts, draws: List<StatementDraw>? = null) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            com.myanmar.ledger2d.core.design.PremiumSectionHeading(
-                com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"))
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်","Customers with entries: $customerCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
@@ -114,13 +110,11 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
             ReportLine("ပေါက်ကြေး", if (counts.completed > 0) "${t.winningStake.statementAmount()} ကျပ်" else "ရလဒ်မထွက်သေး")
             ReportLine("ပြန်လျော်ငွေ", if (counts.completed > 0) "${t.payout.statementAmount()} ကျပ်" else "—")
             HorizontalDivider()
-            PremiumSettlementPanel {
             if (counts.jobs == 0)
                 ReportLine(
                     com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ငွေရှင်းရလဒ်", "Settlement"),
                     com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးစာရင်းမရှိပါ", "No entries"), true)
             else CustomerSettlementLine(t.settlementAmount, draws?.let { CustomerStatementCalculator.settlementByCustomer(it) })
-            }
             if (counts.awaiting > 0)
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရလဒ်ရပြီး ${counts.completed} ကြိမ် • မရသေး ${counts.awaiting} ကြိမ်။ ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။","Results confirmed: ${counts.completed} • Pending: ${counts.awaiting}. Settlement includes confirmed draws only."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)

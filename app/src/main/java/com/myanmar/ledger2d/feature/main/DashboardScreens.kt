@@ -6,9 +6,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -54,61 +54,19 @@ private val customerActions = listOf(
     DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission")
 )
 
-
-/** The same feature tile is used by both dashboards to keep rhythm and text hierarchy equal. */
-@Composable
-private fun PremiumDashboardFeature(action: DashboardAction, onClick: () -> Unit) {
-    PremiumPanel(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(13.dp)
-        ) {
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = Color(0xFFF4E8F0),
-                border = BorderStroke(1.dp, AppColors.PanelBorder)
-            ) {
-                Icon(
-                    action.icon, null, tint = AppColors.PrimaryDeep,
-                    modifier = Modifier.padding(11.dp).size(23.dp)
-                )
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(LocalLanguage.current.translate(action.title),
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text(LocalLanguage.current.translate(action.subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Default.ChevronRight, null, tint = AppColors.Secondary)
-        }
-    }
-}
-
-@Composable
-private fun PremiumDashboardIntro(title: String, description: String) {
-    AuroraGlassCard(Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.titleLarge,
-            color = Color.White, fontWeight = FontWeight.Bold)
-        Text(description, style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = .85f))
-    }
-}
-
 @Composable
 fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (Long) -> Unit, onAddAgent: () -> Unit, onFeature: (String) -> Unit) {
     val l = LocalLanguage.current
     AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                PremiumDashboardIntro(
-                    l.text("ဒိုင်လုပ်ငန်း စီမံခန့်ခွဲမှု", "Agent workspace"),
-                    l.text("ဒိုင်စာရင်း၊ ပိတ်ဂဏန်း၊ ကန့်သတ်ချက်နှင့် ငွေစာရင်းရှင်းတမ်း", "Manage agents, limits and account statements.")
-                )
-            }
             items(agentActions) { action ->
-                PremiumDashboardFeature(action) { onFeature(action.key) }
+                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=Color.White), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal=14.dp, vertical=10.dp), verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Surface(color=AppColors.GoldSoft, shape=MaterialTheme.shapes.small, border=BorderStroke(1.dp, AppColors.Stone)) { Icon(action.icon, null, tint=AppColors.PrimaryDeep, modifier=Modifier.padding(9.dp).size(22.dp)) }
+                        Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(2.dp)) { Text(l.translate(action.title), fontWeight=FontWeight.Bold); Text(l.translate(action.subtitle), style=MaterialTheme.typography.labelSmall, color=MaterialTheme.colorScheme.onSurfaceVariant, maxLines=1) }
+                        Icon(Icons.Default.ChevronRight, null, tint=AppColors.Primary)
+                    }
+                }
             }
         }
     }
@@ -123,14 +81,14 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
     val selectedLabel = if (selected == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး") else agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်")
     val featureTitle = agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature"
     AppScaffold(featureTitle, onBack) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(AppDimens.space16)) {
-            PremiumSectionHeading(language.text("ဒိုင်ရွေးချယ်ရန်", "Choose agent"))
+        Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), selectedLabel, listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected) { selected = it }
             if (selected == 0L) {
                 UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ"))
             } else {
-                PremiumPanel { Text(language.text("ရွေးထားသည် • $selectedLabel", "Selected: $selectedLabel"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) }
-                Button(onClick = { onOpen(feature, selected) }, modifier = Modifier.fillMaxWidth().height(AppDimens.buttonHeight)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဆက်သွားရန်")) }
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရွေးထားသည် • $selectedLabel", "Selected: $selectedLabel"), Modifier.fillMaxWidth().padding(14.dp), fontWeight = FontWeight.Bold) }
+                Button(onClick = { onOpen(feature, selected) }, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဆက်သွားရန်")) }
             }
         }
     }
@@ -141,14 +99,14 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                PremiumDashboardIntro(
-                    l.text("ထိုးသားစာရင်း စီမံခန့်ခွဲမှု", "Customer workspace"),
-                    l.text("ထိုးသားများ၊ ထိုးကွက်မှတ်တမ်း၊ ကော်မရှင်နှင့် ငွေစာရင်းရှင်းတမ်း", "Manage customers, entries, commissions and statements.")
-                )
-            }
             items(customerActions) { action ->
-                PremiumDashboardFeature(action) { onFeature(action.key) }
+                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(8.dp).size(22.dp)) }
+                        Text(l.translate(action.title), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary)
+                    }
+                }
             }
         }
     }
@@ -167,14 +125,14 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
     val customerLabel = when { agentId == 0L -> com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးပြီးမှ ရွေးပါ"); customerId == -1L -> com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး"); else -> customers.firstOrNull { it.id == customerId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer ရွေးရန်") }
     val featureTitle = customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature"
     AppScaffold(featureTitle, onBack) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(AppDimens.space16)) {
-            PremiumSectionHeading(language.text("ဒိုင်နှင့် ထိုးသားရွေးချယ်ရန်", "Choose agent and customer"))
+        Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန် နှင့် Customer ရွေးရန်"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), agentLabel, agents.map { it.id to it.name }, agentId) { agentId = it }
             ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer ရွေးရန်"), customerLabel, if (agentId == 0L) emptyList() else listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name }, customerId, enabled = agentId != 0L) { customerId = it }
             if (agentId == 0L || customerId == 0L) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက်နှင့် Customer အားလုံး သို့မဟုတ် Customer တစ်ယောက်ကို ရွေးပါ"))
             else {
-                PremiumPanel { Text("$agentLabel • $customerLabel", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) }
-                Button(onClick = { onOpen(feature, agentId, customerId) }, modifier = Modifier.fillMaxWidth().height(AppDimens.buttonHeight)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဆက်သွားရန်")) }
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text("$agentLabel • $customerLabel", Modifier.fillMaxWidth().padding(14.dp), fontWeight = FontWeight.Bold) }
+                Button(onClick = { onOpen(feature, agentId, customerId) }, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဆက်သွားရန်")) }
             }
         }
     }
@@ -361,7 +319,7 @@ private fun WeeklyReportTable(report: WeeklyReport) {
                 cell("${index + 1}", widths[0])
                 cell(row.date.displayDate(), widths[1])
                 cell(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(row.session.label), widths[2])
-                cell(row.winningDigit ?: "—", widths[3], TextAlign.Center, bold = row.winningDigit != null, color = if (row.winningDigit != null) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant)
+                cell(row.winningDigit ?: "—", widths[3], TextAlign.Center, bold = row.winningDigit != null, color = if (row.winningDigit != null) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 cell(if (closedOrEmpty) "0" else "${calc!!.distinctSlots}", widths[4], TextAlign.End)
                 cell((calc?.totalBet ?: 0L).mmk(), widths[5], TextAlign.End)
                 cell((calc?.winningStake ?: 0L).mmk(), widths[6], TextAlign.End)
@@ -549,7 +507,7 @@ private fun AgentTotalTableWorkspace(vm: LedgerViewModel, agentId: Long, date: L
         if (totals.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီအချိန်အတွက် အတည်ပြုထားသော စာရင်းမရှိသေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         else totals.forEach { row -> Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)) { Row(Modifier.fillMaxWidth()) {
             Text(row.digit, Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text(row.amount.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text(row.amount.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Primary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text(row.commission.mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.Secondary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
             Text((row.amount - row.commission).mmk(), Modifier.weight(1.2f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = androidx.compose.ui.text.style.TextAlign.End)
         }; HorizontalDivider() } }

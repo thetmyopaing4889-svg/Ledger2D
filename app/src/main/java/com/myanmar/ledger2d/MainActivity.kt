@@ -18,8 +18,6 @@ class MainActivity : ComponentActivity() {
         (application as LedgerApplication).startLiveCollectorForUi()
         enableEdgeToEdge()
         window.statusBarColor = AndroidColor.TRANSPARENT
-        // All current entry screens use a dark header; keep system status icons white.
-        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
         setContent {
             val container = (application as LedgerApplication).container
             LedgerTheme {

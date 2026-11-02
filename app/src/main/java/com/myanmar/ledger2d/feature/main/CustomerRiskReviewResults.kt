@@ -20,7 +20,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.domain.*
-import com.myanmar.ledger2d.core.design.PremiumPanel
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -42,15 +41,14 @@ private fun RiskValue(label: String, value: String, tint: Color? = null, emphasi
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = if (emphasize) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-            color = tint ?: MaterialTheme.colorScheme.onSurface,
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = tint ?: MaterialTheme.colorScheme.onSurface,
             fontWeight = if (emphasize) FontWeight.Bold else FontWeight.Medium, textAlign = TextAlign.End)
     }
 }
 @Composable
 private fun RiskMoneyBox(title: String, amount: String, tint: Color, modifier: Modifier) {
-    PremiumPanel(modifier) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    OutlinedCard(modifier) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(amount, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = tint)
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကျပ်"), style = MaterialTheme.typography.labelSmall)
@@ -108,8 +106,8 @@ private fun RiskDigitTable(source: AnalysisResult, showAll: Boolean, toggle: () 
 private fun RiskPlanCard(plan: RiskHedgePlan, baseline: RiskSnapshot, allowCopy: Boolean) {
     val clipboard = LocalClipboardManager.current
     var showList by rememberSaveable(plan.id) { mutableStateOf(false) }
-    PremiumPanel(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(plan.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             RiskValue("ဒိုင်ဆီ ကာရန်စုစုပေါင်း", "${plan.upstreamTotal.rm()} ကျပ်", emphasize = true)
             RiskValue("ကိုယ့်လက်ထဲကျန်ငွေ", "${plan.keptCash.rm()} ကျပ်")

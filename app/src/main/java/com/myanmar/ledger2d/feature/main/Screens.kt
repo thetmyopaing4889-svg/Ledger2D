@@ -147,8 +147,8 @@ fun transactionDisplayText(format: String, raw: String): String {
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
             CenterAlignedTopAppBar(
-                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=AppColors.Obsidian, scrolledContainerColor=AppColors.Obsidian, navigationIconContentColor=Color.White, titleContentColor=Color.White),
-                title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=Color.White)},
+                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Color.White, scrolledContainerColor=Color.White, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
+                title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
                 navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription=LocalLanguage.current.translate("နောက်သို့")) } }},
                 actions={action?.invoke(this)}
             )
@@ -164,7 +164,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         val window=(view.context as? android.app.Activity)?.window
         val controller=window?.let{androidx.core.view.WindowCompat.getInsetsController(it,it.decorView)}
         controller?.isAppearanceLightStatusBars=false
-        onDispose{controller?.isAppearanceLightStatusBars=false}
+        onDispose{controller?.isAppearanceLightStatusBars=true}
     }
 }
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onCommissionDetails:()->Unit,onNavigate:(String)->Unit={} ){
@@ -176,7 +176,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
     val sheetOverlap=24.dp
-    Scaffold(containerColor=AppColors.Pearl,contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
+    Scaffold(containerColor=Color(0xFFF6F4F5),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
         BoxWithConstraints(Modifier.fillMaxSize().padding(p)) {
             // Keep the original header, live, weekly grid and both 76dp feature rows.
             // Reserve the real visible height (above NavigationBar), not an infinite scroll.
@@ -186,16 +186,15 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
                         .height(this@BoxWithConstraints.maxHeight-(heroHeight-sheetOverlap))
                         .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
-                        .background(AppColors.Pearl)
-                        .verticalScroll(rememberScrollState())
-                        .padding(start=AppDimens.screen,end=AppDimens.screen,top=18.dp,bottom=24.dp),
+                        .background(Color(0xFFF6F4F5))
+                        .padding(start=14.dp,end=14.dp,top=18.dp,bottom=0.dp),
                     verticalArrangement=Arrangement.spacedBy(10.dp),
                 ) {
                     HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
                     HomeWeeklyResults(vm)
                     // Only the commission area and quick actions change; retain original
                     // Header, LIVE, Weekly Results, bottom navigation and footer.
-                    HomeCommissionCard(vm, onCommissionDetails)
+                    HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
                     HomeQuickActionsRow(onAddAgent, onAddCustomer)
                     HomeFooter()
                 }
@@ -206,16 +205,10 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeHeader(today:LocalDate,onSettings:()->Unit,modifier:Modifier=Modifier,height:androidx.compose.ui.unit.Dp=188.dp){
     val configuration=LocalConfiguration.current
-    val dateLocale = if (LocalLanguage.current.code == "en") Locale.ENGLISH else Locale.forLanguageTag("my-MM")
-    val dateText = today.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM yyyy", dateLocale))
+    val dateText=today.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH))
     Box(modifier.requiredWidth((configuration.screenWidthDp+24).dp).offset(x=(-12).dp).height(height).clip(RoundedCornerShape(bottomStart=32.dp,bottomEnd=32.dp))){
-        // Restrained aurora layers replace the busy illustration; text stays high contrast.
-        Box(Modifier.matchParentSize().background(Brush.linearGradient(
-            listOf(AppColors.Obsidian, AppColors.Plum, AppColors.PrimaryDeep))))
-        Box(Modifier.align(Alignment.TopEnd).offset(x = 65.dp, y = (-68).dp).size(230.dp)
-            .background(Brush.radialGradient(listOf(AppColors.AuroraRose.copy(alpha = .40f), Color.Transparent)), CircleShape))
-        Box(Modifier.align(Alignment.BottomStart).offset(x = (-44).dp, y = 64.dp).size(215.dp)
-            .background(Brush.radialGradient(listOf(AppColors.AuroraViolet.copy(alpha = .28f), Color.Transparent)), CircleShape))
+        Image(painterResource(com.myanmar.ledger2d.R.drawable.cherry_header_art),null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alignment=Alignment.Center)
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0xFF1E050D).copy(alpha=.30f),Color.Transparent,Color(0xFF1E050D).copy(alpha=.28f)))))
         Row(Modifier.fillMaxWidth().padding(start=24.dp,end=24.dp).statusBarsPadding(),verticalAlignment=Alignment.CenterVertically){
             Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){
                 Icon(Icons.Default.Notifications,"အသိပေးချက်",tint=Color.White,modifier=Modifier.size(23.dp))
@@ -230,10 +223,10 @@ fun transactionDisplayText(format: String, raw: String): String {
             IconButton(onClick=onSettings,modifier=Modifier.size(44.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(23.dp))}
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally){
-            Surface(Modifier.height(48.dp).fillMaxWidth(.80f),shape=RoundedCornerShape(22.dp),color=Color.White.copy(alpha=.14f),border=BorderStroke(1.dp,Color.White.copy(alpha=.55f))){
+            Surface(Modifier.height(40.dp).fillMaxWidth(.52f),shape=RoundedCornerShape(20.dp),color=Color.White.copy(alpha=.14f),border=BorderStroke(1.dp,Color.White.copy(alpha=.55f))){
                 Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.CalendarMonth,null,tint=Color.White,modifier=Modifier.size(17.dp))
-                    Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=13.sp,lineHeight=19.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=2,softWrap=true)
+                    Text(dateText,Modifier.weight(1f).padding(horizontal=6.dp),color=Color.White,fontSize=13.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,maxLines=1,softWrap=false)
                     Icon(Icons.Default.ChevronRight,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(17.dp))
                 }
             }
@@ -248,20 +241,14 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int,onLive:()->Unit,onResults:()->Unit){
     val l=LocalLanguage.current
-    val pulse = if (remember { android.animation.ValueAnimator.areAnimatorsEnabled() }) {
-        val transition = rememberInfiniteTransition(label="live-pulse")
-        val alpha by transition.animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
-        alpha
-    } else 1f
+    val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
     val (liveInteraction,liveScale)=rememberPressScale("liveCard")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-        ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=MaterialTheme.shapes.extraLarge,colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Obsidian),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
-            Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(AppColors.Obsidian,AppColors.Plum,AppColors.PrimaryDeep))).padding(horizontal=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                Box(Modifier.size(24.dp).graphicsLayer{alpha=pulse}.background(AppColors.AuroraRose.copy(alpha=.42f),CircleShape),contentAlignment=Alignment.Center){
-                    Box(Modifier.size(9.dp).background(Color.White,CircleShape))
-                }
-                Text("LIVE",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold,color=Color.White,maxLines=1,softWrap=false)
-                Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(18.dp))
+        ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
+            Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
+                Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("2D LIVE"),Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
+                Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(30.dp))
             }
         }
         HomeCountCard(Icons.Default.Person,l.translate("ဒိုင်"),agentCount,AppColors.PrimaryDeep,Modifier.weight(.95f))
@@ -272,7 +259,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,iconTint:Color,modifier:Modifier){
     Surface(modifier.height(88.dp),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
         Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-            Text(label,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis)
+            Text(label.uppercase(Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=0.8.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
             Row(Modifier.padding(top=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
                 Surface(Modifier.size(26.dp),shape=CircleShape,color=AppColors.Blush){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=iconTint,modifier=Modifier.size(14.dp))}}
                 Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontSize=24.sp,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
@@ -305,26 +292,18 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 
 @Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=AppColors.Blush,border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.7f))){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
-@Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(44.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
+@Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(38.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
 
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,String>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
     val l=LocalLanguage.current
     val today=DeviceCalendar.today()
     val dates=(0L..4L).map(monday::plusDays); val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
-    val weekdayLocale = if (l.code == "en") Locale.ENGLISH else Locale.forLanguageTag("my-MM")
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().height(38.dp),verticalAlignment=Alignment.CenterVertically){
             Spacer(Modifier.width(48.dp))
             dates.forEach { date ->
                 Column(Modifier.weight(1f).fillMaxHeight().background(if(date==today) AppColors.Blush else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                    Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black,color=if(date==today) AppColors.PrimaryDeep else AppColors.Ink);Text(if (l.code == "en") date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,weekdayLocale)
-                    else when (date.dayOfWeek) {
-                        java.time.DayOfWeek.MONDAY -> "တန"
-                        java.time.DayOfWeek.TUESDAY -> "အင်္"
-                        java.time.DayOfWeek.WEDNESDAY -> "ဗုဒ္"
-                        java.time.DayOfWeek.THURSDAY -> "ကြာ"
-                        else -> "သော"
-                    },style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant)}
+                    Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black,color=if(date==today) AppColors.PrimaryDeep else AppColors.Ink);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)}
                     Box(Modifier.padding(top=1.dp).size(4.dp).background(if(date==today) AppColors.Primary else Color.Transparent,CircleShape))
                 }
             }
@@ -336,7 +315,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session] ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
                     val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> Color(0xFFF4F0F1); morning -> AppColors.Blush; else -> Color.White }
-                    val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.PrimaryDeep; else -> AppColors.Ink }
+                    val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
                     val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
                     val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
                     Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
@@ -351,7 +330,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeBottomBar(onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onQuickEntry:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit){
     val l=LocalLanguage.current
     Box(Modifier.fillMaxWidth()){
-        NavigationBar(containerColor=Color.White,tonalElevation=2.dp){
+        NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=6.dp){
             HomeNavItem(l.translate("ဒိုင်"),Icons.Default.Store,onAgentDashboard)
             HomeNavItem(l.translate("ထိုးသား"),Icons.Default.People,onCustomerDashboard)
             NavigationBarItem(false,onQuickEntry,icon={Spacer(Modifier.height(22.dp))},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)})
@@ -450,7 +429,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Text(
                         if (LocalLanguage.current.code == "en") "Soon" else "မကြာမီ",
                         modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
-                        fontSize = 11.sp, lineHeight = 15.sp,
+                        fontSize = 8.sp, lineHeight = 10.sp,
                         color = Color.White, fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -459,7 +438,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         Text(
             label,
             modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
-            fontSize = 12.sp, lineHeight = 18.sp,
+            fontSize = 11.sp, lineHeight = 14.sp,
             fontWeight = FontWeight.SemiBold, color = AppColors.Ink,
             maxLines = 3, textAlign = TextAlign.Center,
         )
@@ -729,8 +708,8 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     }
 }
 @Composable private fun PreviewCard(preview:BetPreview){
-    PremiumPanel(Modifier.fillMaxWidth()){
-        Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)){
+    ElevatedCard{
+        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိုကြည့်ရှုရန်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
                 if (!preview.emptyInput) when(val parsed=preview.parse){
@@ -1035,7 +1014,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     Surface(Modifier.weight(1f).height(112.dp), color = if (closed) MaterialTheme.colorScheme.errorContainer.copy(alpha = .45f) else Color.White, shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, AppColors.Stone)) {
         Column(Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(dateLabel, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-            DrawSession.entries.forEach { draw -> val winner = winners.firstOrNull { it.session == draw }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(if (draw == DrawSession.MORNING) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်","AM") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ည","PM"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(winner?.digit ?: if (closed) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်") else "—", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep) } }
+            DrawSession.entries.forEach { draw -> val winner = winners.firstOrNull { it.session == draw }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(if (draw == DrawSession.MORNING) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်","AM") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ည","PM"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(winner?.digit ?: if (closed) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်") else "—", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.Primary) } }
         }
     }
 }
@@ -1057,7 +1036,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                 val winner = winners.firstOrNull { it.session == draw }
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(draw.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(winner?.digit ?: "—", style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep)
+                    Text(winner?.digit ?: "—", style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.Primary)
                 }
                 if (draw == DrawSession.MORNING) Spacer(Modifier.width(8.dp))
             }
@@ -1210,12 +1189,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     CustomerReviewWorkspace(vm, "analysis", onBack, initialCustomerId = id)
 }
 @Composable fun AnalysisMetric(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical=12.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) {
-        Text(LocalLanguage.current.translate(label), Modifier.weight(1f), style=MaterialTheme.typography.bodyMedium,
-            color=MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style=MaterialTheme.typography.titleSmall, fontWeight=FontWeight.Bold,
-            textAlign=TextAlign.End, color=AppColors.PrimaryDeep)
-    }
+    Row(Modifier.fillMaxWidth().padding(vertical=10.dp), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), style=MaterialTheme.typography.bodyMedium); Text(value, fontWeight=FontWeight.Bold, color=MaterialTheme.colorScheme.primary) }
 }
 @Composable fun ClosedDayScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     val days by vm.closedDays.collectAsStateWithLifecycle()
@@ -1286,19 +1260,19 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
     val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
-    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){
-        PremiumSectionHeading(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"))
+    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        PremiumPanel {
-            Column(verticalArrangement=Arrangement.spacedBy(AppDimens.space12)) {
+        OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
+            Column(Modifier.padding(14.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth()) { language.setDefaultAgent(it) }
                 ScopeDropdown(language.text("Customer ရွေးရန်","Select customer"), defaultCustomer?.name ?: if (language.defaultAgentId > 0) language.text("Customer ရွေးရန်","Select customer") else language.text("Agent အရင်ရွေးပါ","Select agent first"), if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(), language.defaultCustomerId, Modifier.fillMaxWidth(), enabled = language.defaultAgentId > 0) { language.setDefaultCustomer(it) }
             }
         }
-        PremiumSectionHeading(language.text("အတိတ်ရလဒ်များ","Historical results"))
-        PremiumPanel { Column(verticalArrangement=Arrangement.spacedBy(AppDimens.space12)) {
+        Text(language.text("အတိတ်ရလဒ်များ","Historical results"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        OutlinedCard { Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
-            Button(onClick=vm::updateHistory,enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth().heightIn(min=AppDimens.buttonHeight)){Text(language.text("အတိတ်ရလဒ်များ အပ်ဒိတ်လုပ်ရန်","Update historical results"))}
+            Button(onClick=vm::updateHistory,enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth()){Text(language.text("အတိတ်ရလဒ်များ အပ်ဒိတ်လုပ်ရန်","Update historical results"))}
             when(val state=historyUpdate){
                 HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်မှ မနေ့အထိ History Result ကို update လုပ်ပါမည်။","Tap to update history results through yesterday."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 HistoryUpdateState.Working->Text(language.text("History Result update လုပ်နေပါသည်…","Updating history results…"),style=MaterialTheme.typography.bodySmall)
@@ -1306,20 +1280,8 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 is HistoryUpdateState.Error->Text(state.message,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
             }
         }}
-        PremiumSectionHeading(language.text("ဘာသာစကား","Language"))
-        PremiumPanel { Column(verticalArrangement=Arrangement.spacedBy(AppDimens.space8)) {
-            ListItem(
-                modifier=Modifier.fillMaxWidth().clickable { language.set("my") },
-                headlineContent={Text("မြန်မာ", style=MaterialTheme.typography.bodyLarge)},
-                leadingContent={RadioButton(language.code=="my",{language.set("my")})}
-            )
-            HorizontalDivider()
-            ListItem(
-                modifier=Modifier.fillMaxWidth().clickable { language.set("en") },
-                headlineContent={Text("English", style=MaterialTheme.typography.bodyLarge)},
-                leadingContent={RadioButton(language.code=="en",{language.set("en")})}
-            )
-        } }
+        Text(language.text("ဘာသာစကား","Language"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        OutlinedCard{Column{ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မြန်မာ"))},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("English"))},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
         Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }}
 }

@@ -85,7 +85,7 @@ private fun WelcomeDarkBars() {
             androidx.core.view.WindowCompat.getInsetsController(it, it.decorView)
         }
         controller?.isAppearanceLightStatusBars = false
-        onDispose { controller?.isAppearanceLightStatusBars = false }
+        onDispose { controller?.isAppearanceLightStatusBars = true }
     }
 }
 
