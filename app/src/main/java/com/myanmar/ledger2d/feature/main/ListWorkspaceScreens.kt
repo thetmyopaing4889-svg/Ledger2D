@@ -1,6 +1,7 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,11 +14,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.design.LocalLanguage
+import com.myanmar.ledger2d.core.design.PremiumPanel
+import com.myanmar.ledger2d.core.design.PremiumSectionHeading
+import com.myanmar.ledger2d.core.design.AppDimens
 import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import kotlinx.coroutines.delay
@@ -54,8 +59,7 @@ fun AgentListWorkspaceScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒိုင်စာရင်း • ${agents.size} ယောက်", "Agent list • ${agents.size}"),
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                PremiumSectionHeading(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒိုင်စာရင်း • ${agents.size} ယောက်", "Agent list • ${agents.size}"))
             }
             if (agents.isNotEmpty()) {
                 item {
@@ -91,7 +95,7 @@ fun AgentListWorkspaceScreen(
                 }
             }
             item {
-                OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth().heightIn(min = AppDimens.buttonHeight)) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(l.translate("ဒိုင်အသစ်ထည့်ရန်"))
@@ -105,7 +109,7 @@ fun AgentListWorkspaceScreen(
 private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> Unit) {
     val customers by vm.customers(agent.id)
         .collectAsStateWithLifecycle(initialValue = emptyList())
-    ElevatedCard(onClick = onInfo, modifier = Modifier.fillMaxWidth()) {
+    PremiumPanel(Modifier.fillMaxWidth().clickable(onClick = onInfo)) {
         ListItem(
             headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
             supportingContent = {
@@ -156,14 +160,24 @@ fun CustomerListWorkspaceScreen(
             item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent) { selectedAgent = it } }
             if (selectedAgent == 0L) item { UnavailableState(l.translate("Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ")) }
             else {
-                item { Text("$agentName ${l.translate("အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                item { PremiumSectionHeading("$agentName ${l.translate("အောက်ရှိ Customer များ")}") }
                 if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
                 else items(customers, key = { it.id }) { customer ->
-                    ElevatedCard(onClick = { onInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) {
-                        ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(customer.phone) }, leadingContent = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                    PremiumPanel(Modifier.fillMaxWidth().clickable { onInfo(customer.id) }) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(customer.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                if (customer.phone.isNotBlank()) Text(customer.phone,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
-                item { OutlinedButton(onClick = { onAdd(selectedAgent) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(l.translate("ထိုးသားအသစ်ထည့်ရန်")) } }
+                item { OutlinedButton(onClick = { onAdd(selectedAgent) }, modifier = Modifier.fillMaxWidth().heightIn(min = AppDimens.buttonHeight)) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(l.translate("ထိုးသားအသစ်ထည့်ရန်")) } }
             }
         }
     }
@@ -269,21 +283,26 @@ fun CustomerInformationScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit,
 private fun InformationCard(
     padding: PaddingValues, title: String,
     fields: List<Pair<String, String>>,
-    scrollContent: Boolean = false,
+    scrollContent: Boolean = true,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     val base = Modifier.fillMaxSize().padding(padding)
     val contentModifier = if (scrollContent) base.verticalScroll(rememberScrollState()).padding(16.dp)
         else base.padding(16.dp)
     Column(contentModifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontWeight = FontWeight.SemiBold) }
+        PremiumPanel(Modifier.fillMaxWidth()) {
+            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top) {
+                    Text(LocalLanguage.current.translate(label), Modifier.weight(.40f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(value, Modifier.weight(.60f), fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
                 }
-                footer()
             }
+            footer()
         }
     }
 }
