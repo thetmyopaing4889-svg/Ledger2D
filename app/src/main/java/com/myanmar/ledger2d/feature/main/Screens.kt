@@ -95,7 +95,7 @@ val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
         contentColor = Color.White,
         shape = MaterialTheme.shapes.large,
         elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 5.dp),
-    ) { Icon(Icons.Default.AddCircle, contentDescription = "အမြန်စာရင်းသွင်းရန်") }
+    ) { Icon(Icons.Default.AddCircle, contentDescription = LocalLanguage.current.translate("အမြန်စာရင်းသွင်းရန်")) }
 }
 
 fun inputFormatDisplay(value: String): String = when (value.uppercase()) {
@@ -149,7 +149,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             CenterAlignedTopAppBar(
                 colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Color.White, scrolledContainerColor=Color.White, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
                 title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
-                navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription="နောက်သို့") } }},
+                navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription=LocalLanguage.current.translate("နောက်သို့")) } }},
                 actions={action?.invoke(this)}
             )
         },
@@ -217,7 +217,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             Spacer(Modifier.width(44.dp))
             Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Cherry 2D"),color=Color.White,fontSize=24.sp,fontWeight=FontWeight.ExtraBold,fontStyle=FontStyle.Italic,lineHeight=28.sp,maxLines=1,softWrap=false)
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("For Myanmar 2D Agents"),color=Color.White.copy(alpha=.92f),fontSize=12.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မြန်မာ 2D ဒိုင်များအတွက်", "For Myanmar 2D Agents"),color=Color.White.copy(alpha=.92f),fontSize=12.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=1.dp),maxLines=1,softWrap=false)
             }
             Spacer(Modifier.width(44.dp))
             IconButton(onClick=onSettings,modifier=Modifier.size(44.dp)){Icon(Icons.Default.Settings,"ဆက်တင်များ",tint=Color.White,modifier=Modifier.size(23.dp))}
@@ -427,7 +427,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     color = AppColors.PrimaryDeep,
                 ) {
                     Text(
-                        "Soon",
+                        if (LocalLanguage.current.code == "en") "Soon" else "မကြာမီ",
                         modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
                         fontSize = 8.sp, lineHeight = 10.sp,
                         color = Color.White, fontWeight = FontWeight.SemiBold,
@@ -437,11 +437,10 @@ fun transactionDisplayText(format: String, raw: String): String {
         }
         Text(
             label,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
             fontSize = 11.sp, lineHeight = 14.sp,
             fontWeight = FontWeight.SemiBold, color = AppColors.Ink,
-            maxLines = 2, textAlign = TextAlign.Center,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = 3, textAlign = TextAlign.Center,
         )
     }
 }
@@ -449,7 +448,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeFooter(){
     Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
-        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=1,softWrap=false)
     }
 }
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
@@ -1230,7 +1229,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 }
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Total"), fontWeight = FontWeight.Bold); Text(record.lines.sumOf { it.amount }.mmk(), fontWeight = FontWeight.Black) }
-                Text("${record.lines.size} entries", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(language.text("${record.lines.size} ကွက်", "${record.lines.size} entries"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         })
     }
