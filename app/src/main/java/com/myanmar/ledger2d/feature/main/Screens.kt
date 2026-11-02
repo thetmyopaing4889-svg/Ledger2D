@@ -164,7 +164,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         val window=(view.context as? android.app.Activity)?.window
         val controller=window?.let{androidx.core.view.WindowCompat.getInsetsController(it,it.decorView)}
         controller?.isAppearanceLightStatusBars=false
-        onDispose{controller?.isAppearanceLightStatusBars=true}
+        onDispose{controller?.isAppearanceLightStatusBars=false}
     }
 }
 @Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onCommissionDetails:()->Unit,onNavigate:(String)->Unit={} ){
