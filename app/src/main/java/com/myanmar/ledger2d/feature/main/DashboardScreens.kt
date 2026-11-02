@@ -87,7 +87,7 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
             if (selected == 0L) {
                 UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ"))
             } else {
-                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text("ရွေးထားသည် • $selectedLabel", Modifier.fillMaxWidth().padding(14.dp), fontWeight = FontWeight.Bold) }
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရွေးထားသည် • $selectedLabel", "Selected: $selectedLabel"), Modifier.fillMaxWidth().padding(14.dp), fontWeight = FontWeight.Bold) }
                 Button(onClick = { onOpen(feature, selected) }, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဆက်သွားရန်")) }
             }
         }
@@ -254,10 +254,10 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
     }
 }
 
-@Composable private fun ScopeSummaryCard(summary: ScopeSummary) { ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}"); Text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}") } } }
+@Composable private fun ScopeSummaryCard(summary: ScopeSummary) { ElevatedCard { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(summary.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးကြေး ${summary.totalBet.mmk()} • ပေါက်ကြေး ${summary.winningStake.mmk()}", "Stake: ${summary.totalBet.mmk()} • Winning stake: ${summary.winningStake.mmk()}")); Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လျော် ${summary.payout.mmk()} • ကော်မရှင် ${summary.commission.mmk()} • ရှုံး/မြတ် ${summary.profitLoss.mmk()}", "Payout: ${summary.payout.mmk()} • Commission: ${summary.commission.mmk()} • P/L: ${summary.profitLoss.mmk()}")) } } }
 @Composable private fun SummaryRows(rows: List<ScopeSummary>) { if (rows.isEmpty()) EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "ရွေးထားသော ရက်နှင့်အချိန်အတွက် စာရင်းမရှိသေးပါ") else rows.forEach { ScopeSummaryCard(it) } }
 
-@Composable private fun AgentReportWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) { var after by rememberSaveable { mutableStateOf(winningOnly) }; val revision by vm.revision.collectAsStateWithLifecycle(); val report by produceState<DrawReport?>(null, agentId, date, session, after, revision) { value = vm.agentReport(agentId, date, session, after) }; val rows by produceState<List<AgentCustomerReportRow>>(emptyList(), agentId, date, session, after, revision) { value = vm.agentCustomerReport(agentId, date, session, after) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { if (!winningOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!after, { after = false }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Before")) }); FilterChip(after, { after = true }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("After")) }) }; if (after && report?.winnerAvailable != true) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ")) else { report?.let { ReportCard(it.calculation, it.winningDigit) }; Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer တစ်ယောက်ချင်း breakdown"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> ElevatedCard { ListItem(headlineContent = { Text(row.customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ပေါက်ကြေး ${row.calculation.winningStake.mmk()} • လျော် ${row.calculation.payout.mmk()}") }, trailingContent = { Text(row.calculation.profitLoss.mmk(), fontWeight = FontWeight.Bold) }) } } } } }
+@Composable private fun AgentReportWorkspace(vm: LedgerViewModel, agentId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) { var after by rememberSaveable { mutableStateOf(winningOnly) }; val revision by vm.revision.collectAsStateWithLifecycle(); val report by produceState<DrawReport?>(null, agentId, date, session, after, revision) { value = vm.agentReport(agentId, date, session, after) }; val rows by produceState<List<AgentCustomerReportRow>>(emptyList(), agentId, date, session, after, revision) { value = vm.agentCustomerReport(agentId, date, session, after) }; Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { if (!winningOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(!after, { after = false }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Before")) }); FilterChip(after, { after = true }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("After")) }) }; if (after && report?.winnerAvailable != true) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်ပြီးချိန်အတွက် ရလဒ်မရှိသေးပါ")) else { report?.let { ReportCard(it.calculation, it.winningDigit) }; Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer တစ်ယောက်ချင်း breakdown"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); rows.forEach { row -> ElevatedCard { ListItem(headlineContent = { Text(row.customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးကြေး ${row.calculation.totalBet.mmk()} • ပေါက်ကြေး ${row.calculation.winningStake.mmk()} • လျော် ${row.calculation.payout.mmk()}", "Stake: ${row.calculation.totalBet.mmk()} • Winning: ${row.calculation.winningStake.mmk()} • Payout: ${row.calculation.payout.mmk()}")) }, trailingContent = { Text(row.calculation.profitLoss.mmk(), fontWeight = FontWeight.Bold) }) } } } } }
 
 @Composable
 private fun CustomerReportWorkspace(vm: LedgerViewModel, agentId: Long, customerId: Long, date: LocalDate, session: DrawSession, winningOnly: Boolean = false) {
@@ -406,7 +406,7 @@ private fun CustomerDigitsWorkspace(
         com.myanmar.ledger2d.core.domain.DrawRatePolicy.key(earliest.date,earliest.session)
     if(pendingOverride)AlertDialog(onDismissRequest={pendingOverride=false},
         title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session ၏ ကော်မရှင်ကို ပြန်တွက်မည်လား"))},
-        text={Text("${date.displayDate()} • ${session.label} အတွက် ဒီ Customer ၏ ထိုးကြေးအားလုံးကို ${value}% နဲ့ ပြန်တွက်မည်။ တခြား Session နဲ့ Customer တွေ မပြောင်းပါ။")},
+        text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${date.displayDate()} • ${session.label} အတွက် ဒီ Customer ၏ ထိုးကြေးအားလုံးကို ${value}% နဲ့ ပြန်တွက်မည်။ တခြား Session နဲ့ Customer တွေ မပြောင်းပါ။", "${date.displayDate()} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)}: Recalculate this customer's entries at ${value}%. Other sessions and customers stay unchanged."))},
         confirmButton={TextButton({
             pendingOverride=false
             vm.overrideSessionCommission(customerId,date,session,value,{saved=true;error=""},{error=it})
@@ -414,7 +414,7 @@ private fun CustomerDigitsWorkspace(
         dismissButton={TextButton({pendingOverride=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်တော့ပါ"))}})
     if(pendingForward)AlertDialog(onDismissRequest={pendingForward=false},
         title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပုံမှန်ကော်မရှင် ပြောင်းမည်လား"))},
-        text={Text("$effectiveDate • ${effectiveSession.label} ကစပြီး နောက်ထပ်သတ်မှတ်ထားသောနှုန်းမရောက်ခင်အထိ $value% သုံးမည်။ အဲဒီကာလအတွက် ကြိုသွင်းထားပြီးသား Entry တွေကိုပါ ပြန်တွက်မည်။ အတိတ် Session မထိပါ။")},
+        text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$effectiveDate • ${effectiveSession.label} ကစပြီး နောက်ထပ်သတ်မှတ်ထားသောနှုန်းမရောက်ခင်အထိ $value% သုံးမည်။ အဲဒီကာလအတွက် ကြိုသွင်းထားပြီးသား Entry တွေကိုပါ ပြန်တွက်မည်။ အတိတ် Session မထိပါ။", "From $effectiveDate • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(effectiveSession.label)}, apply $value% until the next change. Recalculate entries from then on; past sessions are unaffected."))},
         confirmButton={TextButton({
             pendingForward=false
             if(startDate!=null)vm.scheduleCommission(customerId,value,startDate,effectiveSession,
@@ -424,7 +424,7 @@ private fun CustomerDigitsWorkspace(
     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text(if(customerId==-1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး၏ ကော်မရှင်") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Customer ၏ ကော်မရှင်နှုန်းထား"),
             style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-        Text("ရွေးထားသော Session • ${date.displayDate()} • ${session.label}",
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရွေးထားသော Session • ${date.displayDate()} • ${session.label}", "Selected session • ${date.displayDate()} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)}"),
             style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
         if(customerId==-1L) {
             val total by produceState(0L,agentId,date,session,revision) {
@@ -437,7 +437,7 @@ private fun CustomerDigitsWorkspace(
                 FilterChip(mode=="DRAW",{mode="DRAW";saved=false;error=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session သီးသန့်"))})
             }
             if(mode=="DRAW") {
-                Text("ဒီ Session လက်ရှိနှုန်း: ${java.math.BigDecimal(drawRate?:0).movePointLeft(2).stripTrailingZeros().toPlainString()}%",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီ Session လက်ရှိနှုန်း: ${java.math.BigDecimal(drawRate?:0).movePointLeft(2).stripTrailingZeros().toPlainString()}%", "Current session rate: ${java.math.BigDecimal(drawRate?:0).movePointLeft(2).stripTrailingZeros().toPlainString()}%"),
                     style=MaterialTheme.typography.bodyMedium)
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Customer ၏ ရွေးထားသော Session တစ်ခုတည်းကို Recalculate လုပ်မယ်။ အတိတ်/အနာဂတ် အခြား Session မပြောင်းပါ။"),
                     style=MaterialTheme.typography.bodySmall)
@@ -458,7 +458,7 @@ private fun CustomerDigitsWorkspace(
                 if(mode=="DRAW")pendingOverride=true
                 else if(startDate!=null)pendingForward=true
             },enabled=validRate&&(mode=="DRAW"||validStart)) {
-                Text(if(mode=="DRAW")"ဒီ Session ကို ပြန်တွက်မည်" else "နှုန်းအသစ် သိမ်းမည်")
+                Text(if(mode=="DRAW") com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session ကို ပြန်တွက်မည်") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှုန်းအသစ် သိမ်းမည်"))
             }
             if(saved)Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သိမ်းပြီးပါပြီ"),color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
         }
