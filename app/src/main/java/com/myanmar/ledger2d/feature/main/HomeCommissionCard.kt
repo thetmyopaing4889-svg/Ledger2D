@@ -64,12 +64,12 @@ internal fun HomeCommissionCard(
             ) {
                 Icon(Icons.Default.AccountBalanceWallet, null,
                     tint = AppColors.PrimaryDeep, modifier = Modifier.size(20.dp))
-                Text("ကော်မရှင်ရငွေ", modifier = Modifier.weight(1f),
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်ရငွေ"), modifier = Modifier.weight(1f),
                     fontSize = 14.sp, lineHeight = 19.sp,
                     fontWeight = FontWeight.Bold, color = AppColors.Ink)
-                if (isClosed) Text("ပိတ်ရက်", fontSize = 10.sp,
+                if (isClosed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), fontSize = 10.sp,
                     color = AppColors.PrimaryDeep, fontWeight = FontWeight.Bold)
-                Text("အသေးစိတ်", fontSize = 11.sp,
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အသေးစိတ်"), fontSize = 11.sp,
                     color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
                 Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
                     tint = AppColors.PrimaryDeep, modifier = Modifier.size(18.dp))

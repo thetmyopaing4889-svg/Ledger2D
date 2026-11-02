@@ -104,25 +104,25 @@ fun AgentDigitTotalsWorkspace(
         }
     }
     val groups = if (loaded?.context == context) loaded?.groups else null
-    val selectedName = if (selectedAgent == -1L) "ဒိုင်အားလုံး"
+    val selectedName = if (selectedAgent == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")
         else agents.firstOrNull { it.id == selectedAgent }?.name ?: "ဒိုင်ရွေးရန်"
     val activeGroups = groups?.filter { it.digits.isNotEmpty() }
     val combined = remember(groups) {
         groups?.let { AgentDigitTotalsAggregator.combine(it) }
     }
 
-    AppScaffold("အကွက်စုစုပေါင်း", onBack, includeQuickEntryFab = false) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စုစုပေါင်း"), onBack, includeQuickEntryFab = false) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("ဒိုင်နှင့် အကြိမ်ရွေးရန်", fontWeight = FontWeight.Bold,
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်နှင့် အကြိမ်ရွေးရန်"), fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium)
                 ScopeDropdown(
                     "ဒိုင်ရွေးရန်", selectedName,
-                    listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name },
+                    listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                     selectedAgent,
                 ) { selectedAgent = it }
                 Spacer(Modifier.height(8.dp))
@@ -140,16 +140,16 @@ fun AgentDigitTotalsWorkspace(
                 }
             }
             if (date == null) {
-                item { Text("ရက်စွဲ မှန်ကန်စွာရွေးပါ", color = MaterialTheme.colorScheme.error) }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"), color = MaterialTheme.colorScheme.error) }
             } else if (agents.isEmpty()) {
-                item { Text("ဒိုင်မရှိသေးပါ။ ဒိုင်အသစ်ထည့်ပြီးမှ စာရင်းကြည့်နိုင်မယ်။") }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်မရှိသေးပါ။ ဒိုင်အသစ်ထည့်ပြီးမှ စာရင်းကြည့်နိုင်မယ်။")) }
             } else if (groups == null) {
                 item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             } else if (selectedAgent > 0 && agents.none { it.id == selectedAgent }) {
-                item { Text("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ") }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ")) }
             } else {
                 item {
-                    Text("${date} • ${session.label} • ${selectedName}",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${date} • ${session.label} • ${selectedName}"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -171,23 +171,23 @@ fun AgentDigitTotalsWorkspace(
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(allView == "perAgent", { allView = "perAgent" },
-                                label = { Text("ဒိုင်အလိုက်") })
+                                label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အလိုက်")) })
                             FilterChip(allView == "combined", { allView = "combined" },
-                                label = { Text("အားလုံးပေါင်း") })
+                                label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အားလုံးပေါင်း")) })
                         }
                     }
                 } else item {
-                    Text("ကော်မရှင်သည် App ထဲက သိမ်းထားသော Net Commission ဖြစ်ပြီး " +
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်သည် App ထဲက သိမ်းထားသော Net Commission ဖြစ်ပြီး ") +
                         "ဒိုင်ဆီ အမှန်တကယ်ပေး/ရမယ့်ငွေ မဟုတ်ပါ။",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 if (combined.isNullOrEmpty()) {
-                    item { Text("ဒီရက်/အကြိမ်အတွက် ထိုးစာရင်းမရှိသေးပါ။") }
+                    item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီရက်/အကြိမ်အတွက် ထိုးစာရင်းမရှိသေးပါ။")) }
                 } else if (selectedAgent == -1L && allView == "perAgent") {
                     item {
-                        Text("ဒိုင်အလိုက် ဂဏန်းစုစုပေါင်း (${activeGroups.orEmpty().size} ဒိုင်)",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အလိုက် ဂဏန်းစုစုပေါင်း (${activeGroups.orEmpty().size} ဒိုင်)"),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                     items(activeGroups.orEmpty(), key = { it.agentId }) { group ->
@@ -201,7 +201,7 @@ fun AgentDigitTotalsWorkspace(
                         Text(if (selectedAgent == -1L) "ဂဏန်းတူရာ အားလုံးပေါင်း"
                             else "ဂဏန်းအလိုက် စုစုပေါင်း",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("ဇယားကို ဘေးတိုက်ဆွဲကြည့်နိုင်သည်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဇယားကို ဘေးတိုက်ဆွဲကြည့်နိုင်သည်"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -222,9 +222,9 @@ private fun DigitTotalsAgentCard(group: AgentDigitGroup) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(group.agentName, fontWeight = FontWeight.Bold)
-                        Text("ဂဏန်း ${group.digits.size} ကွက် • ထိုးကြေး ${group.totalStake.digitMoney()} ကျပ်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း ${group.digits.size} ကွက် • ထိုးကြေး ${group.totalStake.digitMoney()} ကျပ်"),
                             style = MaterialTheme.typography.bodySmall)
-                        Text("Net ကော်မရှင် ${group.totalNetCommission.digitMoney()} ကျပ်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Net ကော်မရှင် ${group.totalNetCommission.digitMoney()} ကျပ်"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -268,10 +268,10 @@ private fun DigitTotalsTable(rows: List<AgentDigitLine>) {
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("ဂဏန်း", Modifier.width(70.dp), fontWeight = FontWeight.Bold)
-            Text("ထိုးကြေး", Modifier.width(146.dp), textAlign = TextAlign.End,
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း"), Modifier.width(70.dp), fontWeight = FontWeight.Bold)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေး"), Modifier.width(146.dp), textAlign = TextAlign.End,
                 fontWeight = FontWeight.Bold)
-            Text("Net ကော်မရှင်", Modifier.width(146.dp), textAlign = TextAlign.End,
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Net ကော်မရှင်"), Modifier.width(146.dp), textAlign = TextAlign.End,
                 fontWeight = FontWeight.Bold)
         }
         HorizontalDivider()
@@ -288,7 +288,7 @@ private fun DigitTotalsTable(rows: List<AgentDigitLine>) {
         val commission = ordered.fold(0L) { sum, row -> Math.addExact(sum, row.netCommission) }
         Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Total", Modifier.width(70.dp), fontWeight = FontWeight.Bold)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Total"), Modifier.width(70.dp), fontWeight = FontWeight.Bold)
             Text(totalStake.digitMoney(), Modifier.width(146.dp),
                 textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
             Text(commission.digitMoney(), Modifier.width(146.dp),

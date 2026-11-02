@@ -76,9 +76,9 @@ internal fun CustomerDigitViewsWorkspace(
     }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("00–99 အကွက်စာရင်း",
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("00–99 အကွက်စာရင်း"),
             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("ထိုးကြေးစုစုပေါင်း ${totalStake.mmk()}",
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေးစုစုပေါင်း ${totalStake.mmk()}"),
             style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -113,7 +113,7 @@ internal fun CustomerDigitViewsWorkspace(
             value = search,
             onValueChange = { search = DigitViewSelector.normalizeSearch(it) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("ဂဏန်းရှာရန် (3 သို့မဟုတ် 33)") },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းရှာရန် (3 သို့မဟုတ် 33)")) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (search.isNotEmpty()) {
@@ -132,26 +132,26 @@ internal fun CustomerDigitViewsWorkspace(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("စီရန်", style = MaterialTheme.typography.labelMedium)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စီရန်"), style = MaterialTheme.typography.labelMedium)
                 FilterChip(
                     selected = order == DigitViewSort.STAKE_DESC,
                     onClick = { order = DigitViewSort.STAKE_DESC },
-                    label = { Text("ငွေအများ → အနည်း") },
+                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ငွေအများ → အနည်း")) },
                 )
                 FilterChip(
                     selected = order == DigitViewSort.STAKE_ASC,
                     onClick = { order = DigitViewSort.STAKE_ASC },
-                    label = { Text("ငွေအနည်း → အများ") },
+                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ငွေအနည်း → အများ")) },
                 )
                 FilterChip(
                     selected = order == DigitViewSort.NUMBER,
                     onClick = { order = DigitViewSort.NUMBER },
-                    label = { Text("ဂဏန်းအစဉ်") },
+                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းအစဉ်")) },
                 )
             }
         }
 
-        Text("ပြသနေသောအကွက် ${rows.size} ကွက်",
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြသနေသောအကွက် ${rows.size} ကွက်"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
@@ -171,7 +171,7 @@ internal fun CustomerDigitViewsWorkspace(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.medium,
             ) {
-                Text("ရွေးထားသော View နှင့် ကိုက်ညီသည့်ဂဏန်း မရှိပါ။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသော View နှင့် ကိုက်ညီသည့်ဂဏန်း မရှိပါ။"),
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium)
@@ -214,18 +214,18 @@ internal fun CustomerDigitViewsWorkspace(
         val percent = DigitViewSelector.percentUsed(amount, limit)
         AlertDialog(
             onDismissRequest = { selectedDigit = null },
-            title = { Text("ဂဏန်း $digit") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း $digit")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("ထိုးကြေး ${amount.mmk()}", fontWeight = FontWeight.Bold)
-                    Text("Limit: ${limit?.mmk() ?: "မသတ်မှတ်ထား"}")
-                    if (percent != null) Text("Limit သုံးစွဲမှု $percent%")
-                    if (digit in specialDigits) Text("Special Limit သတ်မှတ်ထားသည်")
-                    if (digit in closedDigits) Text("ပိတ်ဂဏန်း ဖြစ်သည်")
-                    if (winner?.digit == digit) Text("ပေါက်ဂဏန်း ဖြစ်သည်")
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေး ${amount.mmk()}"), fontWeight = FontWeight.Bold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit: ${limit?.mmk() ?: ")မသတ်မှတ်ထား"}")
+                    if (percent != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit သုံးစွဲမှု $percent%"))
+                    if (digit in specialDigits) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Special Limit သတ်မှတ်ထားသည်"))
+                    if (digit in closedDigits) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်း ဖြစ်သည်"))
+                    if (winner?.digit == digit) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်း ဖြစ်သည်"))
                 }
             },
-            confirmButton = { TextButton(onClick = { selectedDigit = null }) { Text("ပိတ်မည်") } },
+            confirmButton = { TextButton(onClick = { selectedDigit = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်မည်")) } },
         )
     }
 }
@@ -336,13 +336,13 @@ internal fun DigitViewCard(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (amount > 0L) FontWeight.Bold else FontWeight.Normal,
                 color = amountColor, textAlign = TextAlign.Center, maxLines = 2)
-            if (isWinner) Text("ပေါက်", style = MaterialTheme.typography.labelSmall,
+            if (isWinner) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်"), style = MaterialTheme.typography.labelSmall,
                 color = AppColors.Wine, fontWeight = FontWeight.Bold)
-            if (isClosed) Text("ပိတ်", style = MaterialTheme.typography.labelSmall,
+            if (isClosed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်"), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-            if (isSpecial) Text("SL", style = MaterialTheme.typography.labelSmall,
+            if (isSpecial) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("SL"), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-            if (percentUsed != null) Text("$percentUsed%",
+            if (percentUsed != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$percentUsed%"),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (percentUsed >= 100) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant)

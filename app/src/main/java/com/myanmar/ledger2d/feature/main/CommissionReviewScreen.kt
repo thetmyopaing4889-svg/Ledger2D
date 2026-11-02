@@ -64,7 +64,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     LaunchedEffect(agentId, agents) {
         if (agentId > 0L && agents.none { it.id == agentId }) agentId = -1L
     }
-    val selectedName = if (agentId == -1L) "ဒိုင်အားလုံး"
+    val selectedName = if (agentId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")
         else agents.firstOrNull { it.id == agentId }?.name ?: "ဒိုင်ရွေးရန်"
     val valid = range != null && (agentId == -1L || agents.any { it.id == agentId })
     val filtered = if (range != null) CommissionLedgerCalculator.select(allRows, range, agentId, draw)
@@ -79,7 +79,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
             LazyColumn(Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
-                    Text("အချိန်ကာလ", fontWeight = FontWeight.Bold,
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -93,7 +93,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                             }, label = { Text(title) })
                         }
                         FilterChip(allTime, onClick = { allTime = true },
-                            label = { Text("အစမှ ယနေ့အထိ") })
+                            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစမှ ယနေ့အထိ")) })
                     }
                 }
                 if (!allTime) item {
@@ -121,17 +121,17 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     }
                 }
                 if (allTime) item {
-                    Text("App ထဲမှာ သိမ်းထားသော ပထမဆုံးစာရင်းမှ ယနေ့အထိ",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("App ထဲမှာ သိမ်းထားသော ပထမဆုံးစာရင်းမှ ယနေ့အထိ"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall)
                 }
                 item {
-                    ScopeDropdown("ဒိုင်ရွေးရန်", selectedName,
-                        listOf(-1L to "ဒိုင်အားလုံး") + agents.map { it.id to it.name },
+                    ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), selectedName,
+                        listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId) { agentId = it }
                 }
                 item {
-                    Text("အကြိမ်ရွေးရန်", fontWeight = FontWeight.SemiBold)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("both" to "နှစ်ကြိမ်လုံး", "am" to "မနက်အကြိမ်", "pm" to "ညနေအကြိမ်")
@@ -142,13 +142,13 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     }
                 }
                 if (!valid) item {
-                    Text("ရက်စွဲ သို့မဟုတ် ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ သို့မဟုတ် ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ"),
                         color = MaterialTheme.colorScheme.error)
                 }
                 item {
                     Button(onClick = { resultPage = true }, enabled = valid,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                        Text("စာရင်းကြည့်မည်")
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းကြည့်မည်"))
                     }
                 }
             }
@@ -182,13 +182,13 @@ private fun CommissionReviewResults(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onReselect) { Text("ပြန်ရွေးရန်") }
+                TextButton(onClick = onReselect) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ရွေးရန်")) }
             }
         }
         item {
             ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("ရွေးထားသောကာလ ကော်မရှင်စုစုပေါင်း",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသောကာလ ကော်မရှင်စုစုပေါင်း"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(CommissionLedgerCalculator.total(rows).commissionMoney(),
@@ -202,15 +202,15 @@ private fun CommissionReviewResults(
             }
         }
         if (rows.isEmpty()) {
-            item { Text("ရွေးထားသောကာလအတွက် ကော်မရှင်စာရင်းမရှိပါ။") }
+            item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသောကာလအတွက် ကော်မရှင်စာရင်းမရှိပါ။")) }
         } else {
             if (agentId == -1L) item {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     FilterChip(view == "agents", onClick = { view = "agents" },
-                        label = { Text("ဒိုင်တစ်ယောက်ချင်း") })
+                        label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်တစ်ယောက်ချင်း")) })
                     FilterChip(view == "combined", onClick = { view = "combined" },
-                        label = { Text("အားလုံးစုစုပေါင်း") })
+                        label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အားလုံးစုစုပေါင်း")) })
                 }
             }
             if (agentId == -1L && view == "agents") {
@@ -226,7 +226,7 @@ private fun CommissionReviewResults(
             item {
                 HorizontalDivider()
                 CommissionMoneyRow("အောက်ဆုံးစုစုပေါင်း", CommissionLedgerCalculator.total(rows), bold = true)
-                if (agentId == -1L) Text("ဒိုင်အားလုံး၏ သိမ်းထားသော ကော်မရှင်ပေါင်း",
+                if (agentId == -1L) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး၏ သိမ်းထားသော ကော်မရှင်ပေါင်း"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

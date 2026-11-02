@@ -94,7 +94,7 @@ internal fun CustomerRiskAnalysisWorkspace(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (customerId == -1L) "Customer အားလုံး၏ Analysis" else "Customer Analysis",
             style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("${date} • ${session.label} • ကော်မရှင်မပါ",
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${date} • ${session.label} • ကော်မရှင်မပါ"),
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         val data = loaded
@@ -107,21 +107,21 @@ internal fun CustomerRiskAnalysisWorkspace(
             val savedRates = data.savedRates
             val differentRates = savedRates.size > 1 || savedRates.any { it != decision.hedgeRate }
             if (decision.missingHedgeRate) {
-                Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အရှုံး/အမြတ် Analysis ကို အတည်မပြုနိုင်ပါ။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အရှုံး/အမြတ် Analysis ကို အတည်မပြုနိုင်ပါ။"),
                     color = MaterialTheme.colorScheme.error)
             } else if (base.totalStake <= 0L) {
-                Text("ဒီ Session မှာ ထိုးစာရင်းမရှိသေးပါ။", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session မှာ ထိုးစာရင်းမရှိသေးပါ။"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
                     Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
-                            Text("စုစုပေါင်းထိုးကြေး", style = MaterialTheme.typography.labelSmall)
-                            Text("${base.totalStake.riskMoney()} ကျပ်",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စုစုပေါင်းထိုးကြေး"), style = MaterialTheme.typography.labelSmall)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${base.totalStake.riskMoney()} ကျပ်"),
                                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("ထိုးကွက်", style = MaterialTheme.typography.labelSmall)
-                            Text("${base.coveredDigits}/100",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကွက်"), style = MaterialTheme.typography.labelSmall)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${base.coveredDigits}/100"),
                                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -130,14 +130,14 @@ internal fun CustomerRiskAnalysisWorkspace(
                     shape = MaterialTheme.shapes.medium) {
                     Column(Modifier.fillMaxWidth().padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text("မူလစာရင်းနှင့် ကာမည့်အဆ", fontWeight = FontWeight.Bold)
-                        Text("မူလစာရင်း၏ သိမ်းထားသော လျော်ကြေးအဆ: " +
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မူလစာရင်းနှင့် ကာမည့်အဆ"), fontWeight = FontWeight.Bold)
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မူလစာရင်း၏ သိမ်းထားသော လျော်ကြေးအဆ: ") +
                             savedRates.joinToString(", ") { it.toString() + " ဆ" }
                                 .ifBlank { "ထိုးစာရင်းမရှိ" },
                             style = MaterialTheme.typography.bodySmall)
-                        Text("မူလအများဆုံးလျော်ကြေး " + source.worstCasePayout.riskMoney() + " ကျပ်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မူလအများဆုံးလျော်ကြေး ") + source.worstCasePayout.riskMoney() + " ကျပ်",
                             style = MaterialTheme.typography.bodySmall)
-                        Text("အသစ်ကာမည့် ဒိုင်လျော်ကြေးအဆ " + decision.hedgeRate + " ဆ",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အသစ်ကာမည့် ဒိုင်လျော်ကြေးအဆ ") + decision.hedgeRate + " ဆ",
                             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         if (differentRates) Text(
                             "မူလစာရင်း၏ သိမ်းထားသောအဆနှင့် ကာမည့်အဆ မတူနိုင်ပါ။ " +
@@ -152,17 +152,17 @@ internal fun CustomerRiskAnalysisWorkspace(
                         shape = MaterialTheme.shapes.medium) {
                         Column(Modifier.fillMaxWidth().padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Customer တစ်ယောက်ချင်း Limit သတိပေးချက်",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer တစ်ယောက်ချင်း Limit သတိပေးချက်"),
                                 fontWeight = FontWeight.Bold)
-                            Text("Agent/Customer Limit နှစ်ခုထဲမှ သက်ဆိုင်ရာ အနိမ့်ဆုံး Limit ကို " +
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent/Customer Limit နှစ်ခုထဲမှ သက်ဆိုင်ရာ အနိမ့်ဆုံး Limit ကို ") +
                                 "Customer တစ်ယောက်ချင်းစီအတွက် သီးခြားစစ်ထားသည်။",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (warnings.isEmpty()) {
-                                Text("Limit 80% နှင့်အထက် ရောက်နေသော Customer မရှိပါ။",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit 80% နှင့်အထက် ရောက်နေသော Customer မရှိပါ။"),
                                     style = MaterialTheme.typography.bodySmall)
                             } else {
-                                Text("သတိပေးချက်ရှိသော Customer " + warnings.size + " ယောက်",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတိပေးချက်ရှိသော Customer ") + warnings.size + " ယောက်",
                                     style = MaterialTheme.typography.bodySmall)
                                 warnings.take(if (expandedWarnings) warnings.size else 10).forEach { warning ->
                                     Text(warning.name + " • 80–89%: " + warning.warningDigits.size +
@@ -172,7 +172,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                         style = MaterialTheme.typography.bodySmall)
                                     val important = warning.fullDigits + warning.nearDigits
                                     if (important.isNotEmpty()) {
-                                        Text("ဂဏန်း: " + important.joinToString(", "),
+                                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း: ") + important.joinToString(", "),
                                             style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
@@ -190,16 +190,16 @@ internal fun CustomerRiskAnalysisWorkspace(
                     val actual = source.scenarios.firstOrNull { it.digit == winner?.digit }?.profitLoss
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("တကယ်ထွက်သောဂဏန်း: ${winner?.digit}", fontWeight = FontWeight.Bold)
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("တကယ်ထွက်သောဂဏန်း: ${winner?.digit}"), fontWeight = FontWeight.Bold)
                             if (actual != null) {
-                                Text("မကာထားဟု ယူဆသည့် စာရင်းအရ ${if (actual < 0L) "ရှုံး" else if (actual == 0L) "အရင်းကျေ" else "မြတ်"}ငွေ",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မကာထားဟု ယူဆသည့် စာရင်းအရ ${if (actual < 0L) ")ရှုံး" else if (actual == 0L) "အရင်းကျေ" else "မြတ်"}ငွေ",
                                     style = MaterialTheme.typography.labelSmall)
-                                Text("${signedRiskMoney(actual)} ကျပ်",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${signedRiskMoney(actual)} ကျပ်"),
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Black,
                                     color = if (actual < 0L) MaterialTheme.colorScheme.error else AppColors.Success)
                             }
-                            Text("အောက်ပါ Analysis သုံးပိုင်းသည် အရင်စာရင်း၏ ဖြစ်နိုင်ခြေကို နှိုင်းယှဉ်ပြသော နမူနာများသာ ဖြစ်သည်။",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ပါ Analysis သုံးပိုင်းသည် အရင်စာရင်း၏ ဖြစ်နိုင်ခြေကို နှိုင်းယှဉ်ပြသော နမူနာများသာ ဖြစ်သည်။"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -231,18 +231,18 @@ internal fun CustomerRiskAnalysisWorkspace(
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                                     Icon(Icons.Default.Lightbulb, null, modifier = Modifier.size(19.dp))
-                                    Text("လုပ်ဆောင်ရန် အကြံပြုချက်", fontWeight = FontWeight.Bold)
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လုပ်ဆောင်ရန် အကြံပြုချက်"), fontWeight = FontWeight.Bold)
                                 }
                                 if (decision.alreadyGuaranteed) {
-                                    Text("ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်ပြီးသားဖြစ်လို့ ထပ်မကာလည်းရသည်။")
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်ပြီးသားဖြစ်လို့ ထပ်မကာလည်းရသည်။"))
                                 } else {
                                     val riskReducing = decision.plans.any { it.upstreamTotal > 0L && it.worstLoss < base.worstLoss }
-                                    Text("အန္တရာယ်အများဆုံးဂဏန်း: ${base.riskDigits.take(10).joinToString(", ")}။ " +
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အန္တရာယ်အများဆုံးဂဏန်း: ${base.riskDigits.take(10).joinToString("), ")}။ " +
                                         if (riskReducing) "ကာနည်းရွေးပြီး အများဆုံးရှုံးငွေ လျှော့နိုင်သည်။"
                                         else "ဒီလျော်ကြေးအဆဖြင့် အရှုံးလျော့မည့် ကာနည်းမတွေ့ပါ။")
                                     val suggested = decision.plans.firstOrNull { it.id == "balance" }
                                     if (suggested != null && suggested.upstreamTotal > 0L && suggested.worstLoss < base.worstLoss) {
-                                        Text("မျှခြေနီးစပ်ရန်: ${suggested.upstreamTotal.riskMoney()} ကျပ် ကာလျှင် " +
+                                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မျှခြေနီးစပ်ရန်: ${suggested.upstreamTotal.riskMoney()} ကျပ် ကာလျှင် ") +
                                             "အများဆုံး ${signedRiskMoney(suggested.bestProfit)} / −${suggested.worstLoss.riskMoney()} ကျပ်",
                                             style = MaterialTheme.typography.bodySmall)
                                     }
@@ -251,7 +251,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                         }
                         if (!decision.alreadyGuaranteed && winner == null) {
                             Button(onClick = { tab = "balance"; details = false }, Modifier.fillMaxWidth()) {
-                                Text("ကာနည်းတွေ နှိုင်းယှဉ်ကြည့်ရန်")
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာနည်းတွေ နှိုင်းယှဉ်ကြည့်ရန်"))
                                 Spacer(Modifier.width(7.dp))
                                 Icon(Icons.Default.ArrowForward, null, Modifier.size(17.dp))
                             }
@@ -274,11 +274,11 @@ internal fun CustomerRiskAnalysisWorkspace(
                     }
                     "balance" -> {
                         if (decision.missingHedgeRate) {
-                            Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးသဖြင့် ကာနည်းမတွက်နိုင်ပါ။")
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးသဖြင့် ကာနည်းမတွက်နိုင်ပါ။"))
                         } else if (decision.alreadyGuaranteed) {
                             RiskGuaranteedAlready(base.worstProfit)
                         } else {
-                            Text("50/50 ဆိုသည်မှာ မြတ်/ရှုံးနိုင်သည့် ငွေပမာဏမျှခြေဖြစ်ပြီး ပေါက်နိုင်ခြေ 50% မဟုတ်ပါ။",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("50/50 ဆိုသည်မှာ မြတ်/ရှုံးနိုင်သည့် ငွေပမာဏမျှခြေဖြစ်ပြီး ပေါက်နိုင်ခြေ 50% မဟုတ်ပါ။"),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -287,7 +287,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                         label = { Text(plan.title) })
                                 }
                                 FilterChip(planId == "budget", onClick = { planId = "budget"; details = false },
-                                    label = { Text("စိတ်ကြိုက်အရှုံးကန့်သတ်") })
+                                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်အရှုံးကန့်သတ်")) })
                             }
                             if (planId == "budget") {
                                 OutlinedTextField(
@@ -297,7 +297,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                         budgetError = ""
                                         budgetRequest = null
                                     },
-                                    label = { Text("အများဆုံး ရှုံးခံနိုင်ငွေ (ကျပ်)") },
+                                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အများဆုံး ရှုံးခံနိုင်ငွေ (ကျပ်)")) },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth())
                                 Button(onClick = {
@@ -309,13 +309,13 @@ internal fun CustomerRiskAnalysisWorkspace(
                                         budgetError = ""
                                         budgetRequest = budget
                                     }
-                                }) { Text("အဲဒီငွေအတွင်း ကာနည်းတွက်ရန်") }
+                                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အဲဒီငွေအတွင်း ကာနည်းတွက်ရန်")) }
                                 if (budgetRequest != null && budgetResult?.requestedBudget != budgetRequest) {
                                     LinearProgressIndicator(Modifier.fillMaxWidth())
                                 }
                                 if (budgetRequest != null && budgetResult?.requestedBudget == budgetRequest &&
                                     budgetResult?.plan == null) {
-                                    Text("ဒီလျော်ကြေးစာရင်းအတွက် သတ်မှတ်ထားတဲ့ အရှုံးအတွင်း ကာနည်းမရနိုင်ပါ။",
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီလျော်ကြေးစာရင်းအတွက် သတ်မှတ်ထားတဲ့ အရှုံးအတွင်း ကာနည်းမရနိုင်ပါ။"),
                                         color = MaterialTheme.colorScheme.error)
                                 }
                                 if (budgetError.isNotBlank()) Text(budgetError, color = MaterialTheme.colorScheme.error)
@@ -336,7 +336,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                         if (decision.alreadyGuaranteed) {
                             RiskGuaranteedAlready(base.worstProfit)
                         } else if (decision.missingHedgeRate) {
-                            Text("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အမြတ်သေချာ Plan ကို မတွက်နိုင်သေးပါ။",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session ရဲ့ ဒိုင်လျော်ကြေးအဆ မရသေးလို့ အမြတ်သေချာ Plan ကို မတွက်နိုင်သေးပါ။"),
                                 style = MaterialTheme.typography.bodyMedium)
                         } else {
                             val guaranteed = decision.guaranteedPlan
@@ -347,25 +347,25 @@ internal fun CustomerRiskAnalysisWorkspace(
                                         Row(verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.error)
-                                            Text("အမြတ်သေချာကျန်အောင် မကာနိုင်ပါ", fontWeight = FontWeight.Bold)
+                                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမြတ်သေချာကျန်အောင် မကာနိုင်ပါ"), fontWeight = FontWeight.Bold)
                                         }
-                                        Text("မူလထိုးထားသောဂဏန်းတွေကိုပဲ ပြန်ကာပြီး " +
+                                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မူလထိုးထားသောဂဏန်းတွေကိုပဲ ပြန်ကာပြီး ") +
                                             "ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်အောင်လုပ်မရပါ။ " +
                                             "စာရင်းအားလုံးကို ပြန်ကာလိုက်ခြင်းကလည်း အမြတ်သေချာမကျန်စေပါ။",
                                             style = MaterialTheme.typography.bodySmall)
-                                        Text("ထိုးထားသော ${base.coveredDigits} ကွက် • ဒိုင်လျော်ကြေး ${decision.hedgeRate} ဆ",
+                                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးထားသော ${base.coveredDigits} ကွက် • ဒိုင်လျော်ကြေး ${decision.hedgeRate} ဆ"),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                                 OutlinedButton(onClick = { tab = "balance" }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("အစားထိုး 50/50 ကာနည်းကြည့်ရန်")
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစားထိုး 50/50 ကာနည်းကြည့်ရန်"))
                                 }
                             } else {
                                 Row(verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                                     Icon(Icons.Default.Verified, null, tint = AppColors.Success)
-                                    Text("ဂဏန်း 100 လုံးမှာ အမြတ်ကျန်နိုင်သည့် ကာနည်းရှိသည်",
+                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း 100 လုံးမှာ အမြတ်ကျန်နိုင်သည့် ကာနည်းရှိသည်"),
                                         fontWeight = FontWeight.Bold)
                                 }
                                 RiskMoneyPair(guaranteed.bestProfit, guaranteed.worstLoss,
@@ -373,7 +373,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                                 RiskDetailRow("အနည်းဆုံးသေချာမြတ်ငွေ", "+${guaranteed.worstProfit.riskMoney()} ကျပ်")
                                 RiskDetailRow("ဒိုင်ဆီကာရန်", "${guaranteed.upstreamTotal.riskMoney()} ကျပ်")
                                 RiskDetailRow("ကိုယ်တိုင်ကျန်ငွေ", "${guaranteed.keptCash.riskMoney()} ကျပ်")
-                                Text("ဒီ Plan သည် ဂဏန်း 100 လုံး အမြတ်ကျန်နိုင်သည့်နည်းများထဲမှ ကာကြေးအနည်းဆုံးနည်းဖြစ်သည်။",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Plan သည် ဂဏန်း 100 လုံး အမြတ်ကျန်နိုင်သည့်နည်းများထဲမှ ကာကြေးအနည်းဆုံးနည်းဖြစ်သည်။"),
                                     style = MaterialTheme.typography.bodySmall)
                                 TextButton(onClick = { details = !details }) {
                                     Text(if (details) "ကာစာရင်းပိတ်ရန်" else "အမြတ်သေချာကာစာရင်းကြည့်ရန်")
@@ -385,7 +385,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                     }
                 }
                 if (tab != "current" && !decision.alreadyGuaranteed) {
-                    Text("ကာနည်းများသည် တွက်ချက်မှု Preview သာဖြစ်သည်။ ဒိုင်လက်ခံမည့် အနည်းဆုံးကာကြေး၊ ပိတ်ဂဏန်းနှင့် Limit ကို စစ်ပြီးမှ တကယ်တင်ပါ။",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာနည်းများသည် တွက်ချက်မှု Preview သာဖြစ်သည်။ ဒိုင်လက်ခံမည့် အနည်းဆုံးကာကြေး၊ ပိတ်ဂဏန်းနှင့် Limit ကို စစ်ပြီးမှ တကယ်တင်ပါ။"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -425,14 +425,14 @@ internal fun CustomerRiskAnalysisWorkspace(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(amount, style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black, color = tint, maxLines = 1)
-            Text("ကျပ်", style = MaterialTheme.typography.labelSmall)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကျပ်"), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
 
 @Composable private fun RiskOutcomeCounts(profit: Int, loss: Int, equal: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text("မြတ်မယ့်ဂဏန်း ${profit} ကွက် • ရှုံးမယ့်ဂဏန်း ${loss} ကွက်" +
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မြတ်မယ့်ဂဏန်း ${profit} ကွက် • ရှုံးမယ့်ဂဏန်း ${loss} ကွက်") +
             if (equal > 0) " • အရင်းကျေ ${equal} ကွက်" else "",
             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
         Row(Modifier.fillMaxWidth().height(9.dp).clip(RoundedCornerShape(6.dp))) {
@@ -440,7 +440,7 @@ internal fun CustomerRiskAnalysisWorkspace(
             if (equal > 0) Box(Modifier.weight(equal.toFloat()).fillMaxHeight().background(MaterialTheme.colorScheme.tertiary))
             if (loss > 0) Box(Modifier.weight(loss.toFloat()).fillMaxHeight().background(MaterialTheme.colorScheme.error))
         }
-        Text("00–99 ဂဏန်းအားလုံး ပေါက်နိုင်ခြေတူသည်ဟု ယူဆထားသည်။",
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("00–99 ဂဏန်းအားလုံး ပေါက်နိုင်ခြေတူသည်ဟု ယူဆထားသည်။"),
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -458,7 +458,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                 RiskDetailRow("ငွေကြေးမျှခြေ", plan.balanceRatioLabel)
             }
         }
-        Text("မကာခင် ${signedRiskMoney(oldProfit)} / −${oldLoss.riskMoney()} → " +
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မကာခင် ${signedRiskMoney(oldProfit)} / −${oldLoss.riskMoney()} → ") +
             "ကာပြီး ${signedRiskMoney(plan.bestProfit)} / ${if (plan.worstLoss == 0L) "0" else "−${plan.worstLoss.riskMoney()}"} ကျပ်",
             style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
         val reduction = oldLoss - plan.worstLoss
@@ -479,9 +479,9 @@ internal fun CustomerRiskAnalysisWorkspace(
             horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Icon(Icons.Default.Verified, null, tint = AppColors.Success)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်ပြီးသား",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဘယ်ဂဏန်းပေါက်ပေါက် အမြတ်ကျန်ပြီးသား"),
                     fontWeight = FontWeight.Bold)
-                Text("အနည်းဆုံး +${minimumProfit.riskMoney()} ကျပ်မြတ်မည်။ " +
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အနည်းဆုံး +${minimumProfit.riskMoney()} ကျပ်မြတ်မည်။ ") +
                     "မလိုအပ်ဘဲ ဒိုင်ဆီထပ်ကာရန်မလိုပါ။")
             }
         }
@@ -502,9 +502,9 @@ internal fun CustomerRiskAnalysisWorkspace(
     val copyText = plan.hedges.joinToString("\n") { "${it.digit}=${it.amount}" }
     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text("ပြန်ကာရမယ့်ဂဏန်း (${plan.hedges.size} ကွက်)",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ကာရမယ့်ဂဏန်း (${plan.hedges.size} ကွက်)"),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            if (plan.hedges.isEmpty()) Text("ကာရန်မလိုပါ")
+            if (plan.hedges.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာရန်မလိုပါ"))
             else {
                 plan.hedges.forEach { hedge ->
                     RiskDetailRow(hedge.digit, "${hedge.amount.riskMoney()} ကျပ်")
@@ -514,7 +514,7 @@ internal fun CustomerRiskAnalysisWorkspace(
                     modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.ContentCopy, null, Modifier.size(17.dp))
                     Spacer(Modifier.width(7.dp))
-                    Text("ကာစာရင်း Copy ယူရန်")
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာစာရင်း Copy ယူရန်"))
                 }
             }
             Text(if (allowCopy) "Copy ယူထားသည့်စာရင်းသည် ဒိုင်ဆီ တင်ပြီးသားစာရင်း မဟုတ်ပါ။"
