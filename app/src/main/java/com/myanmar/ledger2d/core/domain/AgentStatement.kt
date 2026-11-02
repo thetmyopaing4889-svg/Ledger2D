@@ -46,6 +46,8 @@ data class AgentStatementDraw(
     val profitLoss: Long? get() = payout?.let { Math.subtractExact(totalStake, it) }
     /** Commission belongs to the reseller; retain the saved draw-specific NET amount. */
     val netProfitLoss: Long? get() = profitLoss?.let { Math.addExact(it, commission) }
+    /** Positive: reseller pays agent. Negative: agent pays reseller. */
+    val settlementAmount: Long? get() = payout?.let { Math.subtractExact(Math.subtractExact(totalStake, commission), it) }
     val resultKnown: Boolean get() = winner != null
     fun forCustomer(id: Long): AgentStatementDraw = copy(
         stakes = stakes.filter { it.customerId == id },
@@ -69,6 +71,9 @@ data class AgentStatementTotals(
     val draws: Int get() = completedDraws + pendingDraws
     val profitLoss: Long? get() = if (completedDraws > 0) Math.subtractExact(completedStake, payout) else null
     val netProfitLoss: Long? get() = profitLoss?.let { Math.addExact(it, completedNetCommission) }
+    /** Confirmed draws only; never deduct pending commission from a settled period. */
+    val settlementAmount: Long? get() = if (completedDraws > 0)
+        Math.subtractExact(Math.subtractExact(completedStake, completedNetCommission), payout) else null
 }
 
 data class AgentStatement(val draws: List<AgentStatementDraw>) {
@@ -81,6 +86,18 @@ data class AgentStatement(val draws: List<AgentStatementDraw>) {
  * once per recorded agent, or mistake saved net commission for a gross payment.
  */
 object AgentStatementCalculator {
+    /** Do not net one agent's receivable against another agent's payable. */
+    fun settlementByAgent(draws: List<AgentStatementDraw>): Pair<Long, Long> {
+        var resellerPays = 0L
+        var agentPays = 0L
+        for (agentDraws in draws.groupBy { it.agentId }.values) {
+            val balance = summarize(agentDraws).settlementAmount ?: continue
+            if (balance > 0L) resellerPays = Math.addExact(resellerPays, balance)
+            if (balance < 0L) agentPays = Math.subtractExact(agentPays, balance)
+        }
+        return resellerPays to agentPays
+    }
+
     fun build(
         stakes: List<AgentRatedStake>,
         commissions: List<AgentSavedCommission>,
