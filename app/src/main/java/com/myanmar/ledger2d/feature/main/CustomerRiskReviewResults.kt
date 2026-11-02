@@ -69,7 +69,7 @@ private fun RiskMoneyRange(best: Long, loss: Long) {
 private fun RiskDigitTable(source: AnalysisResult, showAll: Boolean, toggle: () -> Unit) {
     val risk = source.scenarios.filter { it.profitLoss < 0L }.sortedBy { it.profitLoss }
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Text("အရှုံးဖြစ်နိုင်တဲ့ဂဏန်း ${risk.size} ကွက်", fontWeight = FontWeight.Bold)
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အရှုံးဖြစ်နိုင်တဲ့ဂဏန်း ${risk.size} ကွက်", "Loss-risk digits: ${risk.size}"), fontWeight = FontWeight.Bold)
         if (risk.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အရှုံးဖြစ်နိုင်တဲ့ဂဏန်း မရှိပါ။"))
         else {
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -95,7 +95,7 @@ private fun RiskDigitTable(source: AnalysisResult, showAll: Boolean, toggle: () 
                 }
             }
             if (risk.size > 8) TextButton(onClick = toggle) {
-                Text(if (showAll) "အပေါ်ဆုံး ၈ ကွက်သာ" else "ကျန် ${risk.size - 8} ကွက် ကြည့်ရန်")
+                Text(if (showAll) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အပေါ်ဆုံး ၈ ကွက်သာ") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ကျန် ${risk.size - 8} ကွက် ကြည့်ရန်", "Show ${risk.size - 8} more digits"))
                 Icon(if (showAll) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
             }
         }
@@ -119,7 +119,7 @@ private fun RiskPlanCard(plan: RiskHedgePlan, baseline: RiskSnapshot, allowCopy:
             if (plan.hedges.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကာရန်မလိုပါ။"))
             else {
                 TextButton(onClick = { showList = !showList }) {
-                    Text("ဂဏန်းနဲ့ ကာရမယ့်ငွေ ${plan.hedges.size} ကွက်")
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်းနဲ့ ကာရမယ့်ငွေ ${plan.hedges.size} ကွက်", "Cover amounts for ${plan.hedges.size} digits"))
                     Icon(if (showList) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                 }
                 if (showList) {
@@ -230,7 +230,7 @@ fun CustomerRiskReviewResults(
                             RiskValue("ထိုးထားတဲ့ဂဏန်း", "${base.coveredDigits}/100 ကွက်")
                             RiskValue("လျော်ကြေးအဆ", "${decision.hedgeRate} ဆ")
                             if (data.rates.isNotEmpty() && data.rates.any { it != decision.hedgeRate }) {
-                                Text("မူလစာရင်းလျော်ကြေးအဆ ${data.rates.joinToString("/") { "$it ဆ" }} • မူလငွေတွက်ချက်မှုမှာ သိမ်းထားတဲ့အဆကို သုံးထားသည်။",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မူလစာရင်းလျော်ကြေးအဆ ${data.rates.joinToString("/") { "$it ဆ" }} • မူလငွေတွက်ချက်မှုမှာ သိမ်းထားတဲ့အဆကို သုံးထားသည်။", "Original payout rates: ${data.rates.joinToString("/") { "${it}x" }} • Original calculations use saved rates."),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -261,7 +261,7 @@ fun CustomerRiskReviewResults(
                                         AnalysisDigitGroups.select(source, AnalysisDigitGroup.STAKED_LOSS).size
                                     ) { selectedDigitGroup = AnalysisDigitGroup.STAKED_LOSS }
                                     TextButton(onClick = { breakdown = !breakdown }) {
-                                        Text(if (breakdown) "ဂဏန်းအရေအတွက် အသေးစိတ်ပိတ်ရန်" else "ဂဏန်းအရေအတွက် ဘယ်လိုရလဲ")
+                                        Text(if (breakdown) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းအရေအတွက် အသေးစိတ်ပိတ်ရန်") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းအရေအတွက် ဘယ်လိုရလဲ"))
                                         Icon(if (breakdown) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                                     }
                                     if (breakdown) {
@@ -345,7 +345,7 @@ fun CustomerRiskReviewResults(
                     }
                     else -> {
                         if (decision.alreadyGuaranteed) {
-                            item { Text("ကာရန်မလိုပါ။ အနည်းဆုံး ${base.worstProfit.rm()} ကျပ် မြတ်နိုင်ပြီးသား ဖြစ်သည်။") }
+                            item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ကာရန်မလိုပါ။ အနည်းဆုံး ${base.worstProfit.rm()} ကျပ် မြတ်နိုင်ပြီးသား ဖြစ်သည်။", "No cover needed. Minimum profit: ${base.worstProfit.rm()} MMK.")) }
                         } else if (decision.missingHedgeRate) {
                             item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်လျော်ကြေးအဆ မရှိသဖြင့် အမြတ်သေချာကာနည်း မတွက်နိုင်ပါ။")) }
                         } else if (decision.guaranteedPlan == null) {
@@ -395,11 +395,11 @@ fun CustomerRiskReviewResults(
                     OutlinedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             TextButton(onClick = { warningsOpen = !warningsOpen }) {
-                                Text("ထိုးသား Limit သတိပေးချက် ${data.warnings.size} ယောက်")
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးသား Limit သတိပေးချက် ${data.warnings.size} ယောက်", "Customer limit warnings: ${data.warnings.size}"))
                                 Icon(if (warningsOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                             }
                             if (warningsOpen) data.warnings.forEach { warning ->
-                                Text("${warning.name} • 80%+: ${warning.warningDigits.size}၊ 90%+: ${warning.nearDigits.size}၊ 100%+: ${warning.fullDigits.size}",
+                                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${warning.name} • 80%+: ${warning.warningDigits.size}၊ 90%+: ${warning.nearDigits.size}၊ 100%+: ${warning.fullDigits.size}", "${warning.name} • 80%+: ${warning.warningDigits.size}, 90%+: ${warning.nearDigits.size}, 100%+: ${warning.fullDigits.size}"),
                                     style = MaterialTheme.typography.bodySmall)
                             }
                         }
