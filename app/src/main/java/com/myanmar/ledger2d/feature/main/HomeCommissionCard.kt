@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.main
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.design.AppColors
+import com.myanmar.ledger2d.core.design.AuroraGlassCard
 import com.myanmar.ledger2d.core.domain.CommissionLedgerCalculator
 import com.myanmar.ledger2d.core.domain.DeviceCalendar
 import java.text.NumberFormat
@@ -45,17 +47,13 @@ internal fun HomeCommissionCard(
     val isClosed = today.dayOfWeek == DayOfWeek.SATURDAY ||
         today.dayOfWeek == DayOfWeek.SUNDAY || closedDays.any { it.date == today }
 
-    Card(
-        onClick = onDetails,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(19.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, AppColors.Stone),
+    AuroraGlassCard(
+        modifier = modifier.fillMaxWidth().clickable(onClick = onDetails),
+        animated = true
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -63,16 +61,16 @@ internal fun HomeCommissionCard(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 Icon(Icons.Default.AccountBalanceWallet, null,
-                    tint = AppColors.PrimaryDeep, modifier = Modifier.size(20.dp))
+                    tint = AppColors.ChampagneGold, modifier = Modifier.size(20.dp))
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်ရငွေ"), modifier = Modifier.weight(1f),
-                    fontSize = 14.sp, lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold, color = AppColors.Ink)
+                    fontSize = 16.sp, lineHeight = 24.sp,
+                    fontWeight = FontWeight.Bold, color = Color.White)
                 if (isClosed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), fontSize = 10.sp,
-                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.Bold)
+                    color = AppColors.ChampagneGold, fontWeight = FontWeight.Bold)
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အသေးစိတ်"), fontSize = 11.sp,
-                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
+                    color = AppColors.ChampagneGold, fontWeight = FontWeight.SemiBold)
                 Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
-                    tint = AppColors.PrimaryDeep, modifier = Modifier.size(18.dp))
+                    tint = AppColors.ChampagneGold, modifier = Modifier.size(18.dp))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -85,26 +83,25 @@ internal fun HomeCommissionCard(
                 ) {
                     HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်အကြိမ်", "AM"), totals.morning, false)
                     HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ညနေအကြိမ်", "PM"), totals.evening, false)
-                    HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
+                    HorizontalDivider(color = Color.White.copy(alpha = .20f))
                     HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
                 }
-                VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
+                VerticalDivider(modifier = Modifier.height(80.dp), color = Color.White.copy(alpha = .25f))
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
                         com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total to date"),
-                        fontSize = 11.sp, lineHeight = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp, lineHeight = 19.sp,
+                        color = Color.White.copy(alpha = .78f),
                         maxLines = 2,
                     )
                     Text(
                         totals.toDateTotal.cardAmount() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကျပ်", " MMK"),
-                        fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 17.sp,
-                        lineHeight = 20.sp, fontWeight = FontWeight.Black,
-                        color = AppColors.PrimaryDeep, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        fontSize = if (totals.toDateTotal.cardAmount().length > 13) 16.sp else 21.sp,
+                        lineHeight = 29.sp, fontWeight = FontWeight.Bold,
+                        color = Color.White, maxLines = 3, softWrap = true,
                     )
                 }
             }
@@ -122,19 +119,18 @@ private fun HomeCommissionAmountRow(label: String, amount: Long, emphasis: Boole
         Text(
             label,
             modifier = Modifier.weight(1f),
-            fontSize = if (emphasis) 11.sp else 10.sp,
-            lineHeight = 14.sp, color = if (emphasis) AppColors.PrimaryDeep
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = if (emphasis) 13.sp else 12.sp,
+            lineHeight = 19.sp, color = if (emphasis) AppColors.ChampagneGold
+                else Color.White.copy(alpha = .78f),
             fontWeight = if (emphasis) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
         Text(
             amount.cardAmount(),
-            fontSize = if (amount.cardAmount().length > 11) 11.sp else 14.sp,
-            lineHeight = 18.sp,
-            color = if (emphasis) AppColors.PrimaryDeep else AppColors.Ink,
-            fontWeight = FontWeight.Bold, maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            fontSize = if (amount.cardAmount().length > 11) 14.sp else 16.sp,
+            lineHeight = 23.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Bold, maxLines = 2, softWrap = true,
         )
     }
 }
