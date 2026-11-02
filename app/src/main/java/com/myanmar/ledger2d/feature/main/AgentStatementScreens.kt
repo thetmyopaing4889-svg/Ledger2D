@@ -196,17 +196,40 @@ private fun agentReportSections(draws: List<AgentStatementDraw>, period: Stateme
 private fun AgentStatementValue(label: String, amount: String, bold: Boolean = false) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically) {
-        Text(label, modifier = Modifier.weight(1f),
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label), modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(amount, style = MaterialTheme.typography.bodyMedium,
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.reportValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, amount), style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
             textAlign = TextAlign.End)
     }
 }
 
+
+/** Positive balance is due to the agent; negative balance is due to the reseller. */
 @Composable
-private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?, compact: Boolean = false) {
+private fun AgentSettlementLine(balance: Long?, byAgent: Pair<Long, Long>? = null) {
+    val language = com.myanmar.ledger2d.core.design.LocalLanguage.current
+    if (balance == null) {
+        AgentStatementValue(language.text("ငွေရှင်းရလဒ်", "Settlement"), language.text("ရလဒ်မထွက်သေး", "Pending result"), true)
+        return
+    }
+    if (byAgent != null) {
+        AgentStatementValue(language.text("User က ဒိုင်များကို ပေးရန်", "User pays agents"), "${byAgent.first.agentMoney()} ကျပ်", true)
+        AgentStatementValue(language.text("ဒိုင်များက User ကို ပေးရန်", "Agents pay user"), "${byAgent.second.agentMoney()} ကျပ်", true)
+        return
+    }
+    val label = when {
+        balance > 0L -> language.text("User က ဒိုင်ကို ပေးရန်", "User pays agent")
+        balance < 0L -> language.text("ဒိုင်က User ကို ပေးရန်", "Agent pays user")
+        else -> language.text("ပေးရန်/ရရန်မရှိ", "Nothing to settle")
+    }
+    val amount = if (balance < 0L) Math.negateExact(balance) else balance
+    AgentStatementValue(label, "${amount.agentMoney()} ကျပ်", true)
+}
+
+@Composable
+private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?, compact: Boolean = false, allAgentDraws: List<AgentStatementDraw>? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         if (!compact) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -226,13 +249,13 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
                 "${totals.winningStake.agentMoney()} ကျပ်" else "ရလဒ်မထွက်သေး")
         AgentStatementValue("လျော်ပေးငွေ", if (totals.completedDraws > 0)
             "${totals.payout.agentMoney()} ကျပ်" else "—", true)
-        AgentStatementValue("ရှုံး/မြတ် (ကော်မရှင်မပါ)", totals.profitLoss.agentResultMoney())
-        AgentStatementValue("အသားတင်ရှုံး/မြတ် (Net ပါ)", totals.netProfitLoss.agentResultMoney(), true)
+        HorizontalDivider()
+        AgentSettlementLine(totals.settlementAmount, allAgentDraws?.let { AgentStatementCalculator.settlementByAgent(it) })
         if (totals.pendingDraws > 0) {
             Text(
                 "ရလဒ်ရပြီး ${totals.completedDraws} ဒိုင်/အကြိမ် • မရသေး ${totals.pendingDraws} ဒိုင်/အကြိမ်။ " +
-                    "ပေါက်ကြေး၊ လျော်ငွေ၊ ရှုံး/မြတ်တို့မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာဖြစ်ပြီး " +
-                    "အသားတင်ရှုံး/မြတ်တွင် Pending Session ကော်မရှင် မပါဝင်ပါ။",
+                    "ငွေရှင်းရလဒ်မှာ ရလဒ်ရပြီးသားအကြိမ်များအတွက်သာ ဖြစ်သည်။ " +
+                    "ရလဒ်မထွက်သေးသော အကြိမ်များ၏ ထိုးကြေးနှင့်ကော်မရှင် မပါဝင်ပါ။",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -244,8 +267,10 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
 private fun AgentStatementTableHeader(scroll: ScrollState) {
     Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ကော်မရှင်", "ပေါက်ကြေး", "လျော်ငွေ",
-            "ရှုံး/မြတ်", "အသားတင်ရှုံး/မြတ်").forEachIndexed { i, name ->
+        val headers = if (com.myanmar.ledger2d.core.design.LocalLanguage.current.code == "en")
+            listOf("Date / draw", "Stake", "Commission", "Winning stake", "Payout", "To settle")
+        else listOf("ရက်/အကြိမ်", "ထိုးကြေး", "ကော်မရှင်", "ပေါက်ကြေး", "လျော်ငွေ", "ရှင်းရန်")
+        headers.forEachIndexed { i, name ->
             Text(name, Modifier.width(if (i == 0) 120.dp else 132.dp),
                 fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall,
                 textAlign = if (i == 0) TextAlign.Start else TextAlign.End, maxLines = 2)
@@ -256,11 +281,12 @@ private fun AgentStatementTableHeader(scroll: ScrollState) {
 @Composable
 private fun AgentStatementTableRow(
     label: String, totals: AgentStatementTotals, scroll: ScrollState, bold: Boolean = false,
+    aggregateAgents: Boolean = false,
 ) {
     Row(Modifier.fillMaxWidth().horizontalScroll(scroll).padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val style = MaterialTheme.typography.labelSmall
-        Text(label, Modifier.width(120.dp), style = style,
+        Text(com.myanmar.ledger2d.core.design.UiLabelCatalog.statementTitle(com.myanmar.ledger2d.core.design.LocalLanguage.current.code, label), Modifier.width(120.dp), style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text(totals.totalStake.agentMoney(), Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
         Text(totals.savedNetCommission.agentMoney(), Modifier.width(132.dp), textAlign = TextAlign.End, style = style)
@@ -269,10 +295,8 @@ private fun AgentStatementTableRow(
         Text(if (totals.completedDraws > 0) totals.payout.agentMoney() else "—",
             Modifier.width(132.dp), textAlign = TextAlign.End, style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
-        Text(totals.profitLoss.agentResultMoney(), Modifier.width(132.dp),
-            textAlign = TextAlign.End, style = style)
-        Text(totals.netProfitLoss.agentResultMoney(), Modifier.width(132.dp),
-            textAlign = TextAlign.End, style = style,
+        Text(if (aggregateAgents) "—" else totals.settlementAmount?.agentSignedMoney() ?: "—",
+            Modifier.width(132.dp), textAlign = TextAlign.End, style = style,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
 }
@@ -312,8 +336,7 @@ private fun AgentStatementDrawDetail(
             AgentStatementValue("ကော်မရှင် (Net)", "${draw.commission.agentMoney()} ကျပ်")
             AgentStatementValue("ပေါက်ကြေး", draw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
             AgentStatementValue("လျော်ပေးငွေ", draw.payout?.let { "${it.agentMoney()} ကျပ်" } ?: "—", true)
-            AgentStatementValue("ရှုံး/မြတ် (ကော်မရှင်မပါ)", draw.profitLoss.agentResultMoney())
-            AgentStatementValue("အသားတင်ရှုံး/မြတ် (Net ပါ)", draw.netProfitLoss.agentResultMoney(), true)
+            AgentSettlementLine(draw.settlementAmount)
             val customerIds = (draw.stakes.map { it.customerId } + draw.commissions.map { it.customerId }).distinct()
             if (customerIds.isNotEmpty()) {
                 HorizontalDivider()
@@ -336,8 +359,7 @@ private fun AgentStatementDrawDetail(
                         AgentStatementValue("ကော်မရှင် (Net)", "${customerDraw.commission.agentMoney()} ကျပ်")
                         AgentStatementValue("ပေါက်ကြေး", customerDraw.winningStake?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
                         AgentStatementValue("လျော်ပေးငွေ", customerDraw.payout?.let { "${it.agentMoney()} ကျပ်" } ?: "—")
-                        AgentStatementValue("ရှုံး/မြတ် (ကော်မရှင်မပါ)", customerDraw.profitLoss.agentResultMoney())
-                        AgentStatementValue("အသားတင်ရှုံး/မြတ် (Net ပါ)", customerDraw.netProfitLoss.agentResultMoney(), true)
+                        AgentSettlementLine(customerDraw.settlementAmount)
                         AgentStatementDigitDetails(customerDraw)
                     }
                 }
@@ -365,7 +387,8 @@ private fun AgentStatementSectionCard(
                         Text(section.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                         Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                     }
-                    AgentStatementTableRow("စုစုပေါင်း", totals, tableScroll, true)
+                    AgentStatementTableRow("စုစုပေါင်း", totals, tableScroll, true, showAgents)
+                    if (showAgents) AgentSettlementLine(totals.settlementAmount, AgentStatementCalculator.settlementByAgent(section.draws))
                 }
             }
             if (open) {
@@ -387,7 +410,9 @@ private fun AgentStatementSectionCard(
                             AgentStatementTableRow(
                                 "${key.first.dayOfMonth} ${if (key.second == DrawSession.MORNING) "မနက်" else "ညနေ"}",
                                 AgentStatementCalculator.summarize(draws), tableScroll,
+                                aggregateAgents = showAgents,
                             )
+                            if (showAgents) AgentSettlementLine(AgentStatementCalculator.summarize(draws).settlementAmount, AgentStatementCalculator.settlementByAgent(draws))
                         }
                     }
                     if (selected) {
@@ -399,7 +424,8 @@ private fun AgentStatementSectionCard(
                     }
                 }
                 HorizontalDivider()
-                AgentStatementTableRow("စုစုပေါင်း", totals, tableScroll, true)
+                AgentStatementTableRow("စုစုပေါင်း", totals, tableScroll, true, showAgents)
+                if (showAgents) AgentSettlementLine(totals.settlementAmount, AgentStatementCalculator.settlementByAgent(section.draws))
             }
         }
     }
@@ -450,13 +476,15 @@ fun AgentStatementResults(
             item {
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                        AgentStatementSummary(data.totals, if (agentId == -1L) data.agentIds.size else null)
+                        AgentStatementSummary(data.totals, if (agentId == -1L) data.agentIds.size else null,
+                            allAgentDraws = if (agentId == -1L) data.draws else null)
                     }
                 }
             }
             item {
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်သည် App မှာ သိမ်းထားသော Net Commission ဖြစ်သည်။ ") +
-                    "ဒိုင်မှပေးရမည့် Gross Commission သို့မဟုတ် လက်တွေ့ငွေလွှဲပြီးကြောင်း အတည်ပြုချက် မဟုတ်ပါ။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
+                    "ငွေရှင်းရာတွင် ထိုးသားအလိုက် သိမ်းထားသော ကော်မရှင်ကို နှုတ်တွက်ထားသည်။ ဤငွေသည် စာရင်းအရ ပေးရန်/ရရန်ဖြစ်ပြီး လက်တွေ့ငွေလွှဲပြီးကြောင်း မဆိုလိုပါ။",
+                    "Settlement deducts each customer's saved commission. Amounts show what is due, not money already paid."),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -511,7 +539,8 @@ fun AgentStatementResults(
                         OutlinedCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
-                                AgentStatementSummary(totals, null, compact = true)
+                                AgentStatementSummary(totals, null, compact = true,
+                                    allAgentDraws = data.draws.filter { it.agentId in included })
                                 if (search.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှာထားသည့်ဒိုင်များအတွက်သာ"),
                                     style = MaterialTheme.typography.labelSmall)
                             }
@@ -529,7 +558,8 @@ fun AgentStatementResults(
                                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ဆုံးစုစုပေါင်း"), fontWeight = FontWeight.Bold)
                                 val bottomScroll = rememberScrollState()
                                 AgentStatementTableHeader(bottomScroll)
-                                AgentStatementTableRow("စုစုပေါင်း", data.totals, bottomScroll, true)
+                                AgentStatementTableRow("စုစုပေါင်း", data.totals, bottomScroll, true, agentId == -1L)
+                                AgentSettlementLine(data.totals.settlementAmount, if (agentId == -1L) AgentStatementCalculator.settlementByAgent(data.draws) else null)
                             }
                         }
                     }
