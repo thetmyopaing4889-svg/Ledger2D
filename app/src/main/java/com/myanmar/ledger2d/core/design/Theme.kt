@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,10 +48,12 @@ object AppColors {
     val PanelBorder = Color(0xFFE8DFEA)
     val MutedInk = Color(0xFF6B606E)
     val ChampagneGold = Color(0xFFF0D2A5)
+    val GlassEdge = Color(0xFFF8D6EF)
 }
 object AppDimens {
     val screen = 16.dp; val section = 24.dp; val card = 16.dp
     val compact = 8.dp; val buttonHeight = 56.dp; val row = 76.dp
+    val touchTarget = 48.dp
     val cardElevation = 2.dp; val featuredElevation = 5.dp
     val space4 = 4.dp; val space8 = 8.dp; val space12 = 12.dp; val space16 = 16.dp; val space20 = 20.dp; val space24 = 24.dp
 }
@@ -122,7 +126,10 @@ fun AuroraGlassCard(
     Surface(
         modifier = modifier, shape = MaterialTheme.shapes.extraLarge,
         color = AppColors.Obsidian,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .22f)),
+        border = BorderStroke(1.dp, Brush.linearGradient(listOf(
+            Color.White.copy(alpha = .55f), AppColors.GlassEdge.copy(alpha = .36f),
+            AppColors.AuroraViolet.copy(alpha = .45f)
+        ))),
         shadowElevation = AppDimens.featuredElevation
     ) {
         Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(
@@ -134,6 +141,17 @@ fun AuroraGlassCard(
                         Brush.radialGradient(listOf(glow.copy(alpha = .30f), Color.Transparent)),
                         CircleShape
                     )
+            )
+            // Restrained specular highlights create depth without blurring ledger content.
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(Color.White.copy(alpha = .10f), Color.Transparent, Color.Transparent))
+                )
+            )
+            Box(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().height(1.dp).background(
+                    Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = .62f), Color.Transparent))
+                )
             )
             Column(
                 Modifier.fillMaxWidth().padding(AppDimens.card),
@@ -181,5 +199,38 @@ fun PremiumSettlementPanel(
             verticalArrangement = Arrangement.spacedBy(AppDimens.space8),
             content = content
         )
+    }
+}
+
+/** All money figures share tabular digits so columns do not visually jump. */
+@Composable
+fun PremiumMoneyText(
+    amount: String,
+    modifier: Modifier = Modifier,
+    emphasis: Boolean = false,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    textAlign: TextAlign = TextAlign.End,
+) {
+    Text(
+        text = amount,
+        modifier = modifier,
+        color = color,
+        style = (if (emphasis) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
+            .copy(fontFeatureSettings = "tnum"),
+        fontWeight = if (emphasis) FontWeight.Bold else FontWeight.SemiBold,
+        textAlign = textAlign,
+        softWrap = true,
+    )
+}
+
+@Composable
+fun PremiumSectionHeading(title: String, subtitle: String? = null) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppDimens.space4)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold)
+        if (!subtitle.isNullOrBlank()) {
+            Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
