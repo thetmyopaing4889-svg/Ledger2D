@@ -35,7 +35,7 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
                         else customers.forEach{customer->
                             val entries by vm.customerEntries(customer.id).collectAsStateWithLifecycle(initialValue=emptyList())
                             val amount=entries.filter{it.entry.drawDate==date&&it.entry.drawSession==session}.flatMap{it.lines}.sumOf{it.amount}
-                            if(amount>0L)ListItem(headlineContent={Text(customer.name,fontWeight=FontWeight.SemiBold)},supportingContent={Text("${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} ${l.translate("စာရင်း")}")},trailingContent={Text(amount.mmk(),fontWeight=FontWeight.Bold)})
+                            if(amount>0L)ListItem(headlineContent={Text(customer.name,fontWeight=FontWeight.SemiBold)},supportingContent={Text(l.text("${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} စာရင်း", "${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} entries"))},trailingContent={Text(amount.mmk(),fontWeight=FontWeight.Bold)})
                         }
                     }
                 }
