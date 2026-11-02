@@ -59,6 +59,15 @@ class UiLabelCatalogTest {
         assertEquals("2 Nov မနက်", UiLabelCatalog.statementTitle("my", "2 Nov မနက်"))
     }
 
+    @Test fun drawLabelsAreLocalizedButTechnicalBrandsAreUntouched() {
+        assertEquals("Morning", UiLabelCatalog.lookup("en", "မနက်"))
+        assertEquals("Evening", UiLabelCatalog.lookup("en", "ညနေ"))
+        assertEquals("Morning session", UiLabelCatalog.lookup("en", "မနက်အကြိမ်"))
+        assertEquals("Evening session", UiLabelCatalog.lookup("en", "ညနေအကြိမ်"))
+        assertNull(UiLabelCatalog.lookup("en", "2D LIVE"))
+        assertNull(UiLabelCatalog.lookup("my", "Better Data"))
+    }
+
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
         assertNull(UiLabelCatalog.lookup("en", "မောင်မောင်"))
         assertNull(UiLabelCatalog.lookup("my", "Custom agent name"))
