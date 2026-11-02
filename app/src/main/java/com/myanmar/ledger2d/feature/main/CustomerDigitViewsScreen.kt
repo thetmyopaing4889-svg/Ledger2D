@@ -214,7 +214,7 @@ internal fun CustomerDigitViewsWorkspace(
         val percent = DigitViewSelector.percentUsed(amount, limit)
         AlertDialog(
             onDismissRequest = { selectedDigit = null },
-            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်း $digit", "Digit $digit") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်း $digit", "Digit $digit")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးကြေး ${amount.mmk()}", "Stake: ${amount.mmk()}"), fontWeight = FontWeight.Bold)

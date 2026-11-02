@@ -135,7 +135,7 @@ internal fun AnalysisDigitDrilldown(
     selected?.let { scenario ->
         AlertDialog(
             onDismissRequest = { selected = null },
-            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်း ${scenario.digit}", "Digit ${scenario.digit}") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်း ${scenario.digit}", "Digit ${scenario.digit}")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     AnalysisDigitDetailLine("ထိုးကြေး", "${scenario.stake.analysisAmount()} ကျပ်")
