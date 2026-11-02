@@ -147,8 +147,8 @@ fun transactionDisplayText(format: String, raw: String): String {
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
             CenterAlignedTopAppBar(
-                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Color.White, scrolledContainerColor=Color.White, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
-                title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
+                colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=AppColors.Obsidian, scrolledContainerColor=AppColors.Obsidian, navigationIconContentColor=Color.White, titleContentColor=Color.White),
+                title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=Color.White)},
                 navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription=LocalLanguage.current.translate("နောက်သို့")) } }},
                 actions={action?.invoke(this)}
             )
@@ -176,7 +176,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
     val sheetOverlap=24.dp
-    Scaffold(containerColor=Color(0xFFF6F4F5),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
+    Scaffold(containerColor=AppColors.Pearl,contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
         BoxWithConstraints(Modifier.fillMaxSize().padding(p)) {
             // Keep the original header, live, weekly grid and both 76dp feature rows.
             // Reserve the real visible height (above NavigationBar), not an infinite scroll.
@@ -186,15 +186,16 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
                         .height(this@BoxWithConstraints.maxHeight-(heroHeight-sheetOverlap))
                         .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
-                        .background(Color(0xFFF6F4F5))
-                        .padding(start=14.dp,end=14.dp,top=18.dp,bottom=0.dp),
+                        .background(AppColors.Pearl)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start=AppDimens.screen,end=AppDimens.screen,top=18.dp,bottom=24.dp),
                     verticalArrangement=Arrangement.spacedBy(10.dp),
                 ) {
                     HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
                     HomeWeeklyResults(vm)
                     // Only the commission area and quick actions change; retain original
                     // Header, LIVE, Weekly Results, bottom navigation and footer.
-                    HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
+                    HomeCommissionCard(vm, onCommissionDetails)
                     HomeQuickActionsRow(onAddAgent, onAddCustomer)
                     HomeFooter()
                 }
@@ -244,8 +245,8 @@ fun transactionDisplayText(format: String, raw: String): String {
     val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
     val (liveInteraction,liveScale)=rememberPressScale("liveCard")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-        ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=RoundedCornerShape(22.dp),colors=CardDefaults.elevatedCardColors(containerColor=AppColors.PrimaryDeep),elevation=CardDefaults.elevatedCardElevation(defaultElevation=2.dp)){
-            Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xFFD41452),Color(0xFF8D123A)))).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically){
+        ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=MaterialTheme.shapes.extraLarge,colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Obsidian),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
+            Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(AppColors.Obsidian,AppColors.Plum,AppColors.PrimaryDeep))).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("2D LIVE"),Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
                 Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(30.dp))
@@ -259,7 +260,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeCountCard(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,value:Int,iconTint:Color,modifier:Modifier){
     Surface(modifier.height(88.dp),color=Color.White,shape=RoundedCornerShape(22.dp),border=BorderStroke(1.dp,AppColors.Stone),shadowElevation=2.dp){
         Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-            Text(label.uppercase(Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=0.8.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis,softWrap=false)
+            Text(label,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis)
             Row(Modifier.padding(top=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
                 Surface(Modifier.size(26.dp),shape=CircleShape,color=AppColors.Blush){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Icon(icon,null,tint=iconTint,modifier=Modifier.size(14.dp))}}
                 Text(value.toString(),style=MaterialTheme.typography.headlineSmall,fontSize=24.sp,fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,maxLines=1,softWrap=false)
@@ -330,7 +331,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeBottomBar(onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onQuickEntry:()->Unit,onClosedDays:()->Unit,onWinning:()->Unit){
     val l=LocalLanguage.current
     Box(Modifier.fillMaxWidth()){
-        NavigationBar(containerColor=Color(0xFFFFE8EF),tonalElevation=6.dp){
+        NavigationBar(containerColor=Color.White,tonalElevation=2.dp){
             HomeNavItem(l.translate("ဒိုင်"),Icons.Default.Store,onAgentDashboard)
             HomeNavItem(l.translate("ထိုးသား"),Icons.Default.People,onCustomerDashboard)
             NavigationBarItem(false,onQuickEntry,icon={Spacer(Modifier.height(22.dp))},label={Text(l.translate("အမြန်"),maxLines=1,softWrap=false,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)})
@@ -429,7 +430,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Text(
                         if (LocalLanguage.current.code == "en") "Soon" else "မကြာမီ",
                         modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
-                        fontSize = 8.sp, lineHeight = 10.sp,
+                        fontSize = 11.sp, lineHeight = 15.sp,
                         color = Color.White, fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -438,7 +439,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         Text(
             label,
             modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
-            fontSize = 11.sp, lineHeight = 14.sp,
+            fontSize = 12.sp, lineHeight = 18.sp,
             fontWeight = FontWeight.SemiBold, color = AppColors.Ink,
             maxLines = 3, textAlign = TextAlign.Center,
         )
