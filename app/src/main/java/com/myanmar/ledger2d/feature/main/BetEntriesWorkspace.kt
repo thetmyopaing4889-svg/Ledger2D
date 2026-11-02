@@ -66,14 +66,14 @@ fun CustomerBetEntriesWorkspace(
 
     if (error.isNotBlank()) AlertDialog(
         onDismissRequest = { error = "" },
-        title = { Text("စာရင်းဖျက်၍ မရပါ") },
+        title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းဖျက်၍ မရပါ")) },
         text = { Text(error) },
-        confirmButton = { TextButton({ error = "" }) { Text("OK") } },
+        confirmButton = { TextButton({ error = "" }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("OK")) } },
     )
     expanded?.let { record ->
         AlertDialog(
             onDismissRequest = { expanded = null },
-            title = { Text("အကွက်အသေးစိတ်") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အသေးစိတ်")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(record.entry.sourceText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -96,58 +96,58 @@ fun CustomerBetEntriesWorkspace(
                     }
                 }
             },
-            confirmButton = { TextButton({ expanded = null }) { Text("ပိတ်မည်") } },
+            confirmButton = { TextButton({ expanded = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်မည်")) } },
         )
     }
     actions?.let { record ->
         AlertDialog(
             onDismissRequest = { actions = null },
-            title = { Text("စာရင်းလုပ်ဆောင်ချက်") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းလုပ်ဆောင်ချက်")) },
             text = { Text(record.entry.sourceText) },
             confirmButton = {
-                TextButton({ actions = null; onEditEntry(record.entry.id) }) { Text("ပြင်မည်") }
+                TextButton({ actions = null; onEditEntry(record.entry.id) }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြင်မည်")) }
             },
             dismissButton = {
-                TextButton({ actions = null; pendingDelete = record.entry }) { Text("ဖျက်မည်") }
+                TextButton({ actions = null; pendingDelete = record.entry }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်")) }
             },
         )
     }
     pendingDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("စာရင်းဖျက်မည်လား") },
-            text = { Text("ဒီစာရင်းကို အပြီးဖျက်မလား?") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းဖျက်မည်လား")) },
+            text = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီစာရင်းကို အပြီးဖျက်မလား?")) },
             confirmButton = {
                 TextButton({
                     vm.deleteBet(entry) { message -> error = message }
                     pendingDelete = null
-                }) { Text("ဖျက်မည်") }
+                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်")) }
             },
-            dismissButton = { TextButton({ pendingDelete = null }) { Text("မလုပ်ပါ") } },
+            dismissButton = { TextButton({ pendingDelete = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
         )
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (customerId == -1L) {
-            Text("Customer အားလုံး • " + entries.size + " Entries",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး • ") + entries.size + " Entries",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = view == "GROUP",
                     onClick = { view = "GROUP" },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    label = { Text("Customer အလိုက်", maxLines = 1) },
+                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အလိုက်"), maxLines = 1) },
                 )
                 SegmentedButton(
                     selected = view == "MIXED",
                     onClick = { view = "MIXED" },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    label = { Text("စာရင်းအားလုံး", maxLines = 1) },
+                    label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းအားလုံး"), maxLines = 1) },
                 )
             }
         }
         if (entries.isEmpty()) {
-            EmptyState("စာရင်းမရှိသေးပါ", "ရွေးထားသော Session အတွက် အတည်ပြုထားသောစာရင်း မရှိသေးပါ")
+            EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "ရွေးထားသော Session အတွက် အတည်ပြုထားသောစာရင်း မရှိသေးပါ")
         } else if (customerId == -1L && view == "GROUP") {
             entries.groupBy { it.entry.customerId }.forEach { (id, customerEntries) ->
                 val groupTotal = betEntriesTotal(customerEntries)

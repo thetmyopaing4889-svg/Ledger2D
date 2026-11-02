@@ -269,13 +269,13 @@ private fun LiveBottomBar(selected: String, onSelect: (String) -> Unit) {
             selected = selected == "live",
             onClick = { onSelect("live") },
             icon = { Icon(Icons.Default.CheckCircle, null) },
-            label = { Text("Live") },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Live")) },
         )
         NavigationBarItem(
             selected = selected == "calendar",
             onClick = { onSelect("calendar") },
             icon = { Icon(Icons.Default.CalendarMonth, null) },
-            label = { Text("Calendar") },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Calendar")) },
         )
     }
 }
@@ -320,7 +320,7 @@ private fun LiveCalendar(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryDeep),
-                ) { Text("‹", fontSize = 28.sp) }
+                ) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("‹"), fontSize = 28.sp) }
                 Text(
                     monthLabel,
                     modifier = Modifier.weight(1f),
@@ -336,7 +336,7 @@ private fun LiveCalendar(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryDeep),
-                ) { Text("›", fontSize = 28.sp) }
+                ) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("›"), fontSize = 28.sp) }
             }
         }
 
@@ -447,7 +447,7 @@ private fun LiveCalendarDetail(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryDeep),
-            ) { Text("‹", fontSize = 26.sp) }
+            ) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("‹"), fontSize = 26.sp) }
             Text(
                 dateLabel,
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
@@ -469,11 +469,11 @@ private fun LiveCalendarDetail(
             border = BorderStroke(1.dp, AppColors.Stone),
         ) {
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("REFERENCE", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Gold)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("REFERENCE"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Gold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("TIME", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Ink)
-                    Text("MODERN", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
-                    Text("INTERNET", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("TIME"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Ink)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("MODERN"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("INTERNET"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
                 }
                 HorizontalDivider()
                 LiveDetailReferenceRow("09:30", result?.modern930 ?: PENDING, result?.internet930 ?: PENDING)
@@ -497,15 +497,15 @@ private fun LiveDetailResultCard(time: String, set: String, value: String, digit
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(time, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White)
-                Text("SET", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.Center)
-                Text("VALUE", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.Center)
-                Text("2D", Modifier.weight(.7f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.End)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("SET"), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.Center)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("VALUE"), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.Center)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("2D"), Modifier.weight(.7f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .8f), textAlign = TextAlign.End)
             }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("", Modifier.weight(1f))
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(""), Modifier.weight(1f))
                 Text(set, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
                 Text(value, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
                 Text(digit, Modifier.weight(.7f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = AppColors.Gold, textAlign = TextAlign.End)
@@ -541,10 +541,10 @@ private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean, t
                     Text(l.text("အတည်ပြုချက်စောင့်နေ", "Awaiting final"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
                 } else if (isLive) {
                     LiveBlinkDot()
-                    Text("LIVE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("LIVE"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
                 } else {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
-                    Text("✓ " + l.text("အသစ်ဖြစ်ပြီး", "Updated"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("✓ ") + l.text("အသစ်ဖြစ်ပြီး", "Updated"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
                 }
                 if (stale) {
                     Surface(shape = RoundedCornerShape(999.dp), color = Color.White.copy(alpha = .18f)) {
@@ -557,7 +557,7 @@ private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean, t
             }
             if (hero == null) {
                 // No data known at all: honest pending state, not an error.
-                Text("--", style = MaterialTheme.typography.displaySmall, fontSize = 64.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("--"), style = MaterialTheme.typography.displaySmall, fontSize = 64.sp, fontWeight = FontWeight.Black, color = Color.White)
                 Text(l.text("စောင့်နေသည်", "Waiting for live data"), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = .85f))
             } else {
                 // Hero number: subtle blink in LIVE mode; stable otherwise.
@@ -712,7 +712,7 @@ private fun LiveReferenceTable(feed: LiveFeedData?) {
             }
             // Compact grid: one row per reference time, one column per source.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("", Modifier.weight(1f))
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(""), Modifier.weight(1f))
                 Text(l.text("မော်ဒန်", "Modern"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
                 Text(l.text("အင်တာနက်", "Internet"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
             }

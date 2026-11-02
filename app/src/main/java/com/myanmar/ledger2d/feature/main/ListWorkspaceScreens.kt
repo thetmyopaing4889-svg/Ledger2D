@@ -54,7 +54,7 @@ fun AgentListWorkspaceScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("ဒိုင်စာရင်း • ${agents.size} ယောက်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်း • ${agents.size} ယောက်"),
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             if (agents.isNotEmpty()) {
@@ -62,7 +62,7 @@ fun AgentListWorkspaceScreen(
                     OutlinedTextField(
                         value = search, onValueChange = { search = it },
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("ဒိုင်အမည် / ဖုန်း / လိပ်စာ ရှာရန်") },
+                        label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အမည် / ဖုန်း / လိပ်စာ ရှာရန်")) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
                             if (search.isNotEmpty()) IconButton(onClick = { search = "" }) {
@@ -72,7 +72,7 @@ fun AgentListWorkspaceScreen(
                     )
                 }
                 if (search.isNotBlank()) item {
-                    Text("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("တွေ့ရှိသောဒိုင် ${visible.size} ယောက်"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -83,7 +83,7 @@ fun AgentListWorkspaceScreen(
                         l.translate("ဒိုင်အသစ်ထည့်ရန်ကို အသုံးပြုပါ"))
                 }
                 visible.isEmpty() -> item {
-                    EmptyState("ရှာဖွေမှုနှင့်ကိုက်ညီသောဒိုင် မရှိပါ",
+                    EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှာဖွေမှုနှင့်ကိုက်ညီသောဒိုင် မရှိပါ"),
                         "ဒိုင်အမည်၊ ဖုန်း သို့မဟုတ် လိပ်စာ ပြန်စစ်ပါ")
                 }
                 else -> items(visible, key = { it.id }) { agent ->
@@ -110,9 +110,9 @@ private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> 
             headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
             supportingContent = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ" +
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော လျော်ကြေးအဆ ${agent.rate} ဆ") +
                         if (agent.phone.isNotBlank()) " • ${agent.phone}" else "")
-                    Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ရှိထိုးသား ${customers.size} ယောက်"),
                         style = MaterialTheme.typography.labelSmall)
                 }
             },
@@ -156,7 +156,7 @@ fun CustomerListWorkspaceScreen(
             item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent) { selectedAgent = it } }
             if (selectedAgent == 0L) item { UnavailableState(l.translate("Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ")) }
             else {
-                item { Text("$agentName ${l.translate("အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$agentName ${l.translate(")အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
                 else items(customers, key = { it.id }) { customer ->
                     ElevatedCard(onClick = { onInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) {
@@ -226,7 +226,7 @@ fun AgentInformationScreen(
             scrollContent = true,
         ) {
             HorizontalDivider()
-            Text("အောက်ရှိထိုးသား ${customers.size} ယောက်",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အောက်ရှိထိုးသား ${customers.size} ယောက်"),
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(
                 "နောက်အကြိမ် • ${upcoming.date} • ${upcoming.session.label} • " +
@@ -235,19 +235,19 @@ fun AgentInformationScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (upcomingRate != null && upcomingRate != profile.rate) {
-                Text("အကြိမ်အလိုက်သက်ရောက်သည့် အဆနှင့် သတ်မှတ်ထားသောအဆ ကွာခြားနေသည်။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်အလိုက်သက်ရောက်သည့် အဆနှင့် သတ်မှတ်ထားသောအဆ ကွာခြားနေသည်။"),
                     color = MaterialTheme.colorScheme.secondary,
                     style = MaterialTheme.typography.labelSmall)
             }
             Button(onClick = { onReport(id) }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.ReceiptLong, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("ဒိုင်စာရင်းရှင်းတမ်းကြည့်ရန်")
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်းကြည့်ရန်"))
             }
             OutlinedButton(onClick = { onCustomers(id) }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.People, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("ဒီဒိုင်အောက်ရှိ ထိုးသားများ")
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီဒိုင်အောက်ရှိ ထိုးသားများ"))
             }
         }
     }

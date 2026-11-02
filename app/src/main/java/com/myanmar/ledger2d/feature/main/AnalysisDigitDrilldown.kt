@@ -55,7 +55,7 @@ internal fun AnalysisDigitGroupRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Text("$count ကွက်", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$count ကွက်"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(4.dp))
             if (enabled) Icon(Icons.Default.ChevronRight, contentDescription = "ဂဏန်းစာရင်းကြည့်ရန်",
                 modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
@@ -92,7 +92,7 @@ internal fun AnalysisDigitDrilldown(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(group.mmTitle(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("${rows.size} ကွက် • ဂဏန်းကိုနှိပ်၍ ငွေစာရင်းကြည့်နိုင်သည်",
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${rows.size} ကွက် • ဂဏန်းကိုနှိပ်၍ ငွေစာရင်းကြည့်နိုင်သည်"),
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = onClose) {
@@ -101,7 +101,7 @@ internal fun AnalysisDigitDrilldown(
                 }
                 HorizontalDivider()
                 if (rows.isEmpty()) {
-                    Text("ဒီအုပ်စုမှာ ဂဏန်းမရှိပါ။", modifier = Modifier.fillMaxWidth(),
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီအုပ်စုမှာ ဂဏန်းမရှိပါ။"), modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center)
                 } else {
                     LazyVerticalGrid(
@@ -125,7 +125,7 @@ internal fun AnalysisDigitDrilldown(
                         }
                     }
                 }
-                Text("ထိုးကြေး 0 ဆိုတာ မထိုးထားတာပါ။ လက်ခံလို့ရတဲ့ဂဏန်းဆိုတဲ့ အဓိပ္ပာယ် မဟုတ်ပါ။",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေး 0 ဆိုတာ မထိုးထားတာပါ။ လက်ခံလို့ရတဲ့ဂဏန်းဆိုတဲ့ အဓိပ္ပာယ် မဟုတ်ပါ။"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -135,7 +135,7 @@ internal fun AnalysisDigitDrilldown(
     selected?.let { scenario ->
         AlertDialog(
             onDismissRequest = { selected = null },
-            title = { Text("ဂဏန်း ${scenario.digit}") },
+            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း ${scenario.digit}")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     AnalysisDigitDetailLine("ထိုးကြေး", "${scenario.stake.analysisAmount()} ကျပ်")
@@ -146,7 +146,7 @@ internal fun AnalysisDigitDrilldown(
                         "${scenario.profitLoss.analysisSigned()} ကျပ်",
                         tint = if (scenario.profitLoss < 0L) MaterialTheme.colorScheme.error else Color(0xFF18794E),
                     )
-                    if (scenario.closed) Text("ဒီဂဏန်းကို ပိတ်ထားသည်။",
+                    if (scenario.closed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီဂဏန်းကို ပိတ်ထားသည်။"),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     if (scenario.limit != null) {
                         AnalysisDigitDetailLine("Limit", "${scenario.limit.analysisAmount()} ကျပ်")
@@ -154,15 +154,15 @@ internal fun AnalysisDigitDrilldown(
                             AnalysisDigitDetailLine("Limit သုံးစွဲမှု", "$it%")
                         }
                     }
-                    if (winningDigit == scenario.digit) Text("အဲဒီအကြိမ်၏ ပေါက်ဂဏန်းဖြစ်သည်။",
+                    if (winningDigit == scenario.digit) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အဲဒီအကြိမ်၏ ပေါက်ဂဏန်းဖြစ်သည်။"),
                         style = MaterialTheme.typography.bodySmall)
-                    Text("ဤငွေစာရင်းသည် ကော်မရှင်မပါဘဲ မကာထားသော အခြေအနေအတွက် တွက်ထားသည်။",
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဤငွေစာရင်းသည် ကော်မရှင်မပါဘဲ မကာထားသော အခြေအနေအတွက် တွက်ထားသည်။"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelSmall)
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selected = null }) { Text("ဂဏန်းစာရင်းသို့ပြန်ရန်") }
+                TextButton(onClick = { selected = null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းစာရင်းသို့ပြန်ရန်")) }
             }
         )
     }

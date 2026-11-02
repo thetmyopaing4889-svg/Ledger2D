@@ -29,7 +29,7 @@ private fun RulePatternPicker(
     selection: ClosedDigitSelection,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("အမြန်ရွေးချယ်ပုံ", fontWeight = FontWeight.Bold)
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမြန်ရွေးချယ်ပုံ"), fontWeight = FontWeight.Bold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)) {
             QuickFormat.entries.forEach { option ->
@@ -50,7 +50,7 @@ private fun RulePatternPicker(
             OutlinedTextField(
                 source, changeSource,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("ဂဏန်းရင်းမြစ်") },
+                label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းရင်းမြစ်")) },
                 placeholder = { Text(hint) },
                 maxLines = 3,
             )
@@ -60,7 +60,7 @@ private fun RulePatternPicker(
                 Text(selection.message, color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall)
             is ClosedDigitSelection.Valid -> {
-                Text("Preview • ${selection.digits.size} ကွက်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Preview • ${selection.digits.size} ကွက်"),
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -105,7 +105,7 @@ fun AgentClosedPatternWorkspace(
             AlertDialog(
                 onDismissRequest = { pendingAction=null },
                 title = { Text(if (closing) "အုပ်စုလိုက်ပိတ်ရန် အတည်ပြုပါ" else "အုပ်စုလိုက်ပြန်ဖွင့်ရန် အတည်ပြုပါ") },
-                text = { Text("$agentName • $date • ${session.label} • ${affected.size} ကွက် " +
+                text = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$agentName • $date • ${session.label} • ${affected.size} ကွက် ") +
                     if (closing) "ပိတ်မည်။" else "ပြန်ဖွင့်မည်။") },
                 confirmButton = {
                     TextButton(onClick = {
@@ -114,39 +114,39 @@ fun AgentClosedPatternWorkspace(
                         vm.updateClosedDigitGroup(agentId,date,session,affected,closing,
                             onDone={ busy=false; notice="${it} ကွက် ဆောင်ရွက်ပြီး" },
                             onError={ busy=false; notice=it })
-                    }) { Text("အတည်ပြုမည်") }
+                    }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အတည်ပြုမည်")) }
                 },
-                dismissButton = { TextButton(onClick = { pendingAction=null }) { Text("မလုပ်ပါ") } },
+                dismissButton = { TextButton(onClick = { pendingAction=null }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
             )
         }
         pendingOne?.let { row ->
             AlertDialog(
                 onDismissRequest = { pendingOne=null },
-                title = { Text("ပိတ်ဂဏန်းပြန်ဖွင့်ရန်") },
-                text = { Text("$date • ${session.label} • ${row.digit}") },
+                title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်းပြန်ဖွင့်ရန်")) },
+                text = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$date • ${session.label} • ${row.digit}")) },
                 confirmButton = { TextButton(onClick={
                     vm.removeClosedNumber(row); pendingOne=null
-                }) { Text("ဖယ်ရှားမည်") } },
-                dismissButton = { TextButton(onClick={pendingOne=null}) { Text("မလုပ်ပါ") } },
+                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } },
+                dismissButton = { TextButton(onClick={pendingOne=null}) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("$agentName • $date • ${session.label} အတွက်သာ",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$agentName • $date • ${session.label} အတွက်သာ"),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text("ဒီ Session အတွက် ပိတ်ထားတာက နောက် Session နဲ့ တခြားဒိုင်ဆီ မကူးပါ။ " +
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session အတွက် ပိတ်ထားတာက နောက် Session နဲ့ တခြားဒိုင်ဆီ မကူးပါ။ ") +
                 "လက်ခံပြီးသားစာရင်းကိုလည်း မဖျက်ပါ။",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             RulePatternPicker(format, {format=it}, source, {source=it}, selection)
             if (candidates.isNotEmpty()) {
-                Text("အသစ်ပိတ်မယ့် ${newlyClosed.size} ကွက် • ပိတ်ပြီးသား ${alreadyClosed.size} ကွက်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အသစ်ပိတ်မယ့် ${newlyClosed.size} ကွက် • ပိတ်ပြီးသား ${alreadyClosed.size} ကွက်"),
                     style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick={pendingAction="close"},enabled=!busy && newlyClosed.isNotEmpty()) {
-                        Text("အုပ်စုလိုက်ပိတ်မည်")
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အုပ်စုလိုက်ပိတ်မည်"))
                     }
                     OutlinedButton(onClick={pendingAction="open"},enabled=!busy && alreadyClosed.isNotEmpty()) {
-                        Text("ရွေးထားတာ ပြန်ဖွင့်မည်")
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတာ ပြန်ဖွင့်မည်"))
                     }
                 }
             }
@@ -154,20 +154,20 @@ fun AgentClosedPatternWorkspace(
                 color=MaterialTheme.colorScheme.primary,
                 style=MaterialTheme.typography.bodySmall)
             HorizontalDivider()
-            Text("လက်ရှိပိတ်ထားသောဂဏန်း (${current.size} ကွက်)",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လက်ရှိပိတ်ထားသောဂဏန်း (${current.size} ကွက်)"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-            if (current.isEmpty()) Text("ဒီ Session အတွက် ပိတ်ဂဏန်းမရှိသေးပါ")
+            if (current.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session အတွက် ပိတ်ဂဏန်းမရှိသေးပါ"))
             else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     current.forEach { row ->
                         OutlinedButton(onClick={pendingOne=row},
                             contentPadding=PaddingValues(horizontal=9.dp,vertical=3.dp)) {
-                            Text("${row.digit} ×")
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${row.digit} ×"))
                         }
                     }
                 }
-                Text("ဂဏန်းတစ်ကွက်ကို နှိပ်ပြီးလည်း ပြန်ဖွင့်နိုင်သည်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းတစ်ကွက်ကို နှိပ်ပြီးလည်း ပြန်ဖွင့်နိုင်သည်"),
                     style=MaterialTheme.typography.labelSmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -210,7 +210,7 @@ fun AgentLimitPatternWorkspace(
             AlertDialog(
                 onDismissRequest={action=null},
                 title={Text(if(remove) "Limit အုပ်စုလိုက်ဖယ်ရှားမည်လား" else "Limit အုပ်စုလိုက်သိမ်းမည်လား")},
-                text={ Text("$agentName • $date • ${session.label} • ${selected.size} ကွက် " +
+                text={ Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$agentName • $date • ${session.label} • ${selected.size} ကွက် ") +
                     if(remove) "အထူး Limit ကို ဖယ်ရှားမည်။" else
                         "တစ်ကွက်လျှင် ${amountText} ကျပ် သတ်မှတ်မည်။ " +
                         "ရှိပြီးသား Limit ${replacements} ကွက် အစားထိုးမည်။") },
@@ -220,74 +220,74 @@ fun AgentLimitPatternWorkspace(
                     vm.updateAgentLimitGroup(agentId,date,session,selected,amount,remove,
                         onDone={ busy=false; notice="${it} ကွက် ဆောင်ရွက်ပြီး" },
                         onError={ busy=false; notice=it })
-                }) { Text("အတည်ပြုမည်") } },
-                dismissButton={ TextButton(onClick={action=null}) { Text("မလုပ်ပါ") } },
+                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အတည်ပြုမည်")) } },
+                dismissButton={ TextButton(onClick={action=null}) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) } },
             )
         }
         pendingOne?.let { row ->
             AlertDialog(onDismissRequest={pendingOne=null},
-                title={Text("အထူး Limit ဖယ်ရှားရန်")},
-                text={Text("$date • ${session.label} • ${row.digit} • ${row.amount.mmk()}")},
+                title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး Limit ဖယ်ရှားရန်"))},
+                text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$date • ${session.label} • ${row.digit} • ${row.amount.mmk()}"))},
                 confirmButton={TextButton(onClick={
                     vm.removeAgentSpecialLimit(row);pendingOne=null
-                }) { Text("ဖယ်ရှားမည်") }},
-                dismissButton={TextButton(onClick={pendingOne=null}) { Text("မလုပ်ပါ") }})
+                }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) }},
+                dismissButton={TextButton(onClick={pendingOne=null}) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) }})
         }
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("$agentName • $date • ${session.label} အတွက်သာ",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$agentName • $date • ${session.label} အတွက်သာ"),
                 style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
-            Text("အကွက်အားလုံးအတွက် Limit",style=MaterialTheme.typography.titleMedium,
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံးအတွက် Limit"),style=MaterialTheme.typography.titleMedium,
                 fontWeight=FontWeight.Bold)
             OutlinedTextField(allText,{ allText=it.filter(Char::isDigit) },
                 modifier=Modifier.fillMaxWidth(),singleLine=true,
                 keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
-                label={Text("အကွက်အားလုံးအတွက် Limit (အလွတ် = ဖယ်ရှား)")})
+                label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံးအတွက် Limit (အလွတ် = ဖယ်ရှား)"))})
             Button(
                 enabled=allText.isBlank() || (allText.toLongOrNull()?.let { it>0L }==true),
                 onClick={vm.updateAgentAllLimit(agentId,date,session,allText) {notice="အကွက်အားလုံး Limit သိမ်းပြီး"}},
-            ) { Text("အကွက်အားလုံး Limit သိမ်းမည်") }
+            ) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံး Limit သိမ်းမည်")) }
             HorizontalDivider()
-            Text("ရွေးချယ်ထားသောဂဏန်းများအတွက် အထူး Limit",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးချယ်ထားသောဂဏန်းများအတွက် အထူး Limit"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
             RulePatternPicker(format,{format=it},source,{source=it},selection)
             if (digits.isNotEmpty()) {
                 OutlinedTextField(
                     amountText,{amountText=it.filter(Char::isDigit)},
                     modifier=Modifier.fillMaxWidth(),singleLine=true,
-                    label={Text("တစ်ကွက်လျှင် Limit ပမာဏ (ကျပ်)")},
+                    label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("တစ်ကွက်လျှင် Limit ပမာဏ (ကျပ်)"))},
                     keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
                 )
-                Text("ရွေးထားတာ ${digits.size} ကွက် • အထူး Limit ရှိပြီးသား ${alreadyCustom} ကွက်" +
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတာ ${digits.size} ကွက် • အထူး Limit ရှိပြီးသား ${alreadyCustom} ကွက်") +
                     " • အသစ် ${digits.size-alreadyCustom} • အစားထိုး ${replacements} • မပြောင်း ${unchanged}",
                     style=MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     Button(onClick={action="set"},
-                        enabled=!busy && amount!=null && needsUpdate>0) { Text("Limit အုပ်စုလိုက်သိမ်းမည်") }
+                        enabled=!busy && amount!=null && needsUpdate>0) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit အုပ်စုလိုက်သိမ်းမည်")) }
                     OutlinedButton(onClick={action="remove"},
-                        enabled=!busy && removable.isNotEmpty()) { Text("ရွေးထားတာ ဖယ်ရှားမည်") }
+                        enabled=!busy && removable.isNotEmpty()) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတာ ဖယ်ရှားမည်")) }
                 }
             }
-            Text("အထူး Limit က အကွက်အားလုံး Limit အပေါ် ဦးစားပေးသက်ရောက်သည်။ " +
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး Limit က အကွက်အားလုံး Limit အပေါ် ဦးစားပေးသက်ရောက်သည်။ ") +
                 "Limit ကျော်သွားသော အသစ်သွင်းစာရင်းကို တစ်စိတ်တစ်ပိုင်း လက်မခံပါ။",
                 style=MaterialTheme.typography.bodySmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(notice.isNotEmpty()) Text(notice,
                 style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary)
             HorizontalDivider()
-            Text("သတ်မှတ်ထားသော အထူး Limit (${specials.size} ကွက်)",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော အထူး Limit (${specials.size} ကွက်)"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-            if(specials.isEmpty()) Text("အထူး Limit မရှိသေးပါ")
+            if(specials.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး Limit မရှိသေးပါ"))
             else {
                 FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp),
                     verticalArrangement=Arrangement.spacedBy(6.dp)) {
                     specials.forEach { row ->
                         OutlinedButton(onClick={pendingOne=row},
                             contentPadding=PaddingValues(horizontal=8.dp,vertical=4.dp)) {
-                            Text("${row.digit}: ${row.amount.mmk()} ×")
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("${row.digit}: ${row.amount.mmk()} ×"))
                         }
                     }
                 }
-                Text("အထူး Limit တစ်ကွက်ကို နှိပ်ပြီး ဖယ်ရှားနိုင်သည်",
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး Limit တစ်ကွက်ကို နှိပ်ပြီး ဖယ်ရှားနိုင်သည်"),
                     style=MaterialTheme.typography.labelSmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -301,7 +301,7 @@ fun ClosedPatternStandaloneScreen(vm: LedgerViewModel, agentId: Long, onBack: ()
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date=runCatching{LocalDate.parse(dateText)}.getOrNull()
-    AppScaffold("ပိတ်ဂဏန်း",onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်း"),onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),
             contentPadding=PaddingValues(14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -313,7 +313,7 @@ fun ClosedPatternStandaloneScreen(vm: LedgerViewModel, agentId: Long, onBack: ()
                 }
             } }
             item {
-                if(date==null) Text("ရက်စွဲ မှန်ကန်စွာရွေးပါ",color=MaterialTheme.colorScheme.error)
+                if(date==null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"),color=MaterialTheme.colorScheme.error)
                 else AgentClosedPatternWorkspace(vm,agentId,date,session)
             }
         }
@@ -326,7 +326,7 @@ fun LimitPatternStandaloneScreen(vm: LedgerViewModel,agentId:Long,onBack:()->Uni
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date=runCatching{LocalDate.parse(dateText)}.getOrNull()
-    AppScaffold("ဒိုင်အလိုက် ကန့်သတ်ပမာဏ",onBack) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အလိုက် ကန့်သတ်ပမာဏ"),onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),
             contentPadding=PaddingValues(14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -338,7 +338,7 @@ fun LimitPatternStandaloneScreen(vm: LedgerViewModel,agentId:Long,onBack:()->Uni
                 }
             } }
             item {
-                if(date==null) Text("ရက်စွဲ မှန်ကန်စွာရွေးပါ",color=MaterialTheme.colorScheme.error)
+                if(date==null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"),color=MaterialTheme.colorScheme.error)
                 else AgentLimitPatternWorkspace(vm,agentId,date,session)
             }
         }
