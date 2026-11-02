@@ -90,27 +90,38 @@ internal fun HomeCommissionCard(
             softWrap = true,
         )
         HorizontalDivider(color = Color.White.copy(alpha = .24f))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            CommissionGlassMetric(
-                language.text("မနက်အကြိမ်", "AM"),
-                totals.morning,
-                modifier = Modifier.weight(1f)
-            )
-            CommissionGlassMetric(
-                language.text("ညနေအကြိမ်", "PM"),
-                totals.evening,
-                modifier = Modifier.weight(1f)
-            )
-            CommissionGlassMetric(
-                language.text("ဒီနေ့စုစုပေါင်း", "Today total"),
-                totals.todayTotal,
-                modifier = Modifier.weight(1.1f),
-                emphasis = true
-            )
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth < 320.dp) {
+                // At large Android font scales / narrow windows, never truncate money.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CommissionCompactRow(language.text("မနက်အကြိမ်", "AM"), totals.morning)
+                    CommissionCompactRow(language.text("ညနေအကြိမ်", "PM"), totals.evening)
+                    CommissionCompactRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    CommissionGlassMetric(
+                        language.text("မနက်အကြိမ်", "AM"),
+                        totals.morning,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CommissionGlassMetric(
+                        language.text("ညနေအကြိမ်", "PM"),
+                        totals.evening,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CommissionGlassMetric(
+                        language.text("ဒီနေ့စုစုပေါင်း", "Today total"),
+                        totals.todayTotal,
+                        modifier = Modifier.weight(1.1f),
+                        emphasis = true
+                    )
+                }
+            }
         }
     }
 }
@@ -138,5 +149,17 @@ private fun CommissionGlassMetric(
             fontWeight = FontWeight.Bold,
             softWrap = true,
         )
+    }
+}
+
+@Composable
+private fun CommissionCompactRow(label: String, amount: Long, emphasis: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+            color = if (emphasis) AppColors.ChampagneGold else Color.White.copy(alpha=.8f),
+            fontWeight = if (emphasis) FontWeight.SemiBold else FontWeight.Normal)
+        Text(amount.cardAmount(), style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
