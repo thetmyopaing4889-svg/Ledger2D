@@ -78,7 +78,7 @@ internal fun CustomerDigitViewsWorkspace(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("00–99 အကွက်စာရင်း"),
             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေးစုစုပေါင်း ${totalStake.mmk()}"),
+        Text("ထိုးကြေးစုစုပေါင်း ${totalStake.mmk()}",
             style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -151,7 +151,7 @@ internal fun CustomerDigitViewsWorkspace(
             }
         }
 
-        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြသနေသောအကွက် ${rows.size} ကွက်"),
+        Text("ပြသနေသောအကွက် ${rows.size} ကွက်",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
@@ -214,12 +214,12 @@ internal fun CustomerDigitViewsWorkspace(
         val percent = DigitViewSelector.percentUsed(amount, limit)
         AlertDialog(
             onDismissRequest = { selectedDigit = null },
-            title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်း $digit")) },
+            title = { Text("ဂဏန်း $digit") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးကြေး ${amount.mmk()}"), fontWeight = FontWeight.Bold)
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit: ${limit?.mmk() ?: ")မသတ်မှတ်ထား"}")
-                    if (percent != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit သုံးစွဲမှု $percent%"))
+                    Text("ထိုးကြေး ${amount.mmk()}", fontWeight = FontWeight.Bold)
+                    Text("Limit: ${limit?.mmk() ?: "မသတ်မှတ်ထား"}")
+                    if (percent != null) Text("Limit သုံးစွဲမှု $percent%")
                     if (digit in specialDigits) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Special Limit သတ်မှတ်ထားသည်"))
                     if (digit in closedDigits) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်း ဖြစ်သည်"))
                     if (winner?.digit == digit) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်း ဖြစ်သည်"))
@@ -342,7 +342,7 @@ internal fun DigitViewCard(
                 color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             if (isSpecial) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("SL"), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-            if (percentUsed != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("$percentUsed%"),
+            if (percentUsed != null) Text("$percentUsed%",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (percentUsed >= 100) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant)
