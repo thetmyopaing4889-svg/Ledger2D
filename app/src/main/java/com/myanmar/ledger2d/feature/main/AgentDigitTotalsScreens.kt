@@ -199,7 +199,7 @@ fun AgentDigitTotalsWorkspace(
                 } else {
                     item {
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (selectedAgent == -1L) "ဂဏန်းတူရာ အားလုံးပေါင်း"
-                            else "ဂဏန်းအလိုက် စုစုပေါင်း",
+                            else "ဂဏန်းအလိုက် စုစုပေါင်း"),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဇယားကို ဘေးတိုက်ဆွဲကြည့်နိုင်သည်"),
                             style = MaterialTheme.typography.labelSmall,
