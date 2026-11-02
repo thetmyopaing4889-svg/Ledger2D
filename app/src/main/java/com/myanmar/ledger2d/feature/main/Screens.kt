@@ -324,7 +324,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                         java.time.DayOfWeek.WEDNESDAY -> "ဗုဒ္"
                         java.time.DayOfWeek.THURSDAY -> "ကြာ"
                         else -> "သော"
-                    },style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)}
+                    },style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant)}
                     Box(Modifier.padding(top=1.dp).size(4.dp).background(if(date==today) AppColors.Primary else Color.Transparent,CircleShape))
                 }
             }
@@ -336,7 +336,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session] ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
                     val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> Color(0xFFF4F0F1); morning -> AppColors.Blush; else -> Color.White }
-                    val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
+                    val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.PrimaryDeep; else -> AppColors.Ink }
                     val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
                     val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
                     Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
@@ -1035,7 +1035,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     Surface(Modifier.weight(1f).height(112.dp), color = if (closed) MaterialTheme.colorScheme.errorContainer.copy(alpha = .45f) else Color.White, shape = MaterialTheme.shapes.small, border = BorderStroke(1.dp, AppColors.Stone)) {
         Column(Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(dateLabel, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-            DrawSession.entries.forEach { draw -> val winner = winners.firstOrNull { it.session == draw }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(if (draw == DrawSession.MORNING) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်","AM") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ည","PM"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(winner?.digit ?: if (closed) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်") else "—", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.Primary) } }
+            DrawSession.entries.forEach { draw -> val winner = winners.firstOrNull { it.session == draw }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(if (draw == DrawSession.MORNING) com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်","AM") else com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ည","PM"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(winner?.digit ?: if (closed) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်") else "—", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep) } }
         }
     }
 }
@@ -1057,7 +1057,7 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
                 val winner = winners.firstOrNull { it.session == draw }
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(draw.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(winner?.digit ?: "—", style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.Primary)
+                    Text(winner?.digit ?: "—", style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = if (winner == null) MaterialTheme.colorScheme.onSurfaceVariant else AppColors.PrimaryDeep)
                 }
                 if (draw == DrawSession.MORNING) Spacer(Modifier.width(8.dp))
             }
