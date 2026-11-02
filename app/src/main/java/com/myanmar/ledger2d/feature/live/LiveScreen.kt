@@ -469,11 +469,11 @@ private fun LiveCalendarDetail(
             border = BorderStroke(1.dp, AppColors.Stone),
         ) {
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("REFERENCE"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Gold)
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("REFERENCE"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("TIME"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Ink)
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("MODERN"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("INTERNET"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("MODERN"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = TextAlign.Center)
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("INTERNET"), Modifier.weight(1f), fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = TextAlign.Center)
                 }
                 HorizontalDivider()
                 LiveDetailReferenceRow("09:30", result?.modern930 ?: PENDING, result?.internet930 ?: PENDING)
@@ -508,7 +508,7 @@ private fun LiveDetailResultCard(time: String, set: String, value: String, digit
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(""), Modifier.weight(1f))
                 Text(set, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
                 Text(value, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = AppColors.Ink, textAlign = TextAlign.Center)
-                Text(digit, Modifier.weight(.7f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = AppColors.Gold, textAlign = TextAlign.End)
+                Text(digit, Modifier.weight(.7f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep, textAlign = TextAlign.End)
             }
         }
     }
@@ -616,7 +616,7 @@ private fun LiveBlinkDot() {
  */
 @Composable
 private fun BlinkingBox(enabled: Boolean, content: @Composable () -> Unit) {
-    if (!enabled) {
+    if (!enabled || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
         content()
         return
     }
@@ -676,15 +676,17 @@ private fun LiveValueRow(label: String, value: String, highlight: Boolean = fals
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AppColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
             value,
-            style = if (highlight) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black,
+            modifier = Modifier.weight(1.15f),
+            style = (if (highlight) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyMedium)
+                .copy(fontFeatureSettings = "tnum"),
+            fontWeight = FontWeight.Bold,
             color = when {
                 pending -> MaterialTheme.colorScheme.onSurfaceVariant
                 highlight -> AppColors.PrimaryDeep
                 else -> AppColors.Ink
             },
-            maxLines = 1,
-            softWrap = false,
+            maxLines = 2,
+            softWrap = true,
         )
     }
 }
@@ -700,7 +702,7 @@ private fun LiveReferenceTable(feed: LiveFeedData?) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Gold-accented header with the feed date kept visible.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(Modifier.width(4.dp).height(16.dp), shape = RoundedCornerShape(2.dp), color = AppColors.Gold) {}
+                Surface(Modifier.width(4.dp).height(16.dp), shape = RoundedCornerShape(2.dp), color = AppColors.PrimaryDeep) {}
                 Text(l.text("အကြည့်စာရင်း", "Reference"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Ink)
                 Spacer(Modifier.weight(1f))
                 Text(
@@ -713,8 +715,8 @@ private fun LiveReferenceTable(feed: LiveFeedData?) {
             // Compact grid: one row per reference time, one column per source.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(""), Modifier.weight(1f))
-                Text(l.text("မော်ဒန်", "Modern"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
-                Text(l.text("အင်တာနက်", "Internet"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Gold, textAlign = TextAlign.Center)
+                Text(l.text("မော်ဒန်", "Modern"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = TextAlign.Center)
+                Text(l.text("အင်တာနက်", "Internet"), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep, textAlign = TextAlign.Center)
             }
             LiveRefRow("9:30 AM", feed?.modern930 ?: PENDING, feed?.internet930 ?: PENDING)
             HorizontalDivider()
