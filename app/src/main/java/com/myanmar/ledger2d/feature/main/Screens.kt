@@ -248,14 +248,20 @@ fun transactionDisplayText(format: String, raw: String): String {
 
 @Composable private fun HomeLiveAndSummary(agentCount:Int,customerCount:Int,onLive:()->Unit,onResults:()->Unit){
     val l=LocalLanguage.current
-    val pulse by rememberInfiniteTransition(label="live-pulse").animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
+    val pulse = if (remember { android.animation.ValueAnimator.areAnimatorsEnabled() }) {
+        val transition = rememberInfiniteTransition(label="live-pulse")
+        val alpha by transition.animateFloat(initialValue=.52f,targetValue=1f,animationSpec=infiniteRepeatable(tween(850),RepeatMode.Reverse),label="live-alpha")
+        alpha
+    } else 1f
     val (liveInteraction,liveScale)=rememberPressScale("liveCard")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
         ElevatedCard(onClick=onLive,interactionSource=liveInteraction,modifier=Modifier.weight(1.35f).height(88.dp).graphicsLayer{scaleX=liveScale;scaleY=liveScale},shape=MaterialTheme.shapes.extraLarge,colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Obsidian),elevation=CardDefaults.elevatedCardElevation(defaultElevation=5.dp)){
-            Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(AppColors.Obsidian,AppColors.Plum,AppColors.PrimaryDeep))).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
-                Box(Modifier.size(44.dp).graphicsLayer{alpha=pulse}.background(Color(0xFFFF3158).copy(alpha=.35f),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(29.dp).background(Color(0xFFFF173D),CircleShape),contentAlignment=Alignment.Center){Box(Modifier.size(10.dp).background(Color.White,CircleShape))}}
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("2D LIVE"),Modifier.padding(start=12.dp),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Black,color=Color.White,maxLines=1,softWrap=false)
-                Spacer(Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(30.dp))
+            Row(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(AppColors.Obsidian,AppColors.Plum,AppColors.PrimaryDeep))).padding(horizontal=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                Box(Modifier.size(24.dp).graphicsLayer{alpha=pulse}.background(AppColors.AuroraRose.copy(alpha=.42f),CircleShape),contentAlignment=Alignment.Center){
+                    Box(Modifier.size(9.dp).background(Color.White,CircleShape))
+                }
+                Text("LIVE",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold,color=Color.White,maxLines=1,softWrap=false)
+                Icon(Icons.Default.ChevronRight,null,tint=Color.White,modifier=Modifier.size(18.dp))
             }
         }
         HomeCountCard(Icons.Default.Person,l.translate("ဒိုင်"),agentCount,AppColors.PrimaryDeep,Modifier.weight(.95f))
@@ -305,12 +311,20 @@ fun transactionDisplayText(format: String, raw: String): String {
     val l=LocalLanguage.current
     val today=DeviceCalendar.today()
     val dates=(0L..4L).map(monday::plusDays); val dateFormat=java.time.format.DateTimeFormatter.ofPattern("d",Locale.ENGLISH)
+    val weekdayLocale = if (l.code == "en") Locale.ENGLISH else Locale.forLanguageTag("my-MM")
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().height(38.dp),verticalAlignment=Alignment.CenterVertically){
             Spacer(Modifier.width(48.dp))
             dates.forEach { date ->
                 Column(Modifier.weight(1f).fillMaxHeight().background(if(date==today) AppColors.Blush else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                    Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black,color=if(date==today) AppColors.PrimaryDeep else AppColors.Ink);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)}
+                    Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black,color=if(date==today) AppColors.PrimaryDeep else AppColors.Ink);Text(if (l.code == "en") date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,weekdayLocale)
+                    else when (date.dayOfWeek) {
+                        java.time.DayOfWeek.MONDAY -> "တန"
+                        java.time.DayOfWeek.TUESDAY -> "အင်္"
+                        java.time.DayOfWeek.WEDNESDAY -> "ဗုဒ္"
+                        java.time.DayOfWeek.THURSDAY -> "ကြာ"
+                        else -> "သော"
+                    },style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)}
                     Box(Modifier.padding(top=1.dp).size(4.dp).background(if(date==today) AppColors.Primary else Color.Transparent,CircleShape))
                 }
             }
