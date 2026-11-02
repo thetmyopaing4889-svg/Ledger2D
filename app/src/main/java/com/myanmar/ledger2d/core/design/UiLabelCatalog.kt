@@ -554,10 +554,10 @@ object UiLabelCatalog {
      * Do not assume the second line is always English.
      */
     fun preferredTitlePart(code: String, title: String): String {
-        val parts = title.split("\\n", limit = 2)
+        val parts = title.split("\n", limit = 2)
         if (parts.size == 1) return title
-        val firstIsMyanmar = parts[0].any { it in '\\u1000'..'\\u109F' }
-        val secondIsMyanmar = parts[1].any { it in '\\u1000'..'\\u109F' }
+        val firstIsMyanmar = parts[0].any { it.code in 0x1000..0x109F }
+        val secondIsMyanmar = parts[1].any { it.code in 0x1000..0x109F }
         return when {
             firstIsMyanmar && !secondIsMyanmar -> if (code == "en") parts[1] else parts[0]
             !firstIsMyanmar && secondIsMyanmar -> if (code == "en") parts[0] else parts[1]

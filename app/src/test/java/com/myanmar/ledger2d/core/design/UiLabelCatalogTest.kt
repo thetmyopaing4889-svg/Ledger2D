@@ -36,10 +36,10 @@ class UiLabelCatalogTest {
     }
 
     @Test fun bilingualScreenTitlesUseLanguageNotLineOrder() {
-        assertEquals("2D Form", UiLabelCatalog.preferredTitlePart("en", "2D Form\\nစာရင်းသွင်းရန်"))
-        assertEquals("စာရင်းသွင်းရန်", UiLabelCatalog.preferredTitlePart("my", "2D Form\\nစာရင်းသွင်းရန်"))
-        assertEquals("Before", UiLabelCatalog.preferredTitlePart("en", "ဂဏန်းမထွက်ခင်\\nBefore"))
-        assertEquals("ဂဏန်းမထွက်ခင်", UiLabelCatalog.preferredTitlePart("my", "ဂဏန်းမထွက်ခင်\\nBefore"))
+        assertEquals("2D Form", UiLabelCatalog.preferredTitlePart("en", "2D Form\nစာရင်းသွင်းရန်"))
+        assertEquals("စာရင်းသွင်းရန်", UiLabelCatalog.preferredTitlePart("my", "2D Form\nစာရင်းသွင်းရန်"))
+        assertEquals("Before", UiLabelCatalog.preferredTitlePart("en", "ဂဏန်းမထွက်ခင်\nBefore"))
+        assertEquals("ဂဏန်းမထွက်ခင်", UiLabelCatalog.preferredTitlePart("my", "ဂဏန်းမထွက်ခင်\nBefore"))
     }
 
     @Test fun neverMutatesUnrecognizedCustomerNamesOrDigits() {
