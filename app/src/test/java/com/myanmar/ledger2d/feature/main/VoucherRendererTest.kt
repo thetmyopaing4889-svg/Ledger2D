@@ -10,7 +10,7 @@ import org.robolectric.annotation.Config
 import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
+@Config(sdk = [33], manifest = Config.NONE, application = android.app.Application::class)
 class VoucherRendererTest {
     private fun document(rows: List<VoucherRecord>) = VoucherDocument(
         customer = "Mg Mg",
