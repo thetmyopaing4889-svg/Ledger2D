@@ -250,9 +250,10 @@ fun CustomerBetEntriesWorkspace(
             TotalsBar("စုစုပေါင်း", betEntriesTotal(entries))
         }
         if (voucherMode && customerId > 0L && entries.isNotEmpty()) {
+            val voucherTotal = betEntriesTotal(entries.filter { it.entry.id in selectedVoucherIds })
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text(
-                "ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု",
-                "${selectedVoucherIds.size} selected",
+                "ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု • ထိုးကြေး ${voucherTotal.amount.mmk()}",
+                "${selectedVoucherIds.size} selected • Stake ${voucherTotal.amount.mmk()}",
             ), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Button(
                 onClick = { onVoucherPreview(selectedVoucherIds) },

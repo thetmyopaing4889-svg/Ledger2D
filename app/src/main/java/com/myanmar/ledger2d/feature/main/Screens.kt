@@ -1300,7 +1300,11 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 }
             }
             if (voucherMode && entries.isNotEmpty()) item {
-                Text(language.text("ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု", "${selectedVoucherIds.size} selected"))
+                val voucherTotal = betEntriesTotal(entries.filter { it.entry.id in selectedVoucherIds })
+                Text(language.text(
+                    "ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု • ထိုးကြေး ${voucherTotal.amount.mmk()}",
+                    "${selectedVoucherIds.size} selected • Stake ${voucherTotal.amount.mmk()}",
+                ))
                 Button(
                     onClick = { onVoucherPreview(selectedDate, session, selectedVoucherIds) },
                     enabled = selectedVoucherIds.isNotEmpty(),
