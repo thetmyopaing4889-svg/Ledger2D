@@ -73,7 +73,8 @@ import com.myanmar.ledger2d.core.model.DrawSession
         }
         composable("agentScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AgentScopeScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()}){feature,id->when(feature){"total"->if(id==-1L)nav.navigate("allAgentFeature/total") else nav.navigate("total/$id");"report"->if(id==-1L)nav.navigate("allAgentFeature/report") else nav.navigate("report/agent/$id");"closed"->if(id==-1L)nav.navigate("allAgentFeature/closed") else nav.navigate("closed/$id");"winning"->nav.navigate("winning/view");"limit"->if(id==-1L)nav.navigate("allAgentFeature/limit") else nav.navigate("agentLimit/$id")}}}
         composable("allAgentFeature/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AllAgentFeatureScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()})}
-        composable("customerDashboard"){CustomerDashboardScreen(vm,{nav.popBackStack()},{},{feature->when(feature){"customerList"->nav.navigate("customerList");else->nav.navigate("customerWorkspace/$feature")}})}
+        composable("customerDashboard"){CustomerDashboardScreen(vm,{nav.popBackStack()},{},{feature->when(feature){"customerList"->nav.navigate("customerList");"statementJpeg"->nav.navigate("customerSettlementJpeg");else->nav.navigate("customerWorkspace/$feature")}})}
+        composable("customerSettlementJpeg"){CustomerSettlementJpegScreen(vm){nav.popBackStack()}}
         composable("customerList"){CustomerListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("customerInfo/$it")},{agentId->nav.navigate("customerForm/$agentId/0")})}
         composable("customerListForAgent/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->
             CustomerListWorkspaceScreen(vm,

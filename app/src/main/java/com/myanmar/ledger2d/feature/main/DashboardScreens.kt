@@ -49,6 +49,7 @@ private val customerActions = listOf(
     DashboardAction("Customer List", "ရွေးထားသော Agent အောက်ရှိ Customer များ", Icons.Default.List, "customerList"),
     DashboardAction("သွင်းထားသောစာရင်း", "Bet Entries • Messenger စာရင်းများ တိုက်စစ်ရန်", Icons.Default.ReceiptLong, "history"),
     DashboardAction("အစီရင်ခံစာ", "Customer အလိုက် report", Icons.Default.Assessment, "report"),
+    DashboardAction("စာရင်းရှင်းတမ်းထုတ်ရန်", "Customer money statement JPEG", Icons.Default.ReceiptLong, "statementJpeg"),
     DashboardAction("အမြန်သုံးသပ်ချက်", "အရှုံး/အမြတ်၊ ကာနည်းနှင့် အကြံပြုချက်", Icons.Default.Insights, "analysis"),
     DashboardAction("အကွက်စာရင်း", "00–99 • View, Sorting နှင့် Search", Icons.Default.GridView, "digits"),
     DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission")
@@ -103,7 +104,7 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
                 ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(8.dp).size(22.dp)) }
-                        Text(l.translate(action.title), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text(if (action.key == "statementJpeg") l.text("စာရင်းရှင်းတမ်းထုတ်ရန်", "Export customer statement") else l.translate(action.title), Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary)
                     }
                 }
