@@ -91,7 +91,10 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
         if (agents.isNotEmpty() && agents.none { it.id == agentId }) agentId = agents.first().id
     }
     if (document != null) {
-        AgentSettlementJpegPreview(document!!, onBack = { document = null })
+        val previewSession = if (preset == AgentJpegPreset.DRAW)
+            DrawSession.entries.firstOrNull { it.name == draw } else null
+        AgentSettlementJpegPreview(vm, agentId, previewSession, document!!,
+            onBack = { document = null })
         return
     }
 
@@ -231,13 +234,27 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun AgentSettlementJpegPreview(document: AgentSettlementDocument, onBack: () -> Unit) {
+private fun AgentSettlementJpegPreview(
+    vm: LedgerViewModel,
+    agentId: Long,
+    selectedSession: DrawSession?,
+    document: AgentSettlementDocument,
+    onBack: () -> Unit,
+) {
     val language = LocalLanguage.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val renderer by produceState<AgentSettlementJpegRenderer?>(null, document) {
-        value = withContext(Dispatchers.Default) { AgentSettlementJpegRenderer(document) }
+    // Failed page preparation must show an error instead of crashing Compose.
+    val preparation by produceState<Pair<AgentSettlementJpegRenderer?, String?>?>(null, document) {
+        val prepared = withContext(Dispatchers.Default) {
+            runCatching { AgentSettlementJpegRenderer(document) }
+        }
+        value = prepared.fold(
+            onSuccess = { it to null },
+            onFailure = { null to (it.message ?: "JPEG စာမျက်နှာ ပြင်ဆင်မရပါ။") },
+        )
     }
+    val renderer = preparation?.first
     val pager = rememberPagerState(pageCount = { renderer?.pageCount ?: 1 })
     var exporting by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -248,7 +265,20 @@ private fun AgentSettlementJpegPreview(document: AgentSettlementDocument, onBack
             exporting = true
             scope.launch {
                 val result = withContext(Dispatchers.IO) {
-                    runCatching { AgentSettlementJpegExporter.save(context.applicationContext, ready) }
+                    runCatching {
+                        // The user may edit/delete bets, change a commission or correct a
+                        // result while preview is open. Never export stale money values.
+                        val currentAgentName = vm.agents.value.firstOrNull { it.id == agentId }?.name
+                            ?: error("ရွေးထားသောဒိုင် မရှိတော့ပါ။")
+                        val latest = vm.agentSettlementJpeg(
+                            agentId, currentAgentName, document.range, selectedSession,
+                        )
+                        check(latest == document) {
+                            "စာရင်း သို့မဟုတ် ပေါက်ဂဏန်း ပြောင်းထားပါသည်။ " +
+                                "ပြန်ရွေးပြီး Preview အသစ်ထုတ်ပါ။"
+                        }
+                        AgentSettlementJpegExporter.save(context.applicationContext, ready)
+                    }
                 }
                 exporting = false
                 message = result.fold(
@@ -313,7 +343,8 @@ private fun AgentSettlementJpegPreview(document: AgentSettlementDocument, onBack
                 }
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    if (preparation == null) CircularProgressIndicator()
+                    else Text(preparation?.second ?: "JPEG ပြင်ဆင်မရပါ။")
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,

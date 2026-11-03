@@ -54,6 +54,7 @@ class AgentSettlementJpegTest {
     private fun agentReport(
         bets: List<BetEntryWithLines> = records,
         winning: Map<Pair<LocalDate, DrawSession>, String> = winners,
+        selectedSession: DrawSession? = null,
     ): AgentStatement {
         val rated = bets.flatMap { row ->
             row.lines.map {
@@ -66,7 +67,7 @@ class AgentSettlementJpegTest {
             AgentSavedCommission(it.entry.agentId, it.entry.customerId, it.entry.drawDate,
                 it.entry.drawSession, it.entry.commissionAmount)
         }
-        return AgentStatementCalculator.build(rated, commissions, winning)
+        return AgentStatementCalculator.build(rated, commissions, winning, selectedSession)
     }
     private fun document(
         bets: List<BetEntryWithLines> = records,
@@ -146,6 +147,56 @@ class AgentSettlementJpegTest {
             assertEquals(first.width, summary.width)
             assertEquals(first.height, summary.height)
         } finally { first.recycle(); summary.recycle() }
+    }
+
+    @Test fun canceledPerCustomerErrorsCannotHideBehindCorrectGrandTotal() {
+        // Move 500 kyats of losing stakes from Customer B to A. The agent's
+        // grand stake, payout and commission stay unchanged, but A/B totals don't.
+        val shifted = records.map { record ->
+            when (record.entry.id) {
+                1L -> record.copy(lines = record.lines.map { line ->
+                    if (line.digit == "31") line.copy(amount = 1500L) else line
+                })
+                2L -> record.copy(lines = record.lines.map { line ->
+                    if (line.digit == "31") line.copy(amount = 1500L) else line
+                })
+                else -> record
+            }
+        }
+        assertEquals(records.sumOf { it.lines.sumOf { line -> line.amount } },
+            shifted.sumOf { it.lines.sumOf { line -> line.amount } })
+        assertTrue(runCatching { document(bets = shifted, report = agentReport()) }.isFailure)
+    }
+
+    @Test fun oneSelectedDrawAcrossFiveDaysDoesNotLeakOtherSessionEntries() {
+        val filtered = records.filter { it.entry.drawSession == evening }
+        val report = agentReport(records, winners, selectedSession = evening)
+        val doc = AgentSettlementJpegCalculator.build(
+            201L, "Agent A", StatementRange(start, end),
+            filtered, mapOf(101L to "Customer A", 103L to "Customer C"),
+            report, evening,
+        )
+        assertEquals(2, doc.rows.size)
+        assertEquals(1500L, doc.totalBet)
+        assertEquals(500L, doc.totalWinningStake)
+        assertEquals(45000L, doc.totalPayout)
+        assertEquals(110L, doc.commission)
+    }
+
+    @Test fun extremelyLongCustomerNamePaginatesRatherThanCrashingOrRepeatingTotals() {
+        val names = mapOf(101L to "နာမည်အရှည် ".repeat(300),
+            102L to "Customer B", 103L to "Customer C")
+        val doc = document(names = names)
+        val renderer = AgentSettlementJpegRenderer(doc)
+        assertTrue(renderer.pageCount > 2)
+        assertEquals(3, (0 until renderer.pageCount - 1)
+            .flatMap { renderer.pageCustomerIds(it) }.size)
+        assertTrue(renderer.isSummary(renderer.pageCount - 1))
+        val image = renderer.render(0)
+        try {
+            assertEquals(1080, image.width)
+            assertEquals(1920, image.height)
+        } finally { image.recycle() }
     }
 
     @Test fun manyCustomersPaginateWithoutDuplication() {

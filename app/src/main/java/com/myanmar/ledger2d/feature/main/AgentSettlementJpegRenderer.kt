@@ -41,7 +41,7 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
         val height: Int
         data class Customer(
             val row: AgentSettlementCustomerRow, val number: Int,
-            override val height: Int,
+            val first: Int, val until: Int, override val height: Int,
         ) : Item
         data object Total : Item { override val height = totalHeight }
     }
@@ -51,7 +51,8 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
     val pageCount: Int get() = pages.size + 1
     fun isSummary(index: Int): Boolean = index == pageCount - 1
     internal fun pageCustomerIds(index: Int): List<Long> =
-        pages[index].filterIsInstance<Item.Customer>().map { it.row.customerId }
+        pages[index].filterIsInstance<Item.Customer>().filter { it.first == 0 }
+            .map { it.row.customerId }
 
     fun render(pageIndex: Int): Bitmap {
         require(pageIndex in 0 until pageCount)
@@ -87,12 +88,37 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
         }
         document.rows.forEachIndexed { i, row ->
             val layout = requireNotNull(layouts[row.customerId])
-            val h = maxOf(minRowHeight, layout.height + 30)
-            append(Item.Customer(row, i + 1, h))
+            val full = rowHeight(layout, 0, layout.lineCount)
+            if (full <= bodyCapacity) {
+                append(Item.Customer(row, i + 1, 0, layout.lineCount, full))
+            } else {
+                // Even an abnormally long customer name must not crash JPEG preview,
+                // silently truncate the name, or count the customer's totals twice.
+                var first = 0
+                while (first < layout.lineCount) {
+                    var until = first
+                    while (until < layout.lineCount &&
+                        rowHeight(layout, first, until + 1) <= bodyCapacity - used
+                    ) until++
+                    if (until == first) {
+                        nextPage()
+                        continue
+                    }
+                    append(Item.Customer(row, i + 1, first, until,
+                        rowHeight(layout, first, until)))
+                    first = until
+                }
+            }
         }
         append(Item.Total)
         nextPage()
         return result
+    }
+
+    private fun rowHeight(layout: StaticLayout, first: Int, until: Int): Int {
+        require(first < until)
+        val textHeight = layout.getLineBottom(until - 1) - layout.getLineTop(first)
+        return maxOf(minRowHeight, 14 + textHeight + 16)
     }
 
     private fun drawWatermarks(canvas: Canvas) {
@@ -147,19 +173,28 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
         items.forEach { item ->
             when (item) {
                 is Item.Customer -> {
-                    canvas.drawText(item.number.toString(), 68f, y + 40f, textPaint(23f, ink, true))
+                    if (item.first == 0)
+                        canvas.drawText(item.number.toString(), 68f, y + 40f,
+                            textPaint(23f, ink, true))
+                    else canvas.drawText("ဆက်", 62f, y + 39f, textPaint(20f, muted))
                     val layout = requireNotNull(layouts[item.row.customerId])
+                    val textTop = layout.getLineTop(item.first)
+                    val textBottom = layout.getLineBottom(item.until - 1)
                     canvas.save()
-                    canvas.translate(sourceX, y + 14f)
+                    canvas.clipRect(sourceX, y + 14f, sourceX + sourceWidth,
+                        y + 14f + textBottom - textTop)
+                    canvas.translate(sourceX, y + 14f - textTop)
                     layout.draw(canvas)
                     canvas.restore()
-                    val baseline = y + item.height / 2f + 8f
-                    val rightData = textPaint(22f, ink, rightAligned = true)
-                    val bold = textPaint(22f, ink, true, rightAligned = true)
-                    canvas.drawText(number(item.row.digits), 520f, baseline, rightData)
-                    fittedRightText(canvas, number(item.row.bet), 658f, baseline, 130f, bold, 17f)
-                    fittedRightText(canvas, number(item.row.winningStake), 857f, baseline, 186f, rightData, 15f)
-                    fittedRightText(canvas, number(item.row.payout), 1015f, baseline, 150f, bold, 15f)
+                    if (item.until == layout.lineCount) {
+                        val baseline = y + item.height / 2f + 8f
+                        val rightData = textPaint(22f, ink, rightAligned = true)
+                        val bold = textPaint(22f, ink, true, rightAligned = true)
+                        canvas.drawText(number(item.row.digits), 520f, baseline, rightData)
+                        fittedRightText(canvas, number(item.row.bet), 658f, baseline, 130f, bold, 17f)
+                        fittedRightText(canvas, number(item.row.winningStake), 857f, baseline, 186f, rightData, 15f)
+                        fittedRightText(canvas, number(item.row.payout), 1015f, baseline, 150f, bold, 15f)
+                    }
                     stroke(canvas, 60f, y + item.height, 1018f, y + item.height, rule, 1.3f)
                 }
                 Item.Total -> {

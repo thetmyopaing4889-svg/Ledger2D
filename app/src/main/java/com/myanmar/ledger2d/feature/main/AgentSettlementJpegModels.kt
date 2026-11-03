@@ -74,6 +74,25 @@ internal object AgentSettlementJpegCalculator {
             val customerTotal = CustomerSettlementCalculator.build(
                 CustomerSettlementSource(name, range, entries, winners), null,
             )
+            // Compare this customer's EACH draw with Agent Report. A grand-total check
+            // alone could hide two customers' opposite errors canceling each other.
+            val reportDraws = agentStatement.draws.map { it.forCustomer(customerId) }
+                .filter { it.stakes.isNotEmpty() || it.commissions.isNotEmpty() }
+            check(reportDraws.size == customerTotal.draws.size) {
+                "Customer $name အကြိမ်အရေအတွက် Agent Report နှင့် မကိုက်ပါ။"
+            }
+            customerTotal.draws.forEach { customerDraw ->
+                val reportDraw = reportDraws.singleOrNull {
+                    it.date == customerDraw.date && it.session == customerDraw.session
+                } ?: error("Customer $name အကြိမ်စာရင်း Agent Report တွင် မတွေ့ပါ။")
+                check(customerDraw.winner == reportDraw.winner &&
+                    customerDraw.bet == reportDraw.totalStake &&
+                    customerDraw.winningStake == reportDraw.winningStake &&
+                    customerDraw.payout == reportDraw.payout) {
+                    "Customer $name ${customerDraw.date} ${customerDraw.session} " +
+                        "ထိုးကြေး/လျော်ငွေ Agent Report နှင့် မကိုက်ပါ။"
+                }
+            }
             val commission = commissions[customerId] ?: 0L
             val recordedCommission = entries.fold(0L) { sum, entry ->
                 Math.addExact(sum, entry.entry.commissionAmount)
