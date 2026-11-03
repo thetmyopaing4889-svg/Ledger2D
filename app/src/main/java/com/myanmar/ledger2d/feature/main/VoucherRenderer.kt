@@ -126,13 +126,11 @@ internal class VoucherRenderer(val document: VoucherDocument) {
     private fun drawHeader(canvas: Canvas) {
         canvas.drawText("Cherry's 2D Ledger", 44f, 125f, textPaint(59f, brand, bold = true))
         canvas.drawText("ဘောင်ချာဖြတ်ပိုင်း", 44f, 203f, textPaint(38f, ink, bold = true))
-        val customerLabel = "Customer: ${document.customer}"
-        val customerPaint = textPaint(34f, ink, bold = true)
-        val customerLayout = StaticLayout.Builder.obtain(
-            customerLabel, 0, customerLabel.length, customerPaint, 986,
-        ).setIncludePad(false).setMaxLines(2).build()
+        // Fit the entire customer name; never silently truncate it at two lines.
+        val customerLayout = customerHeaderLayout()
         canvas.save()
         canvas.translate(44f, 232f)
+        if (customerLayout.height > 92) canvas.scale(1f, 92f / customerLayout.height)
         customerLayout.draw(canvas)
         canvas.restore()
 
@@ -200,6 +198,21 @@ internal class VoucherRenderer(val document: VoucherDocument) {
         val footer = textPaint(26f, muted)
         footer.textAlign = Paint.Align.CENTER
         canvas.drawText("စာမျက်နှာ ${pageIndex + 1} / $pageCount", width / 2f, 1892f, footer)
+    }
+
+    private fun customerHeaderLayout(): StaticLayout {
+        val label = "Customer: ${document.customer}"
+        var size = 34f
+        var layout: StaticLayout
+        do {
+            val headerPaint = textPaint(size, ink, bold = true)
+            layout = StaticLayout.Builder.obtain(
+                label, 0, label.length, headerPaint, 986,
+            ).setIncludePad(false).build()
+            if (layout.height <= 92 || size <= 18f) break
+            size -= 1f
+        } while (true)
+        return layout
     }
 
     private fun sourceLayout(value: String): StaticLayout =
