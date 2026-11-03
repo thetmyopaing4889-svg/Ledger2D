@@ -89,6 +89,11 @@ internal class VoucherRenderer(val document: VoucherDocument) {
 
     val pageCount: Int get() = pages.size
 
+    internal fun showsTotals(pageIndex: Int): Boolean {
+        require(pageIndex in pages.indices)
+        return pageIndex == pages.lastIndex
+    }
+
     fun render(pageIndex: Int): Bitmap {
         require(pageIndex in pages.indices)
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -177,7 +182,7 @@ internal class VoucherRenderer(val document: VoucherDocument) {
             y += slice.height
             stroke(canvas, tableLeft + 27, y, tableRight - 27, y, rule, 1.7f)
         }
-        if (pageIndex == pages.lastIndex) drawTotals(canvas)
+        if (showsTotals(pageIndex)) drawTotals(canvas)
     }
 
     private fun drawTotals(canvas: Canvas) {
