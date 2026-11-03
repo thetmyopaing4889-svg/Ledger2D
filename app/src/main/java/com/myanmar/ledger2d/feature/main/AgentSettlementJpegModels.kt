@@ -20,6 +20,7 @@ internal data class AgentSettlementDocument(
     val agentName: String,
     val range: StatementRange,
     val rows: List<AgentSettlementCustomerRow>,
+    val selectedSession: DrawSession? = null,
 ) {
     val digits: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.digits) }
     val totalBet: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.bet) }
@@ -56,6 +57,30 @@ internal object AgentSettlementJpegCalculator {
         require(records.map { it.entry.id }.distinct().size == records.size) {
             "ထိုးစာရင်း ထပ်နေပါသည်။"
         }
+        require(records.all { record ->
+            record.lines.isNotEmpty() && record.lines.all {
+                it.digit.matches(Regex("[0-9]{2}")) && it.amount > 0L
+            }
+        }) { "ထိုးကွက် သို့မဟုတ် ထိုးကြေး မှတ်တမ်း မမှန်ပါ။" }
+        // A payout rate is agent+draw scoped; a commission rate is customer+draw
+        // scoped. Historical edits must not quietly create different snapshots
+        // in the same morning/evening draw and still yield an apparently valid JPEG.
+        records.groupBy { it.entry.drawDate to it.entry.drawSession }.forEach { (draw, entries) ->
+            check(entries.map { it.entry.payoutRate }.distinct().size == 1 &&
+                entries.all { it.entry.payoutRate > 0L }) {
+                "$draw ဒိုင်လျော်ကြေးအဆ မှတ်တမ်းများ မကိုက်ညီပါ။"
+            }
+        }
+        records.groupBy { Triple(it.entry.customerId, it.entry.drawDate, it.entry.drawSession) }
+            .forEach { (customerDraw, entries) ->
+                check(entries.map { it.entry.commissionRateBasisPoints }.distinct().size == 1 &&
+                    entries.all {
+                        it.entry.commissionRateBasisPoints in 0..10000 &&
+                            it.entry.commissionAmount >= 0L
+                    }) {
+                    "$customerDraw ကော်မရှင်နှုန်းထား မှတ်တမ်းများ မကိုက်ညီပါ။"
+                }
+            }
         require(agentStatement.agentIds == setOf(agentId)) {
             "ဒိုင် Report နှင့် စာရင်းမကိုက်ပါ။"
         }
@@ -106,7 +131,15 @@ internal object AgentSettlementJpegCalculator {
             )
         }.sortedWith(compareBy<AgentSettlementCustomerRow> { it.name.lowercase() }
             .thenBy { it.customerId })
-        val doc = AgentSettlementDocument(agentName, range, rows)
+        // Two distinct customers are permitted to share a display name.
+        // Keep separate rows, but identify them unambiguously on the exported JPEG.
+        val nameCounts = rows.groupingBy { it.name.trim().lowercase() }.eachCount()
+        val distinctRows = rows.map { row ->
+            if (nameCounts.getValue(row.name.trim().lowercase()) > 1)
+                row.copy(name = "${row.name} (ID ${row.customerId})")
+            else row
+        }
+        val doc = AgentSettlementDocument(agentName, range, distinctRows, selectedSession)
         val report = agentStatement.totals
         check(report.pendingDraws == 0) { "ပေါက်ဂဏန်း အတည်မပြုရသေးသော အကြိမ်ရှိပါသည်။" }
         check(doc.totalBet == report.totalStake &&

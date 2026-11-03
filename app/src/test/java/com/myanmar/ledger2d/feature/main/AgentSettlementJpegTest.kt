@@ -199,6 +199,98 @@ class AgentSettlementJpegTest {
         } finally { image.recycle() }
     }
 
+    @Test fun mixedPayoutRatesWithinSameAgentDrawAreRejectedEvenWhenTotalsMatchReport() {
+        val extra = entry(8L, 103L, start, morning, "44=100", 90L, 0L,
+            listOf("44" to 100L))
+        val all = records + extra
+        // Report and per-customer arithmetic agree; the forbidden mid-draw rate
+        // change must still cause a visible failure, not a plausible wrong JPEG.
+        assertTrue(runCatching { document(bets = all, report = agentReport(all)) }.isFailure)
+    }
+
+    @Test fun customerCommissionRateMustNotVaryWithinOneDraw() {
+        val extra = entry(8L, 101L, start, morning, "44=100", 80L, 10L,
+            listOf("44" to 100L)).let {
+            it.copy(entry = it.entry.copy(commissionRateBasisPoints = 1000))
+        }
+        val all = records + extra
+        assertTrue(runCatching { document(bets = all, report = agentReport(all)) }.isFailure)
+    }
+
+    @Test fun distinctCustomerIdsWithIdenticalNamesRemainClearlySeparate() {
+        val names = mapOf(101L to "Same Name", 102L to "same name",
+            103L to "Customer C")
+        val doc = document(names = names)
+        assertEquals(3, doc.rows.size)
+        val rowA = doc.rows.single { it.customerId == 101L }
+        val rowB = doc.rows.single { it.customerId == 102L }
+        assertTrue(rowA.name.contains("ID 101"))
+        assertTrue(rowB.name.contains("ID 102"))
+        assertEquals(5500L, doc.totalBet)
+        assertEquals(460L, doc.commission)
+    }
+
+    @Test fun singleDrawIncludesSessionIdentityWithoutLeakingOtherDraw() {
+        val oneDraw = records.filter { it.entry.drawDate == start && it.entry.drawSession == morning }
+        val oneDayReport = AgentStatementCalculator.build(
+            oneDraw.flatMap { record -> record.lines.map { line ->
+                AgentRatedStake(record.entry.agentId, record.entry.customerId,
+                    record.entry.drawDate, record.entry.drawSession,
+                    line.digit, line.amount, record.entry.payoutRate)
+            } },
+            oneDraw.map { record -> AgentSavedCommission(record.entry.agentId,
+                record.entry.customerId, record.entry.drawDate, record.entry.drawSession,
+                record.entry.commissionAmount) },
+            winners, morning,
+        )
+        val doc = AgentSettlementJpegCalculator.build(
+            201L, "Agent A", StatementRange(start, start), oneDraw,
+            mapOf(101L to "Customer A", 102L to "Customer B"),
+            oneDayReport, morning,
+        )
+        assertEquals(morning, doc.selectedSession)
+        assertEquals(4000L, doc.totalBet)
+        assertEquals(350L, doc.commission)
+        assertEquals(2, AgentSettlementJpegRenderer(doc).pageCount)
+    }
+
+    @Test fun oneAgentsHistoricalRecordsExcludeSameCustomerEntriesForwardedToOtherAgent() {
+        val moved = entry(8L, 101L, start.plusDays(2), morning, "21=100", 90, 10,
+            listOf("21" to 100L), agent = 202L)
+        // Selected agent's original saved entries remain valid after a customer
+        // changes agents, but the new agent's bets cannot leak into the statement.
+        assertTrue(runCatching {
+            document(bets = records + moved, report = agentReport(records))
+        }.isFailure)
+        assertEquals(5500L, document(records).totalBet)
+    }
+
+    @Test fun invalidBetLinesAreRejectedBeforePrintingMoney() {
+        val missing = records.map { record ->
+            if (record.entry.id == 1L) record.copy(lines = emptyList()) else record
+        }
+        assertTrue(runCatching { document(bets = missing, report = agentReport(missing)) }.isFailure)
+        val badDigit = records.map { record ->
+            if (record.entry.id == 1L)
+                record.copy(lines = record.lines.map { line ->
+                    if (line.digit == "20") line.copy(digit = "200") else line
+                })
+            else record
+        }
+        assertTrue(runCatching { document(bets = badDigit, report = agentReport(badDigit)) }.isFailure)
+    }
+
+    @Test fun positiveBalanceMeansUserOwesAgentAndCommissionIsAlwaysDeducted() {
+        val losing = listOf(entry(11L, 101L, start, morning, "31=1000", 80L, 10L,
+            listOf("31" to 1000L)))
+        val doc = document(bets = losing,
+            report = agentReport(losing, mapOf((start to morning) to "20")))
+        assertEquals(1000L, doc.totalBet)
+        assertEquals(0L, doc.totalPayout)
+        assertEquals(10L, doc.commission)
+        assertEquals(990L, doc.settlement)
+    }
+
     @Test fun manyCustomersPaginateWithoutDuplication() {
         val bets = (1L..55L).map { i ->
             entry(i, 1000L + i, start, morning, "31=1000", 80, 0,

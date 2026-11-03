@@ -153,7 +153,12 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
         val range = document.range
         val dates = if (range.start == range.end) niceDate(range.start)
             else "${niceDate(range.start)} မှ ${niceDate(range.end)} အထိ"
-        fittedText(canvas, dates, 44f, 411f, 986f, textPaint(41f, accent, true), 27f)
+        val sessionLabel = document.selectedSession?.let {
+            if (it == com.myanmar.ledger2d.core.model.DrawSession.MORNING)
+                " မနက်အကြိမ်" else " ညနေအကြိမ်"
+        }.orEmpty()
+        fittedText(canvas, dates + sessionLabel, 44f, 411f, 986f,
+            textPaint(41f, accent, true), 27f)
     }
 
     private fun drawRows(canvas: Canvas, items: List<Item>) {

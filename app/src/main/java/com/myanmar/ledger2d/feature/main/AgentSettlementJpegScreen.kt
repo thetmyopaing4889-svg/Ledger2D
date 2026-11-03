@@ -43,12 +43,12 @@ import java.time.ZoneOffset
 private enum class AgentJpegPreset { DRAW, DAY, WEEK, MONTH, CUSTOM }
 
 @Composable
-private fun AgentJpegDatePicker(label: String, date: String, onDate: (String) -> Unit) {
+private fun AgentJpegDatePicker(label: String, date: String, enabled: Boolean = true, onDate: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     OutlinedTextField(
-        value = date, onValueChange = {}, readOnly = true,
+        value = date, onValueChange = {}, readOnly = true, enabled = enabled,
         label = { Text(label) }, singleLine = true,
-        trailingIcon = { TextButton(onClick = { open = true }) { Text("ရွေး") } },
+        trailingIcon = { TextButton(enabled = enabled, onClick = { open = true }) { Text("ရွေး") } },
         modifier = Modifier.fillMaxWidth(),
     )
     if (open) {
@@ -59,7 +59,7 @@ private fun AgentJpegDatePicker(label: String, date: String, onDate: (String) ->
         DatePickerDialog(
             onDismissRequest = { open = false },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = enabled, onClick = {
                     picker.selectedDateMillis?.let {
                         onDate(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString())
                     }
@@ -134,7 +134,7 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                 ScopeDropdown(
                     language.text("ဒိုင်ရွေးရန်", "Select agent"),
                     selectedAgent?.name ?: language.text("ဒိုင်ရွေးပါ", "Choose agent"),
-                    agents.map { it.id to it.name }, agentId,
+                    agents.map { it.id to it.name }, agentId, enabled = !busy,
                 ) { agentId = it; error = null }
             }
             item {
@@ -150,19 +150,19 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                         AgentJpegPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
                     ).forEach { (option, label) ->
                         FilterChip(preset == option, onClick = { preset = option; error = null },
-                            label = { Text(label) })
+                            enabled = !busy, label = { Text(label) })
                     }
                 }
             }
             if (preset == AgentJpegPreset.CUSTOM) {
-                item { AgentJpegDatePicker(language.text("စရက်", "Start date"), fromDate) {
+                item { AgentJpegDatePicker(language.text("စရက်", "Start date"), fromDate, enabled = !busy) {
                     fromDate = it; error = null
                 } }
-                item { AgentJpegDatePicker(language.text("ဆုံးရက်", "End date"), toDate) {
+                item { AgentJpegDatePicker(language.text("ဆုံးရက်", "End date"), toDate, enabled = !busy) {
                     toDate = it; error = null
                 } }
             } else {
-                item { AgentJpegDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor) {
+                item { AgentJpegDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor, enabled = !busy) {
                     anchor = it; error = null
                 } }
             }
@@ -171,7 +171,7 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         DrawSession.entries.forEach { session ->
                             FilterChip(selected = draw == session.name,
-                                onClick = { draw = session.name },
+                                onClick = { draw = session.name }, enabled = !busy,
                                 label = { Text(language.text(
                                     if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
                                     if (session == DrawSession.MORNING) "Morning" else "Evening",

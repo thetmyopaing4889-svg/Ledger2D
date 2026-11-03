@@ -13,8 +13,15 @@ import java.io.IOException
 /** Read-only, all-or-nothing JPEG export, same Gallery album as the customer statement. */
 internal object AgentSettlementJpegExporter {
     fun save(context: Context, renderer: AgentSettlementJpegRenderer): Int {
-        val base = "Cherry2D_AgentStatement_${renderer.document.range.start}_" +
-            "${renderer.document.range.end}_${System.currentTimeMillis()}"
+        // Distinguish agents and morning/evening exports in Gallery, not just
+        // inside the JPEG; sanitize a user-defined name for a file basename.
+        val safeAgent = renderer.document.agentName.trim()
+            .replace(Regex("""[^\p{L}\p{N}_-]+"""), "_")
+            .take(28).ifBlank { "Agent" }
+        val draw = renderer.document.selectedSession?.name ?: "BOTH"
+        val base = "Cherry2D_AgentStatement_${safeAgent}_${draw}_" +
+            "${renderer.document.range.start}_${renderer.document.range.end}_" +
+            "${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(8)}"
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             saveMediaStore(context, renderer, base)
         else saveLegacy(context, renderer, base)
