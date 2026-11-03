@@ -403,7 +403,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     }
 
     /** Agent JPEG: single agent, one customer TOTAL per period; Agent Report parity enforced. */
-    suspend fun agentSettlementJpeg(
+    internal suspend fun agentSettlementJpeg(
         agentId: Long,
         agentName: String,
         range: StatementRange,
