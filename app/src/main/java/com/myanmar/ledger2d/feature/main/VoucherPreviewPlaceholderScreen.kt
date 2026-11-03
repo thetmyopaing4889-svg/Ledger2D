@@ -32,6 +32,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
+private data class VoucherPreparation(val renderer: VoucherRenderer?, val error: String?)
+
 /** The selected IDs come from the previous customer's selection screen, never from an export history. */
 @Composable
 fun VoucherPreviewScreen(
@@ -60,7 +62,18 @@ fun VoucherPreviewScreen(
             voucherDocument(customer!!.name, date, session, selected!!)
         } else null
     }
-    val renderer = remember(document) { document?.let(::VoucherRenderer) }
+    // Measure all multiline rows outside the Compose UI thread.
+    val preparation by produceState<VoucherPreparation?>(null, document) {
+        if (document != null) {
+            value = withContext(Dispatchers.Default) {
+                runCatching { VoucherRenderer(document) }.fold(
+                    onSuccess = { VoucherPreparation(it, null) },
+                    onFailure = { VoucherPreparation(null, it.message ?: "စာမျက်နှာပြုလုပ်၍ မရပါ") },
+                )
+            }
+        }
+    }
+    val renderer = preparation?.renderer
 
     if (renderer == null) {
         AppScaffold(
@@ -69,9 +82,10 @@ fun VoucherPreviewScreen(
             includeQuickEntryFab = false,
         ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                if (observed == null || customer == null) CircularProgressIndicator()
-                else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(language.text(
+                if (observed == null || customer == null || (document != null && preparation == null)) {
+                    CircularProgressIndicator()
+                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(preparation?.error ?: language.text(
                         "ရွေးထားသောစာရင်းအချို့ မရှိတော့ပါ။ စာရင်းကို ပြန်ရွေးပါ။",
                         "Some selected transactions are no longer available. Select them again.",
                     ))
@@ -152,8 +166,16 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().weight(1f)
                     .background(Color(0xFFEDE7E5)),
             ) { index ->
+                // Every 1080 x 1920 Bitmap uses about 8 MiB.
+                // Release it as soon as its pager page leaves composition.
                 val bitmap by produceState<Bitmap?>(null, renderer, index) {
-                    value = withContext(Dispatchers.Default) { renderer.render(index) }
+                    value = null
+                    val pageBitmap = withContext(Dispatchers.Default) { renderer.render(index) }
+                    value = pageBitmap
+                    awaitDispose {
+                        value = null
+                        pageBitmap.recycle()
+                    }
                 }
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     if (bitmap == null) CircularProgressIndicator()
