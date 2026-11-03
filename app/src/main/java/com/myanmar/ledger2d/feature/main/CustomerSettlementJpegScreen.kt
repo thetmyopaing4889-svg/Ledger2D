@@ -287,11 +287,19 @@ private fun CustomerSettlementJpegPreview(source: CustomerSettlementSource, onBa
             CustomerSettlementCalculator.build(source, basisPoints)
         }.getOrNull()
     }
-    val renderer by produceState<CustomerSettlementJpegRenderer?>(null, document) {
+    // Never show/export a previously computed rebate while the new JPEG is rendering.
+    val preparation by produceState<Pair<CustomerSettlementDocument, CustomerSettlementJpegRenderer>?>(
+        null, document,
+    ) {
+        value = null
         if (document != null) {
-            value = withContext(Dispatchers.Default) { CustomerSettlementJpegRenderer(document) }
+            val ready = withContext(Dispatchers.Default) {
+                CustomerSettlementJpegRenderer(document)
+            }
+            value = document to ready
         }
     }
+    val renderer = preparation?.takeIf { it.first === document }?.second
     val pager = rememberPagerState(pageCount = { renderer?.pageCount ?: 1 })
     var exporting by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
