@@ -43,13 +43,14 @@ class AgentSettlementJpegTest {
                 listOf("31" to 2000L)),
             entry(3, 101, start.plusDays(1), evening, "31=500", 90, 50,
                 listOf("31" to 500L)),
-            entry(4, 103, start.plusDays(1), evening, "20=1000", 80, 60,
+            entry(4, 103, start.plusDays(2), evening, "20=1000", 80, 60,
                 listOf("20" to 1000L)),
         )
     }
     private val winners get() = mapOf(
         (start to morning) to "20",
         (start.plusDays(1) to evening) to "31",
+        (start.plusDays(2) to evening) to "31",
     )
     private fun agentReport(
         bets: List<BetEntryWithLines> = records,
