@@ -184,7 +184,7 @@ class AgentSettlementJpegTest {
     }
 
     @Test fun extremelyLongCustomerNamePaginatesRatherThanCrashingOrRepeatingTotals() {
-        val names = mapOf(101L to "နာမည်အရှည် ".repeat(300),
+        val names = mapOf(101L to (1..100).joinToString("\n") { "Customer name continuation $it" },
             102L to "Customer B", 103L to "Customer C")
         val doc = document(names = names)
         val renderer = AgentSettlementJpegRenderer(doc)
