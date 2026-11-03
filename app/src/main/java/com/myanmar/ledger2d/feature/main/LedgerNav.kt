@@ -104,8 +104,13 @@ import com.myanmar.ledger2d.core.model.DrawSession
         ) { entry ->
             val selectedIds = nav.previousBackStackEntry?.savedStateHandle
                 ?.get<ArrayList<Long>>("voucherSelectedIds")
-            if (entry.arguments!!.getLong("customerId") > 0L && !selectedIds.isNullOrEmpty()) {
-                VoucherPreviewPlaceholderScreen { nav.popBackStack() }
+            val customerId = entry.arguments!!.getLong("customerId")
+            val date = entry.arguments!!.getString("date")?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            val session = entry.arguments!!.getString("session")?.let { name ->
+                DrawSession.entries.firstOrNull { it.name == name }
+            }
+            if (customerId > 0L && date != null && session != null && !selectedIds.isNullOrEmpty()) {
+                VoucherPreviewScreen(vm, customerId, date, session, selectedIds) { nav.popBackStack() }
             } else {
                 LaunchedEffect(Unit) { nav.popBackStack() }
             }
