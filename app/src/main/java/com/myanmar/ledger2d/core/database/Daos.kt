@@ -128,6 +128,9 @@ data class AgentStatementCommissionRow(
     @Query("SELECT COALESCE(SUM(commissionAmount),0) FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getAgentCommission(agentId: Long, date: LocalDate, session: DrawSession): Long
     @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate=:date AND drawSession=:session") suspend fun getEntriesForAgentDraw(agentId:Long,date:LocalDate,session:DrawSession):List<BetEntryWithLines>
     @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate>=:date ORDER BY drawDate,drawSession") suspend fun getEntriesForAgentFromDate(agentId:Long,date:LocalDate):List<BetEntryWithLines>
+    /** Read-only JPEG source: historical agent ownership, not customers current agent mapping. */
+    @Transaction @Query("SELECT * FROM bet_entries WHERE agentId=:agentId AND drawDate BETWEEN :start AND :end ORDER BY drawDate, drawSession, createdAt, id")
+    suspend fun agentSettlementEntriesInRange(agentId:Long,start:LocalDate,end:LocalDate):List<BetEntryWithLines>
     @Query("SELECT COUNT(*) FROM bet_entries WHERE drawDate=:date AND drawSession=:session") suspend fun countEntries(date: LocalDate, session: DrawSession): Int
     @Delete suspend fun deleteEntry(value: BetEntryEntity)
 }

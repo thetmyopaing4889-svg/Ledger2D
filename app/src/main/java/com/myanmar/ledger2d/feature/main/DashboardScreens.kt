@@ -41,6 +41,7 @@ private val agentActions = listOf(
     DashboardAction("Agent List", "Add Agent ဖြင့် ဖန်တီးထားသော Agent များ", Icons.Default.List, "agentList"),
     DashboardAction("အကွက်စုစုပေါင်း", "ဒိုင်အလိုက်နှင့် ဂဏန်းတူရာ အားလုံးပေါင်း", Icons.Default.GridView, "total"),
     DashboardAction("အစီရင်ခံစာ", "Agent အလိုက် report", Icons.Default.Assessment, "report"),
+    DashboardAction("စာရင်းရှင်းတမ်းထုတ်ရန်", "Agent money statement JPEG", Icons.Default.ReceiptLong, "statementJpeg"),
     DashboardAction("ပိတ်ဂဏန်း", "Agent အလိုက် လက်မခံမည့်ဂဏန်း", Icons.Default.Lock, "closed"),
     DashboardAction("ကန့်သတ်ပမာဏ", "Agent-wide limits", Icons.Default.Tune, "limit")
 )

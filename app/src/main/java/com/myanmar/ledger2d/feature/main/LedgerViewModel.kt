@@ -402,6 +402,26 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         return AgentStatementCalculator.build(stakes, commission, savedWinners, selectedSession)
     }
 
+    /** Agent JPEG: single agent, one customer TOTAL per period; Agent Report parity enforced. */
+    suspend fun agentSettlementJpeg(
+        agentId: Long,
+        agentName: String,
+        range: StatementRange,
+        selectedSession: DrawSession? = null,
+    ): AgentSettlementDocument {
+        require(agentId > 0L)
+        val statement = agentStatement(agentId, range, selectedSession)
+        val records = container.database.betDao()
+            .agentSettlementEntriesInRange(agentId, range.start, range.end)
+            .filter { selectedSession == null || it.entry.drawSession == selectedSession }
+        val names = records.map { it.entry.customerId }.distinct()
+            .associateWith { id -> container.customers.get(id)?.name
+                ?: error("Customer $id အမည် မတွေ့ပါ။") }
+        return AgentSettlementJpegCalculator.build(
+            agentId, agentName, range, records, names, statement, selectedSession,
+        )
+    }
+
     suspend fun agentStatementCustomerNames(agentIds: Set<Long>): Map<Long, String> =
         agentIds.flatMap { id -> container.customers.getForAgent(id) }
             .associate { it.id to it.name }

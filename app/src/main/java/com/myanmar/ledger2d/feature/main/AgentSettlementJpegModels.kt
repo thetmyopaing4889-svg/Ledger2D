@@ -1,0 +1,101 @@
+package com.myanmar.ledger2d.feature.main
+
+import com.myanmar.ledger2d.core.database.BetEntryWithLines
+import com.myanmar.ledger2d.core.domain.AgentStatement
+import com.myanmar.ledger2d.core.domain.StatementRange
+import com.myanmar.ledger2d.core.model.DrawSession
+
+/** One row is one customer's TOTAL for the entire requested period, not one day. */
+internal data class AgentSettlementCustomerRow(
+    val customerId: Long,
+    val name: String,
+    val digits: Long,
+    val bet: Long,
+    val winningStake: Long,
+    val payout: Long,
+    val commission: Long,
+)
+
+internal data class AgentSettlementDocument(
+    val agentName: String,
+    val range: StatementRange,
+    val rows: List<AgentSettlementCustomerRow>,
+) {
+    val digits: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.digits) }
+    val totalBet: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.bet) }
+    val totalWinningStake: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.winningStake) }
+    val totalPayout: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.payout) }
+    /** Agent Report's saved NET commission. Never derive a gross rate or use customer JPEG rebate. */
+    val commission: Long = rows.fold(0L) { sum, row -> Math.addExact(sum, row.commission) }
+    val totalDeduction: Long = Math.addExact(totalPayout, commission)
+    /** Positive: User pays agent. Negative: agent pays User. */
+    val settlement: Long = Math.subtractExact(totalBet, totalDeduction)
+}
+
+/**
+ * Read-only statement calculator. Reuses CustomerSettlementCalculator for every customer
+ * so the detail JPEG TOTAL and the agent's per-customer row cannot diverge.
+ * Independently cross-checks stakes, payouts and saved commission with Agent Report.
+ */
+internal object AgentSettlementJpegCalculator {
+    fun build(
+        agentId: Long,
+        agentName: String,
+        range: StatementRange,
+        records: List<BetEntryWithLines>,
+        customerNames: Map<Long, String>,
+        agentStatement: AgentStatement,
+        selectedSession: DrawSession? = null,
+    ): AgentSettlementDocument {
+        require(agentId > 0L && agentName.isNotBlank())
+        require(records.isNotEmpty()) { "ရွေးထားသောကာလအတွင်း ဒိုင်စာရင်းမရှိပါ။" }
+        require(records.all {
+            it.entry.agentId == agentId && range.contains(it.entry.drawDate) &&
+                (selectedSession == null || it.entry.drawSession == selectedSession)
+        }) { "ဒိုင်၊ ရက်စွဲ သို့မဟုတ် အကြိမ် စာရင်းမကိုက်ပါ။" }
+        require(records.map { it.entry.id }.distinct().size == records.size) {
+            "ထိုးစာရင်း ထပ်နေပါသည်။"
+        }
+        require(agentStatement.agentIds == setOf(agentId)) {
+            "ဒိုင် Report နှင့် စာရင်းမကိုက်ပါ။"
+        }
+        require(agentStatement.draws.all { range.contains(it.date) &&
+            (selectedSession == null || it.session == selectedSession) })
+        val winners = agentStatement.draws.associate { draw ->
+            (draw.date to draw.session) to draw.winner
+        }.mapNotNull { (key, winner) -> winner?.let { key to it } }.toMap()
+        val commissions = agentStatement.draws.flatMap { it.commissions }
+            .groupBy { it.customerId }.mapValues { (_, lines) ->
+                lines.fold(0L) { total, line -> Math.addExact(total, line.amount) }
+            }
+        val rows = records.groupBy { it.entry.customerId }.map { (customerId, entries) ->
+            val name = customerNames[customerId]?.takeIf { it.isNotBlank() }
+                ?: error("Customer $customerId အမည် မတွေ့ပါ။")
+            val customerTotal = CustomerSettlementCalculator.build(
+                CustomerSettlementSource(name, range, entries, winners), null,
+            )
+            val commission = commissions[customerId] ?: 0L
+            val recordedCommission = entries.fold(0L) { sum, entry ->
+                Math.addExact(sum, entry.entry.commissionAmount)
+            }
+            check(recordedCommission == commission) {
+                "Customer $name ကော်မရှင် Agent Report နှင့် မကိုက်ပါ။"
+            }
+            AgentSettlementCustomerRow(
+                customerId, name, customerTotal.digits, customerTotal.totalBet,
+                customerTotal.totalWinningStake, customerTotal.totalPayout, commission,
+            )
+        }.sortedWith(compareBy<AgentSettlementCustomerRow> { it.name.lowercase() }
+            .thenBy { it.customerId })
+        val doc = AgentSettlementDocument(agentName, range, rows)
+        val report = agentStatement.totals
+        check(report.pendingDraws == 0) { "ပေါက်ဂဏန်း အတည်မပြုရသေးသော အကြိမ်ရှိပါသည်။" }
+        check(doc.totalBet == report.totalStake &&
+            doc.totalWinningStake == report.winningStake &&
+            doc.totalPayout == report.payout &&
+            doc.commission == report.savedNetCommission) {
+            "Customer TOTAL နှင့် Agent Report စုစုပေါင်း မကိုက်ပါ။"
+        }
+        return doc
+    }
+}

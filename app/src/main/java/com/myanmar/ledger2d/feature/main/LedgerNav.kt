@@ -60,8 +60,8 @@ import com.myanmar.ledger2d.core.model.DrawSession
         composable("commissionReview"){CommissionReviewScreen(vm){nav.popBackStack()}}
         composable("todayLedger"){TodayLedgerScreen(vm,{nav.popBackStack()},{route->when(route){"home"->goTab("home");"ledger"->goTab("todayLedger");"manage"->goTab("agents");"quick"->nav.navigate("quickEntry")}})}
         composable("quickEntry"){QuickEntryScreen(vm,onBet={agentId,customerId->nav.navigate("bet/$agentId/$customerId")}){nav.popBackStack()}}
-        composable("agents"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");else->nav.navigate("agentScope/$feature")}})}
-        composable("agentDashboard"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");else->nav.navigate("agentWorkspace/$feature")}})}
+        composable("agents"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");"statementJpeg"->nav.navigate("agentSettlementJpeg");else->nav.navigate("agentScope/$feature")}})}
+        composable("agentDashboard"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");"statementJpeg"->nav.navigate("agentSettlementJpeg");else->nav.navigate("agentWorkspace/$feature")}})}
         composable("agentWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "total";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else AgentFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()})}
         composable("agentList"){AgentListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("agentInfo/$it")},{nav.navigate("agentForm/0")})}
         composable("agentInfo/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->
@@ -75,6 +75,7 @@ import com.myanmar.ledger2d.core.model.DrawSession
         composable("allAgentFeature/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->AllAgentFeatureScreen(vm,e.arguments!!.getString("feature") ?: "total",{nav.popBackStack()})}
         composable("customerDashboard"){CustomerDashboardScreen(vm,{nav.popBackStack()},{},{feature->when(feature){"customerList"->nav.navigate("customerList");"statementJpeg"->nav.navigate("customerSettlementJpeg");else->nav.navigate("customerWorkspace/$feature")}})}
         composable("customerSettlementJpeg"){CustomerSettlementJpegScreen(vm){nav.popBackStack()}}
+        composable("agentSettlementJpeg"){AgentSettlementJpegScreen(vm){nav.popBackStack()}}
         composable("customerList"){CustomerListWorkspaceScreen(vm,{nav.popBackStack()},{nav.navigate("customerInfo/$it")},{agentId->nav.navigate("customerForm/$agentId/0")})}
         composable("customerListForAgent/{agentId}",listOf(navArgument("agentId"){type=NavType.LongType})){e->
             CustomerListWorkspaceScreen(vm,
