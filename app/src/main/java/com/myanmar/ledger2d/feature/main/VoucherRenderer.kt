@@ -201,7 +201,6 @@ internal class VoucherRenderer(val document: VoucherDocument) {
         StaticLayout.Builder.obtain(value, 0, value.length, betTextPaint, betTextWidth)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setIncludePad(false)
-            .setBreakStrategy(Layout.BREAK_STRATEGY_HIGH_QUALITY)
             .setLineSpacing(8f, 1f)
             .build()
 
