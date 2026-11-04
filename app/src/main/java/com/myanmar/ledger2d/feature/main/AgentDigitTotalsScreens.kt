@@ -66,6 +66,8 @@ fun AgentDigitTotalsWorkspace(
     var allView by rememberSaveable { mutableStateOf("perAgent") }
     var resultPage by rememberSaveable { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = resultPage) { resultPage = false }
+    val pageScroll = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(resultPage) { pageScroll.scrollToItem(0) }
 
     LaunchedEffect(language.selectedDate, language.selectedSession) {
         dateText = language.selectedDate
@@ -116,6 +118,7 @@ fun AgentDigitTotalsWorkspace(
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စုစုပေါင်း"), { if (resultPage) resultPage = false else onBack() }, includeQuickEntryFab = false) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
+            state = pageScroll,
             contentPadding = PaddingValues(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

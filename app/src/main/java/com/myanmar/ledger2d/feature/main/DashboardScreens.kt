@@ -227,8 +227,10 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     var resultPage by rememberSaveable(feature) { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = resultPage) { resultPage = false }
     val scopeLabel = agents.firstOrNull { it.id == selected }?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent")
+    val pageScroll = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(resultPage) { pageScroll.scrollToItem(0) }
     AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", { if (resultPage) resultPage = false else onBack() }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding), state = pageScroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!resultPage) {
             item { SelectionCard {
                 ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), if (selected == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး") else agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected) { selected = it }
@@ -312,8 +314,10 @@ fun CustomerFeatureWorkspaceScreen(
     val scopeAgent = agents.firstOrNull { it.id == agentId }?.name ?: "Agent"
     val scopeCustomer = if (customerId == -1L) language.text("ထိုးသားအားလုံး", "All customers")
         else customers.firstOrNull { it.id == customerId }?.name ?: "Customer"
+    val pageScroll = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(resultPage) { pageScroll.scrollToItem(0) }
     AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", { if (resultPage) resultPage = false else onBack() }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding), state = pageScroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!resultPage) {
             item { SelectionCard {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LedgerControlDimensions.selectorSpacing)) {
