@@ -129,8 +129,7 @@ import com.myanmar.ledger2d.core.model.DrawSession
         composable("winning/input"){WinningNumberScreen(vm, "input"){nav.popBackStack()}}
         composable("winning/view"){WinningNumberScreen(vm, "view"){nav.popBackStack()}}
         composable("closedDays"){ClosedDayScreen(vm){nav.popBackStack()}}
-        composable("settings"){SettingsScreen(vm, { nav.popBackStack() }, { nav.navigate("fontLab") })}
-        composable("fontLab"){FontLabScreen { nav.popBackStack() }}
+        composable("settings"){SettingsScreen(vm) { nav.popBackStack() }}
         composable("winning/{scope}/{id}"){WinningNumberScreen(vm,"view"){nav.popBackStack()}}
         composable("report/{scope}/{id}"){e->val scope=e.arguments?.getString("scope")?:"agent";val id=e.arguments?.getString("id")?.toLongOrNull()?:0;ReportScreen(vm,scope,id){nav.popBackStack()}}
     }

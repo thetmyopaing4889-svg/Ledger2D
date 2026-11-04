@@ -1357,7 +1357,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         }
     }
 }
-@Composable fun SettingsScreen(vm: LedgerViewModel, onBack:()->Unit, onOpenFontLab:()->Unit){
+@Composable fun SettingsScreen(vm: LedgerViewModel, onBack:()->Unit){
     val language=LocalLanguage.current
     val sectionTypography = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, language.code)
     val helperTypography = LedgerTypographyStandard.style(LedgerTextRole.HELPER, language.code)
@@ -1365,7 +1365,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
     val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
-    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack,action={TextButton(onClick=onOpenFontLab){Text("Aa",fontWeight=FontWeight.Bold)} }){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
         Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=sectionTypography)
         Text(language.text("လုပ်ဆောင်ချက်များတွင် ရွေးထားသော ဒိုင်နှင့် ထိုးသားကို အလိုအလျောက်ပြပေးမည်။","These selections appear automatically in every dashboard feature."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {

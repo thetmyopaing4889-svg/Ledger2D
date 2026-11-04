@@ -224,8 +224,12 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val aggregate by produceState<ScopeSummary?>(null, date, session, feature, selected, revision) { value = if (selected == -1L) vm.aggregateAgentSummary(date, session, feature == "winning" || feature == "report") else null }
     val winnerAvailable = winners.any { it.date == date && it.session == session }
     val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
-    AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", onBack) { padding ->
+    var resultPage by rememberSaveable(feature) { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = resultPage) { resultPage = false }
+    val scopeLabel = agents.firstOrNull { it.id == selected }?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent")
+    AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", { if (resultPage) resultPage = false else onBack() }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!resultPage) {
             item { SelectionCard {
                 ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), if (selected == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး") else agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected) { selected = it }
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -238,6 +242,22 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
                     }
                 }
             } }
+            if (selected <= 0L) item { UnavailableState(language.text("Agent တစ်ယောက်ကို ရွေးပါ", "Select one agent")) }
+            item {
+                Button(
+                    onClick = { resultPage = true },
+                    enabled = selected > 0L && agents.any { it.id == selected },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                ) { Text(language.text("ဆက်သွားရန်", "Continue")) }
+            }
+            } else {
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("$scopeLabel • $dateText • ${language.translate(session.label)}", Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
+                    }
+                }
             if (selected == 0L) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ")) }
             else if (selected == -1L && feature in setOf("closed", "limit")) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်းနှင့် ကန့်သတ်ပမာဏအတွက် Agent တစ်ယောက်ကို ရွေးပါ")) }
             else when (feature) {
@@ -250,6 +270,7 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
                     else if (selected == -1L) item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "ရွေးထားသော အခြေအနေအတွက် စုစုပေါင်းစာရင်းမရှိသေးပါ") }
                     else { if (visible.isEmpty()) item { EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "ရွေးထားသော အခြေအနေအတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
                 }
+            }
             }
         }
     }
@@ -286,8 +307,14 @@ fun CustomerFeatureWorkspaceScreen(
     val aggregate by produceState<ScopeSummary?>(null, date, session, feature, agentId, customerId, revision) { value = if (agentId > 0L && customerId == -1L) vm.aggregateCustomerSummary(agentId, date, session, feature == "winning" || feature == "report") else null }
     val winnerAvailable = winners.any { it.date == date && it.session == session }
     val visible = if (customerId == -1L) summaries else summaries.filter { it.id == customerId }
-    AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", onBack) { padding ->
+    var resultPage by rememberSaveable(feature) { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = resultPage) { resultPage = false }
+    val scopeAgent = agents.firstOrNull { it.id == agentId }?.name ?: "Agent"
+    val scopeCustomer = if (customerId == -1L) language.text("ထိုးသားအားလုံး", "All customers")
+        else customers.firstOrNull { it.id == customerId }?.name ?: "Customer"
+    AppScaffold(customerActions.firstOrNull { it.key == feature }?.title ?: "Customer feature", { if (resultPage) resultPage = false else onBack() }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!resultPage) {
             item { SelectionCard {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LedgerControlDimensions.selectorSpacing)) {
                     ScopeDropdown(
@@ -317,6 +344,24 @@ fun CustomerFeatureWorkspaceScreen(
                     }
                 }
             } }
+            if (agentId == 0L || customerId == 0L) item {
+                UnavailableState(language.text("Agent နှင့် Customer ကို ရွေးပါ", "Select agent and customer"))
+            }
+            item {
+                Button(
+                    onClick = { resultPage = true },
+                    enabled = agentId > 0L && (customerId == -1L || customers.any { it.id == customerId }),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                ) { Text(language.text("ဆက်သွားရန်", "Continue")) }
+            }
+            } else {
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("$scopeAgent • $scopeCustomer • $dateText • ${language.translate(session.label)}",
+                            modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
+                    }
+                }
             if (agentId == 0L || customerId == 0L) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent နှင့် Customer ကို ရွေးပါ")) }
             else when (feature) {
                 "history" -> item { key(agentId, customerId, date, session) { CustomerBetEntriesWorkspace(vm, agentId, customerId, date, session, onEditEntry) { selectedIds ->
@@ -333,6 +378,7 @@ fun CustomerFeatureWorkspaceScreen(
                 "report" -> item { CustomerReportWorkspace(vm, agentId, customerId, date, session) }
                 "winning" -> item { if (!winnerAvailable) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်ဂဏန်း မရှိသေးပါ")) else CustomerReportWorkspace(vm, agentId, customerId, date, session, winningOnly = true) }
                 else -> if (customerId == -1L) item { aggregate?.let { ScopeSummaryCard(it) } ?: EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "ရွေးထားသော Customer အားလုံးအတွက် စာရင်းမရှိသေးပါ") } else { if (visible.isEmpty()) item { EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းမရှိသေးပါ"), "ရွေးထားသော Customer အတွက် အချက်အလက်မရှိသေးပါ") }; items(visible, key = { it.id }) { summary -> ScopeSummaryCard(summary) } }
+            }
             }
         }
     }

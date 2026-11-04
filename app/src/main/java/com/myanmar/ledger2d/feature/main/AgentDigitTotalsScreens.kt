@@ -64,6 +64,8 @@ fun AgentDigitTotalsWorkspace(
     var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     var allView by rememberSaveable { mutableStateOf("perAgent") }
+    var resultPage by rememberSaveable { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = resultPage) { resultPage = false }
 
     LaunchedEffect(language.selectedDate, language.selectedSession) {
         dateText = language.selectedDate
@@ -111,12 +113,13 @@ fun AgentDigitTotalsWorkspace(
         groups?.let { AgentDigitTotalsAggregator.combine(it) }
     }
 
-    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စုစုပေါင်း"), onBack, includeQuickEntryFab = false) { padding ->
+    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စုစုပေါင်း"), { if (resultPage) resultPage = false else onBack() }, includeQuickEntryFab = false) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (!resultPage) {
             item {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်နှင့် အကြိမ်ရွေးရန်"), fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium)
@@ -139,6 +142,18 @@ fun AgentDigitTotalsWorkspace(
                     }
                 }
             }
+            item {
+                Button(
+                    onClick = { resultPage = true },
+                    enabled = date != null && agents.isNotEmpty() &&
+                        (selectedAgent == -1L || agents.any { it.id == selectedAgent }),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                ) { Text(language.text("ဆက်သွားရန်", "Continue")) }
+            }
+            } else {
+                item {
+                    TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
+                }
             if (date == null) {
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"), color = MaterialTheme.colorScheme.error) }
             } else if (agents.isEmpty()) {
@@ -208,6 +223,7 @@ fun AgentDigitTotalsWorkspace(
                     item { DigitTotalsTable(combined.orEmpty()) }
                     item { DigitTotalsSummary(combined.orEmpty(), "အောက်ဆုံးစုစုပေါင်း") }
                 }
+            }
             }
         }
     }
