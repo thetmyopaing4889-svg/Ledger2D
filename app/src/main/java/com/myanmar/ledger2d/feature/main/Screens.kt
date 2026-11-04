@@ -1316,33 +1316,35 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
 }
 @Composable fun SettingsScreen(vm: LedgerViewModel, onBack:()->Unit, onOpenFontLab:()->Unit){
     val language=LocalLanguage.current
+    val sectionTypography = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, language.code)
+    val helperTypography = LedgerTypographyStandard.style(LedgerTextRole.HELPER, language.code)
     val agents by vm.agents.collectAsStateWithLifecycle()
     val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
     val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
     AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack,action={TextButton(onClick=onOpenFontLab){Text("Aa",fontWeight=FontWeight.Bold)} }){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
-        Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-        Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=sectionTypography)
+        Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
             Column(Modifier.padding(14.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth()) { language.setDefaultAgent(it) }
                 ScopeDropdown(language.text("Customer ရွေးရန်","Select customer"), defaultCustomer?.name ?: if (language.defaultAgentId > 0) language.text("Customer ရွေးရန်","Select customer") else language.text("Agent အရင်ရွေးပါ","Select agent first"), if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(), language.defaultCustomerId, Modifier.fillMaxWidth(), enabled = language.defaultAgentId > 0) { language.setDefaultCustomer(it) }
             }
         }
-        Text(language.text("အတိတ်ရလဒ်များ","Historical results"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Text(language.text("အတိတ်ရလဒ်များ","Historical results"),style=sectionTypography)
         OutlinedCard { Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
             Button(onClick=vm::updateHistory,enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth()){Text(language.text("အတိတ်ရလဒ်များ အပ်ဒိတ်လုပ်ရန်","Update historical results"))}
             when(val state=historyUpdate){
-                HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်မှ မနေ့အထိ History Result ကို update လုပ်ပါမည်။","Tap to update history results through yesterday."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                HistoryUpdateState.Working->Text(language.text("History Result update လုပ်နေပါသည်…","Updating history results…"),style=MaterialTheme.typography.bodySmall)
-                is HistoryUpdateState.Success->Text(state.message,style=MaterialTheme.typography.bodySmall,color=AppColors.PrimaryDeep)
-                is HistoryUpdateState.Error->Text(state.message,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
+                HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်မှ မနေ့အထိ History Result ကို update လုပ်ပါမည်။","Tap to update history results through yesterday."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                HistoryUpdateState.Working->Text(language.text("History Result update လုပ်နေပါသည်…","Updating history results…"),style=helperTypography)
+                is HistoryUpdateState.Success->Text(state.message,style=helperTypography,color=AppColors.PrimaryDeep)
+                is HistoryUpdateState.Error->Text(state.message,style=helperTypography,color=MaterialTheme.colorScheme.error)
             }
         }}
-        Text(language.text("ဘာသာစကား","Language"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Text(language.text("ဘာသာစကား","Language"),style=sectionTypography)
         OutlinedCard{Column{ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မြန်မာ"))},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("English"))},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
-        Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }}
 }
 @Composable fun SimpleListScreen(title:String,onBack:()->Unit,subtitle:String,rows:List<String>){AppScaffold(title,onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text(subtitle,style=MaterialTheme.typography.headlineSmall)};items(rows){OutlinedCard{Text(it,Modifier.fillMaxWidth().padding(16.dp),style=MaterialTheme.typography.bodyLarge)}}}}}
