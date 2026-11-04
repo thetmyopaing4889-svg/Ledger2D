@@ -37,6 +37,7 @@ internal fun HomeCommissionCard(
     onDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val language = com.myanmar.ledger2d.core.design.LocalLanguage.current
     val today = DeviceCalendar.today()
     val ledger = remember(today) { vm.commissionLedger(today) }
     val lines by ledger.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -64,13 +65,13 @@ internal fun HomeCommissionCard(
             ) {
                 Icon(Icons.Default.AccountBalanceWallet, null,
                     tint = AppColors.PrimaryDeep, modifier = Modifier.size(20.dp))
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်ရငွေ"), modifier = Modifier.weight(1f),
-                    fontSize = 14.sp, lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold, color = AppColors.Ink)
-                if (isClosed) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), fontSize = 10.sp,
+                Text(language.translate("ကော်မရှင်ရငွေ"), modifier = Modifier.weight(1f),
+                    style = HomeTypography.commissionHeading(language.code),
+                    color = AppColors.Ink)
+                if (isClosed) Text(language.translate("ပိတ်ရက်"), fontSize = 10.sp,
                     color = AppColors.PrimaryDeep, fontWeight = FontWeight.Bold)
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အသေးစိတ်"), fontSize = 11.sp,
-                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.SemiBold)
+                Text(language.translate("အသေးစိတ်"), style = HomeTypography.commissionAction(language.code),
+                    color = AppColors.PrimaryDeep)
                 Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
                     tint = AppColors.PrimaryDeep, modifier = Modifier.size(18.dp))
             }
@@ -83,10 +84,10 @@ internal fun HomeCommissionCard(
                     modifier = Modifier.weight(1.12f),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("မနက်အကြိမ်", "AM"), totals.morning, false)
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ညနေအကြိမ်", "PM"), totals.evening, false)
+                    HomeCommissionAmountRow(language.text("မနက်အကြိမ်", "AM"), totals.morning, false)
+                    HomeCommissionAmountRow(language.text("ညနေအကြိမ်", "PM"), totals.evening, false)
                     HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
-                    HomeCommissionAmountRow(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
+                    HomeCommissionAmountRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
                 }
                 VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
                 Column(
@@ -94,13 +95,13 @@ internal fun HomeCommissionCard(
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total to date"),
-                        fontSize = 11.sp, lineHeight = 15.sp,
+                        language.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total to date"),
+                        style = HomeTypography.commissionMeta(language.code),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                     )
                     Text(
-                        totals.toDateTotal.cardAmount() + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကျပ်", " MMK"),
+                        totals.toDateTotal.cardAmount() + language.text(" ကျပ်", " MMK"),
                         fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 17.sp,
                         lineHeight = 20.sp, fontWeight = FontWeight.Black,
                         color = AppColors.PrimaryDeep, maxLines = 2,
@@ -114,6 +115,7 @@ internal fun HomeCommissionCard(
 
 @Composable
 private fun HomeCommissionAmountRow(label: String, amount: Long, emphasis: Boolean) {
+    val language = com.myanmar.ledger2d.core.design.LocalLanguage.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -122,10 +124,9 @@ private fun HomeCommissionAmountRow(label: String, amount: Long, emphasis: Boole
         Text(
             label,
             modifier = Modifier.weight(1f),
-            fontSize = if (emphasis) 11.sp else 10.sp,
-            lineHeight = 14.sp, color = if (emphasis) AppColors.PrimaryDeep
+            style = HomeTypography.commissionRowLabel(language.code, emphasis),
+            color = if (emphasis) AppColors.PrimaryDeep
                 else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (emphasis) FontWeight.Bold else FontWeight.Normal,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
         Text(

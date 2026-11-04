@@ -293,7 +293,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val weekEnd=monday.plusDays(4); val weekLabel="${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
     Card(Modifier.fillMaxWidth().pointerInput(Unit){var distance=0f;detectDragGestures(onDragStart={distance=0f},onDrag={change,amount->change.consume();distance+=amount.x},onDragEnd={if(kotlin.math.abs(distance)>72f)weekOffset+=if(distance<0)1 else -1})},colors=CardDefaults.cardColors(containerColor=Color.White),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,AppColors.Stone.copy(alpha=.8f)),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
         Column(Modifier.padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black,color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=HomeTypography.weeklyHeading(l.code),color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
         }
     }
@@ -319,7 +319,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         }
         listOf(DrawSession.MORNING,DrawSession.EVENING).forEach { session ->
             Row(Modifier.fillMaxWidth().height(56.dp),verticalAlignment=Alignment.CenterVertically){
-                Text(l.translate(if(session == DrawSession.MORNING) "မနက်" else "ညနေ"),Modifier.width(48.dp).padding(start=2.dp),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
+                Text(l.translate(if(session == DrawSession.MORNING) "မနက်" else "ညနေ"),Modifier.width(48.dp).padding(start=2.dp),style=HomeTypography.drawLabel(l.code),maxLines=1,softWrap=false)
                 dates.forEach { date ->
                     val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session] ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
@@ -438,8 +438,8 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Text(
                         if (LocalLanguage.current.code == "en") "Soon" else "မကြာမီ",
                         modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
-                        fontSize = 8.sp, lineHeight = 10.sp,
-                        color = Color.White, fontWeight = FontWeight.SemiBold,
+                        style = HomeTypography.comingSoon(LocalLanguage.current.code),
+                        color = Color.White,
                     )
                 }
             }
@@ -447,8 +447,8 @@ fun transactionDisplayText(format: String, raw: String): String {
         Text(
             label,
             modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
-            fontSize = 11.sp, lineHeight = 14.sp,
-            fontWeight = FontWeight.SemiBold, color = AppColors.Ink,
+            style = HomeTypography.quickAction(LocalLanguage.current.code),
+            color = AppColors.Ink,
             maxLines = 3, textAlign = TextAlign.Center,
         )
     }
@@ -457,7 +457,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun HomeFooter(){
     Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
-        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=MaterialTheme.typography.labelSmall,color=Color(0xFFB98DA0),maxLines=2,softWrap=true,textAlign=TextAlign.Center)
+        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=HomeTypography.footer(LocalLanguage.current.code),color=Color(0xFFB98DA0),maxLines=2,softWrap=true,textAlign=TextAlign.Center)
     }
 }
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
