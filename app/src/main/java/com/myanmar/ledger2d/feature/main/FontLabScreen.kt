@@ -27,7 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import com.myanmar.ledger2d.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,11 +64,21 @@ fun FontLabScreen(onBack: () -> Unit) {
     // Keep the lab language independent of the saved app-language preference.
     var sampleMyanmar by rememberSaveable { mutableStateOf(language.code != "en") }
     var scalePercent by rememberSaveable { mutableIntStateOf(100) }
+    var showComponents by rememberSaveable { mutableStateOf(true) }
     val scale = scalePercent / 100f
     // This is the device's system-named Myanmar family, NOT a bundled Noto font.
     // OEMs may substitute a different font or return the default family.
     val deviceMyanmar = remember {
         FontFamily(Typeface.create("sans-serif-myanmar", Typeface.NORMAL))
+    }
+
+    val bundledNoto = remember {
+        FontFamily(
+            Font(R.font.noto_sans_myanmar_variable, FontWeight.Normal),
+            Font(R.font.noto_sans_myanmar_variable, FontWeight.Medium),
+            Font(R.font.noto_sans_myanmar_variable, FontWeight.SemiBold),
+            Font(R.font.noto_sans_myanmar_variable, FontWeight.Bold),
+        )
     }
 
     AppScaffold(
@@ -125,12 +137,43 @@ fun FontLabScreen(onBack: () -> Unit) {
                 )
             }
             item {
+                Text(language.text("နမူနာအမျိုးအစား", "Preview mode"),
+                    style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = showComponents,
+                        onClick = { showComponents = true },
+                        label = { Text(language.text("Card / Form", "Cards / Forms")) },
+                    )
+                    FilterChip(
+                        selected = !showComponents,
+                        onClick = { showComponents = false },
+                        label = { Text(language.text("စာလုံး", "Typography")) },
+                    )
+                }
+                Text(language.text(
+                    "နမူနာ Card/ဇယားများထဲက ငွေနှင့်ဂဏန်းများသည် စမ်းသပ်ဒေတာသာဖြစ်သည်။",
+                    "All displayed amounts/results in the sample cards are mock data.",
+                ), style = MaterialTheme.typography.bodySmall)
+            }
+            item {
                 FontLabCandidate(
                     title = language.text("လက်ရှိ App Font", "Current app font"),
                     detail = "Compose SansSerif + Android fallback",
                     family = FontFamily.SansSerif,
                     myanmar = sampleMyanmar,
                     scale = scale,
+                    showComponents = showComponents,
+                )
+            }
+            item {
+                FontLabCandidate(
+                    title = language.text("Noto Sans Myanmar အစစ်", "Bundled Noto Sans Myanmar"),
+                    detail = "Google Fonts • Noto Sans Myanmar variable • OFL 1.1",
+                    family = bundledNoto,
+                    myanmar = sampleMyanmar,
+                    scale = scale,
+                    showComponents = showComponents,
                 )
             }
             item {
@@ -140,13 +183,14 @@ fun FontLabScreen(onBack: () -> Unit) {
                     family = deviceMyanmar,
                     myanmar = sampleMyanmar,
                     scale = scale,
+                    showComponents = showComponents,
                 )
             }
             item {
                 Text(
                     language.text(
-                        "သတိပြုရန် — ဒုတိယ Font သည် ဖုန်းထဲမှ ရယူထားခြင်းဖြစ်သည်။ Noto Sans Myanmar အစစ်ကို APK ထဲ မထည့်ရသေးပါ။ ဖုန်းအလိုက် မူလ Font နှင့် တူနိုင်သည်။",
-                        "Important: the second sample uses the device's Myanmar typeface. Noto Sans Myanmar is not bundled. It may match the default font on some phones.",
+                        "သတိပြုရန် — Noto Sans Myanmar အစစ်ကို ဒီ APK ရဲ့ စမ်းသပ်ခန်းအတွက်ပဲ ထည့်ထားတယ်။ အခြား App Screen နဲ့ JPEG Font မပြောင်းထားဘူး။",
+                        "Bundled Noto Sans Myanmar is real, but used only in this lab. Production app screens and JPEG fonts stay unchanged.",
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
@@ -163,6 +207,7 @@ private fun FontLabCandidate(
     family: FontFamily,
     myanmar: Boolean,
     scale: Float,
+    showComponents: Boolean,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -176,7 +221,9 @@ private fun FontLabCandidate(
             Text(detail, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider()
-            fontLabTokens.forEach { role ->
+            if (showComponents) {
+                FontLabComponentSamples(myanmar, scale, family)
+            } else fontLabTokens.forEach { role ->
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
                         role.key + "  •  " + role.sizeSp + "sp / " + role.lineSp + "sp",
