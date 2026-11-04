@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +27,20 @@ import java.time.DayOfWeek
 import java.util.Locale
 
 private fun Long.cardAmount() = NumberFormat.getIntegerInstance(Locale.US).format(this)
+
+/**
+ * Preserve the familiar compact card at ordinary amounts. Switch only when a
+ * value may not fit into a two-column card; never abbreviate monetary values.
+ */
+internal fun homeCommissionNeedsWideRows(
+    morning: Long, evening: Long, todayTotal: Long, toDateTotal: Long,
+): Boolean = listOf(morning, evening, todayTotal).any { it.cardAmount().length > 10 } ||
+    toDateTotal.cardAmount().length > 9
+
+/** Optional wrap points after thousands separators. All digits remain visible. */
+internal fun homeCommissionWrapNumber(amount: Long): String =
+    amount.cardAmount().replace(",", ",\u200B")
+
 
 /**
  * Home-only commission presentation; saved snapshot totals and detail reports
@@ -43,6 +58,7 @@ internal fun HomeCommissionCard(
     val lines by ledger.collectAsStateWithLifecycle(initialValue = emptyList())
     val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val totals = CommissionLedgerCalculator.overview(lines, today)
+    val showWideRows = homeCommissionNeedsWideRows(totals.morning, totals.evening, totals.todayTotal, totals.toDateTotal)
     val isClosed = today.dayOfWeek == DayOfWeek.SATURDAY ||
         today.dayOfWeek == DayOfWeek.SUNDAY || closedDays.any { it.date == today }
 
@@ -75,6 +91,24 @@ internal fun HomeCommissionCard(
                 Icon(Icons.Default.ChevronRight, "ကော်မရှင်အသေးစိတ်ကြည့်ရန်",
                     tint = AppColors.PrimaryDeep, modifier = Modifier.size(18.dp))
             }
+            if (showWideRows) {
+                // Rare large-value presentation: use the entire card width.
+                // The wording and raw monetary totals are the same as compact mode.
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    HomeCommissionWideRow(language.text("မနက်အကြိမ်", "AM"), totals.morning, false)
+                    HomeCommissionWideRow(language.text("ညနေအကြိမ်", "PM"), totals.evening, false)
+                    HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
+                    HomeCommissionWideRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
+                    HomeCommissionWideRow(
+                        language.text("ယနေ့အထိ", "Total to date"),
+                        totals.toDateTotal, true, cumulative = true,
+                        suffix = language.text(" ကျပ်", " MMK"),
+                    )
+                }
+            } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
@@ -95,21 +129,58 @@ internal fun HomeCommissionCard(
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        language.text("ယနေ့အထိ ကော်မရှင်ရငွေစုစုပေါင်း", "Total to date"),
+                        language.text("ယနေ့အထိ", "Total to date"),
                         style = HomeTypography.commissionMeta(language.code),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                     )
                     Text(
-                        totals.toDateTotal.cardAmount() + language.text(" ကျပ်", " MMK"),
+                        homeCommissionWrapNumber(totals.toDateTotal) + language.text(" ကျပ်", " MMK"),
                         fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 17.sp,
                         lineHeight = 20.sp, fontWeight = FontWeight.Black,
                         color = AppColors.PrimaryDeep, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        softWrap = true,
                     )
                 }
             }
+            }
         }
+    }
+}
+
+@Composable
+private fun HomeCommissionWideRow(
+    label: String,
+    amount: Long,
+    emphasis: Boolean,
+    cumulative: Boolean = false,
+    suffix: String = "",
+) {
+    val language = com.myanmar.ledger2d.core.design.LocalLanguage.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = HomeTypography.commissionRowLabel(language.code, emphasis),
+            color = if (emphasis) AppColors.PrimaryDeep
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+        )
+        Text(
+            homeCommissionWrapNumber(amount) + suffix,
+            modifier = Modifier.weight(1.5f),
+            fontSize = if (cumulative) 15.sp else 13.sp,
+            lineHeight = 18.sp,
+            fontWeight = if (emphasis) FontWeight.Black else FontWeight.Bold,
+            color = if (emphasis) AppColors.PrimaryDeep else AppColors.Ink,
+            textAlign = TextAlign.End,
+            softWrap = true,
+            // No maxLines or ellipsis: money values are never truncated.
+        )
     }
 }
 
@@ -135,7 +206,7 @@ private fun HomeCommissionAmountRow(label: String, amount: Long, emphasis: Boole
             lineHeight = 18.sp,
             color = if (emphasis) AppColors.PrimaryDeep else AppColors.Ink,
             fontWeight = FontWeight.Bold, maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
         )
     }
 }
