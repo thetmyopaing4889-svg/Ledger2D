@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,19 +58,81 @@ private val customerActions = listOf(
     DashboardAction("ကော်မရှင်", "Customer commission", Icons.Default.Percent, "commission")
 )
 
+/**
+ * Landing cards only. Both dashboards deliberately use the same
+ * structure, spacing, typography and color; routes and business logic are unchanged.
+ */
+@Composable
+private fun DashboardLandingCard(
+    action: DashboardAction,
+    forCustomer: Boolean,
+    onFeature: (String) -> Unit,
+) {
+    val l = LocalLanguage.current
+    val title = when {
+        action.key == "statementJpeg" && forCustomer ->
+            l.text("စာရင်းရှင်းတမ်းထုတ်ရန်", "Export customer statement")
+        action.key == "statementJpeg" ->
+            l.text("စာရင်းရှင်းတမ်းထုတ်ရန်", "Export agent statement")
+        else -> l.translate(action.title)
+    }
+    val description = when ((if (forCustomer) "customer" else "agent") + ":" + action.key) {
+        "agent:agentList" -> l.text("ဒိုင်များကို စီမံရန်", "Manage agents")
+        "agent:total" -> l.text("ဒိုင်အလိုက် အကွက်စုစုပေါင်း", "Agent number totals")
+        "agent:report" -> l.text("ဒိုင်စာရင်း အစီရင်ခံစာ", "Agent reports")
+        "agent:statementJpeg" -> l.text("ဒိုင်စာရင်းရှင်းတမ်း JPEG", "Export agent statement JPEG")
+        "agent:closed" -> l.text("ဒိုင်အလိုက် ပိတ်ဂဏန်းများ", "Agent closed numbers")
+        "agent:limit" -> l.text("ဒိုင်အလိုက် ကန့်သတ်ပမာဏ", "Agent number limits")
+        "customer:customerList" -> l.text("ထိုးသားများကို စီမံရန်", "Manage customers")
+        "customer:history" -> l.text("ထိုးထားသောစာရင်းများ စစ်ရန်", "Review bet entries")
+        "customer:report" -> l.text("ထိုးသားစာရင်း အစီရင်ခံစာ", "Customer reports")
+        "customer:statementJpeg" -> l.text("ထိုးသားစာရင်းရှင်းတမ်း JPEG", "Export customer statement JPEG")
+        "customer:analysis" -> l.text("အရှုံးအမြတ်နှင့် ကာနည်း", "Risk and coverage analysis")
+        "customer:digits" -> l.text("00–99 အကွက်စာရင်း", "View number stakes")
+        "customer:commission" -> l.text("ထိုးသားကော်မရှင်", "Customer commission")
+        else -> l.translate(action.subtitle)
+    }
+    ElevatedCard(
+        onClick = { onFeature(action.key) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small,
+                border = BorderStroke(1.dp, AppColors.Stone)) {
+                Icon(action.icon, null, tint = AppColors.PrimaryDeep,
+                    modifier = Modifier.padding(9.dp).size(22.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = DashboardCardTypography.title(l.code),
+                    color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
+                Text(description, style = DashboardCardTypography.subtitle(l.code),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary)
+        }
+    }
+}
+
 @Composable
 fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (Long) -> Unit, onAddAgent: () -> Unit, onFeature: (String) -> Unit) {
     val l = LocalLanguage.current
     AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             items(agentActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=Color.White), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal=14.dp, vertical=10.dp), verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Surface(color=AppColors.GoldSoft, shape=MaterialTheme.shapes.small, border=BorderStroke(1.dp, AppColors.Stone)) { Icon(action.icon, null, tint=AppColors.PrimaryDeep, modifier=Modifier.padding(9.dp).size(22.dp)) }
-                        Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(2.dp)) { Text(l.translate(action.title), fontWeight=FontWeight.Bold); Text(l.translate(action.subtitle), style=MaterialTheme.typography.labelSmall, color=MaterialTheme.colorScheme.onSurfaceVariant, maxLines=1) }
-                        Icon(Icons.Default.ChevronRight, null, tint=AppColors.Primary)
-                    }
-                }
+                DashboardLandingCard(action, forCustomer = false, onFeature = onFeature)
             }
         }
     }
@@ -101,15 +164,13 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
 fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerInfo: (Long) -> Unit, onFeature: (String) -> Unit) {
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             items(customerActions) { action ->
-                ElevatedCard(onClick = { onFeature(action.key) }, modifier = Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium, colors=CardDefaults.elevatedCardColors(containerColor=AppColors.Champagne), elevation=CardDefaults.elevatedCardElevation(defaultElevation=1.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small) { Icon(action.icon, null, tint = AppColors.PrimaryDeep, modifier = Modifier.padding(8.dp).size(22.dp)) }
-                        Text(if (action.key == "statementJpeg") l.text("စာရင်းရှင်းတမ်းထုတ်ရန်", "Export customer statement") else l.translate(action.title), Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.ChevronRight, null, tint = AppColors.Primary)
-                    }
-                }
+                DashboardLandingCard(action, forCustomer = true, onFeature = onFeature)
             }
         }
     }
