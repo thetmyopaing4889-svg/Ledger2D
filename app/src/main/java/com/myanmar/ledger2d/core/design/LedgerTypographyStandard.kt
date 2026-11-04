@@ -35,25 +35,27 @@ data class LedgerTypeToken(
 )
 
 object LedgerTypographyStandard {
+    // Official Noto Myanmar UI face, only for explicitly opted-in screens.
     private val notoMyanmar = FontFamily(
-        Font(R.font.noto_sans_myanmar_variable, weight = FontWeight.Normal),
-        Font(R.font.noto_sans_myanmar_variable, weight = FontWeight.Medium),
-        Font(R.font.noto_sans_myanmar_variable, weight = FontWeight.SemiBold),
-        Font(R.font.noto_sans_myanmar_variable, weight = FontWeight.Bold),
+        Font(R.font.noto_sans_myanmar_ui_regular, weight = FontWeight.Normal),
+        Font(R.font.noto_sans_myanmar_ui_medium, weight = FontWeight.Medium),
+        Font(R.font.noto_sans_myanmar_ui_semi_bold, weight = FontWeight.SemiBold),
+        Font(R.font.noto_sans_myanmar_ui_bold, weight = FontWeight.Bold),
     )
 
-    // Candidate standard v1: real-device visual sign-off is still required.
+    // Compact UI-font trial: matching EN/MM nominal sizes + line heights.
+    // These are candidate values, not a universal optical-size ratio.
     val tokens: Map<LedgerTextRole, LedgerTypeToken> = mapOf(
-        LedgerTextRole.APP_HEADER to LedgerTypeToken(19, 25, 27, FontWeight.SemiBold),
-        LedgerTextRole.SECTION_TITLE to LedgerTypeToken(17, 23, 26, FontWeight.Bold),
-        LedgerTextRole.CARD_TITLE to LedgerTypeToken(16, 23, 25, FontWeight.SemiBold),
-        LedgerTextRole.BODY to LedgerTypeToken(14, 21, 23, FontWeight.Normal),
-        LedgerTextRole.HELPER to LedgerTypeToken(13, 19, 21, FontWeight.Normal),
-        LedgerTextRole.DROPDOWN_LABEL to LedgerTypeToken(13, 19, 20, FontWeight.Normal),
-        LedgerTextRole.DROPDOWN_VALUE to LedgerTypeToken(16, 24, 26, FontWeight.Normal),
-        LedgerTextRole.BUTTON to LedgerTypeToken(14, 20, 22, FontWeight.Medium),
-        LedgerTextRole.MONEY to LedgerTypeToken(18, 24, 26, FontWeight.Bold),
-        LedgerTextRole.TABLE to LedgerTypeToken(12, 18, 20, FontWeight.Medium),
+        LedgerTextRole.APP_HEADER to LedgerTypeToken(19, 25, 25, FontWeight.SemiBold),
+        LedgerTextRole.SECTION_TITLE to LedgerTypeToken(17, 23, 23, FontWeight.Bold),
+        LedgerTextRole.CARD_TITLE to LedgerTypeToken(16, 23, 23, FontWeight.SemiBold),
+        LedgerTextRole.BODY to LedgerTypeToken(14, 21, 21, FontWeight.Normal),
+        LedgerTextRole.HELPER to LedgerTypeToken(13, 19, 19, FontWeight.Normal),
+        LedgerTextRole.DROPDOWN_LABEL to LedgerTypeToken(13, 19, 19, FontWeight.Normal),
+        LedgerTextRole.DROPDOWN_VALUE to LedgerTypeToken(16, 24, 24, FontWeight.Normal),
+        LedgerTextRole.BUTTON to LedgerTypeToken(14, 20, 20, FontWeight.Medium),
+        LedgerTextRole.MONEY to LedgerTypeToken(18, 24, 24, FontWeight.Bold),
+        LedgerTextRole.TABLE to LedgerTypeToken(12, 18, 18, FontWeight.Medium),
     )
 
     /** The configured language alone controls the requested font; the screen layout does not change. */

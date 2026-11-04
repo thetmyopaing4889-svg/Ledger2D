@@ -25,7 +25,7 @@ class LedgerTypographyStandardTest {
             assertEquals(en.fontSize, my.fontSize)
             assertEquals(FontFamily.SansSerif, en.fontFamily)
             assertNotEquals(FontFamily.SansSerif, my.fontFamily)
-            assertTrue(my.lineHeight.value >= en.lineHeight.value)
+            assertEquals(en.lineHeight, my.lineHeight)
         }
     }
 
@@ -40,10 +40,10 @@ class LedgerTypographyStandardTest {
         assertEquals(FontWeight.Normal, enHelper.fontWeight)
     }
 
-    @Test fun myanmarPilotUsesExplicitLineSpacing() {
+    @Test fun myanmarPilotMatchesEnglishLineHeightAtBaseline() {
         val mySection = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, "my")
         val myHelper = LedgerTypographyStandard.style(LedgerTextRole.HELPER, "my")
-        assertEquals(26.sp, mySection.lineHeight)
-        assertEquals(21.sp, myHelper.lineHeight)
+        assertEquals(23.sp, mySection.lineHeight)
+        assertEquals(19.sp, myHelper.lineHeight)
     }
 }
