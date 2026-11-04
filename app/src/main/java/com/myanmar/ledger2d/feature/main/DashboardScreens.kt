@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
@@ -256,10 +257,36 @@ fun CustomerFeatureWorkspaceScreen(
 @Composable private fun SelectionCard(content: @Composable ColumnScope.() -> Unit) { Surface(Modifier.fillMaxWidth(), color=AppColors.Champagne, shape=MaterialTheme.shapes.medium, border=BorderStroke(1.dp, AppColors.Gold.copy(alpha=.35f))) { Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content=content) } }
 
 @Composable
-fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, onSelect: (Long) -> Unit) {
+fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, compact: Boolean = false, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }, modifier = modifier) {
+        if (compact) {
+            // Settings-only: one line + explicit height so both languages have
+            // identical field geometry. Menu items still show the full names.
+            val language = LocalLanguage.current
+            OutlinedTextField(
+                value = selected,
+                onValueChange = {},
+                modifier = Modifier.fillMaxWidth().height(68.dp).menuAnchor(),
+                enabled = enabled,
+                readOnly = true,
+                singleLine = true,
+                textStyle = LedgerTypographyStandard.style(LedgerTextRole.DROPDOWN_VALUE, language.code).copy(
+                    fontSize = 14.sp, lineHeight = 20.sp
+                ),
+                label = {
+                    Text(
+                        language.translate(label),
+                        style = LedgerTypographyStandard.style(LedgerTextRole.DROPDOWN_LABEL, language.code).copy(
+                            fontSize = 12.sp, lineHeight = 18.sp
+                        )
+                    )
+                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) }
+            )
+        } else {
         OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
+        }
         ExposedDropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) { options.forEach { (id, title) -> DropdownMenuItem(text = { Text(title) }, onClick = { onSelect(id); expanded = false }) } }
     }
 }

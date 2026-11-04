@@ -32,6 +32,8 @@ data class LedgerTypeToken(
     val englishLineHeightSp: Int,
     val myanmarLineHeightSp: Int,
     val weight: FontWeight,
+    val myanmarSizeSp: Int? = null,
+    val myanmarWeight: FontWeight? = null,
 )
 
 object LedgerTypographyStandard {
@@ -47,7 +49,7 @@ object LedgerTypographyStandard {
     // These are candidate values, not a universal optical-size ratio.
     val tokens: Map<LedgerTextRole, LedgerTypeToken> = mapOf(
         LedgerTextRole.APP_HEADER to LedgerTypeToken(19, 25, 25, FontWeight.SemiBold),
-        LedgerTextRole.SECTION_TITLE to LedgerTypeToken(17, 23, 23, FontWeight.Bold),
+        LedgerTextRole.SECTION_TITLE to LedgerTypeToken(17, 23, 23, FontWeight.Bold, myanmarSizeSp = 16, myanmarWeight = FontWeight.SemiBold),
         LedgerTextRole.CARD_TITLE to LedgerTypeToken(16, 23, 23, FontWeight.SemiBold),
         LedgerTextRole.BODY to LedgerTypeToken(14, 21, 21, FontWeight.Normal),
         LedgerTextRole.HELPER to LedgerTypeToken(13, 19, 19, FontWeight.Normal),
@@ -64,9 +66,9 @@ object LedgerTypographyStandard {
         val isMyanmar = languageCode != "en"
         return TextStyle(
             fontFamily = if (isMyanmar) notoMyanmar else FontFamily.SansSerif,
-            fontSize = token.sizeSp.sp,
+            fontSize = (if (isMyanmar) token.myanmarSizeSp ?: token.sizeSp else token.sizeSp).sp,
             lineHeight = (if (isMyanmar) token.myanmarLineHeightSp else token.englishLineHeightSp).sp,
-            fontWeight = token.weight,
+            fontWeight = if (isMyanmar) token.myanmarWeight ?: token.weight else token.weight,
         )
     }
 }

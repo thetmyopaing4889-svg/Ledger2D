@@ -1322,13 +1322,13 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
     val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
-    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack,action={TextButton(onClick=onOpenFontLab){Text("Aa",fontWeight=FontWeight.Bold)} }){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp)){
+    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack,action={TextButton(onClick=onOpenFontLab){Text("Aa",fontWeight=FontWeight.Bold)} }){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
         Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=sectionTypography)
         Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
             Column(Modifier.padding(14.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth()) { language.setDefaultAgent(it) }
-                ScopeDropdown(language.text("Customer ရွေးရန်","Select customer"), defaultCustomer?.name ?: if (language.defaultAgentId > 0) language.text("Customer ရွေးရန်","Select customer") else language.text("Agent အရင်ရွေးပါ","Select agent first"), if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(), language.defaultCustomerId, Modifier.fillMaxWidth(), enabled = language.defaultAgentId > 0) { language.setDefaultCustomer(it) }
+                ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth(), compact = true) { language.setDefaultAgent(it) }
+                ScopeDropdown(language.text("Customer ရွေးရန်","Select customer"), defaultCustomer?.name ?: if (language.defaultAgentId > 0) language.text("Customer ရွေးရန်","Select customer") else language.text("Agent အရင်ရွေးပါ","Select agent first"), if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(), language.defaultCustomerId, Modifier.fillMaxWidth(), enabled = language.defaultAgentId > 0, compact = true) { language.setDefaultCustomer(it) }
             }
         }
         Text(language.text("အတိတ်ရလဒ်များ","Historical results"),style=sectionTypography)
