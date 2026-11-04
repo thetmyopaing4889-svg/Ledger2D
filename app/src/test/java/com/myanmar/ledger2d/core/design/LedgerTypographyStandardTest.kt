@@ -9,6 +9,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LedgerTypographyStandardTest {
+    @Test fun allMaterialRolesUseLanguageFontWithoutChangingTextGeometry() {
+        val english = LedgerTypographyStandard.materialTypography(AppTypography, "en")
+        val myanmar = LedgerTypographyStandard.materialTypography(AppTypography, "my")
+        val pairs = listOf(
+            english.displayLarge to myanmar.displayLarge,
+            english.displayMedium to myanmar.displayMedium,
+            english.displaySmall to myanmar.displaySmall,
+            english.headlineLarge to myanmar.headlineLarge,
+            english.headlineMedium to myanmar.headlineMedium,
+            english.headlineSmall to myanmar.headlineSmall,
+            english.titleLarge to myanmar.titleLarge,
+            english.titleMedium to myanmar.titleMedium,
+            english.titleSmall to myanmar.titleSmall,
+            english.bodyLarge to myanmar.bodyLarge,
+            english.bodyMedium to myanmar.bodyMedium,
+            english.bodySmall to myanmar.bodySmall,
+            english.labelLarge to myanmar.labelLarge,
+            english.labelMedium to myanmar.labelMedium,
+            english.labelSmall to myanmar.labelSmall,
+        )
+        pairs.forEach { (en, my) ->
+            assertEquals(en.fontSize, my.fontSize)
+            assertEquals(en.lineHeight, my.lineHeight)
+            assertEquals(en.fontWeight, my.fontWeight)
+            assertEquals(en.letterSpacing, my.letterSpacing)
+            assertEquals(FontFamily.SansSerif, en.fontFamily)
+            assertNotEquals(FontFamily.SansSerif, my.fontFamily)
+        }
+    }
     @Test fun everyRoleHasAReadableCandidateToken() {
         assertEquals(LedgerTextRole.entries.toSet(), LedgerTypographyStandard.tokens.keys)
         assertTrue(LedgerTypographyStandard.tokens.values.all {

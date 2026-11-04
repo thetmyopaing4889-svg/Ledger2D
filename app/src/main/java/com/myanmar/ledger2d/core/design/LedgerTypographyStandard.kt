@@ -45,6 +45,34 @@ object LedgerTypographyStandard {
         Font(R.font.noto_sans_myanmar_ui_bold, weight = FontWeight.Bold),
     )
 
+    fun family(code: String): FontFamily =
+        if (code == "en") FontFamily.SansSerif else notoMyanmar
+
+    // All built-in Material roles use the selected language's font family.
+    // Sizes, weights, letter-spacing and line-height are copied unchanged from
+    // the existing AppTypography. This is NOT a global sizing/rebuild pass.
+    fun materialTypography(base: androidx.compose.material3.Typography, code: String): androidx.compose.material3.Typography {
+        if (code == "en") return base
+        val font = family(code)
+        return androidx.compose.material3.Typography(
+            displayLarge = base.displayLarge.copy(fontFamily = font),
+            displayMedium = base.displayMedium.copy(fontFamily = font),
+            displaySmall = base.displaySmall.copy(fontFamily = font),
+            headlineLarge = base.headlineLarge.copy(fontFamily = font),
+            headlineMedium = base.headlineMedium.copy(fontFamily = font),
+            headlineSmall = base.headlineSmall.copy(fontFamily = font),
+            titleLarge = base.titleLarge.copy(fontFamily = font),
+            titleMedium = base.titleMedium.copy(fontFamily = font),
+            titleSmall = base.titleSmall.copy(fontFamily = font),
+            bodyLarge = base.bodyLarge.copy(fontFamily = font),
+            bodyMedium = base.bodyMedium.copy(fontFamily = font),
+            bodySmall = base.bodySmall.copy(fontFamily = font),
+            labelLarge = base.labelLarge.copy(fontFamily = font),
+            labelMedium = base.labelMedium.copy(fontFamily = font),
+            labelSmall = base.labelSmall.copy(fontFamily = font),
+        )
+    }
+
     // Compact UI-font trial: matching EN/MM nominal sizes + line heights.
     // These are candidate values, not a universal optical-size ratio.
     val tokens: Map<LedgerTextRole, LedgerTypeToken> = mapOf(
@@ -65,7 +93,7 @@ object LedgerTypographyStandard {
         val token = requireNotNull(tokens[role]) { "Missing typography role: $role" }
         val isMyanmar = languageCode != "en"
         return TextStyle(
-            fontFamily = if (isMyanmar) notoMyanmar else FontFamily.SansSerif,
+            fontFamily = family(languageCode),
             fontSize = (if (isMyanmar) token.myanmarSizeSp ?: token.sizeSp else token.sizeSp).sp,
             lineHeight = (if (isMyanmar) token.myanmarLineHeightSp else token.englishLineHeightSp).sp,
             fontWeight = if (isMyanmar) token.myanmarWeight ?: token.weight else token.weight,

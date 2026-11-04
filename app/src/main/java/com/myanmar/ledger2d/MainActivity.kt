@@ -20,8 +20,8 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = AndroidColor.TRANSPARENT
         setContent {
             val container = (application as LedgerApplication).container
-            LedgerTheme {
-                val language = rememberLanguageState(this, container.workingContext)
+            val language = rememberLanguageState(this, container.workingContext)
+            LedgerTheme(languageCode = language.code) {
                 androidx.compose.runtime.CompositionLocalProvider(LocalLanguage provides language) {
                     LedgerNav(container, startAtWelcome = true)
                 }

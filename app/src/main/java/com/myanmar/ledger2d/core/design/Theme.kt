@@ -34,4 +34,21 @@ val AppTypography = Typography(
     labelLarge=Typography().labelLarge.copy(fontFamily=AppFont,fontSize=14.sp,lineHeight=20.sp,fontWeight=FontWeight.Medium),
     labelMedium=Typography().labelMedium.copy(fontFamily=AppFont,fontSize=12.sp,lineHeight=17.sp)
 )
-@Composable fun LedgerTheme(darkTheme:Boolean=false,content:@Composable () -> Unit){ MaterialTheme(colorScheme=if(darkTheme)Dark else Light,typography=AppTypography,shapes=AppShapes.shapes,content=content) }
+/**
+ * One app-wide font-family rule. Keep the pre-existing Material sizes and
+ * line heights, and let UI components control their geometry independently.
+ */
+@Composable
+fun LedgerTheme(
+    darkTheme: Boolean = false,
+    languageCode: String = "en",
+    content: @Composable () -> Unit,
+) {
+    val typography = LedgerTypographyStandard.materialTypography(AppTypography, languageCode)
+    MaterialTheme(
+        colorScheme = if (darkTheme) Dark else Light,
+        typography = typography,
+        shapes = AppShapes.shapes,
+        content = content,
+    )
+}

@@ -470,7 +470,13 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
     AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack,includeQuickEntryFab=false){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0){customerId=it};if(agentId>0&&customerId>0)Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Text("${agents.firstOrNull{it.id==agentId}?.name} • ${customers.firstOrNull{it.id==customerId}?.name} • ${l.selectedSession.label}",Modifier.fillMaxWidth().padding(14.dp),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer)};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
 }
-@Composable private fun SelectionField(label:String,selected:String,options:List<Pair<Long,String>>,value:Long,enabled:Boolean=true,onSelect:(Long)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded=expanded&&enabled,onExpandedChange={if(enabled)expanded=!expanded}){OutlinedTextField(selected,{},Modifier.fillMaxWidth().menuAnchor(),enabled=enabled,readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded&&enabled)},shape=MaterialTheme.shapes.medium);ExposedDropdownMenu(expanded=expanded&&enabled,onDismissRequest={expanded=false}){options.forEach{(id,title)->DropdownMenuItem(text={Text(title)},onClick={onSelect(id);expanded=false})}}}}
+/** Quick Entry uses the same selector as Settings, Agent and Customer workspaces. */
+@Composable private fun SelectionField(
+    label: String, selected: String, options: List<Pair<Long, String>>,
+    value: Long, enabled: Boolean = true, onSelect: (Long) -> Unit,
+) {
+    ScopeDropdown(label, selected, options, value, Modifier.fillMaxWidth(), enabled = enabled, compact = true, onSelect = onSelect)
+}
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle()
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်များ"), action={
@@ -598,12 +604,49 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         }
     }
 }
-@Composable private fun FormColumn(p:PaddingValues,content:@Composable ColumnScope.() -> Unit)=Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(14.dp),content=content)
-@Composable fun Input(value:String,onValue:(String)->Unit,label:String,required:Boolean=false,keyboard:KeyboardType=KeyboardType.Text){val display=LocalLanguage.current.translate(label);OutlinedTextField(value,onValue,Modifier.fillMaxWidth(),label={Text(display+(if(required)" *" else ""))},singleLine=label!="မှတ်ချက်",keyboardOptions=KeyboardOptions(keyboardType=keyboard),shape=MaterialTheme.shapes.medium)}
+@Composable private fun FormColumn(p: PaddingValues, content: @Composable ColumnScope.() -> Unit) =
+    Column(
+        Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState())
+            .padding(AppDimens.screen).padding(bottom = com.myanmar.ledger2d.core.design.LedgerControlDimensions.fabSafeBottom),
+        verticalArrangement = Arrangement.spacedBy(14.dp), content = content
+    )
+@Composable fun Input(
+    value: String, onValue: (String) -> Unit, label: String,
+    required: Boolean = false, keyboard: KeyboardType = KeyboardType.Text,
+) {
+    val language = LocalLanguage.current
+    val display = language.translate(label)
+    val isSingleLine = label != "မှတ်ချက်"
+    OutlinedTextField(
+        value = value, onValueChange = onValue,
+        modifier = if (isSingleLine) Modifier.fillMaxWidth() .heightIn(min = com.myanmar.ledger2d.core.design.LedgerControlDimensions.selectorMinHeight) else Modifier.fillMaxWidth(),
+        label = { Text(display + (if (required) " *" else ""),
+            style = LedgerTypographyStandard.style(LedgerTextRole.DROPDOWN_LABEL, language.code)) },
+        singleLine = isSingleLine,
+        textStyle = LedgerTypographyStandard.style(LedgerTextRole.BODY, language.code),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+        shape = MaterialTheme.shapes.medium,
+    )
+}
 @Composable fun DateInput(value:String,onValue:(String)->Unit,label:String,modifier:Modifier=Modifier,enabled:Boolean=true){
     var open by rememberSaveable{mutableStateOf(false)}
     val display=runCatching{LocalDate.parse(value).displayDate()}.getOrElse{value}
-    OutlinedTextField(value=display,onValueChange={},modifier=modifier.fillMaxWidth(),label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label))},readOnly=true,enabled=enabled,trailingIcon={if(enabled)TextButton({open=true}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး"))}},shape=MaterialTheme.shapes.medium)
+    val language = LocalLanguage.current
+    OutlinedTextField(
+        value = display, onValueChange = {},
+        modifier = modifier.fillMaxWidth() .heightIn(min = com.myanmar.ledger2d.core.design.LedgerControlDimensions.selectorMinHeight),
+        label = { Text(language.translate(label),
+            style = LedgerTypographyStandard.style(LedgerTextRole.DROPDOWN_LABEL, language.code).copy(fontSize = com.myanmar.ledger2d.core.design.LedgerControlDimensions.selectorLabelSize)) },
+        textStyle = LedgerTypographyStandard.style(LedgerTextRole.DROPDOWN_VALUE, language.code)
+            .copy(fontSize = com.myanmar.ledger2d.core.design.LedgerControlDimensions.selectorValueSize, lineHeight = 20.sp),
+        singleLine = true,
+        readOnly = true,
+        enabled = enabled,
+        trailingIcon = { if (enabled) TextButton(onClick = { open = true }) {
+            Text(language.translate("ရွေး"), style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, language.code))
+        } },
+        shape = MaterialTheme.shapes.medium,
+    )
     if(open){val initial=runCatching{LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()}.getOrNull();val state=rememberDatePickerState(initialSelectedDateMillis=initial);DatePickerDialog(onDismissRequest={open=false},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{var picked=java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate();while(!DrawSchedule.isWeekday(picked)) picked=picked.plusDays(1);onValue(picked.toString())};open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးမည်"))}},dismissButton={TextButton(onClick={open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}}){DatePicker(state)}}
 }
 @Composable private fun FormActions(cancel:()->Unit,save:()->Unit,enabled:Boolean){val l=LocalLanguage.current;Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){OutlinedButton(cancel,Modifier.weight(1f)){Text(l.text("မလုပ်တော့ပါ","Cancel"))};Button(save,Modifier.weight(1f),enabled=enabled){Text(l.text("သိမ်းမည်","Save"))}}}
@@ -1324,7 +1367,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
     AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack,action={TextButton(onClick=onOpenFontLab){Text("Aa",fontWeight=FontWeight.Bold)} }){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
         Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=sectionTypography)
-        Text(language.text("Dashboard feature မည်သည့်နေရာဝင်ဝင် ဒီ Agent/Customer ကို အလိုအလျောက်ပြပါမည်။","These selections appear automatically in every dashboard feature."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(language.text("လုပ်ဆောင်ချက်များတွင် ရွေးထားသော ဒိုင်နှင့် ထိုးသားကို အလိုအလျောက်ပြပေးမည်။","These selections appear automatically in every dashboard feature."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
             Column(Modifier.padding(14.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth(), compact = true) { language.setDefaultAgent(it) }
@@ -1336,8 +1379,8 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
             Button(onClick=vm::updateHistory,enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth()){Text(language.text("အတိတ်ရလဒ်များ အပ်ဒိတ်လုပ်ရန်","Update historical results"))}
             when(val state=historyUpdate){
-                HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်မှ မနေ့အထိ History Result ကို update လုပ်ပါမည်။","Tap to update history results through yesterday."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                HistoryUpdateState.Working->Text(language.text("History Result update လုပ်နေပါသည်…","Updating history results…"),style=helperTypography)
+                HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်လျှင် မနေ့အထိ ရလဒ်မှတ်တမ်းများကို ဖြည့်စွက်မည်။","Tap to update history results through yesterday."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                HistoryUpdateState.Working->Text(language.text("ရလဒ်မှတ်တမ်းများ ဖြည့်စွက်နေပါသည်…","Updating history results…"),style=helperTypography)
                 is HistoryUpdateState.Success->Text(state.message,style=helperTypography,color=AppColors.PrimaryDeep)
                 is HistoryUpdateState.Error->Text(state.message,style=helperTypography,color=MaterialTheme.colorScheme.error)
             }
