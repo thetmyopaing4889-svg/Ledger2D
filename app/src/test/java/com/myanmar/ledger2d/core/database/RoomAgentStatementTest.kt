@@ -50,6 +50,7 @@ class RoomAgentStatementTest {
             val agentCommissions = dao.agentStatementCommissionRows(a,date,date)
             assertEquals(2,agentRows.size)
             assertEquals(100000L,agentRows.sumOf{it.amount})
+            assertEquals(2L,agentRows.sumOf{it.slotCount})
             assertEquals(1,agentCommissions.size)
             assertEquals(15000L,agentCommissions.single().commission)
             assertEquals(setOf(a),agentRows.map{it.agentId}.toSet())
@@ -60,7 +61,7 @@ class RoomAgentStatementTest {
             val summary = AgentStatementCalculator.build(
                 allStakes.map {
                     AgentRatedStake(it.agentId,it.customerId,it.drawDate,it.drawSession,
-                        it.digit,it.amount,it.payoutRate)
+                        it.digit,it.amount,it.payoutRate,it.slotCount)
                 },
                 allCommissions.map {
                     AgentSavedCommission(it.agentId,it.customerId,it.drawDate,it.drawSession,it.commission)
@@ -68,6 +69,7 @@ class RoomAgentStatementTest {
                 mapOf((date to DrawSession.MORNING) to "20"),
             )
             assertEquals(3,summary.draws.size)
+            assertEquals(6L,summary.totals.digitSlots)
             assertEquals(200000L,summary.totals.totalStake)
             assertEquals(16000L,summary.totals.savedNetCommission)
             assertEquals(3000L,summary.totals.winningStake)

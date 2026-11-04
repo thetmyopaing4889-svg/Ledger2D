@@ -66,7 +66,7 @@ class CustomerStatementTest {
         assertEquals(300L,morning.totals.totalBet)
         assertEquals(26000L,morning.totals.payout)
         assertEquals(setOf(80L,90L),morning.draws.single().payoutRates)
-        assertEquals(1,morning.draws.single().slots)
+        assertEquals(2,morning.draws.single().slots)
         val all=CustomerStatementCalculator.build(lines,winners)
         assertEquals(2,all.draws.size)
         assertEquals(111000L,all.totals.payout)
@@ -122,6 +122,26 @@ class CustomerStatementTest {
         assertEquals(6000L, mixed.totals.totalBet)
         assertEquals(1000L, mixed.totals.settlementAmount)
         assertEquals(1, mixed.totals.awaitingDraws)
+    }
+
+
+    @Test fun groupedRepeatedDigitRowsCountOriginalBetLinesWithoutChangingMoney() {
+        val repeated = listOf(
+            stake(1, am, "00", 15000, 80).copy(slotCount = 5),
+            stake(2, am, "00", 3000, 90).copy(slotCount = 3),
+            stake(1, pm, "00", 500, 85).copy(slotCount = 2),
+        )
+        val winners = mapOf((monday to am) to "00", (monday to pm) to "00")
+        val morning = CustomerStatementCalculator.build(repeated, winners, am)
+        assertEquals(8L, morning.totals.slots)
+        assertEquals(5, morning.draws.single { it.customerId == 1L }.slots)
+        assertEquals(3, morning.draws.single { it.customerId == 2L }.slots)
+        assertEquals(18000L, morning.totals.totalBet)
+        assertEquals(1470000L, morning.totals.payout)
+        assertEquals(-1452000L, morning.totals.settlementAmount)
+        val all = CustomerStatementCalculator.build(repeated, winners)
+        assertEquals(10L, all.totals.slots)
+        assertEquals(18500L, all.totals.totalBet)
     }
 
     @Test fun allCustomersDoNotCancelOneCustomersDebtAgainstAnother() {

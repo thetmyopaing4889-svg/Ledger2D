@@ -100,7 +100,7 @@ private fun ReportTotalsCard(t: StatementTotals, customerCount: Int?, counts: St
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းချုပ်"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသော ထိုးသား $customerCount ယောက်","Customers with entries: $customerCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ReportLine(if (customerCount == null) "အကြိမ်အလိုက် ကွက်ပေါင်း" else "ထိုးသား/အကြိမ်အလိုက် ကွက်ပေါင်း", "${t.slots} ကွက်")
+            ReportLine(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စုစုပေါင်းထိုးကွက်", "Total bet slots"), "${t.slots} ကွက်")
             ReportLine("စုစုပေါင်းထိုးကြေး", "${t.totalBet.statementAmount()} ကျပ်", true)
             if (t.awaitingDraws > 0 && t.completedDraws > 0)
                 ReportLine(

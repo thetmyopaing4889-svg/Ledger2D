@@ -41,6 +41,7 @@ data class CustomerStatementRatedRow(
     val digit: String,
     val payoutRate: Long,
     val amount: Long,
+    val slotCount: Long,
 )
 /** Read-only grouped bet stakes. Preserves each entry's saved agent payout rate. */
 data class AgentStatementRatedRow(
@@ -51,6 +52,7 @@ data class AgentStatementRatedRow(
     val digit: String,
     val payoutRate: Long,
     val amount: Long,
+    val slotCount: Long,
 )
 data class AgentStatementCommissionRow(
     val agentId: Long,
@@ -75,7 +77,7 @@ data class AgentStatementCommissionRow(
 
     @Query("""SELECT be.agentId AS agentId, be.customerId AS customerId,
         be.drawDate AS drawDate, be.drawSession AS drawSession,
-        bl.digit AS digit, be.payoutRate AS payoutRate, SUM(bl.amount) AS amount
+        bl.digit AS digit, be.payoutRate AS payoutRate, SUM(bl.amount) AS amount, COUNT(bl.id) AS slotCount
         FROM bet_entries be JOIN bet_lines bl ON bl.betEntryId = be.id
         WHERE be.drawDate BETWEEN :start AND :end AND (:agentId = -1 OR be.agentId = :agentId)
         GROUP BY be.agentId, be.customerId, be.drawDate, be.drawSession, bl.digit, be.payoutRate
@@ -93,7 +95,7 @@ data class AgentStatementCommissionRow(
 
     @Query("""SELECT be.customerId AS customerId, be.drawDate AS drawDate,
         be.drawSession AS drawSession, bl.digit AS digit,
-        be.payoutRate AS payoutRate, SUM(bl.amount) AS amount
+        be.payoutRate AS payoutRate, SUM(bl.amount) AS amount, COUNT(bl.id) AS slotCount
         FROM bet_entries be JOIN bet_lines bl ON bl.betEntryId = be.id
         WHERE be.agentId = :agentId AND be.drawDate BETWEEN :start AND :end
           AND (:customerId = -1 OR be.customerId = :customerId)

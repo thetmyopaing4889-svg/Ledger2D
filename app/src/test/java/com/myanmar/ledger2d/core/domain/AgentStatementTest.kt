@@ -189,6 +189,41 @@ class AgentStatementTest {
         assertNull(pending.totals.settlementAmount)
     }
 
+
+    @Test fun originalBetLineCountSumsPerCustomerAndAgentWithRepeatDigits() {
+        val stakes = listOf(
+            bet(1, 10, "00", 106000, 80).copy(slotCount = 51),
+            bet(1, 11, "00", 180000, 80).copy(slotCount = 55),
+        )
+        val savedCommissions = listOf(comm(1, 10, 1000), comm(1, 11, 2000))
+        val statement = AgentStatementCalculator.build(
+            stakes, savedCommissions, mapOf((day to DrawSession.MORNING) to "00"),
+        )
+        assertEquals(106, statement.draws.single().slots)
+        assertEquals(106L, statement.totals.digitSlots)
+        assertEquals(51, statement.draws.single().forCustomer(10).slots)
+        assertEquals(55, statement.draws.single().forCustomer(11).slots)
+        assertEquals(286000L, statement.totals.totalStake)
+        assertEquals(3000L, statement.totals.savedNetCommission)
+        assertEquals(22880000L, statement.totals.payout)
+        assertEquals(-22597000L, statement.totals.settlementAmount)
+    }
+
+    @Test fun separateAgentsAndSavedRatesKeepCountsIndependent() {
+        val stakes = listOf(
+            bet(1, 10, "00", 1000, 80).copy(slotCount = 5),
+            bet(1, 10, "00", 2000, 90).copy(slotCount = 2),
+            bet(2, 20, "00", 3000, 85).copy(slotCount = 3),
+        )
+        val report = AgentStatementCalculator.build(
+            stakes, emptyList(), mapOf((day to DrawSession.MORNING) to "00"),
+        )
+        assertEquals(10L, report.totals.digitSlots)
+        assertEquals(7, report.draws.single { it.agentId == 1L }.slots)
+        assertEquals(3, report.draws.single { it.agentId == 2L }.slots)
+        assertEquals(515000L, report.totals.payout)
+    }
+
     @Test fun incompleteAndMultipleAgentSettlementsKeepMoneyDirectionsSeparate() {
         val stakes = listOf(
             bet(1, 10, "20", 1000, 80),

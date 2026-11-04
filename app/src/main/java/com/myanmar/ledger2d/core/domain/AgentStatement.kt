@@ -12,6 +12,8 @@ data class AgentRatedStake(
     val digit: String,
     val stake: Long,
     val savedPayoutRate: Long,
+    /** Original bet-line count in this rate-preserving SQL group. */
+    val slotCount: Long = 1L,
 )
 
 /** Already-saved NET commission; not the agent's gross commission agreement. */
@@ -41,7 +43,7 @@ data class AgentStatementDraw(
             Math.addExact(t, Math.multiplyExact(s.stake, s.savedPayoutRate))
         }
     }
-    val slots: Int = stakes.map { it.digit }.distinct().size
+    val slots: Int = stakes.fold(0) { count, row -> Math.addExact(count, Math.toIntExact(row.slotCount)) }
     /** Positive is the reseller's profit, negative their loss; pending has no final result. */
     val profitLoss: Long? get() = payout?.let { Math.subtractExact(totalStake, it) }
     /** Commission belongs to the reseller; retain the saved draw-specific NET amount. */

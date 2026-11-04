@@ -236,7 +236,7 @@ private fun AgentStatementSummary(totals: AgentStatementTotals, agentCount: Int?
             if (agentCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသောဒိုင် $agentCount ယောက်", "Agents with entries: $agentCount"),
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        AgentStatementValue("ထိုးကွက်", "${totals.digitSlots} ကွက်")
+        AgentStatementValue(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စုစုပေါင်းထိုးကွက်", "Total bet slots"), "${totals.digitSlots} ကွက်")
         AgentStatementValue("စုစုပေါင်းထိုးကြေး", "${totals.totalStake.agentMoney()} ကျပ်", true)
         AgentStatementValue("ကော်မရှင်", "${totals.savedNetCommission.agentMoney()} ကျပ်")
         if (totals.pendingDraws > 0) {

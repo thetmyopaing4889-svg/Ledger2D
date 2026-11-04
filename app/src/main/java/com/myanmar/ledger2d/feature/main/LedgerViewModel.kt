@@ -389,7 +389,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         val stakes = bets.agentStatementRatedRows(agentId, range.start, range.end).map {
             AgentRatedStake(
                 it.agentId, it.customerId, it.drawDate, it.drawSession,
-                it.digit, it.amount, it.payoutRate,
+                it.digit, it.amount, it.payoutRate, it.slotCount,
             )
         }
         val commission = bets.agentStatementCommissionRows(agentId, range.start, range.end).map {
@@ -441,6 +441,7 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
                     customerId = it.customerId, date = it.drawDate,
                     session = it.drawSession, digit = it.digit,
                     payoutRate = it.payoutRate, amount = it.amount,
+                    slotCount = it.slotCount,
                 )
             }
         // Read only persisted, final winning numbers. UI-only LIVE provisional values

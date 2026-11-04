@@ -38,6 +38,8 @@ data class StatementStake(
     val digit: String,
     val payoutRate: Long,
     val amount: Long,
+    /** Original bet-line count in this rate-preserving SQL group. */
+    val slotCount: Long = 1L,
 )
 
 data class StatementDraw(
@@ -151,7 +153,7 @@ object CustomerStatementCalculator {
                 }
                 StatementDraw(
                     customerId = key.first, date = key.second, session = key.third,
-                    slots = lines.map { it.digit }.distinct().size,
+                    slots = lines.fold(0) { count, row -> Math.addExact(count, Math.toIntExact(row.slotCount)) },
                     totalBet = bet, winner = digit,
                     winningStake = if (digit == null) null else winning,
                     payout = if (digit == null) null else payout,
