@@ -126,8 +126,8 @@ fun CustomerReviewWorkspace(
         else customers.firstOrNull { it.id == customerId }?.name ?: "Customer"
 
     AppScaffold(
-        title = com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (resultPage) if (mode == "report") "ထိုးသားစာရင်း" else "အရှုံးအမြတ်သုံးသပ်ချက်"
-                else "စာရင်းရွေးချယ်ရန်"),
+        title = if (resultPage && mode == "report") lang.text("ထိုးသားစာရင်း", "Customer Report")
+            else lang.translate(if (resultPage) "အရှုံးအမြတ်သုံးသပ်ချက်" else "စာရင်းရွေးချယ်ရန်"),
         onBack = { if (resultPage) resultPage = false else onBack() },
         includeQuickEntryFab = false,
     ) { padding ->
@@ -229,7 +229,9 @@ fun CustomerReviewWorkspace(
                 }
             }
         } else if (canView && range != null) {
-            val subtitle = if (mode == "report") selectedCustomerName else "$selectedAgentName • $selectedCustomerName"
+            val subtitle = if (mode == "report") {
+                if (customerId == -1L) lang.text("ထိုးသားအားလုံး", "All customers") else selectedCustomerName
+            } else "$selectedAgentName • $selectedCustomerName"
             if (mode == "report") {
                 CustomerLedgerReportResults(
                     vm, agentId, customerId, period, range, draw,
