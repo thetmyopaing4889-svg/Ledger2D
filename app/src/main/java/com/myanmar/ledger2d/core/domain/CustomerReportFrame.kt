@@ -53,6 +53,14 @@ object CustomerReportFrame {
         return rows
     }
 
+    /** Page totals are strictly for the visible date interval, not the full selection. */
+    fun drawsOnPage(page: CustomerReportPage, draws: List<StatementDraw>): List<StatementDraw> =
+        draws.filter { !it.date.isBefore(page.start) && !it.date.isAfter(page.end) }
+
+    /** Month navigation uses day one so 31st-to-short-month shifts never drift. */
+    fun shiftedMonth(anchor: LocalDate, delta: Int): LocalDate =
+        anchor.withDayOfMonth(1).plusMonths(delta.toLong())
+
     fun weekStart(day: LocalDate): LocalDate =
         day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 }

@@ -236,6 +236,15 @@ fun CustomerReviewWorkspace(
                 CustomerLedgerReportResults(
                     vm, agentId, customerId, period, range, draw,
                     subtitle, onReselect = { resultPage = false },
+                    onMonthShift = { delta ->
+                        // Moving the selected MONTH changes the report range as well as its summary.
+                        // Anchor on day one to avoid 31st -> 28th date drift across months.
+                        if (period == StatementPeriod.MONTH) {
+                            runCatching { LocalDate.parse(dateText) }.getOrNull()?.let {
+                                dateText = com.myanmar.ledger2d.core.domain.CustomerReportFrame.shiftedMonth(it, delta).toString()
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxSize().padding(padding),
                 )
             } else {

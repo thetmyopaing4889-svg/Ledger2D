@@ -23,6 +23,6 @@ fun CustomerStatementResults(
     modifier: Modifier = Modifier,
 ) {
     CustomerLedgerReportResults(
-        vm, agentId, customerId, period, range, session, subtitle, onReselect, modifier,
+        vm, agentId, customerId, period, range, session, subtitle, onReselect, modifier = modifier,
     )
 }

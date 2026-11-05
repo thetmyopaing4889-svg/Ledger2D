@@ -426,6 +426,12 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         agentIds.flatMap { id -> container.customers.getForAgent(id) }
             .associate { it.id to it.name }
 
+    /** Historical customer report names are resolved by saved customer IDs, not the customer's current agent. */
+    suspend fun customerStatementNames(customerIds: Set<Long>): Map<Long, String> =
+        customerIds.mapNotNull { id ->
+            container.customers.get(id)?.let { id to it.name }
+        }.toMap()
+
     /** Customer-facing report is read-only; no commission or agent P/L is exposed. */
     suspend fun customerStatement(
         agentId: Long,

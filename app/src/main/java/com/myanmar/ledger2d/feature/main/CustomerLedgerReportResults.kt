@@ -78,15 +78,23 @@ private fun StatementDue(draws: List<StatementDraw>, compact: Boolean) {
         return
     }
     val (receive,pay) = CustomerStatementCalculator.settlementByCustomer(draws)
+    val pending = statementDrawCounts(draws).awaiting
     Column(horizontalAlignment = if (compact) Alignment.End else Alignment.Start) {
-        if (receive > 0L || pay == 0L)
+        if (receive == 0L && pay == 0L)
+            Text(lang.text("ရှင်းရန်မရှိ", "No amount due"),
+                fontSize = if (compact) 11.sp else 13.sp)
+        if (receive > 0L)
             Text(lang.text(if (compact) "ရ " else "User ရရန် ", if (compact) "In " else "User receives ") + receive.moneyLabel(),
-                fontSize = if (compact) 10.sp else 13.sp,
-                fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 13.sp else 18.sp)
+                fontSize = if (compact) 11.sp else 13.sp,
+                fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 15.sp else 18.sp)
         if (pay > 0L)
             Text(lang.text(if (compact) "ပေး " else "User ပေးရန် ", if (compact) "Out " else "User pays ") + pay.moneyLabel(),
-                fontSize = if (compact) 10.sp else 13.sp,
-                fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 13.sp else 18.sp)
+                fontSize = if (compact) 11.sp else 13.sp,
+                fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 15.sp else 18.sp)
+        if (pending > 0)
+            Text(lang.text("စောင့် $pending ကြိမ်", "$pending pending"),
+                fontSize = if (compact) 10.5.sp else 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -103,13 +111,15 @@ private fun StatementMetric(label: String, value: String, modifier: Modifier = M
 }
 
 @Composable
-private fun StatementSummary(draws: List<StatementDraw>, customerCount: Int?) {
+private fun StatementSummary(draws: List<StatementDraw>, customerCount: Int?, period: StatementPeriod) {
     val lang = LocalLanguage.current
     val total = CustomerStatementCalculator.totals(draws)
     val count = statementDrawCounts(draws)
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
-            Text(lang.text("စာရင်းချုပ်", "Summary"),fontWeight=FontWeight.Bold,
+            Text(if (period == StatementPeriod.YEAR || period == StatementPeriod.CUSTOM)
+                lang.text("ကာလချုပ်", "Period total")
+                else lang.text("စာရင်းချုပ်", "Summary"),fontWeight=FontWeight.Bold,
                 style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
             if (customerCount != null)
                 Text(lang.text("ထိုးသား " + customerCount + " ယောက်", customerCount.toString() + " customers"),
@@ -147,9 +157,9 @@ private fun StatementSummary(draws: List<StatementDraw>, customerCount: Int?) {
 @Composable
 private fun RowScope.LedgerText(text: String, weight: Float, header: Boolean=false,
                                   align: TextAlign=TextAlign.Start) {
-    Text(text, modifier=Modifier.weight(weight),
-        fontSize=if (header) 10.sp else 10.5.sp,
-        lineHeight=13.sp, maxLines=2, softWrap=true,
+    Text(if (header) text else text.replace(",", ",\u200B"), modifier=Modifier.weight(weight),
+        fontSize=if (header) 10.5.sp else 11.5.sp,
+        lineHeight=15.sp, maxLines=4, softWrap=true,
         fontWeight=if (header) FontWeight.Bold else FontWeight.Medium,
         textAlign=align,
         color=if (header) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
@@ -179,11 +189,13 @@ private fun LedgerEntry(line: CustomerLedgerLine, view: String, shade: Boolean, 
         Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=8.dp),
             horizontalArrangement=Arrangement.spacedBy(3.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1.27f),verticalArrangement=Arrangement.spacedBy(1.dp)) {
-                Text(line.date.dayOfMonth.toString() + " " +
-                    line.date.format(DateTimeFormatter.ofPattern("EEE",Locale.US)),
-                    fontSize=10.5.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
+                val weekday = if (lang.code == "en")
+                    line.date.format(DateTimeFormatter.ofPattern("EEE", Locale.US))
+                else listOf("တနင်္", "အင်္ဂါ", "ဗုဒ္ဓ", "ကြာသ", "သောကြာ", "စနေ", "တနွေ")[line.date.dayOfWeek.value - 1]
+                Text(line.date.dayOfMonth.toString() + " " + weekday,
+                    fontSize=11.5.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
                 Text(if(line.session==DrawSession.MORNING) lang.text("မနက်","AM") else lang.text("ညနေ","PM"),
-                    fontSize=9.5.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    fontSize=10.5.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             val isClosed = line.closed && !line.bet
             val n = if(view=="stake")
@@ -213,9 +225,12 @@ private fun LedgerTotal(draws: List<StatementDraw>, view: String, monthTotal: Bo
     Surface(color=MaterialTheme.colorScheme.primaryContainer.copy(alpha=.65f)) {
         Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=10.dp),
             horizontalArrangement=Arrangement.spacedBy(3.dp),verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.weight(1.27f)) {
-                Text(if(monthTotal) lang.text("လချုပ်","Month") else lang.text("စုစုပေါင်း","Total"),
-                    fontSize=10.sp,fontWeight=FontWeight.Bold,maxLines=2)
+            Column(Modifier.weight(1.27f)) {
+                Text(if(monthTotal) lang.text("လချုပ်","Month total") else lang.text("စုစုပေါင်း","Total"),
+                    fontSize=11.sp,fontWeight=FontWeight.Bold,maxLines=2)
+                val pending = statementDrawCounts(draws).awaiting
+                if (pending > 0) Text(lang.text("စောင့် $pending", "$pending pending"),
+                    fontSize=9.5.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             LedgerText(if(view=="stake") totals.slots.moneyLabel() else "—",.69f,align=TextAlign.End)
             LedgerText(if(view=="stake") totals.totalBet.moneyLabel()
@@ -245,7 +260,7 @@ private fun PeriodLedger(
             val week=ChronoUnit.DAYS.between(firstWeek,CustomerReportFrame.weekStart(line.date))/7
             LedgerEntry(line,view,week%2!=0L){onOpen(line.date,line.session)}
         }
-        val pageDraws=draws.filter { !it.date.isBefore(page.start) && !it.date.isAfter(page.end) }
+        val pageDraws=CustomerReportFrame.drawsOnPage(page, draws)
         LedgerTotal(pageDraws,view,period==StatementPeriod.MONTH||period==StatementPeriod.YEAR||period==StatementPeriod.CUSTOM)
     }
 }
@@ -346,7 +361,8 @@ private fun PageCaption(page:CustomerReportPage,period:StatementPeriod) {
 @Composable
 fun CustomerLedgerReportResults(
     vm:LedgerViewModel,agentId:Long,customerId:Long,period:StatementPeriod,range:StatementRange,
-    session:DrawSession?,subtitle:String,onReselect:()->Unit,modifier:Modifier=Modifier
+    session:DrawSession?,subtitle:String,onReselect:()->Unit,
+    onMonthShift: ((Int)->Unit)? = null,modifier:Modifier=Modifier
 ) {
     val lang=LocalLanguage.current
     val revision by vm.revision.collectAsStateWithLifecycle()
@@ -380,6 +396,12 @@ fun CustomerLedgerReportResults(
     }
     val closed=remember(closedDays){closedDays.map {it.date}.toSet()}
     val statement=data
+    val reportNames by produceState<Map<Long,String>>(
+        emptyMap(), statement?.customers?.keys, revision
+    ) {
+        value = statement?.let { vm.customerStatementNames(it.customers.keys) }.orEmpty()
+    }
+    val pageDraws = statement?.let { CustomerReportFrame.drawsOnPage(page, it.draws) }.orEmpty()
 
     LazyColumn(modifier,contentPadding=PaddingValues(12.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -399,7 +421,7 @@ fun CustomerLedgerReportResults(
             item{LinearProgressIndicator(Modifier.fillMaxWidth())}
         } else {
             item { StatementSummary(statement.draws,
-                if(customerId==-1L) statement.customers.size else null) }
+                if(customerId==-1L) statement.customers.size else null, period) }
             if(customerId==-1L) item {
                 Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                     FilterChip(groupView=="customers",onClick={groupView="customers"},
@@ -415,14 +437,18 @@ fun CustomerLedgerReportResults(
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,
                         verticalAlignment=Alignment.CenterVertically) {
                         IconButton(onClick={
-                            if(monthIndex>0){monthIndex--;detailDate=null}
-                        },enabled=monthIndex>0){
+                            if(period==StatementPeriod.MONTH && onMonthShift!=null) {
+                                detailDate=null;onMonthShift(-1)
+                            } else if(monthIndex>0){monthIndex--;detailDate=null}
+                        },enabled=(period==StatementPeriod.MONTH && onMonthShift!=null)||monthIndex>0){
                             Icon(Icons.Default.ChevronLeft,lang.text("ယခင်လ","Previous month"))
                         }
                         PageCaption(page,period)
                         IconButton(onClick={
-                            if(monthIndex<pages.lastIndex){monthIndex++;detailDate=null}
-                        },enabled=monthIndex<pages.lastIndex){
+                            if(period==StatementPeriod.MONTH && onMonthShift!=null) {
+                                detailDate=null;onMonthShift(1)
+                            } else if(monthIndex<pages.lastIndex){monthIndex++;detailDate=null}
+                        },enabled=(period==StatementPeriod.MONTH && onMonthShift!=null)||monthIndex<pages.lastIndex){
                             Icon(Icons.Default.ChevronRight,lang.text("နောက်လ","Next month"))
                         }
                     }
@@ -440,9 +466,15 @@ fun CustomerLedgerReportResults(
                         label={Text(lang.text("ထိုးသားရှာရန်","Search customers"))},
                         singleLine=true,modifier=Modifier.fillMaxWidth())
                 }
-                val list=customers.filter {
-                    statement.customers.containsKey(it.id)&&it.name.contains(search,ignoreCase=true)
-                }
+                // Saved entry customer IDs remain visible even after their current agent changes.
+                val activeIds = pageDraws.map { it.customerId }.toSet()
+                val list = statement.customers.keys.asSequence()
+                    .filter { it in activeIds }
+                    .map { id -> id to (reportNames[id] ?:
+                        customers.firstOrNull { it.id == id }?.name ?: "Customer #$id") }
+                    .filter { (_, name) -> name.contains(search, ignoreCase=true) }
+                    .sortedWith(compareBy<Pair<Long,String>> { it.second.lowercase(Locale.ROOT) }
+                        .thenBy { it.first }).toList()
                 if(list.isEmpty()) item {
                     Text(lang.text("ထိုးသားစာရင်းမရှိ","No matching customers"),
                         style=MaterialTheme.typography.bodySmall)
@@ -450,17 +482,17 @@ fun CustomerLedgerReportResults(
                         detailDate=d.toString();detailDraw=s.name;detailCustomer=-1L
                     }
                 }
-                items(list,key={it.id}) { customer ->
-                    val draws=statement.draws.filter {it.customerId==customer.id}
-                    val subtotal=statement.customers[customer.id]!!
-                    val open=expandedCustomer==customer.id
+                items(list,key={it.first}) { customer ->
+                    val draws=pageDraws.filter {it.customerId==customer.first}
+                    val subtotal=CustomerStatementCalculator.totals(draws)
+                    val open=expandedCustomer==customer.first
                     OutlinedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                             Row(Modifier.fillMaxWidth().clickable {
-                                expandedCustomer=if(open) -1L else customer.id
+                                expandedCustomer=if(open) -1L else customer.first
                             }.padding(5.dp),verticalAlignment=Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(customer.name,fontWeight=FontWeight.Bold)
+                                    Text(customer.second,fontWeight=FontWeight.Bold)
                                     Text(lang.text("ကွက် ","Slots ")+subtotal.slots.moneyLabel()+
                                         " · "+lang.text("ထိုးကြေး ","Stake ")+subtotal.totalBet.moneyLabel(),
                                         style=MaterialTheme.typography.labelSmall,
@@ -471,20 +503,24 @@ fun CustomerLedgerReportResults(
                                 Icon(if(open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
                             }
                             if(open) PeriodLedger(page,period,session,draws,winnerMap,closed,tableView){d,s->
-                                detailDate=d.toString();detailDraw=s.name;detailCustomer=customer.id
+                                detailDate=d.toString();detailDraw=s.name;detailCustomer=customer.first
                             }
                         }
                     }
                 }
                 if(list.isNotEmpty()) item {
-                    val ids=list.map {it.id}.toSet()
-                    val shown=statement.draws.filter {it.customerId in ids}
+                    val ids=list.map {it.first}.toSet()
+                    val shown=pageDraws.filter {it.customerId in ids}
                     Surface(color=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.55f),
                         shape=MaterialTheme.shapes.medium) {
                         Row(Modifier.fillMaxWidth().padding(10.dp),
                             horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                             Column {
-                                Text(lang.text("စာရင်းစုစုပေါင်း","List total"),fontWeight=FontWeight.Bold)
+                                Text(if (period==StatementPeriod.MONTH||period==StatementPeriod.YEAR||
+                                    period==StatementPeriod.CUSTOM)
+                                    lang.text("လစာရင်းစုစုပေါင်း","Displayed month total")
+                                    else lang.text("စာရင်းစုစုပေါင်း","List total"),
+                                    fontWeight=FontWeight.Bold)
                                 Text(CustomerStatementCalculator.totals(shown).totalBet.moneyLabel(),
                                     style=MaterialTheme.typography.bodySmall)
                             }

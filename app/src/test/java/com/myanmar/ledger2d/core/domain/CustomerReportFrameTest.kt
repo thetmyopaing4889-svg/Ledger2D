@@ -71,4 +71,49 @@ class CustomerReportFrameTest {
         )
         assertEquals(100_000L to 60_000L,CustomerStatementCalculator.settlementByCustomer(draws))
     }
+
+    @Test fun yearViewMonthTotalOnlyUsesVisibleMonthAndKeepsPendingSeparate() {
+        val pages = CustomerReportFrame.pages(StatementPeriod.YEAR,
+            StatementRange(LocalDate.of(2026,1,1), LocalDate.of(2026,12,31)))
+        val october = LocalDate.of(2026,10,30)
+        val november = LocalDate.of(2026,11,5)
+        val december = LocalDate.of(2026,12,1)
+        val draws = listOf(
+            StatementDraw(1L, october, DrawSession.MORNING, 7, 500_000L, "13", 0L, 0L, setOf(80L)),
+            StatementDraw(1L, november, DrawSession.MORNING, 3, 100_000L, "20", 1_000L, 80_000L, setOf(80L)),
+            StatementDraw(2L, november, DrawSession.EVENING, 5, 200_000L, null, null, null, setOf(80L)),
+            StatementDraw(1L, december, DrawSession.MORNING, 9, 900_000L, "25", 0L, 0L, setOf(80L))
+        )
+        val pageDraws = CustomerReportFrame.drawsOnPage(pages[10], draws)
+        assertEquals(2, pageDraws.size)
+        val totals = CustomerStatementCalculator.totals(pageDraws)
+        assertEquals(8L, totals.slots)
+        assertEquals(300_000L, totals.totalBet)
+        assertEquals(100_000L, totals.completedBet)
+        assertEquals(1_000L, totals.winningStake)
+        assertEquals(80_000L, totals.payout)
+        assertEquals(1, totals.awaitingDraws)
+        assertEquals(20_000L to 0L, CustomerStatementCalculator.settlementByCustomer(pageDraws))
+        assertEquals(100_000L, CustomerStatementCalculator.totals(pageDraws.filter { it.customerId == 1L }).totalBet)
+        assertEquals(200_000L, CustomerStatementCalculator.totals(pageDraws.filter { it.customerId == 2L }).totalBet)
+    }
+
+    @Test fun monthNavigationNeverDriftsAfterTheThirtyFirst() {
+        val first = LocalDate.of(2026, 1, 31)
+        val feb = CustomerReportFrame.shiftedMonth(first, 1)
+        val mar = CustomerReportFrame.shiftedMonth(feb, 1)
+        assertEquals(LocalDate.of(2026,2,1),feb)
+        assertEquals(LocalDate.of(2026,3,1),mar)
+        assertEquals(LocalDate.of(2026,1,1),CustomerReportFrame.shiftedMonth(feb,-1))
+        assertEquals(StatementRange(LocalDate.of(2026,3,1),LocalDate.of(2026,3,31)),
+            StatementPeriods.range(StatementPeriod.MONTH,mar,mar,mar))
+    }
+
+    @Test fun emptySelectedMonthStillShowsEachWorkdayInBothSessions() {
+        val page=CustomerReportPage(LocalDate.of(2026,2,1),LocalDate.of(2026,2,28))
+        val slots=CustomerReportFrame.slots(page,null)
+        assertEquals(40, slots.size) // 20 weekdays, two draws
+        assertTrue(CustomerReportFrame.drawsOnPage(page,emptyList()).isEmpty())
+        assertEquals(20, CustomerReportFrame.slots(page,DrawSession.MORNING).size)
+    }
 }
