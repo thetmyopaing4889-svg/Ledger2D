@@ -99,12 +99,12 @@ private fun StatementDue(draws: List<StatementDraw>, compact: Boolean) {
             Text(lang.text("ရှင်းရန်မရှိ", "No amount due"),
                 fontSize = if (compact) 11.sp else 13.sp)
         if (receive > 0L)
-            Text(lang.text(if (compact) "ရ " else "User ရရန် ", if (compact) "In " else "User receives ") + receive.moneyLabel(),
+            Text(lang.text(if (compact) "ရ " else "မိမိရရန် ", if (compact) "In " else "User receives ") + receive.moneyLabel(),
                 fontSize = if (compact) 11.sp else 13.sp,
                 fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 15.sp else 18.sp,
                 color=ReportPalette.GreenInk)
         if (pay > 0L)
-            Text(lang.text(if (compact) "ပေး " else "User ပေးရန် ", if (compact) "Out " else "User pays ") + pay.moneyLabel(),
+            Text(lang.text(if (compact) "ပေး " else "မိမိပေးရန် ", if (compact) "Out " else "User pays ") + pay.moneyLabel(),
                 fontSize = if (compact) 11.sp else 13.sp,
                 fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 15.sp else 18.sp,
                 color=ReportPalette.GreenInk)
