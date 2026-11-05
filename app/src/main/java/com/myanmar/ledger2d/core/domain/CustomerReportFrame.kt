@@ -57,10 +57,19 @@ object CustomerReportFrame {
     fun showMonthPager(period: StatementPeriod, range: StatementRange): Boolean =
         (period == StatementPeriod.YEAR || period == StatementPeriod.CUSTOM) && pages(period, range).size > 1
 
-    /** Alternating rows and week markers share the same Monday-based band index. */
+    /**
+     * Number visible calendar weeks from the FIRST WORKING-DAY week.
+     * A month that starts on a weekend must not show an empty "week 1".
+     */
     fun weekBandIndex(page: CustomerReportPage, date: LocalDate): Long {
         require(!date.isBefore(page.start) && !date.isAfter(page.end))
-        return java.time.temporal.ChronoUnit.DAYS.between(weekStart(page.start), weekStart(date)) / 7L
+        val firstWeekday = when (page.start.dayOfWeek) {
+            DayOfWeek.SATURDAY -> page.start.plusDays(2)
+            DayOfWeek.SUNDAY -> page.start.plusDays(1)
+            else -> page.start
+        }
+        val origin = if (firstWeekday.isAfter(page.end)) page.start else firstWeekday
+        return java.time.temporal.ChronoUnit.DAYS.between(weekStart(origin), weekStart(date)) / 7L
     }
 
     /** Page totals are strictly for the visible date interval, not the full selection. */

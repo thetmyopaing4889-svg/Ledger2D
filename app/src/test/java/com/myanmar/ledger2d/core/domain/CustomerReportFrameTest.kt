@@ -148,4 +148,13 @@ class CustomerReportFrameTest {
         assertEquals(3L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,27)))
         assertEquals(4L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,30)))
     }
+
+    @Test fun saturdayMonthStartDoesNotSkipFirstVisibleWeek() {
+        val page=CustomerReportPage(LocalDate.of(2026,8,1),LocalDate.of(2026,8,31))
+        val rows=CustomerReportFrame.slots(page,null)
+        assertEquals(LocalDate.of(2026,8,3),rows.first().date)
+        assertEquals(0L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,8,3)))
+        assertEquals(1L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,8,10)))
+        assertEquals(4L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,8,31)))
+    }
 }
