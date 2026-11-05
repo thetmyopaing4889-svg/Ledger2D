@@ -34,6 +34,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
 import com.myanmar.ledger2d.core.design.LedgerTextRole
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,51 +81,61 @@ private fun buildLedgerLines(
     }
 }
 
+/**
+ * Settlement is customer-directional: never net different customers here.
+ * Positive = green amount; payable = red amount with a minus sign.
+ * Explicit pending and zero states are different from missing wager rows.
+ */
 @Composable
 private fun StatementDue(draws: List<StatementDraw>, compact: Boolean) {
-    val lang = LocalLanguage.current
-    if (draws.isEmpty()) {
-        Text(lang.text("မရှိ", "None"), fontSize = if (compact) 10.sp else 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val lang=LocalLanguage.current
+    val style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
+    if(draws.isEmpty()) {
+        Text("—",style=style,color=ReportPalette.Muted)
         return
     }
-    if (draws.none { it.resultKnown }) {
-        Text(lang.text("စောင့်", "Pending"), fontSize = if (compact) 10.sp else 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val counts=statementDrawCounts(draws)
+    if(counts.completed==0) {
+        Text(lang.text("စောင့်","Pending"),style=style,color=ReportPalette.Muted)
         return
     }
-    val (receive,pay) = CustomerStatementCalculator.settlementByCustomer(draws)
-    val pending = statementDrawCounts(draws).awaiting
-    Column(horizontalAlignment = if (compact) Alignment.End else Alignment.Start) {
-        if (receive == 0L && pay == 0L)
-            Text(lang.text("ရှင်းရန်မရှိ", "No amount due"),
-                fontSize = if (compact) 11.sp else 13.sp)
-        if (receive > 0L)
-            Text(lang.text(if (compact) "ရ " else "မိမိရရန် ", if (compact) "In " else "User receives ") + receive.moneyLabel(),
-                fontSize = if (compact) 11.sp else 13.sp,
-                fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 15.sp else 18.sp,
-                color=ReportPalette.GreenInk)
-        if (pay > 0L)
-            Text(lang.text(if (compact) "ပေး " else "မိမိပေးရန် ", if (compact) "Out " else "User pays ") + pay.moneyLabel(),
-                fontSize = if (compact) 11.sp else 13.sp,
-                fontWeight = FontWeight.SemiBold, lineHeight = if (compact) 15.sp else 18.sp,
-                color=ReportPalette.GreenInk)
-        if (pending > 0)
-            Text(lang.text("စောင့် $pending ကြိမ်", "$pending pending"),
-                fontSize = if (compact) 10.5.sp else 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val (receive,pay)=CustomerStatementCalculator.settlementByCustomer(draws)
+    Column(
+        horizontalAlignment=if(compact)Alignment.End else Alignment.Start,
+        verticalArrangement=Arrangement.spacedBy(1.dp)
+    ) {
+        if(receive>0L)
+            Text(receive.moneyLabel().replace(",", ",\u200B"),
+                style=style.copy(fontWeight=FontWeight.SemiBold),
+                color=ReportPalette.GreenInk,textAlign=if(compact)TextAlign.End else TextAlign.Start,
+                maxLines=3,softWrap=true)
+        if(pay>0L)
+            Text(("-"+pay.moneyLabel()).replace(",", ",\u200B"),
+                style=style.copy(fontWeight=FontWeight.SemiBold),
+                color=ReportPalette.RedInk,textAlign=if(compact)TextAlign.End else TextAlign.Start,
+                maxLines=3,softWrap=true)
+        if(receive==0L&&pay==0L)
+            Text("0",style=style.copy(fontWeight=FontWeight.SemiBold),
+                color=ReportPalette.Ink)
+        if(counts.awaiting>0)
+            Text(lang.text("စောင့် "+counts.awaiting+" ကြိမ်",counts.awaiting.toString()+" pending"),
+                style=MaterialTheme.typography.labelSmall,color=ReportPalette.Muted)
     }
 }
 
 private object ReportPalette {
     val Wine = Color(0xFFA51639)
     val WineDark = Color(0xFF82112D)
+    val WineHeader = Color(0xFFB63C5D)
     val Blue = Color(0xFFDFEFFC)
     val BlueInk = Color(0xFF175D91)
     val Rose = Color(0xFFFBE2EA)
+    val Lilac = Color(0xFFEDE8FB)
+    val LilacInk = Color(0xFF62459A)
     val RoseInk = Color(0xFF9A2447)
     val Green = Color(0xFFE3F5E8)
     val GreenInk = Color(0xFF17763E)
+    val RedInk = Color(0xFFB42342)
     val SoftPink = Color(0xFFFCE9EF)
     val WeekTint = Color(0xFFF8EEF2)
     val WeekLabel = Color(0xFFF5DDE6)
@@ -132,43 +144,55 @@ private object ReportPalette {
     val Muted = Color(0xFF70676E)
 }
 
+/**
+ * Three compact secondary metrics share one row; the primary clearing figure
+ * gets a full-width row below. Keep every displayed total derived from the
+ * same statement and do not reduce settlement text just to equalize cards.
+ */
 @Composable
 private fun StatementMetric(
-    label:String, value:String, icon:ImageVector, panel:Color, ink:Color,
-    modifier:Modifier=Modifier, note:String?=null
+    label:String,value:String,icon:ImageVector,panel:Color,ink:Color,
+    modifier:Modifier=Modifier,note:String?=null
 ) {
+    val lang=LocalLanguage.current
     Surface(
-        modifier, color=panel, shape=RoundedCornerShape(14.dp),
-        shadowElevation=3.dp, tonalElevation=0.dp,
+        modifier=modifier,color=panel,shape=RoundedCornerShape(14.dp),
+        shadowElevation=3.dp,tonalElevation=0.dp,
         border=BorderStroke(1.dp,ink.copy(alpha=.12f))
     ) {
-        Column(Modifier.heightIn(min=78.dp).padding(horizontal=11.dp,vertical=8.dp),
-            verticalArrangement=Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                Icon(icon,null,tint=ink,modifier=Modifier.size(16.dp))
-                Text(label,style=MaterialTheme.typography.labelSmall,
-                    color=ReportPalette.Ink,maxLines=2)
+        Column(
+            Modifier.padding(horizontal=8.dp,vertical=9.dp),
+            verticalArrangement=Arrangement.spacedBy(5.dp)
+        ) {
+            Row(verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                Icon(icon,null,tint=ink,modifier=Modifier.size(14.dp))
+                Text(label,
+                    style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
+                        .copy(fontWeight=FontWeight.SemiBold,color=ink),
+                    maxLines=2)
             }
-            Text(value,style=MaterialTheme.typography.titleLarge.copy(
-                color=ink,fontWeight=FontWeight.Bold),
-                maxLines=2)
-            if(note!=null) Text(note,style=MaterialTheme.typography.labelSmall,
-                color=ink,maxLines=2)
+            Text(value.replace(",", ",\u200B"),
+                style=MaterialTheme.typography.titleSmall.copy(
+                    color=ink,fontWeight=FontWeight.Bold),
+                maxLines=3,overflow=TextOverflow.Visible,softWrap=true)
+            if(note!=null) Text(note.replace(",", ",\u200B"),
+                style=MaterialTheme.typography.labelSmall.copy(color=ink),
+                maxLines=3,softWrap=true)
         }
     }
 }
 
 @Composable
-private fun DueMetricLine(label:String,amount:Long,compact:Boolean) {
-    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
-        horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-        Text(label,style=MaterialTheme.typography.labelSmall,
-            color=ReportPalette.GreenInk,maxLines=1)
-        Text(amount.moneyLabel(),
-            style=(if(compact)MaterialTheme.typography.titleSmall
-                else MaterialTheme.typography.titleLarge).copy(
-                fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk),
-            modifier=Modifier.weight(1f),textAlign=TextAlign.End,softWrap=true)
+private fun ClearingAmount(label:String,amount:Long,ink:Color,modifier:Modifier=Modifier) {
+    val lang=LocalLanguage.current
+    Column(modifier,verticalArrangement=Arrangement.spacedBy(2.dp)) {
+        Text(label,style=MaterialTheme.typography.labelMedium,
+            fontWeight=FontWeight.SemiBold,color=ink)
+        Text(amount.moneyLabel().replace(",", ",\u200B"),
+            style=LedgerTypographyStandard.style(LedgerTextRole.MONEY,lang.code)
+                .copy(fontWeight=FontWeight.Bold,color=ink),
+            maxLines=3,softWrap=true,overflow=TextOverflow.Visible)
     }
 }
 
@@ -177,34 +201,43 @@ private fun SettlementMetric(draws:List<StatementDraw>,modifier:Modifier=Modifie
     val lang=LocalLanguage.current
     val counts=statementDrawCounts(draws)
     val (receive,pay)=CustomerStatementCalculator.settlementByCustomer(draws)
-    val both=receive>0L&&pay>0L
+    val resultExists=counts.completed>0
     Surface(
-        modifier,color=ReportPalette.Green,shape=RoundedCornerShape(14.dp),
+        modifier=modifier,color=ReportPalette.Green,shape=RoundedCornerShape(14.dp),
         shadowElevation=3.dp,tonalElevation=0.dp,
-        border=BorderStroke(1.dp,ReportPalette.GreenInk.copy(alpha=.12f))
+        border=BorderStroke(1.dp,ReportPalette.GreenInk.copy(alpha=.14f))
     ) {
-        Column(Modifier.heightIn(min=78.dp).padding(horizontal=11.dp,vertical=8.dp),
-            verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(horizontal=12.dp,vertical=10.dp),
+            verticalArrangement=Arrangement.spacedBy(7.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically,
-                horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                 Icon(Icons.Default.Handshake,null,tint=ReportPalette.GreenInk,
-                    modifier=Modifier.size(16.dp))
+                    modifier=Modifier.size(18.dp))
                 Text(lang.text("ငွေရှင်းရန်","Amount due"),
-                    style=MaterialTheme.typography.labelSmall,color=ReportPalette.Ink)
+                    style=LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE,lang.code)
+                        .copy(fontWeight=FontWeight.Bold,color=ReportPalette.Ink))
             }
-            if(draws.isEmpty()) {
-                Text("—",style=MaterialTheme.typography.titleLarge.copy(
-                    fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk))
-            } else if(counts.completed==0) {
-                Text(lang.text("ရလဒ်စောင့်","Pending"),
-                    style=MaterialTheme.typography.titleMedium.copy(
-                    fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk))
-            } else {
-                if(receive>0L) DueMetricLine(lang.text("ရရန်","In"),receive,both)
-                if(pay>0L) DueMetricLine(lang.text("ပေးရန်","Out"),pay,both)
-                if(receive==0L&&pay==0L) Text(
-                    lang.text("ရှင်းရန်မရှိ","No amount due"),
-                    style=MaterialTheme.typography.titleSmall,color=ReportPalette.GreenInk)
+            when {
+                draws.isEmpty() -> Text("—",
+                    style=LedgerTypographyStandard.style(LedgerTextRole.MONEY,lang.code),
+                    color=ReportPalette.Muted)
+                !resultExists -> Text(lang.text("ရလဒ်စောင့်","Pending"),
+                    style=LedgerTypographyStandard.style(LedgerTextRole.MONEY,lang.code),
+                    color=ReportPalette.Muted)
+                receive>0L && pay>0L -> Row(
+                    Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)
+                ) {
+                    ClearingAmount(lang.text("မိမိရရန်","User receives"),receive,
+                        ReportPalette.GreenInk,Modifier.weight(1f))
+                    ClearingAmount(lang.text("မိမိပေးရန်","User pays"),pay,
+                        ReportPalette.RedInk,Modifier.weight(1f))
+                }
+                receive>0L -> ClearingAmount(lang.text("မိမိရရန်","User receives"),receive,
+                    ReportPalette.GreenInk)
+                pay>0L -> ClearingAmount(lang.text("မိမိပေးရန်","User pays"),pay,
+                    ReportPalette.RedInk)
+                else -> ClearingAmount(lang.text("ရှင်းရန်မရှိ","Nothing due"),0L,
+                    ReportPalette.GreenInk)
             }
             if(counts.awaiting>0) Text(
                 lang.text("စောင့် "+counts.awaiting+" ကြိမ်",counts.awaiting.toString()+" pending"),
@@ -222,34 +255,38 @@ private fun StatementSummary(draws:List<StatementDraw>,customerCount:Int?,period
         color=MaterialTheme.colorScheme.surface,
         shape=RoundedCornerShape(20.dp),
         border=BorderStroke(1.dp,ReportPalette.Edge),
-        shadowElevation=3.dp,tonalElevation=0.dp,
-        modifier=Modifier.fillMaxWidth(),
+        shadowElevation=3.dp,tonalElevation=0.dp,modifier=Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(11.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(11.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Text(if(period==StatementPeriod.YEAR||period==StatementPeriod.CUSTOM)
-                        lang.text("ကာလချုပ်","Period total") else lang.text("စာရင်းချုပ်","Summary"),
+                Text(
+                    if(period==StatementPeriod.YEAR||period==StatementPeriod.CUSTOM)
+                        lang.text("ကာလချုပ်","Period total")
+                    else lang.text("စာရင်းချုပ်","Summary"),
                     style=LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE,lang.code)
-                        .copy(color=ReportPalette.Ink),
+                        .copy(color=ReportPalette.Ink,fontWeight=FontWeight.Bold),
                     modifier=Modifier.weight(1f))
                 if(customerCount!=null) Text(
                     lang.text("ထိုးသား "+customerCount+" ယောက်",customerCount.toString()+" customers"),
                     style=MaterialTheme.typography.labelSmall,color=ReportPalette.Muted)
             }
-            Row(Modifier.height(IntrinsicSize.Max),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                 StatementMetric(lang.text("ထိုးကွက်","Slots"),total.slots.moneyLabel(),
-                    Icons.Default.Layers,ReportPalette.Blue,ReportPalette.BlueInk,Modifier.weight(1f).fillMaxHeight())
+                    Icons.Default.Layers,ReportPalette.Blue,ReportPalette.BlueInk,
+                    Modifier.weight(1f).fillMaxHeight())
                 StatementMetric(lang.text("ထိုးကြေး","Stake"),total.totalBet.moneyLabel(),
-                    Icons.Default.Paid,ReportPalette.Blue,ReportPalette.BlueInk,Modifier.weight(1f).fillMaxHeight())
-            }
-            Row(Modifier.height(IntrinsicSize.Max),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                val stake=if(counts.completed>0) total.winningStake.moneyLabel() else "—"
-                val payout=if(counts.completed>0) total.payout.moneyLabel() else "—"
-                StatementMetric(lang.text("လျော်ငွေ","Payout"),payout,
+                    Icons.Default.Paid,ReportPalette.Lilac,ReportPalette.LilacInk,
+                    Modifier.weight(1f).fillMaxHeight())
+                StatementMetric(
+                    lang.text("လျော်ငွေ","Payout"),
+                    if(counts.completed>0) total.payout.moneyLabel() else "—",
                     Icons.Default.EmojiEvents,ReportPalette.Rose,ReportPalette.RoseInk,
-                    Modifier.weight(1f).fillMaxHeight(),lang.text("ပေါက်ကြေး ","Win stake ")+stake)
-                SettlementMetric(draws,Modifier.weight(1f).fillMaxHeight())
+                    Modifier.weight(1f).fillMaxHeight(),
+                    lang.text("ပေါက်ကြေး ","Win stake ")+
+                        (if(counts.completed>0)total.winningStake.moneyLabel() else "—"))
             }
+            SettlementMetric(draws,Modifier.fillMaxWidth())
         }
     }
 }
@@ -271,10 +308,11 @@ private fun RowScope.LedgerText(
 }
 
 /**
- * Header navigation replaces stand-alone grouping and table-view dropdowns.
- * Arrows switch stake/results. The leading title switches customer/combined,
- * and double-tapping any other header label is an optional shortcut.
- * A visible ⇄ marker and status line make gestures discoverable.
+ * Two distinct but connected header bands:
+ * Dark navigation band owns the view arrows and optional search.
+ * Light band gives each original data column its full width back.
+ * In all-customer reports the underlined first column toggles grouping
+ * on a single or double tap; the other labels accept double-tap shortcut.
  */
 @Composable
 private fun LedgerHeader(
@@ -287,40 +325,57 @@ private fun LedgerHeader(
         Modifier.pointerInput(onToggleGrouping) {
             detectTapGestures(onDoubleTap={onToggleGrouping?.invoke()})
         }
-    val firstLabel=when {
-        onToggleGrouping!=null && groupedByCustomer -> lang.text("ထိုးသား ⇄","Customer ⇄")
-        onToggleGrouping!=null -> lang.text("ရက်/ကြိမ် ⇄","Date/Draw ⇄")
-        else -> lang.text("ရက်/ကြိမ်","Date/Draw")
-    }
-    Surface(color=ReportPalette.Wine) {
-        Column {
-            Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=5.dp),
-                horizontalArrangement=Arrangement.spacedBy(2.dp),
+    Column {
+        Surface(color=ReportPalette.WineDark) {
+            Row(Modifier.fillMaxWidth().height(44.dp).padding(horizontal=4.dp),
                 verticalAlignment=Alignment.CenterVertically) {
-                Row(Modifier.weight(1.25f).heightIn(min=38.dp),
-                    verticalAlignment=Alignment.CenterVertically) {
-                    Box(
-                        Modifier.width(22.dp).height(38.dp).clickable(onClick=onToggleView),
-                        contentAlignment=Alignment.Center
-                    ) {
-                        Icon(Icons.Default.ChevronLeft,
-                            lang.text("ထိုးစာရင်း/ပေါက်စာရင်း ပြောင်းရန်","Switch table view"),
-                            tint=Color.White,modifier=Modifier.size(20.dp))
+                IconButton(onClick=onToggleView,modifier=Modifier.size(42.dp)) {
+                    Icon(Icons.Default.ChevronLeft,
+                        lang.text("ထိုးစာရင်း/ပေါက်စာရင်း ပြောင်းရန်","Switch stake/results view"),
+                        tint=Color.White,modifier=Modifier.size(22.dp))
+                }
+                Box(Modifier.weight(1f),contentAlignment=Alignment.Center) {
+                    Text(if(view=="stake")lang.text("ထိုးစာရင်း","Stakes")
+                        else lang.text("ပေါက်စာရင်း","Results"),
+                        style=LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE,lang.code)
+                            .copy(color=Color.White,fontWeight=FontWeight.Bold),
+                        maxLines=1)
+                }
+                if(onSearch!=null) {
+                    IconButton(onClick=onSearch,modifier=Modifier.size(40.dp)) {
+                        Icon(
+                            if(searchOpen)Icons.Default.Close else Icons.Default.Search,
+                            lang.text("ထိုးသားရှာရန်","Search customers"),
+                            tint=Color.White,modifier=Modifier.size(19.dp))
                     }
-                    Box(
-                        Modifier.weight(1f).heightIn(min=38.dp)
-                            .then(if(onToggleGrouping!=null)
-                                Modifier.combinedClickable(
-                                    onClick={onToggleGrouping?.invoke()},
-                                    onDoubleClick={onToggleGrouping?.invoke()}
-                                ) else Modifier),
-                        contentAlignment=Alignment.CenterStart
-                    ) {
-                        Text(firstLabel,
-                            style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
-                                .copy(fontWeight=FontWeight.Bold,color=Color.White),
-                            maxLines=3,softWrap=true)
+                }
+                IconButton(onClick=onToggleView,modifier=Modifier.size(42.dp)) {
+                    Icon(Icons.Default.ChevronRight,
+                        lang.text("ထိုးစာရင်း/ပေါက်စာရင်း ပြောင်းရန်","Switch stake/results view"),
+                        tint=Color.White,modifier=Modifier.size(22.dp))
+                }
+            }
+        }
+        Surface(color=ReportPalette.WineHeader) {
+            Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=8.dp),
+                horizontalArrangement=Arrangement.spacedBy(4.dp),
+                verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.weight(1.25f).heightIn(min=30.dp)
+                    .then(if(onToggleGrouping!=null)
+                        Modifier.combinedClickable(
+                            onClick={onToggleGrouping?.invoke()},
+                            onDoubleClick={onToggleGrouping?.invoke()}
+                        ) else Modifier),contentAlignment=Alignment.CenterStart) {
+                    val firstLabel=when {
+                        groupedByCustomer -> lang.text("ထိုးသား","Customer")
+                        else -> lang.text("ရက်/ကြိမ်","Date/Draw")
                     }
+                    Text(firstLabel,
+                        style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
+                            .copy(fontWeight=FontWeight.Bold,color=Color.White),
+                        textDecoration=if(onToggleGrouping!=null)TextDecoration.Underline
+                            else TextDecoration.None,
+                        maxLines=2,softWrap=true)
                 }
                 Box(Modifier.weight(.65f).then(doubleTap),
                     contentAlignment=Alignment.CenterEnd) {
@@ -334,51 +389,13 @@ private fun LedgerHeader(
                         if(view=="stake")lang.text("ထိုးကြေး","Stake")
                         else lang.text("ပေါက်ကြေး","Win stake"))
                 }
-                Row(Modifier.weight(1.15f).heightIn(min=38.dp),
-                    verticalAlignment=Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f).then(doubleTap),
-                        contentAlignment=Alignment.CenterEnd) {
-                        LedgerHeaderLabel(lang.text("လျော်ငွေ","Payout"))
-                    }
-                    Box(Modifier.width(22.dp).height(38.dp).clickable(onClick=onToggleView),
-                        contentAlignment=Alignment.Center) {
-                        Icon(Icons.Default.ChevronRight,
-                            lang.text("ထိုးစာရင်း/ပေါက်စာရင်း ပြောင်းရန်","Switch table view"),
-                            tint=Color.White,modifier=Modifier.size(20.dp))
-                    }
+                Box(Modifier.weight(1.15f).then(doubleTap),
+                    contentAlignment=Alignment.CenterEnd) {
+                    LedgerHeaderLabel(lang.text("လျော်ငွေ","Payout"))
                 }
                 Box(Modifier.weight(1.27f).then(doubleTap),
                     contentAlignment=Alignment.CenterEnd) {
                     LedgerHeaderLabel(lang.text("ရှင်းရန်","Due"))
-                }
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(start=9.dp,end=6.dp,bottom=3.dp),
-                horizontalArrangement=Arrangement.SpaceBetween,
-                verticalAlignment=Alignment.CenterVertically
-            ) {
-                if(onToggleGrouping!=null) Text(
-                    if(groupedByCustomer)lang.text("ထိုးသားအလိုက်","By customer")
-                    else lang.text("အားလုံးစုစုပေါင်း","Combined"),
-                    style=MaterialTheme.typography.labelSmall,
-                    color=Color.White.copy(alpha=.86f))
-                else Spacer(Modifier.width(1.dp))
-                Row(verticalAlignment=Alignment.CenterVertically) {
-                    Text(if(view=="stake")lang.text("ထိုးစာရင်း","Stakes")
-                        else lang.text("ပေါက်စာရင်း","Results"),
-                        style=MaterialTheme.typography.labelSmall,
-                        fontWeight=FontWeight.SemiBold,color=Color.White)
-                    if(onSearch!=null) {
-                        Spacer(Modifier.width(7.dp))
-                        Box(
-                            Modifier.size(30.dp).clickable(onClick=onSearch),
-                            contentAlignment=Alignment.Center
-                        ) {
-                            Icon(if(searchOpen)Icons.Default.Close else Icons.Default.Search,
-                                lang.text("ထိုးသားရှာရန်","Search customers"),
-                                tint=Color.White,modifier=Modifier.size(18.dp))
-                        }
-                    }
                 }
             }
         }
@@ -388,14 +405,16 @@ private fun LedgerHeader(
 @Composable
 private fun LedgerHeaderLabel(label:String) {
     val lang=LocalLanguage.current
-    Text(label,style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
-        .copy(fontWeight=FontWeight.Bold,color=Color.White),
-        textAlign=TextAlign.End,softWrap=true,maxLines=3)
+    Text(label,
+        style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
+            .copy(fontWeight=FontWeight.Bold,color=Color.White),
+        textAlign=TextAlign.End,maxLines=2,softWrap=true)
 }
 
 @Composable
 private fun LedgerEntry(
-    line:CustomerLedgerLine,view:String,shade:Boolean,showDate:Boolean,onClick:()->Unit
+    line:CustomerLedgerLine,view:String,shade:Boolean,showDate:Boolean,
+    endOfDay:Boolean,onClick:()->Unit
 ) {
     val lang=LocalLanguage.current
     val total=line.total
@@ -433,7 +452,11 @@ private fun LedgerEntry(
             }
         }
     }
-    HorizontalDivider(color=ReportPalette.Edge,thickness=.6.dp)
+    HorizontalDivider(
+        modifier=if(endOfDay)Modifier else Modifier.padding(start=42.dp),
+        color=if(endOfDay)ReportPalette.Edge else ReportPalette.Edge.copy(alpha=.42f),
+        thickness=if(endOfDay)1.15.dp else .45.dp
+    )
 }
 
 @Composable
@@ -471,11 +494,12 @@ private fun LedgerRows(
             period==StatementPeriod.CUSTOM
         var lastWeek:Long?=null
         var previousDate:LocalDate?=null
-        rows.forEach { line ->
+        rows.forEachIndexed { index,line ->
             val week=CustomerReportFrame.weekBandIndex(page,line.date)
             if(grouped&&week!=lastWeek) WeekBand(page,line.date,week.toInt())
             lastWeek=week
-            LedgerEntry(line,view,week%2L!=0L,line.date!=previousDate) {
+            val endOfDay=rows.getOrNull(index+1)?.date!=line.date
+            LedgerEntry(line,view,week%2L!=0L,line.date!=previousDate,endOfDay) {
                 onOpen(line.date,line.session)
             }
             previousDate=line.date
@@ -847,7 +871,7 @@ fun CustomerLedgerReportResults(
                     }
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
                         Text(subtitle,style=LedgerTypographyStandard.style(LedgerTextRole.APP_HEADER,lang.code)
-                            .copy(color=ReportPalette.Ink),maxLines=2)
+                            .copy(color=ReportPalette.Ink,fontWeight=FontWeight.Bold),maxLines=2)
                         Text(selectionText,style=MaterialTheme.typography.labelSmall,
                             color=ReportPalette.Muted,maxLines=3)
                     }

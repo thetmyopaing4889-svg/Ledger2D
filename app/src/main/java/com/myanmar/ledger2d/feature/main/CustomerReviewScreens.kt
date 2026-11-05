@@ -130,6 +130,7 @@ fun CustomerReviewWorkspace(
             else lang.translate(if (resultPage) "အရှုံးအမြတ်သုံးသပ်ချက်" else "စာရင်းရွေးချယ်ရန်"),
         onBack = { if (resultPage) resultPage = false else onBack() },
         includeQuickEntryFab = false,
+        boldTitle = resultPage && mode == "report",
     ) { padding ->
         if (!resultPage) {
             LazyColumn(

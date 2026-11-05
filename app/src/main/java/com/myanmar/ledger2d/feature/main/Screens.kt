@@ -144,10 +144,10 @@ fun transactionDisplayText(format: String, raw: String): String {
     val titlePart=com.myanmar.ledger2d.core.design.UiLabelCatalog.preferredTitlePart(language.code, text)
     Text(language.translate(titlePart), modifier, style=primaryStyle, color=color)
 }
-@Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,includeQuickEntryFab:Boolean=true,content:@Composable (PaddingValues) -> Unit){
-    OperationalScaffold(title,onBack,action,fab,content,null,includeQuickEntryFab)
+@Composable fun AppScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,includeQuickEntryFab:Boolean=true,boldTitle:Boolean=false,content:@Composable (PaddingValues) -> Unit){
+    OperationalScaffold(title,onBack,action,fab,content,null,includeQuickEntryFab,boldTitle)
 }
-@Composable fun OperationalScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit,bottomBar:(@Composable () -> Unit)?=null,includeQuickEntryFab:Boolean=true){
+@Composable fun OperationalScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit,bottomBar:(@Composable () -> Unit)?=null,includeQuickEntryFab:Boolean=true,boldTitle:Boolean=false){
     val globalQuickEntry = LocalQuickEntryAction.current
     val effectiveFab = if (includeQuickEntryFab && globalQuickEntry != null) {
         { Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) { fab?.invoke(); QuickEntryFab(globalQuickEntry) } }
@@ -157,7 +157,10 @@ fun transactionDisplayText(format: String, raw: String): String {
         topBar={
             CenterAlignedTopAppBar(
                 colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Color.White, scrolledContainerColor=Color.White, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
-                title={BilingualText(title, primaryStyle=MaterialTheme.typography.titleLarge, color=MaterialTheme.colorScheme.onBackground)},
+                title={BilingualText(title, primaryStyle=if(boldTitle)
+                    MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.Bold)
+                else MaterialTheme.typography.titleLarge,
+                    color=MaterialTheme.colorScheme.onBackground)},
                 navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription=LocalLanguage.current.translate("နောက်သို့")) } }},
                 actions={action?.invoke(this)}
             )
