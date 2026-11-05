@@ -418,6 +418,13 @@ private fun CustomerGroupLedger(
             if(customers.isEmpty()) {
                 Text(lang.text("ထိုးသားစာရင်းမရှိ","No matching customers"),
                     Modifier.padding(12.dp),style=MaterialTheme.typography.bodySmall)
+                // An empty report must retain its selected date/draw table frame.
+                // A search with no matches must not display unrelated customers' bets.
+                if(draws.isEmpty()) {
+                    LedgerRows(page,period,session,emptyList(),winners,closed,view){ d,draw->
+                        onOpen(-1L,d,draw)
+                    }
+                }
             }
             customers.forEach { (id,name) ->
                 val own=draws.filter { it.customerId==id }
