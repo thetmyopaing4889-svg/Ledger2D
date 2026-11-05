@@ -53,6 +53,16 @@ object CustomerReportFrame {
         return rows
     }
 
+    /** The selected MONTH never navigates away; multi-month views page only inside their selection. */
+    fun showMonthPager(period: StatementPeriod, range: StatementRange): Boolean =
+        (period == StatementPeriod.YEAR || period == StatementPeriod.CUSTOM) && pages(period, range).size > 1
+
+    /** Alternating rows and week markers share the same Monday-based band index. */
+    fun weekBandIndex(page: CustomerReportPage, date: LocalDate): Long {
+        require(!date.isBefore(page.start) && !date.isAfter(page.end))
+        return java.time.temporal.ChronoUnit.DAYS.between(weekStart(page.start), weekStart(date)) / 7L
+    }
+
     /** Page totals are strictly for the visible date interval, not the full selection. */
     fun drawsOnPage(page: CustomerReportPage, draws: List<StatementDraw>): List<StatementDraw> =
         draws.filter { !it.date.isBefore(page.start) && !it.date.isAfter(page.end) }

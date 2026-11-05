@@ -116,4 +116,36 @@ class CustomerReportFrameTest {
         assertTrue(CustomerReportFrame.drawsOnPage(page,emptyList()).isEmpty())
         assertEquals(20, CustomerReportFrame.slots(page,DrawSession.MORNING).size)
     }
+
+    @Test fun selectedMonthHasNoNavigationEvenWhenAdjacentMonthsHaveData() {
+        val november=StatementPeriods.range(
+            StatementPeriod.MONTH,LocalDate.of(2026,11,5),
+            LocalDate.of(2026,11,5),LocalDate.of(2026,11,5))
+        assertFalse(CustomerReportFrame.showMonthPager(StatementPeriod.MONTH,november))
+        assertEquals(1,CustomerReportFrame.pages(StatementPeriod.MONTH,november).size)
+        assertFalse(CustomerReportFrame.showMonthPager(
+            StatementPeriod.DAY,StatementRange(LocalDate.of(2026,11,5),LocalDate.of(2026,11,5))))
+        assertFalse(CustomerReportFrame.showMonthPager(
+            StatementPeriod.WEEK,StatementRange(LocalDate.of(2026,11,2),LocalDate.of(2026,11,6))))
+    }
+
+    @Test fun onlyMultiMonthSelectionsEnablePagerAndStayInsideRange() {
+        val year=StatementRange(LocalDate.of(2026,1,1),LocalDate.of(2026,12,31))
+        assertTrue(CustomerReportFrame.showMonthPager(StatementPeriod.YEAR,year))
+        val custom=StatementRange(LocalDate.of(2026,3,15),LocalDate.of(2026,5,10))
+        assertTrue(CustomerReportFrame.showMonthPager(StatementPeriod.CUSTOM,custom))
+        val pages=CustomerReportFrame.pages(StatementPeriod.CUSTOM,custom)
+        assertTrue(pages.all { !it.start.isBefore(custom.start) && !it.end.isAfter(custom.end) })
+        val sameMonth=StatementRange(LocalDate.of(2026,11,5),LocalDate.of(2026,11,20))
+        assertFalse(CustomerReportFrame.showMonthPager(StatementPeriod.CUSTOM,sameMonth))
+    }
+
+    @Test fun monthWeekBandsSeparateConsecutiveWeeksWithoutSplittingLedger() {
+        val page=CustomerReportPage(LocalDate.of(2026,11,1),LocalDate.of(2026,11,30))
+        assertEquals(0L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,2)))
+        assertEquals(0L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,6)))
+        assertEquals(1L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,9)))
+        assertEquals(3L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,27)))
+        assertEquals(4L,CustomerReportFrame.weekBandIndex(page,LocalDate.of(2026,11,30)))
+    }
 }
