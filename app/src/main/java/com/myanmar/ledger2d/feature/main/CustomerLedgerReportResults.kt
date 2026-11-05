@@ -1,8 +1,10 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -308,7 +310,10 @@ private fun LedgerHeader(
                     Box(
                         Modifier.weight(1f).heightIn(min=38.dp)
                             .then(if(onToggleGrouping!=null)
-                                Modifier.clickable(onClick=onToggleGrouping) else Modifier),
+                                Modifier.combinedClickable(
+                                    onClick={onToggleGrouping?.invoke()},
+                                    onDoubleClick={onToggleGrouping?.invoke()}
+                                ) else Modifier),
                         contentAlignment=Alignment.CenterStart
                     ) {
                         Text(firstLabel,
