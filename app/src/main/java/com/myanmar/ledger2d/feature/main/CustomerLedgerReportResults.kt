@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
 import com.myanmar.ledger2d.core.design.LedgerTextRole
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -132,7 +135,11 @@ private fun StatementMetric(
     label:String, value:String, icon:ImageVector, panel:Color, ink:Color,
     modifier:Modifier=Modifier, note:String?=null
 ) {
-    Surface(modifier, color=panel, shape=RoundedCornerShape(14.dp)) {
+    Surface(
+        modifier, color=panel, shape=RoundedCornerShape(14.dp),
+        shadowElevation=3.dp, tonalElevation=0.dp,
+        border=BorderStroke(1.dp,ink.copy(alpha=.12f))
+    ) {
         Column(Modifier.heightIn(min=86.dp).padding(horizontal=11.dp,vertical=10.dp),
             verticalArrangement=Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -154,7 +161,11 @@ private fun SettlementMetric(draws:List<StatementDraw>,modifier:Modifier=Modifie
     val lang=LocalLanguage.current
     val counts=statementDrawCounts(draws)
     val (receive,pay)=CustomerStatementCalculator.settlementByCustomer(draws)
-    Surface(modifier,color=ReportPalette.Green,shape=RoundedCornerShape(14.dp)) {
+    Surface(
+        modifier,color=ReportPalette.Green,shape=RoundedCornerShape(14.dp),
+        shadowElevation=3.dp,tonalElevation=0.dp,
+        border=BorderStroke(1.dp,ReportPalette.GreenInk.copy(alpha=.12f))
+    ) {
         Column(Modifier.heightIn(min=86.dp).padding(horizontal=11.dp,vertical=10.dp),
             verticalArrangement=Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -200,6 +211,7 @@ private fun StatementSummary(draws:List<StatementDraw>,customerCount:Int?,period
         color=MaterialTheme.colorScheme.surface,
         shape=RoundedCornerShape(20.dp),
         border=BorderStroke(1.dp,ReportPalette.Edge),
+        shadowElevation=3.dp,tonalElevation=0.dp,
         modifier=Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -213,19 +225,19 @@ private fun StatementSummary(draws:List<StatementDraw>,customerCount:Int?,period
                     lang.text("ထိုးသား "+customerCount+" ယောက်",customerCount.toString()+" customers"),
                     style=MaterialTheme.typography.labelSmall,color=ReportPalette.Muted)
             }
-            Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.height(IntrinsicSize.Max),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 StatementMetric(lang.text("ထိုးကွက်","Slots"),total.slots.moneyLabel(),
-                    Icons.Default.Layers,ReportPalette.Blue,ReportPalette.BlueInk,Modifier.weight(1f))
+                    Icons.Default.Layers,ReportPalette.Blue,ReportPalette.BlueInk,Modifier.weight(1f).fillMaxHeight())
                 StatementMetric(lang.text("ထိုးကြေး","Stake"),total.totalBet.moneyLabel(),
-                    Icons.Default.Paid,ReportPalette.Blue,ReportPalette.BlueInk,Modifier.weight(1f))
+                    Icons.Default.Paid,ReportPalette.Blue,ReportPalette.BlueInk,Modifier.weight(1f).fillMaxHeight())
             }
-            Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.height(IntrinsicSize.Max),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 val stake=if(counts.completed>0) total.winningStake.moneyLabel() else "—"
                 val payout=if(counts.completed>0) total.payout.moneyLabel() else "—"
                 StatementMetric(lang.text("လျော်ငွေ","Payout"),payout,
                     Icons.Default.EmojiEvents,ReportPalette.Rose,ReportPalette.RoseInk,
-                    Modifier.weight(1f),lang.text("ပေါက်ကြေး ","Win stake ")+stake)
-                SettlementMetric(draws,Modifier.weight(1f))
+                    Modifier.weight(1f).fillMaxHeight(),lang.text("ပေါက်ကြေး ","Win stake ")+stake)
+                SettlementMetric(draws,Modifier.weight(1f).fillMaxHeight())
             }
         }
     }
@@ -248,12 +260,13 @@ private fun RowScope.LedgerText(
 }
 
 @Composable
-private fun LedgerHeader(view:String) {
+private fun LedgerHeader(view:String,groupedByCustomer:Boolean=false) {
     val lang=LocalLanguage.current
     Surface(color=ReportPalette.Wine) {
         Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=10.dp),
             horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-            LedgerText(lang.text("ရက်/ကြိမ်","Date/Draw"),1.25f,true)
+            LedgerText(if(groupedByCustomer)lang.text("ထိုးသား/ရက်","Name/Date")
+                else lang.text("ရက်/ကြိမ်","Date/Draw"),1.25f,true)
             LedgerText(if(view=="stake") lang.text("ကွက်","Slots") else lang.text("ဂဏန်း","Digit"),.65f,true,TextAlign.End)
             LedgerText(if(view=="stake") lang.text("ထိုးကြေး","Stake") else lang.text("ပေါက်ကြေး","Win stake"),1.25f,true,TextAlign.End)
             LedgerText(lang.text("လျော်ငွေ","Payout"),1.15f,true,TextAlign.End)
@@ -414,16 +427,14 @@ private fun CustomerGroupLedger(
         border=BorderStroke(1.dp,ReportPalette.Edge),modifier=Modifier.fillMaxWidth()
     ) {
         Column {
-            LedgerHeader(view)
+            LedgerHeader(view,groupedByCustomer=true)
             if(customers.isEmpty()) {
                 Text(lang.text("ထိုးသားစာရင်းမရှိ","No matching customers"),
                     Modifier.padding(12.dp),style=MaterialTheme.typography.bodySmall)
-                // An empty report must retain its selected date/draw table frame.
-                // A search with no matches must not display unrelated customers' bets.
-                if(draws.isEmpty()) {
-                    LedgerRows(page,period,session,emptyList(),winners,closed,view){ d,draw->
-                        onOpen(-1L,d,draw)
-                    }
+                // Preserve the selected date/draw frame both for an empty period
+                // and for a search query with no matching customers.
+                LedgerRows(page,period,session,emptyList(),winners,closed,view){ d,draw->
+                    onOpen(-1L,d,draw)
                 }
             }
             customers.forEach { (id,name) ->
@@ -623,6 +634,49 @@ private fun PageCaption(page:CustomerReportPage,period:StatementPeriod) {
     }
 }
 
+/**
+ * Single-row selectors replace the two stacked tab bars. Menus keep both
+ * customer grouping and stake/result views available without repeating headings.
+ */
+@Composable
+private fun CompactLedgerSelector(
+    selectedKey:String,
+    selectedLabel:String,
+    choices:List<Pair<String,String>>,
+    onSelected:(String)->Unit,
+    modifier:Modifier=Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier) {
+        OutlinedButton(
+            onClick={expanded=true},
+            modifier=Modifier.fillMaxWidth().height(42.dp),
+            shape=RoundedCornerShape(14.dp),
+            colors=ButtonDefaults.outlinedButtonColors(
+                containerColor=ReportPalette.SoftPink,
+                contentColor=ReportPalette.WineDark),
+            border=BorderStroke(1.dp,ReportPalette.Edge),
+            contentPadding=PaddingValues(horizontal=9.dp,vertical=0.dp)
+        ) {
+            Text(selectedLabel,modifier=Modifier.weight(1f),
+                style=MaterialTheme.typography.labelMedium,
+                maxLines=1,overflow=TextOverflow.Ellipsis)
+            Icon(Icons.Default.ArrowDropDown,null,modifier=Modifier.size(18.dp))
+        }
+        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
+            choices.forEach { (key,label) ->
+                DropdownMenuItem(
+                    text={ Text(label,
+                        fontWeight=if(key==selectedKey)FontWeight.Bold else FontWeight.Normal,
+                        color=if(key==selectedKey)ReportPalette.WineDark
+                        else MaterialTheme.colorScheme.onSurface) },
+                    onClick={ expanded=false;onSelected(key) }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun CustomerLedgerReportResults(
     vm:LedgerViewModel,agentId:Long,customerId:Long,period:StatementPeriod,range:StatementRange,
@@ -651,6 +705,7 @@ fun CustomerLedgerReportResults(
     var tableView by rememberSaveable(agentId,customerId) { mutableStateOf("stake") }
     var groupView by rememberSaveable(agentId,customerId) { mutableStateOf("customers") }
     var search by rememberSaveable(agentId,customerId) { mutableStateOf("") }
+    var searchOpen by rememberSaveable(agentId,customerId) { mutableStateOf(false) }
     var expandedCustomer by rememberSaveable(agentId,customerId) { mutableLongStateOf(-1L) }
     var detailDate by rememberSaveable(agentId,customerId) { mutableStateOf<String?>(null) }
     var detailDraw by rememberSaveable(agentId,customerId) { mutableStateOf<String?>(null) }
@@ -674,7 +729,7 @@ fun CustomerLedgerReportResults(
         }?:lang.text("နှစ်ကြိမ်လုံး","Both draws"))
 
     LazyColumn(modifier,contentPadding=PaddingValues(horizontal=12.dp,vertical=12.dp),
-        verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        verticalArrangement=Arrangement.spacedBy(9.dp)) {
         item {
             Surface(color=Color.White,shape=RoundedCornerShape(20.dp),
                 border=BorderStroke(1.dp,ReportPalette.Edge)) {
@@ -709,43 +764,21 @@ fun CustomerLedgerReportResults(
                     if(customerId==-1L) statement.customers.size else null,period)
             }
 
-            if(customerId==-1L) {
-                item {
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected=groupView=="customers",
-                            onClick={groupView="customers"},
-                            label={Text(lang.text("ထိုးသားအလိုက်","By customer"))},
-                            modifier=Modifier.weight(1f),
-                            shape=RoundedCornerShape(24.dp),
-                            colors=FilterChipDefaults.filterChipColors(
-                                selectedContainerColor=ReportPalette.SoftPink,
-                                selectedLabelColor=ReportPalette.WineDark),
-                        )
-                        FilterChip(
-                            selected=groupView=="total",
-                            onClick={groupView="total"},
-                            label={Text(lang.text("အားလုံးစုစုပေါင်း","Combined"))},
-                            modifier=Modifier.weight(1f),
-                            shape=RoundedCornerShape(24.dp),
-                            colors=FilterChipDefaults.filterChipColors(
-                                selectedContainerColor=ReportPalette.SoftPink,
-                                selectedLabelColor=ReportPalette.WineDark),
-                        )
-                    }
-                }
-            }
-
             item {
-                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text(lang.text("ကာလအလိုက်စာရင်း","Period ledger"),
-                        style=LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE,lang.code)
-                            .copy(color=ReportPalette.Ink))
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement=Arrangement.spacedBy(5.dp)
+                ) {
+                    // Selected day/week/month already appears in the report header.
+                    // Only multi-month selections need a visible month navigation row.
                     if(CustomerReportFrame.showMonthPager(period,range)) {
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,
+                        Row(Modifier.fillMaxWidth().height(42.dp),
+                            horizontalArrangement=Arrangement.SpaceBetween,
                             verticalAlignment=Alignment.CenterVertically) {
                             IconButton(
-                                onClick={if(monthIndex>0){monthIndex--;detailDate=null;expandedCustomer=-1L}},
+                                onClick={ if(monthIndex>0) {
+                                    monthIndex--;detailDate=null;expandedCustomer=-1L
+                                } },
                                 enabled=monthIndex>0
                             ) {
                                 Icon(Icons.Default.ChevronLeft,lang.text("ယခင်လ","Previous month"),
@@ -753,50 +786,79 @@ fun CustomerLedgerReportResults(
                             }
                             PageCaption(page,period)
                             IconButton(
-                                onClick={if(monthIndex<pages.lastIndex){
+                                onClick={ if(monthIndex<pages.lastIndex) {
                                     monthIndex++;detailDate=null;expandedCustomer=-1L
-                                }},
+                                } },
                                 enabled=monthIndex<pages.lastIndex
                             ) {
                                 Icon(Icons.Default.ChevronRight,lang.text("နောက်လ","Next month"),
                                     tint=if(monthIndex<pages.lastIndex)ReportPalette.Wine else ReportPalette.Muted)
                             }
                         }
-                    } else {
-                        Box(Modifier.fillMaxWidth().padding(vertical=7.dp),
-                            contentAlignment=Alignment.Center) { PageCaption(page,period) }
                     }
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected=tableView=="stake",onClick={tableView="stake"},
-                            label={Text(lang.text("ထိုးစာရင်း","Stakes"))},
-                            modifier=Modifier.weight(1f),shape=RoundedCornerShape(24.dp),
-                            colors=FilterChipDefaults.filterChipColors(
-                                selectedContainerColor=ReportPalette.SoftPink,
-                                selectedLabelColor=ReportPalette.WineDark)
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement=Arrangement.spacedBy(7.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        if(customerId==-1L) {
+                            CompactLedgerSelector(
+                                selectedKey=groupView,
+                                selectedLabel=if(groupView=="customers")
+                                    lang.text("ထိုးသားအလိုက်","By customer")
+                                    else lang.text("အားလုံး","Combined"),
+                                choices=listOf(
+                                    "customers" to lang.text("ထိုးသားအလိုက်","By customer"),
+                                    "total" to lang.text("အားလုံးစုစုပေါင်း","Combined total")),
+                                onSelected={ next ->
+                                    groupView=next
+                                    search=""
+                                    searchOpen=false
+                                    expandedCustomer=-1L
+                                },
+                                modifier=Modifier.weight(1f)
+                            )
+                        }
+                        CompactLedgerSelector(
+                            selectedKey=tableView,
+                            selectedLabel=if(tableView=="stake")
+                                lang.text("ထိုးစာရင်း","Stakes") else lang.text("ပေါက်စာရင်း","Results"),
+                            choices=listOf(
+                                "stake" to lang.text("ထိုးစာရင်း","Stakes"),
+                                "win" to lang.text("ပေါက်စာရင်း","Results")),
+                            onSelected={tableView=it},
+                            modifier=Modifier.weight(1f)
                         )
-                        FilterChip(
-                            selected=tableView=="win",onClick={tableView="win"},
-                            label={Text(lang.text("ပေါက်စာရင်း","Results"))},
-                            modifier=Modifier.weight(1f),shape=RoundedCornerShape(24.dp),
-                            colors=FilterChipDefaults.filterChipColors(
-                                selectedContainerColor=ReportPalette.SoftPink,
-                                selectedLabelColor=ReportPalette.WineDark)
+                        if(customerId==-1L && groupView=="customers") {
+                            IconButton(
+                                modifier=Modifier.size(40.dp),
+                                onClick={
+                                    searchOpen=!searchOpen
+                                    if(!searchOpen)search=""
+                                }
+                            ) {
+                                Icon(
+                                    if(searchOpen) Icons.Default.Close else Icons.Default.Search,
+                                    lang.text("ထိုးသားရှာရန်","Search customers"),
+                                    tint=ReportPalette.Wine)
+                            }
+                        }
+                    }
+                    if(customerId==-1L && groupView=="customers" && searchOpen) {
+                        OutlinedTextField(
+                            value=search,onValueChange={search=it},
+                            placeholder={Text(lang.text("ထိုးသားရှာရန်","Search customers"))},
+                            singleLine=true,modifier=Modifier.fillMaxWidth(),
+                            shape=RoundedCornerShape(14.dp),
+                            trailingIcon={
+                                IconButton(onClick={search="";searchOpen=false}) {
+                                    Icon(Icons.Default.Close,lang.text("ပိတ်ရန်","Close"))
+                                }
+                            }
                         )
                     }
                 }
             }
 
             if(customerId==-1L && groupView=="customers") {
-                item {
-                    OutlinedTextField(
-                        value=search,onValueChange={search=it},
-                        placeholder={Text(lang.text("ထိုးသားရှာရန်","Search customers"))},
-                        leadingIcon={Icon(Icons.Default.Search,null,tint=ReportPalette.Muted)},
-                        singleLine=true,modifier=Modifier.fillMaxWidth(),
-                        shape=RoundedCornerShape(16.dp)
-                    )
-                }
                 val activeIds=pageDraws.map{it.customerId}.toSet()
                 val list=statement.customers.keys.asSequence()
                     .filter{it in activeIds}
