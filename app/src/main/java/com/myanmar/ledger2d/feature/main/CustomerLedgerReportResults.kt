@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +18,6 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,12 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
 import com.myanmar.ledger2d.core.design.LedgerTextRole
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -140,11 +140,11 @@ private fun StatementMetric(
         shadowElevation=3.dp, tonalElevation=0.dp,
         border=BorderStroke(1.dp,ink.copy(alpha=.12f))
     ) {
-        Column(Modifier.heightIn(min=86.dp).padding(horizontal=11.dp,vertical=10.dp),
-            verticalArrangement=Arrangement.spacedBy(5.dp)) {
+        Column(Modifier.heightIn(min=78.dp).padding(horizontal=11.dp,vertical=8.dp),
+            verticalArrangement=Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                Icon(icon,null,tint=ink,modifier=Modifier.size(17.dp))
-                Text(label,style=MaterialTheme.typography.labelMedium,
+                Icon(icon,null,tint=ink,modifier=Modifier.size(16.dp))
+                Text(label,style=MaterialTheme.typography.labelSmall,
                     color=ReportPalette.Ink,maxLines=2)
             }
             Text(value,style=MaterialTheme.typography.titleLarge.copy(
@@ -157,46 +157,55 @@ private fun StatementMetric(
 }
 
 @Composable
+private fun DueMetricLine(label:String,amount:Long,compact:Boolean) {
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+        horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+        Text(label,style=MaterialTheme.typography.labelSmall,
+            color=ReportPalette.GreenInk,maxLines=1)
+        Text(amount.moneyLabel(),
+            style=(if(compact)MaterialTheme.typography.titleSmall
+                else MaterialTheme.typography.titleLarge).copy(
+                fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk),
+            modifier=Modifier.weight(1f),textAlign=TextAlign.End,softWrap=true)
+    }
+}
+
+@Composable
 private fun SettlementMetric(draws:List<StatementDraw>,modifier:Modifier=Modifier) {
     val lang=LocalLanguage.current
     val counts=statementDrawCounts(draws)
     val (receive,pay)=CustomerStatementCalculator.settlementByCustomer(draws)
+    val both=receive>0L&&pay>0L
     Surface(
         modifier,color=ReportPalette.Green,shape=RoundedCornerShape(14.dp),
         shadowElevation=3.dp,tonalElevation=0.dp,
         border=BorderStroke(1.dp,ReportPalette.GreenInk.copy(alpha=.12f))
     ) {
-        Column(Modifier.heightIn(min=86.dp).padding(horizontal=11.dp,vertical=10.dp),
+        Column(Modifier.heightIn(min=78.dp).padding(horizontal=11.dp,vertical=8.dp),
             verticalArrangement=Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.Handshake,null,tint=ReportPalette.GreenInk,modifier=Modifier.size(17.dp))
+            Row(verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.Handshake,null,tint=ReportPalette.GreenInk,
+                    modifier=Modifier.size(16.dp))
                 Text(lang.text("ငွေရှင်းရန်","Amount due"),
-                    style=MaterialTheme.typography.labelMedium,color=ReportPalette.Ink)
+                    style=MaterialTheme.typography.labelSmall,color=ReportPalette.Ink)
             }
             if(draws.isEmpty()) {
                 Text("—",style=MaterialTheme.typography.titleLarge.copy(
                     fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk))
             } else if(counts.completed==0) {
-                Text(lang.text("ရလဒ်စောင့်","Pending"),style=MaterialTheme.typography.titleMedium.copy(
+                Text(lang.text("ရလဒ်စောင့်","Pending"),
+                    style=MaterialTheme.typography.titleMedium.copy(
                     fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk))
             } else {
-                if(receive>0L) {
-                    Text(lang.text("User ရရန်","User receives"),style=MaterialTheme.typography.labelSmall,
-                        color=ReportPalette.GreenInk)
-                    Text(receive.moneyLabel(),style=MaterialTheme.typography.titleLarge.copy(
-                        fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk))
-                }
-                if(pay>0L) {
-                    Text(lang.text("User ပေးရန်","User pays"),style=MaterialTheme.typography.labelSmall,
-                        color=ReportPalette.GreenInk)
-                    Text(pay.moneyLabel(),style=MaterialTheme.typography.titleLarge.copy(
-                        fontWeight=FontWeight.Bold,color=ReportPalette.GreenInk))
-                }
-                if(receive==0L&&pay==0L) Text(lang.text("ရှင်းရန်မရှိ","No amount due"),
+                if(receive>0L) DueMetricLine(lang.text("ရရန်","In"),receive,both)
+                if(pay>0L) DueMetricLine(lang.text("ပေးရန်","Out"),pay,both)
+                if(receive==0L&&pay==0L) Text(
+                    lang.text("ရှင်းရန်မရှိ","No amount due"),
                     style=MaterialTheme.typography.titleSmall,color=ReportPalette.GreenInk)
             }
             if(counts.awaiting>0) Text(
-                lang.text("စောင့် " + counts.awaiting + " ကြိမ်",counts.awaiting.toString()+" pending"),
+                lang.text("စောင့် "+counts.awaiting+" ကြိမ်",counts.awaiting.toString()+" pending"),
                 style=MaterialTheme.typography.labelSmall,color=ReportPalette.Muted)
         }
     }
@@ -214,7 +223,7 @@ private fun StatementSummary(draws:List<StatementDraw>,customerCount:Int?,period
         shadowElevation=3.dp,tonalElevation=0.dp,
         modifier=Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(11.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Text(if(period==StatementPeriod.YEAR||period==StatementPeriod.CUSTOM)
                         lang.text("ကာလချုပ်","Period total") else lang.text("စာရင်းချုပ်","Summary"),
@@ -259,32 +268,139 @@ private fun RowScope.LedgerText(
     )
 }
 
+/**
+ * Header navigation replaces stand-alone grouping and table-view dropdowns.
+ * Arrows switch stake/results. The leading title switches customer/combined,
+ * and double-tapping any other header label is an optional shortcut.
+ * A visible ⇄ marker and status line make gestures discoverable.
+ */
 @Composable
-private fun LedgerHeader(view:String,groupedByCustomer:Boolean=false) {
+private fun LedgerHeader(
+    view:String,groupedByCustomer:Boolean=false,
+    onToggleView:()->Unit,onToggleGrouping:(()->Unit)?=null,
+    onSearch:(()->Unit)?=null,searchOpen:Boolean=false
+) {
     val lang=LocalLanguage.current
+    val doubleTap=if(onToggleGrouping==null)Modifier else
+        Modifier.pointerInput(onToggleGrouping) {
+            detectTapGestures(onDoubleTap={onToggleGrouping?.invoke()})
+        }
+    val firstLabel=when {
+        onToggleGrouping!=null && groupedByCustomer -> lang.text("ထိုးသား ⇄","Customer ⇄")
+        onToggleGrouping!=null -> lang.text("ရက်/ကြိမ် ⇄","Date/Draw ⇄")
+        else -> lang.text("ရက်/ကြိမ်","Date/Draw")
+    }
     Surface(color=ReportPalette.Wine) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=10.dp),
-            horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-            LedgerText(if(groupedByCustomer)lang.text("ထိုးသား/ရက်","Name/Date")
-                else lang.text("ရက်/ကြိမ်","Date/Draw"),1.25f,true)
-            LedgerText(if(view=="stake") lang.text("ကွက်","Slots") else lang.text("ဂဏန်း","Digit"),.65f,true,TextAlign.End)
-            LedgerText(if(view=="stake") lang.text("ထိုးကြေး","Stake") else lang.text("ပေါက်ကြေး","Win stake"),1.25f,true,TextAlign.End)
-            LedgerText(lang.text("လျော်ငွေ","Payout"),1.15f,true,TextAlign.End)
-            LedgerText(lang.text("ရှင်းရန်","Due"),1.27f,true,TextAlign.End)
+        Column {
+            Row(Modifier.fillMaxWidth().padding(horizontal=4.dp,vertical=5.dp),
+                horizontalArrangement=Arrangement.spacedBy(2.dp),
+                verticalAlignment=Alignment.CenterVertically) {
+                Row(Modifier.weight(1.25f).heightIn(min=38.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Box(
+                        Modifier.width(22.dp).height(38.dp).clickable(onClick=onToggleView),
+                        contentAlignment=Alignment.Center
+                    ) {
+                        Icon(Icons.Default.ChevronLeft,
+                            lang.text("ထိုးစာရင်း/ပေါက်စာရင်း ပြောင်းရန်","Switch table view"),
+                            tint=Color.White,modifier=Modifier.size(20.dp))
+                    }
+                    Box(
+                        Modifier.weight(1f).heightIn(min=38.dp)
+                            .then(if(onToggleGrouping!=null)
+                                Modifier.clickable(onClick=onToggleGrouping) else Modifier),
+                        contentAlignment=Alignment.CenterStart
+                    ) {
+                        Text(firstLabel,
+                            style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
+                                .copy(fontWeight=FontWeight.Bold,color=Color.White),
+                            maxLines=3,softWrap=true)
+                    }
+                }
+                Box(Modifier.weight(.65f).then(doubleTap),
+                    contentAlignment=Alignment.CenterEnd) {
+                    LedgerHeaderLabel(
+                        if(view=="stake")lang.text("ကွက်","Slots")
+                        else lang.text("ဂဏန်း","Digit"))
+                }
+                Box(Modifier.weight(1.25f).then(doubleTap),
+                    contentAlignment=Alignment.CenterEnd) {
+                    LedgerHeaderLabel(
+                        if(view=="stake")lang.text("ထိုးကြေး","Stake")
+                        else lang.text("ပေါက်ကြေး","Win stake"))
+                }
+                Row(Modifier.weight(1.15f).heightIn(min=38.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f).then(doubleTap),
+                        contentAlignment=Alignment.CenterEnd) {
+                        LedgerHeaderLabel(lang.text("လျော်ငွေ","Payout"))
+                    }
+                    Box(Modifier.width(22.dp).height(38.dp).clickable(onClick=onToggleView),
+                        contentAlignment=Alignment.Center) {
+                        Icon(Icons.Default.ChevronRight,
+                            lang.text("ထိုးစာရင်း/ပေါက်စာရင်း ပြောင်းရန်","Switch table view"),
+                            tint=Color.White,modifier=Modifier.size(20.dp))
+                    }
+                }
+                Box(Modifier.weight(1.27f).then(doubleTap),
+                    contentAlignment=Alignment.CenterEnd) {
+                    LedgerHeaderLabel(lang.text("ရှင်းရန်","Due"))
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(start=9.dp,end=6.dp,bottom=3.dp),
+                horizontalArrangement=Arrangement.SpaceBetween,
+                verticalAlignment=Alignment.CenterVertically
+            ) {
+                if(onToggleGrouping!=null) Text(
+                    if(groupedByCustomer)lang.text("ထိုးသားအလိုက်","By customer")
+                    else lang.text("အားလုံးစုစုပေါင်း","Combined"),
+                    style=MaterialTheme.typography.labelSmall,
+                    color=Color.White.copy(alpha=.86f))
+                else Spacer(Modifier.width(1.dp))
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text(if(view=="stake")lang.text("ထိုးစာရင်း","Stakes")
+                        else lang.text("ပေါက်စာရင်း","Results"),
+                        style=MaterialTheme.typography.labelSmall,
+                        fontWeight=FontWeight.SemiBold,color=Color.White)
+                    if(onSearch!=null) {
+                        Spacer(Modifier.width(7.dp))
+                        Box(
+                            Modifier.size(30.dp).clickable(onClick=onSearch),
+                            contentAlignment=Alignment.Center
+                        ) {
+                            Icon(if(searchOpen)Icons.Default.Close else Icons.Default.Search,
+                                lang.text("ထိုးသားရှာရန်","Search customers"),
+                                tint=Color.White,modifier=Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun LedgerEntry(line:CustomerLedgerLine,view:String,shade:Boolean,onClick:()->Unit) {
+private fun LedgerHeaderLabel(label:String) {
+    val lang=LocalLanguage.current
+    Text(label,style=LedgerTypographyStandard.style(LedgerTextRole.TABLE,lang.code)
+        .copy(fontWeight=FontWeight.Bold,color=Color.White),
+        textAlign=TextAlign.End,softWrap=true,maxLines=3)
+}
+
+@Composable
+private fun LedgerEntry(
+    line:CustomerLedgerLine,view:String,shade:Boolean,showDate:Boolean,onClick:()->Unit
+) {
     val lang=LocalLanguage.current
     val total=line.total
     val color=if(shade) ReportPalette.WeekTint else Color.White
     Surface(onClick=onClick,color=color) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=8.dp),
+        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp),
             horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-            Column(Modifier.weight(1.25f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                Text(line.date.format(DateTimeFormatter.ofPattern("dd EEE",Locale.US)),
+            Column(Modifier.weight(1.25f),verticalArrangement=Arrangement.spacedBy(1.dp)) {
+                if(showDate) Text(
+                    line.date.format(DateTimeFormatter.ofPattern("dd EEE",Locale.US)),
                     style=MaterialTheme.typography.labelMedium.copy(color=ReportPalette.Ink),
                     fontWeight=FontWeight.SemiBold,maxLines=1)
                 Text(if(line.session==DrawSession.MORNING) lang.text("မနက်","AM")
@@ -322,7 +438,7 @@ private fun WeekBand(page:CustomerReportPage,date:LocalDate,index:Int) {
     val start=maxOf(page.start,monday)
     val end=minOf(page.end,monday.plusDays(4))
     Surface(color=ReportPalette.WeekLabel) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=5.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=3.dp)) {
             Text(lang.text("အပတ် ","Week ")+(index+1)+" · "+
                 start.format(DateTimeFormatter.ofPattern("dd MMM",Locale.US))+" – "+
                 end.format(DateTimeFormatter.ofPattern("dd MMM",Locale.US)),
@@ -349,11 +465,15 @@ private fun LedgerRows(
         val grouped=period==StatementPeriod.MONTH||period==StatementPeriod.YEAR||
             period==StatementPeriod.CUSTOM
         var lastWeek:Long?=null
+        var previousDate:LocalDate?=null
         rows.forEach { line ->
             val week=CustomerReportFrame.weekBandIndex(page,line.date)
             if(grouped&&week!=lastWeek) WeekBand(page,line.date,week.toInt())
             lastWeek=week
-            LedgerEntry(line,view,week%2L!=0L) { onOpen(line.date,line.session) }
+            LedgerEntry(line,view,week%2L!=0L,line.date!=previousDate) {
+                onOpen(line.date,line.session)
+            }
+            previousDate=line.date
         }
     }
 }
@@ -364,7 +484,7 @@ private fun LedgerTotal(draws:List<StatementDraw>,view:String,monthTotal:Boolean
     val totals=CustomerStatementCalculator.totals(draws)
     val resultExists=totals.completedDraws>0
     Surface(color=ReportPalette.SoftPink) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=10.dp),
+        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=7.dp),
             horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1.25f)) {
                 Text(if(monthTotal)lang.text("လချုပ်","Month total")
@@ -393,14 +513,17 @@ private fun LedgerTotal(draws:List<StatementDraw>,view:String,monthTotal:Boolean
 private fun PeriodLedger(
     page:CustomerReportPage,period:StatementPeriod,session:DrawSession?,
     draws:List<StatementDraw>,winners:Map<Pair<LocalDate,DrawSession>,String>,
-    closed:Set<LocalDate>,view:String,onOpen:(LocalDate,DrawSession)->Unit
+    closed:Set<LocalDate>,view:String,
+    onToggleView:()->Unit,onToggleGrouping:(()->Unit)?=null,
+    onOpen:(LocalDate,DrawSession)->Unit
 ) {
     Surface(
         color=Color.White,shape=RoundedCornerShape(18.dp),
         border=BorderStroke(1.dp,ReportPalette.Edge),modifier=Modifier.fillMaxWidth()
     ) {
         Column {
-            LedgerHeader(view)
+            LedgerHeader(view,
+                onToggleView=onToggleView,onToggleGrouping=onToggleGrouping)
             LedgerRows(page,period,session,draws,winners,closed,view,onOpen)
             LedgerTotal(CustomerReportFrame.drawsOnPage(page,draws),view,
                 period==StatementPeriod.MONTH||period==StatementPeriod.YEAR||
@@ -419,6 +542,9 @@ private fun CustomerGroupLedger(
     customers:List<Pair<Long,String>>,draws:List<StatementDraw>,
     winners:Map<Pair<LocalDate,DrawSession>,String>,closed:Set<LocalDate>,
     view:String,expandedId:Long,onToggle:(Long)->Unit,
+    onToggleView:()->Unit,onToggleGrouping:()->Unit,
+    search:String,searchOpen:Boolean,onSearch:()->Unit,
+    onSearchChange:(String)->Unit,onCloseSearch:()->Unit,
     onOpen:(Long,LocalDate,DrawSession)->Unit
 ) {
     val lang=LocalLanguage.current
@@ -427,7 +553,23 @@ private fun CustomerGroupLedger(
         border=BorderStroke(1.dp,ReportPalette.Edge),modifier=Modifier.fillMaxWidth()
     ) {
         Column {
-            LedgerHeader(view,groupedByCustomer=true)
+            LedgerHeader(view,groupedByCustomer=true,
+                onToggleView=onToggleView,onToggleGrouping=onToggleGrouping,
+                onSearch=onSearch,searchOpen=searchOpen)
+            if(searchOpen) {
+                OutlinedTextField(
+                    value=search,onValueChange=onSearchChange,
+                    placeholder={Text(lang.text("ထိုးသားရှာရန်","Search customers"))},
+                    singleLine=true,modifier=Modifier.fillMaxWidth()
+                        .padding(horizontal=9.dp,vertical=4.dp),
+                    shape=RoundedCornerShape(14.dp),
+                    trailingIcon={
+                        IconButton(onClick=onCloseSearch) {
+                            Icon(Icons.Default.Close,lang.text("ပိတ်ရန်","Close"))
+                        }
+                    }
+                )
+            }
             if(customers.isEmpty()) {
                 Text(lang.text("ထိုးသားစာရင်းမရှိ","No matching customers"),
                     Modifier.padding(12.dp),style=MaterialTheme.typography.bodySmall)
@@ -443,7 +585,7 @@ private fun CustomerGroupLedger(
                 val open=expandedId==id
                 Surface(color=ReportPalette.SoftPink,
                     onClick={ onToggle(id) }) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=10.dp),
+                    Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=7.dp),
                         horizontalArrangement=Arrangement.spacedBy(4.dp),
                         verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1.25f)) {
@@ -634,49 +776,6 @@ private fun PageCaption(page:CustomerReportPage,period:StatementPeriod) {
     }
 }
 
-/**
- * Single-row selectors replace the two stacked tab bars. Menus keep both
- * customer grouping and stake/result views available without repeating headings.
- */
-@Composable
-private fun CompactLedgerSelector(
-    selectedKey:String,
-    selectedLabel:String,
-    choices:List<Pair<String,String>>,
-    onSelected:(String)->Unit,
-    modifier:Modifier=Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(modifier) {
-        OutlinedButton(
-            onClick={expanded=true},
-            modifier=Modifier.fillMaxWidth().height(42.dp),
-            shape=RoundedCornerShape(14.dp),
-            colors=ButtonDefaults.outlinedButtonColors(
-                containerColor=ReportPalette.SoftPink,
-                contentColor=ReportPalette.WineDark),
-            border=BorderStroke(1.dp,ReportPalette.Edge),
-            contentPadding=PaddingValues(horizontal=9.dp,vertical=0.dp)
-        ) {
-            Text(selectedLabel,modifier=Modifier.weight(1f),
-                style=MaterialTheme.typography.labelMedium,
-                maxLines=1,overflow=TextOverflow.Ellipsis)
-            Icon(Icons.Default.ArrowDropDown,null,modifier=Modifier.size(18.dp))
-        }
-        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
-            choices.forEach { (key,label) ->
-                DropdownMenuItem(
-                    text={ Text(label,
-                        fontWeight=if(key==selectedKey)FontWeight.Bold else FontWeight.Normal,
-                        color=if(key==selectedKey)ReportPalette.WineDark
-                        else MaterialTheme.colorScheme.onSurface) },
-                    onClick={ expanded=false;onSelected(key) }
-                )
-            }
-        }
-    }
-}
-
 @Composable
 fun CustomerLedgerReportResults(
     vm:LedgerViewModel,agentId:Long,customerId:Long,period:StatementPeriod,range:StatementRange,
@@ -764,96 +863,32 @@ fun CustomerLedgerReportResults(
                     if(customerId==-1L) statement.customers.size else null,period)
             }
 
-            item {
-                Column(
-                    Modifier.fillMaxWidth(),
-                    verticalArrangement=Arrangement.spacedBy(5.dp)
-                ) {
-                    // Selected day/week/month already appears in the report header.
-                    // Only multi-month selections need a visible month navigation row.
-                    if(CustomerReportFrame.showMonthPager(period,range)) {
-                        Row(Modifier.fillMaxWidth().height(42.dp),
-                            horizontalArrangement=Arrangement.SpaceBetween,
-                            verticalAlignment=Alignment.CenterVertically) {
-                            IconButton(
-                                onClick={ if(monthIndex>0) {
-                                    monthIndex--;detailDate=null;expandedCustomer=-1L
-                                } },
-                                enabled=monthIndex>0
-                            ) {
-                                Icon(Icons.Default.ChevronLeft,lang.text("ယခင်လ","Previous month"),
-                                    tint=if(monthIndex>0)ReportPalette.Wine else ReportPalette.Muted)
-                            }
-                            PageCaption(page,period)
-                            IconButton(
-                                onClick={ if(monthIndex<pages.lastIndex) {
-                                    monthIndex++;detailDate=null;expandedCustomer=-1L
-                                } },
-                                enabled=monthIndex<pages.lastIndex
-                            ) {
-                                Icon(Icons.Default.ChevronRight,lang.text("နောက်လ","Next month"),
-                                    tint=if(monthIndex<pages.lastIndex)ReportPalette.Wine else ReportPalette.Muted)
-                            }
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(),
-                        horizontalArrangement=Arrangement.spacedBy(7.dp),
+            // Multi-month navigation is needed only for selections
+            // covering multiple calendar months.
+            if(CustomerReportFrame.showMonthPager(period,range)) {
+                item {
+                    Row(Modifier.fillMaxWidth().height(42.dp),
+                        horizontalArrangement=Arrangement.SpaceBetween,
                         verticalAlignment=Alignment.CenterVertically) {
-                        if(customerId==-1L) {
-                            CompactLedgerSelector(
-                                selectedKey=groupView,
-                                selectedLabel=if(groupView=="customers")
-                                    lang.text("ထိုးသားအလိုက်","By customer")
-                                    else lang.text("အားလုံး","Combined"),
-                                choices=listOf(
-                                    "customers" to lang.text("ထိုးသားအလိုက်","By customer"),
-                                    "total" to lang.text("အားလုံးစုစုပေါင်း","Combined total")),
-                                onSelected={ next ->
-                                    groupView=next
-                                    search=""
-                                    searchOpen=false
-                                    expandedCustomer=-1L
-                                },
-                                modifier=Modifier.weight(1f)
-                            )
+                        IconButton(
+                            onClick={ if(monthIndex>0) {
+                                monthIndex--;detailDate=null;expandedCustomer=-1L
+                            } },
+                            enabled=monthIndex>0
+                        ) {
+                            Icon(Icons.Default.ChevronLeft,lang.text("ယခင်လ","Previous month"),
+                                tint=if(monthIndex>0)ReportPalette.Wine else ReportPalette.Muted)
                         }
-                        CompactLedgerSelector(
-                            selectedKey=tableView,
-                            selectedLabel=if(tableView=="stake")
-                                lang.text("ထိုးစာရင်း","Stakes") else lang.text("ပေါက်စာရင်း","Results"),
-                            choices=listOf(
-                                "stake" to lang.text("ထိုးစာရင်း","Stakes"),
-                                "win" to lang.text("ပေါက်စာရင်း","Results")),
-                            onSelected={tableView=it},
-                            modifier=Modifier.weight(1f)
-                        )
-                        if(customerId==-1L && groupView=="customers") {
-                            IconButton(
-                                modifier=Modifier.size(40.dp),
-                                onClick={
-                                    searchOpen=!searchOpen
-                                    if(!searchOpen)search=""
-                                }
-                            ) {
-                                Icon(
-                                    if(searchOpen) Icons.Default.Close else Icons.Default.Search,
-                                    lang.text("ထိုးသားရှာရန်","Search customers"),
-                                    tint=ReportPalette.Wine)
-                            }
+                        PageCaption(page,period)
+                        IconButton(
+                            onClick={ if(monthIndex<pages.lastIndex) {
+                                monthIndex++;detailDate=null;expandedCustomer=-1L
+                            } },
+                            enabled=monthIndex<pages.lastIndex
+                        ) {
+                            Icon(Icons.Default.ChevronRight,lang.text("နောက်လ","Next month"),
+                                tint=if(monthIndex<pages.lastIndex)ReportPalette.Wine else ReportPalette.Muted)
                         }
-                    }
-                    if(customerId==-1L && groupView=="customers" && searchOpen) {
-                        OutlinedTextField(
-                            value=search,onValueChange={search=it},
-                            placeholder={Text(lang.text("ထိုးသားရှာရန်","Search customers"))},
-                            singleLine=true,modifier=Modifier.fillMaxWidth(),
-                            shape=RoundedCornerShape(14.dp),
-                            trailingIcon={
-                                IconButton(onClick={search="";searchOpen=false}) {
-                                    Icon(Icons.Default.Close,lang.text("ပိတ်ရန်","Close"))
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -872,6 +907,14 @@ fun CustomerLedgerReportResults(
                         page,period,session,list,pageDraws,winnerMap,closed,
                         tableView,expandedCustomer,
                         onToggle={id->expandedCustomer=if(expandedCustomer==id)-1L else id},
+                        onToggleView={tableView=if(tableView=="stake")"win" else "stake"},
+                        onToggleGrouping={
+                            groupView="total";search="";searchOpen=false;expandedCustomer=-1L
+                        },
+                        search=search,searchOpen=searchOpen,
+                        onSearch={searchOpen=!searchOpen;if(!searchOpen)search=""},
+                        onSearchChange={search=it},
+                        onCloseSearch={search="";searchOpen=false},
                         onOpen={id,d,draw->
                             detailDate=d.toString();detailDraw=draw.name;detailCustomer=id
                         }
@@ -879,7 +922,13 @@ fun CustomerLedgerReportResults(
                 }
             } else {
                 item {
-                    PeriodLedger(page,period,session,statement.draws,winnerMap,closed,tableView) {d,draw->
+                    PeriodLedger(
+                        page,period,session,statement.draws,winnerMap,closed,tableView,
+                        onToggleView={tableView=if(tableView=="stake")"win" else "stake"},
+                        onToggleGrouping=if(customerId==-1L) ({
+                            groupView="customers";search="";searchOpen=false;expandedCustomer=-1L
+                        }) else null
+                    ) {d,draw->
                         detailDate=d.toString();detailDraw=draw.name;detailCustomer=-1L
                     }
                 }
