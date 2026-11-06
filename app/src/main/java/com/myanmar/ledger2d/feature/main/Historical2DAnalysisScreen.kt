@@ -48,6 +48,7 @@ import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
@@ -96,11 +97,13 @@ fun Historical2DAnalysisScreen(
     val language = LocalLanguage.current
     val en = language.code == "en"
     fun tr(my: String, english: String) = if (en) english else my
-    var today by remember { mutableStateOf(LocalDate.now(ZoneId.of("Asia/Yangon"))) }
+    val yangonZone = remember { ZoneId.of("Asia/Yangon") }
+    var currentYangonTime by remember { mutableStateOf(LocalDateTime.now(yangonZone)) }
+    val today = currentYangonTime.toLocalDate()
     LaunchedEffect(Unit) {
         while (true) {
-            delay(60_000L)
-            today = LocalDate.now(ZoneId.of("Asia/Yangon"))
+            delay(15_000L)
+            currentYangonTime = LocalDateTime.now(yangonZone)
         }
     }
     var periodKey by rememberSaveable { mutableStateOf("week") }
@@ -125,7 +128,9 @@ fun Historical2DAnalysisScreen(
     val dailyFlow = remember(container) { container.liveResults.observeAll() }
     val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val daily by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val merged = remember(history, daily, today) { Historic2DDataSource.resolve(daily, history, today) }
+    val merged = remember(history, daily, today, currentYangonTime.hour, currentYangonTime.minute) {
+        Historic2DDataSource.resolve(daily, history, today, currentYangonTime.toLocalTime())
+    }
     val period = selectedHistoricPeriod(periodKey, today, customStart, customEnd)
     val session = when (sessionKey) {
         "am" -> DrawSession.MORNING
@@ -425,9 +430,31 @@ fun Historical2DAnalysisScreen(
             text = {
                 LazyColumn(Modifier.heightIn(max = 470.dp),
                     verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    items(all.chunked(5).size) { i ->
-                        AuroraNumberRow(all.chunked(5)[i], 1) {
-                            showAllMissing = false; chosenNumber = it
+                    items(all.size) { i ->
+                        val item = all[i]
+                        Surface(
+                            onClick = { showAllMissing = false; chosenNumber = item.digit },
+                            color = auroraSoft, shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text(item.digit, color = auroraCherry,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold, modifier = Modifier.width(46.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.lastSeen?.let {
+                                        it.date.toString() + " · " +
+                                            (if (it.session == DrawSession.MORNING)
+                                                tr("မနက်", "AM") else tr("ညနေ", "PM"))
+                                    } ?: tr("မှတ်တမ်းတွင် မတွေ့ပါ", "Not found in available history"),
+                                        style = MaterialTheme.typography.labelMedium, color = auroraInk)
+                                    Text(item.observedDrawsSince?.let {
+                                        it.toString() + " " + tr("အကြိမ်ကျော်", "observed draws since")
+                                    } ?: tr("မသိနိုင်ပါ", "Unknown"),
+                                        style = MaterialTheme.typography.labelSmall, color = auroraMuted)
+                                }
+                                Icon(Icons.Default.ChevronRight, null, tint = auroraCherry)
+                            }
                         }
                     }
                 }

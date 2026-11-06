@@ -39,7 +39,10 @@ internal object Historic2DDataSource {
         val observed = runCatching {
             Instant.ofEpochMilli(sourceAt).atZone(yangon).toLocalDateTime()
         }.getOrNull() ?: return false
-        return observed.toLocalDate() == date && !observed.toLocalTime().isBefore(close)
+        // The Room patch builder accepts a 10-second early Luke checkpoint.
+        // The value is still the explicit result_1200/result_430 field, never LIVE.
+        return observed.toLocalDate() == date &&
+            !observed.toLocalTime().isBefore(close.minusSeconds(10))
     }
 
     fun resolve(

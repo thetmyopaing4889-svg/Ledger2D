@@ -96,6 +96,19 @@ class Historic2DDataSourceTest {
         assertTrue(merged.conflicts.isEmpty())
     }
 
+    @Test fun finalResultWithinEarlyGraceCountsOnlyAfterClose() {
+        val daily = listOf(daily("2026-11-06", "64", "65",
+            amSource = stamp("2026-11-06", "12:00:55"),
+            pmSource = stamp("2026-11-06", "16:29:55")))
+        val date = LocalDate.parse("2026-11-06")
+        val before = Historic2DDataSource.resolve(daily, emptyList(), date, LocalTime.of(12, 0, 59))
+        assertTrue(before.draws.isEmpty())
+        val afterMorning = Historic2DDataSource.resolve(daily, emptyList(), date, LocalTime.of(12, 1))
+        assertEquals(listOf("64"), afterMorning.draws.map { it.digit })
+        val afterEvening = Historic2DDataSource.resolve(daily, emptyList(), date, LocalTime.of(16, 30))
+        assertEquals(listOf("64", "65"), afterEvening.draws.map { it.digit })
+    }
+
     @Test fun earlyOrWrongDateSourceCannotProveFinality() {
         val merged = Historic2DDataSource.resolve(
             liveDaily = listOf(daily("2026-11-06", "64", "65",
