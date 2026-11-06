@@ -22,6 +22,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import com.myanmar.ledger2d.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.BetEntryWithLines
 import com.myanmar.ledger2d.core.design.LocalLanguage
@@ -45,6 +47,10 @@ fun VoucherPreviewScreen(
     onBack: () -> Unit,
 ) {
     val language = LocalLanguage.current
+    val context = LocalContext.current
+    val sourceTypeface = remember(context) {
+        ResourcesCompat.getFont(context, R.font.noto_sans_myanmar_ui_regular)
+    }
     val customer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
     val observed by produceState<List<BetEntryWithLines>?>(null, customerId, date, session) {
         vm.customerEntries(customerId, date, session).collect { value = it }
@@ -63,10 +69,10 @@ fun VoucherPreviewScreen(
         } else null
     }
     // Measure all multiline rows outside the Compose UI thread.
-    val preparation by produceState<VoucherPreparation?>(null, document) {
+    val preparation by produceState<VoucherPreparation?>(null, document, sourceTypeface) {
         if (document != null) {
             value = withContext(Dispatchers.Default) {
-                runCatching { VoucherRenderer(document) }.fold(
+                runCatching { VoucherRenderer(document, sourceTypeface) }.fold(
                     onSuccess = { VoucherPreparation(it, null) },
                     onFailure = { VoucherPreparation(null, it.message ?: "စာမျက်နှာပြုလုပ်၍ မရပါ") },
                 )

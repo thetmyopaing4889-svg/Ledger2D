@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.main
 
+import android.graphics.Typeface
 import com.myanmar.ledger2d.core.database.BetEntryEntity
 import com.myanmar.ledger2d.core.database.BetEntryWithLines
 import com.myanmar.ledger2d.core.database.BetLineEntity
@@ -135,4 +136,27 @@ class CustomerSettlementJpegTest {
             assertEquals(1920, summary.height)
         } finally { first.recycle(); summary.recycle() }
     }
+    @Test fun injectedMyanmarFontPreservesTransactionOrderAndFinancialTotals() {
+        val accented = record(8, morning, DrawSession.MORNING,
+            "4567ခွေ5000\nအပူး3000\n9ထိပ်1000", 80,
+            listOf("36" to 3000L, "37" to 5000L))
+        val document = CustomerSettlementCalculator.build(sample().copy(
+            records = sample().records + accented), null)
+        val renderer = CustomerSettlementJpegRenderer(
+            document, Typeface.create("sans-serif", Typeface.NORMAL))
+        val allIds = (0 until renderer.pageCount - 1)
+            .flatMap { renderer.pageEntryIds(it) }
+        assertEquals(5, allIds.size)
+        assertTrue(8L in allIds)
+        assertEquals(document.totalBet, 35000L)
+        assertEquals(document.totalPayout, 360000L)
+        val bitmap = renderer.render(0)
+        try {
+            assertEquals(1080, bitmap.width)
+            assertEquals(1920, bitmap.height)
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
 }

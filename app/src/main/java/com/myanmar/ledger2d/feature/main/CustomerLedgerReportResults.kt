@@ -413,15 +413,19 @@ private fun LedgerHeaderLabel(label:String) {
 
 @Composable
 private fun LedgerEntry(
-    line:CustomerLedgerLine,view:String,shade:Boolean,showDate:Boolean,
-    endOfDay:Boolean,onClick:()->Unit
+    line:CustomerLedgerLine,view:String,showDate:Boolean,onClick:()->Unit
 ) {
     val lang=LocalLanguage.current
     val total=line.total
-    val color=if(shade) ReportPalette.WeekTint else Color.White
-    Surface(onClick=onClick,color=color) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp),
-            horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
+    // No independent per-session Surface: its day container owns the
+    // background, so no white seams appear between morning and evening.
+    Row(
+        Modifier.fillMaxWidth().heightIn(min=48.dp)
+            .clickable(onClick=onClick)
+            .padding(horizontal=6.dp,vertical=5.dp),
+        horizontalArrangement=Arrangement.spacedBy(4.dp),
+        verticalAlignment=Alignment.CenterVertically
+    ) {
             Column(Modifier.weight(1.25f),verticalArrangement=Arrangement.spacedBy(1.dp)) {
                 if(showDate) Text(
                     line.date.format(DateTimeFormatter.ofPattern("dd EEE",Locale.US)),
@@ -450,13 +454,31 @@ private fun LedgerEntry(
                     Text("—",style=MaterialTheme.typography.labelSmall,color=ReportPalette.Muted)
                 else StatementDue(line.draws,true)
             }
+    }
+}
+
+/** Day is the visual unit: one uninterrupted week-tinted background and
+ * two independently tappable, equally tall session rows. The internal
+ * separator is inset; only the boundary between days is full-width.
+ */
+@Composable
+private fun LedgerDayGroup(
+    lines:List<CustomerLedgerLine>,view:String,shade:Boolean,
+    onOpen:(LocalDate,DrawSession)->Unit
+) {
+    Surface(color=if(shade)ReportPalette.WeekTint else Color.White) {
+        Column(Modifier.fillMaxWidth()) {
+            lines.forEachIndexed { index,line ->
+                LedgerEntry(line,view,showDate=index==0) {
+                    onOpen(line.date,line.session)
+                }
+                if(index < lines.lastIndex) HorizontalDivider(
+                    modifier=Modifier.padding(start=42.dp),
+                    color=ReportPalette.Edge.copy(alpha=.45f),thickness=.5.dp)
+            }
+            HorizontalDivider(color=ReportPalette.Edge,thickness=1.15.dp)
         }
     }
-    HorizontalDivider(
-        modifier=if(endOfDay)Modifier else Modifier.padding(start=42.dp),
-        color=if(endOfDay)ReportPalette.Edge else ReportPalette.Edge.copy(alpha=.42f),
-        thickness=if(endOfDay)1.15.dp else .45.dp
-    )
 }
 
 @Composable
@@ -493,16 +515,13 @@ private fun LedgerRows(
         val grouped=period==StatementPeriod.MONTH||period==StatementPeriod.YEAR||
             period==StatementPeriod.CUSTOM
         var lastWeek:Long?=null
-        var previousDate:LocalDate?=null
-        rows.forEachIndexed { index,line ->
-            val week=CustomerReportFrame.weekBandIndex(page,line.date)
-            if(grouped&&week!=lastWeek) WeekBand(page,line.date,week.toInt())
+        // LinkedHashMap from groupBy preserves chronological slot order;
+        // a day is rendered once, never split into two separate Surfaces.
+        rows.groupBy { it.date }.forEach { (date, dayLines) ->
+            val week=CustomerReportFrame.weekBandIndex(page,date)
+            if(grouped&&week!=lastWeek) WeekBand(page,date,week.toInt())
             lastWeek=week
-            val endOfDay=rows.getOrNull(index+1)?.date!=line.date
-            LedgerEntry(line,view,week%2L!=0L,line.date!=previousDate,endOfDay) {
-                onOpen(line.date,line.session)
-            }
-            previousDate=line.date
+            LedgerDayGroup(dayLines,view,week%2L!=0L,onOpen)
         }
     }
 }

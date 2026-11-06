@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.main
 
+import android.graphics.Typeface
 import com.myanmar.ledger2d.core.model.DrawSession
 import org.junit.Assert.*
 import org.junit.Test
@@ -71,4 +72,23 @@ class VoucherRendererTest {
         longRowParts.zipWithNext { a, b -> assertEquals(a.untilLine, b.firstLine) }
         assertEquals(1, parts.last().rowIndex)
     }
+    @Test fun explicitlySelectedMyanmarFontKeepsMultilineVoucherAndAmounts() {
+        val source = listOf("4567ခွေ5000", "အပူး1000", "9ထိပ်1000", "မနက်အကြိမ်")
+            .joinToString("\n")
+        val renderer = VoucherRenderer(document(listOf(
+            VoucherRecord(1, source, 12, 60000),
+            VoucherRecord(2, "ပါဝါ2000", 10, 20000),
+        )), Typeface.create("sans-serif", Typeface.NORMAL))
+        val slices = renderer.pages.flatMap { it.slices }
+        assertEquals(listOf(0, 1), slices.map { it.rowIndex })
+        assertEquals(80000L, renderer.document.totalAmount)
+        val bitmap = renderer.render(0)
+        try {
+            assertEquals(1080, bitmap.width)
+            assertEquals(1920, bitmap.height)
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
 }

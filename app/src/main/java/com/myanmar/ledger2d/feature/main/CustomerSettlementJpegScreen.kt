@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import com.myanmar.ledger2d.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.BetEntryWithLines
 import com.myanmar.ledger2d.core.design.LocalLanguage
@@ -277,6 +279,9 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
 private fun CustomerSettlementJpegPreview(source: CustomerSettlementSource, onBack: () -> Unit) {
     val language = LocalLanguage.current
     val context = LocalContext.current
+    val sourceTypeface = remember(context) {
+        ResourcesCompat.getFont(context, R.font.noto_sans_myanmar_ui_regular)
+    }
     val scope = rememberCoroutineScope()
     var commissionEnabled by rememberSaveable { mutableStateOf(false) }
     var percentText by rememberSaveable { mutableStateOf("5") }
@@ -289,12 +294,12 @@ private fun CustomerSettlementJpegPreview(source: CustomerSettlementSource, onBa
     }
     // Never show/export a previously computed rebate while the new JPEG is rendering.
     val preparation by produceState<Pair<CustomerSettlementDocument, CustomerSettlementJpegRenderer>?>(
-        null, document,
+        null, document, sourceTypeface,
     ) {
         value = null
         if (document != null) {
             val ready = withContext(Dispatchers.Default) {
-                CustomerSettlementJpegRenderer(document)
+                CustomerSettlementJpegRenderer(document, sourceTypeface)
             }
             value = document to ready
         }

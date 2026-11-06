@@ -53,7 +53,12 @@ internal fun voucherDocument(
     )
 }
 
-internal class VoucherRenderer(val document: VoucherDocument) {
+internal class VoucherRenderer(
+    val document: VoucherDocument,
+    // Optional to keep existing renderer tests and external callers compatible.
+    // The preview injects the bundled Noto Sans Myanmar UI typeface.
+    sourceTypeface: Typeface? = null,
+) {
     companion object {
         const val width = 1080
         const val height = 1920
@@ -76,7 +81,9 @@ internal class VoucherRenderer(val document: VoucherDocument) {
         private val rule = Color.rgb(213, 204, 207)
     }
 
-    private val betTextPaint = textPaint(30f, ink)
+    private val betTextPaint = textPaint(30f, ink).apply {
+        if (sourceTypeface != null) typeface = sourceTypeface
+    }
     private val rows: List<StaticLayout> = document.records.map { sourceLayout(it.source) }
     val pages: List<VoucherPage> = VoucherPaginator.paginate(
         rows.map { layout ->
@@ -164,7 +171,10 @@ internal class VoucherRenderer(val document: VoucherDocument) {
             val visualTop = layout.getLineTop(slice.firstLine)
             val visualBottom = layout.getLineBottom(slice.untilLine - 1)
             canvas.save()
-            canvas.clipRect(betTextX, textTop, betTextX + betTextWidth, textTop + visualBottom - visualTop)
+            // Myanmar above/below-base vowel marks can extend beyond the
+            // glyph's tight line bounds; reserve ink overflow inside the row.
+            canvas.clipRect(betTextX, textTop - 8f, betTextX + betTextWidth,
+                textTop + visualBottom - visualTop + 8f)
             canvas.translate(betTextX, textTop - visualTop)
             layout.draw(canvas)
             canvas.restore()
@@ -218,7 +228,7 @@ internal class VoucherRenderer(val document: VoucherDocument) {
     private fun sourceLayout(value: String): StaticLayout =
         StaticLayout.Builder.obtain(value, 0, value.length, betTextPaint, betTextWidth)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setIncludePad(false)
+            .setIncludePad(true)
             .setLineSpacing(8f, 1f)
             .build()
 

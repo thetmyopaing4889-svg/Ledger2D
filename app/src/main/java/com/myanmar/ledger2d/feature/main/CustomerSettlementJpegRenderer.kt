@@ -18,7 +18,10 @@ import java.util.Locale
  * Same 1080x1920 portrait page and Cherry branding as VoucherRenderer.
  * Independent renderer means the existing selected-transaction voucher is unchanged.
  */
-internal class CustomerSettlementJpegRenderer(val document: CustomerSettlementDocument) {
+internal class CustomerSettlementJpegRenderer(
+    val document: CustomerSettlementDocument,
+    sourceTypeface: Typeface? = null,
+) {
     companion object {
         const val width = 1080
         const val height = 1920
@@ -60,7 +63,9 @@ internal class CustomerSettlementJpegRenderer(val document: CustomerSettlementDo
         }
     }
 
-    private val sourcePaint = textPaint(24f, ink)
+    private val sourcePaint = textPaint(24f, ink).apply {
+        if (sourceTypeface != null) typeface = sourceTypeface
+    }
     private val textLayouts: Map<Long, StaticLayout> = document.draws.flatMap { it.rows }
         .associate { it.id to sourceLayout(it.source) }
     private val pages: List<List<Item>> = paginate()
@@ -229,8 +234,10 @@ internal class CustomerSettlementJpegRenderer(val document: CustomerSettlementDo
                     val visibleTop = layout.getLineTop(item.first)
                     val visibleBottom = layout.getLineBottom(item.until - 1)
                     canvas.save()
-                    canvas.clipRect(sourceX, y + 14f, sourceX + sourceWidth,
-                        y + 14f + visibleBottom - visibleTop)
+                    // Leave ink overhang for Myanmar stacked letters and
+                    // above/below-base marks within the measured row padding.
+                    canvas.clipRect(sourceX, y + 6f, sourceX + sourceWidth,
+                        y + 14f + visibleBottom - visibleTop + 8f)
                     canvas.translate(sourceX, y + 14f - visibleTop)
                     layout.draw(canvas)
                     canvas.restore()
@@ -326,7 +333,7 @@ internal class CustomerSettlementJpegRenderer(val document: CustomerSettlementDo
     private fun sourceLayout(source: String): StaticLayout =
         StaticLayout.Builder.obtain(source, 0, source.length, sourcePaint, sourceWidth)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setIncludePad(false).setLineSpacing(5f, 1f).build()
+            .setIncludePad(true).setLineSpacing(5f, 1f).build()
 
     private fun textPaint(
         size: Float, color: Int, bold: Boolean = false, rightAligned: Boolean = false,
