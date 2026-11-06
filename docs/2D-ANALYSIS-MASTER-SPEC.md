@@ -2,8 +2,8 @@
 
 > **Status:** Requirements collection / redesign planning; implementation **NOT approved**.  
 > **Version:** 0.1 — 2026-11-06  
-> **Repository branch at creation:** \`experiment/font-typography-lab-build930\`  
-> **Baseline code reviewed:** Build #963, commit \`522a37c8637ad847677931756bcdef916693f343\` (CI success).  
+> **Repository branch at creation:** `experiment/font-typography-lab-build930`  
+> **Baseline code reviewed:** Build #963, commit `522a37c8637ad847677931756bcdef916693f343` (CI success).  
 > **Purpose:** Transfer the complete *why, what, definitions, examples, open questions and decisions* across conversations and eventually into implementation tests. **This document is a working source of truth, not permission to change app code.**
 
 ## Reading guide — important
@@ -87,8 +87,8 @@ No analysis code/UI change is authorized merely by adding or editing this docume
 
 - **တစ်လုံးဂဏန်း (digit):** 0 through 9, regardless of whether used in the tens (ထိပ်) or ones (ပိတ်) place when evaluating an appearance (unless a specific method says otherwise).
 - **2D number (နှစ်လုံးတွဲ):** 00 through 99, e.g. 39.
-- Example confirmed by user: \`14 → 26 → 35\` uses the six single digits 1,4,2,6,3,5, **none repeating** among these draws.
-- Example: \`14 → 45 → 65\` shows a **single-digit carry/reappearance between consecutive results**: 4 in 14/45; then 5 in 45/65. It is *not* the same digit repeating in all three results, and not the same 2D pair repeating.
+- Example confirmed by user: `14 → 26 → 35` uses the six single digits 1,4,2,6,3,5, **none repeating** among these draws.
+- Example: `14 → 45 → 65` shows a **single-digit carry/reappearance between consecutive results**: 4 in 14/45; then 5 in 45/65. It is *not* the same digit repeating in all three results, and not the same 2D pair repeating.
 - Patterns based on sequential appearance of digits are **candidate methods/examples**, not yet a separately confirmed, fully specified check in this register.
 
 ## II.3 Even/odd classes and special 2D groups
@@ -321,8 +321,8 @@ These observations came from the user to illustrate the real-world analysis doma
 
 - This week's **အပူး, ပါဝါ, နက္ခတ်, ညီအကို** appearing/not appearing.
 - Weekly **စုံစုံ, မမ, စုံမ, မစုံ** progression.
-- \`14 → 26 → 35\`: no single digit repeats between the three successive draws; all six digits are new.
-- \`14 → 45 → 65\`: successive draws share one digit (4 then 5), even though the shared digit changes.
+- `14 → 26 → 35`: no single digit repeats between the three successive draws; all six digits are new.
+- `14 → 45 → 65`: successive draws share one digit (4 then 5), even though the shared digit changes.
 - Week's missing single-digit set and the interplay of current and historical weeks.
 
 When the user describes an exact method using any of these observations, **give it a new method ID or attach it by explicit user agreement**. Do not create implied formulas.
@@ -368,10 +368,10 @@ Do not mistake the table for a user-approved implementation plan.
 - Keep analysis read-only over confirmed result data unless a future explicitly approved requirement changes that.
 - In a future implementation, make unit tests for: correct 0–9 vs 00–99 scope, weekly boundaries, no look-ahead, holiday eligibility, ordered vs unordered matching, matched-next-result existence, duplicate-source handling, ties, and data completeness.
 - Old analysis code files relevant for orientation: 
-  - \`app/src/main/java/com/myanmar/ledger2d/feature/main/Historical2DAnalysisScreen.kt\`
-  - \`app/src/main/java/com/myanmar/ledger2d/feature/main/Historic2DDataSource.kt\`
-  - \`app/src/test/java/com/myanmar/ledger2d/feature/main/Historic2DDataSourceTest.kt\`
-- Existing restore point before the Aurora analysis redesign: \`backup/pre-aurora-analysis-build957-20261106\`. Do not reset to it without explicit user direction.
+  - `app/src/main/java/com/myanmar/ledger2d/feature/main/Historical2DAnalysisScreen.kt`
+  - `app/src/main/java/com/myanmar/ledger2d/feature/main/Historic2DDataSource.kt`
+  - `app/src/test/java/com/myanmar/ledger2d/feature/main/Historic2DDataSourceTest.kt`
+- Existing restore point before the Aurora analysis redesign: `backup/pre-aurora-analysis-build957-20261106`. Do not reset to it without explicit user direction.
 
 # Part VIII — Requirement register / change-log template
 
