@@ -729,7 +729,9 @@ private fun AuroraExplorer(
         2 -> stats.counts.sortedWith(compareBy<HistoricNumberStat> { it.count }.thenBy { it.digit })
         else -> stats.counts
     }.filter { it.digit.contains(search.trim()) }
-    val rows = numbers.chunked(5)
+    var page by rememberSaveable(sort, search) { mutableIntStateOf(0) }
+    val pageCount = maxOf(1, (numbers.size + 24) / 25)
+    val rows = numbers.drop(page * 25).take(25).chunked(5)
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp),
         contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -755,9 +757,27 @@ private fun AuroraExplorer(
                 }
             }
         }
-        item { Text(tr("အရောင်ရင့်သည့်ဂဏန်းများ ပိုမိုထွက်ခဲ့သည်",
-            "Highlighted numbers have higher observed counts"),
-            style = MaterialTheme.typography.labelSmall, color = auroraMuted) }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(tr("စာမျက်နှာ", "Page") + " " + (page + 1) + " / " + pageCount,
+                    style = MaterialTheme.typography.labelMedium, color = auroraMuted)
+                Row {
+                    TextButton(onClick = { page-- }, enabled = page > 0) {
+                        Text(tr("ရှေ့", "Prev"))
+                    }
+                    TextButton(onClick = { page++ }, enabled = page + 1 < pageCount) {
+                        Text(tr("နောက်", "Next"))
+                    }
+                }
+            }
+            Text(tr("အရောင်ရင့်လေ အထွက်များလေ", "Darker tiles mark higher counts"),
+                style = MaterialTheme.typography.labelSmall, color = auroraMuted)
+        }
+        if (numbers.isEmpty()) {
+            item { Text(tr("ဂဏန်းမတွေ့ပါ", "No matching numbers"),
+                style = MaterialTheme.typography.bodyMedium, color = auroraMuted) }
+        }
         items(rows.size) { i -> AuroraNumberRow(rows[i], max, onClick) }
     }
 }
@@ -785,6 +805,8 @@ private fun AuroraPatterns(
     fun tr(my: String, english: String) = if (en) english else my
     val names = listOf(tr("ထိပ်", "Tens"), tr("ပိတ်", "Ones"),
         tr("အတွဲ", "Pairs"), tr("အပူး", "Doubles"))
+    var showAllPairs by remember { mutableStateOf(false) }
+    val pairs = stats.reversePairs.filter { it.firstCount + it.reverseCount > 0 }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp),
         contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -818,9 +840,8 @@ private fun AuroraPatterns(
                         Text(tr("ပြောင်းပြန်ဂဏန်းအတွဲ", "Reverse pairs"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold, color = auroraInk)
-                        val pairs = stats.reversePairs.filter { it.firstCount + it.reverseCount > 0 }
                         if (pairs.isEmpty()) Text(tr("မရှိသေးပါ", "No pairs"), color = auroraMuted)
-                        pairs.take(12).forEach { pair ->
+                        pairs.take(4).forEach { pair ->
                             Row(Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(pair.first + " / " + pair.reverse,
@@ -828,6 +849,12 @@ private fun AuroraPatterns(
                                     fontWeight = FontWeight.Bold, color = auroraInk)
                                 Text(pair.firstCount.toString() + " / " + pair.reverseCount,
                                     style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
+                            }
+                        }
+                        if (pairs.size > 4) {
+                            TextButton(onClick = { showAllPairs = true }) {
+                                Text(tr("အားလုံးကြည့်ရန်", "View all") + " (" + pairs.size + ")",
+                                    color = auroraCherry)
                             }
                         }
                     }
@@ -842,6 +869,30 @@ private fun AuroraPatterns(
                 }
             }
         }
+    }
+    if (showAllPairs) {
+        AlertDialog(
+            onDismissRequest = { showAllPairs = false },
+            title = { Text(tr("ပြောင်းပြန်ဂဏန်းအတွဲ", "Reverse pairs") + " (" + pairs.size + ")") },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 460.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(pairs.size) { i ->
+                        val pair = pairs[i]
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(pair.first + " / " + pair.reverse,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = auroraInk, fontWeight = FontWeight.Bold)
+                            Text(pair.firstCount.toString() + " / " + pair.reverseCount,
+                                style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAllPairs = false }) {
+                Text(tr("ပိတ်မည်", "Close"))
+            } },
+        )
     }
 }
 @Composable
@@ -889,7 +940,7 @@ private fun AuroraMissing(
                             Text(tr("အားလုံး", "View all"), color = auroraCherry)
                         }
                     }
-                    missing.take(6).forEach { number ->
+                    missing.take(4).forEach { number ->
                         Surface(onClick = { onClick(number.digit) },
                             color = auroraSoft, shape = RoundedCornerShape(12.dp)) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
