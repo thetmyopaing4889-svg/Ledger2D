@@ -588,6 +588,56 @@ The first 01/10 examples above are **only for the ပြန်ကျ criterion**
 
 ---
 
+## A-08 — Historical next-morning outcomes conditional on a previous morning's exact 2D result
+
+**Status:** **New idea identified, NOT yet a finalized method.** User asks whether this check was already in A-01 through A-07; **it was not**. Initial assistant interpretation below needs user validation, particularly whether the intervening evening result is a condition or just background.
+
+### A-08.1 User's exact example and question
+
+> "ဥပမာ အခု session က tue မနက်ဖြစ်တယ်တော့ mon မနက် 02 ညနေ 98 ဖြစ်ခဲ့မယ်ဆိုရင် မနက် 02 ထွက်ပြီး နောက်မနက် ဘာတွေ ထွက်လဲ ရှာပေးတဲ့ စစ်ဆေးနည်း ပါသွားပြီလား ငါလဲရောကုန်ပြီ😂"
+
+- **Current target:** Tuesday morning (Tue AM); its outcome has not yet occurred.
+- **Known previous-day results:** Monday AM **02**; Monday PM **98**.
+- **Question:** Historically, after **a morning result 02**, what complete 2D values occurred at the **following morning draw**?
+- Do **not** confuse this with simply taking all historical Tuesday morning frequency data.
+
+### A-08.2 Initial assistant interpretation to confirm
+
+1. Search historical weeks in which **Monday morning was exactly 02**.
+2. For each qualifying week, inspect the **following Tuesday morning** confirmed 2D result.
+3. Summarize which exact 2D numbers occurred in those following Tuesday-morning results, their observed counts and historical dates, if applicable.
+4. **Monday evening 98 is known context in the current example, not automatically a second matching condition.** This is an unresolved choice; a stricter **Mon AM=02 AND Mon PM=98** two-condition match may be a different method or a user-required part of this one.
+5. Do not count the Monday evening draw itself as the *next morning*. The target is Tue AM in the explicit example.
+6. Never include a historical Tuesday morning result without the required preceding qualifying morning event; avoid look-ahead or claiming it predicts a future result.
+
+### A-08.3 Illustrative examples (invented, not real history)
+
+**Potential match:** History week X: Mon AM=02, Mon PM=44, Tue AM=56. If the method matches **only previous Mon AM 02**, Tue AM **56** is a valid historical continuation despite Mon PM differing from the current week's 98. If the user requires **both Monday sessions to match**, it is NOT a qualifying example. **This choice is not settled.**
+
+**Nonmatch:** History week Y: Mon AM=20, Mon PM=98, Tue AM=56. Under exact previous morning matching, 20 is not 02; it does not qualify.
+
+**Incorrect shortcut:** Include every past Tue AM occurrence regardless of what came before. That is A-02's same weekday/session history population, **not** this conditioned-continuation analysis.
+
+### A-08.4 Contrast to previously recorded methods
+
+- **A-02**: Frequencies among all historical draws of the **same weekday and same AM/PM session** as the current target; **no prior exact-number condition**.
+- **A-03**: Matches a **minimum-four-draw ordered parity sequence** within historical weeks; examines the next **parity class**, not exact two-digit next-morning outcomes after a single prior morning result.
+- **A-05**: Current-week flow of **new/old individual digits**, not historical conditional exact-pair continuation.
+- **A-07**: Current-week special-group appearance status, not history of morning-to-following-morning outcomes.
+
+### A-08.5 Open decisions, do not assume
+
+- **Q-34:** Is the actual filter **only Monday morning 02**, ignoring Monday evening 98, or must **both Monday sessions (02, 98)** match history before examining Tue AM?
+- **Q-35:** Does the method generalize to **any target morning whose preceding morning result is known** (e.g. Wed AM after Tue AM) or only Tue AM after Mon AM?
+- **Q-36:** On a closure/holiday, does "next morning" mean the **next actually held morning session**, or a **specific next-calendar-day morning slot**? Exclude unverifiable or nonexistent draw records.
+- **Q-37:** Historical lookback and data completeness thresholds, tied results and how many matching examples to display; avoid an invented predictive probability.
+- **Q-38:** Is there an analogous **evening-to-following-evening** case? User has not requested one; do not add automatically.
+
+**Feature grouping:** undecided.  
+**Code/UI status:** not approved; document the candidate only and seek clarification on Q-34 before treating it as final.
+
+---
+
 # Part IV — Other user-described observations (not yet separate confirmed methods)
 
 These observations came from the user to illustrate the real-world analysis domain, **not** to authorize implementing new detectors:
@@ -639,6 +689,11 @@ When the user describes an exact method using any of these observations, **give 
 | Q-31 | A-07 occurrence status | Whether to show counts, involved results, dates/sessions alongside appeared/not-yet |
 | Q-32 | A-07 ပြန်ကျ multiplicity | How to count/show the same pair appearing 3+ times |
 | Q-33 | A-07 missing source data | How to qualify "not appeared" for incomplete current-week result records |
+| Q-34 | A-08 Monday PM condition | Match only Mon AM=02, or Mon AM=02 AND Mon PM=98? |
+| Q-35 | A-08 target generality | Tue AM example only or any following morning day/session? |
+| Q-36 | A-08 closure | Next held morning vs fixed next-calendar-day morning |
+| Q-37 | A-08 history sample | Lookback, missing records, counts, ties and examples |
+| Q-38 | A-08 evening counterpart | Not requested; avoid assuming PM→PM equivalent |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -703,6 +758,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-06 longest-absent 2D pair and 0–9 digit, each analyzed separately for AM-only, PM-only and both | User specified six checks; details pending |
 | 2026-11-06 | A-06 absence counted in distinct relevant completed draws, not days. Morning 56 absent 100 AM results while PM 56 hit: AM remains missing; PM and combined reset on PM hit | Explicit user clarification, confirmed; do not re-ask this definition |
 | 2026-11-06 | A-07 current-week အပူး, ညီကို, ပါဝါ, နက္ခတ်, ပြန်ကျ appearance status starts after just one confirmed weekly result | User explicitly confirmed scope/activation; details and category mappings pending |
+| 2026-11-06 | A-08 candidate: current Tue AM after Mon AM=02 (Mon PM=98 supplied as context); find historical next-morning exact 2D outcomes after matched morning | New method not covered by A-01–A-07; whether Mon PM is a second matching criterion is pending |
 
 ---
 
