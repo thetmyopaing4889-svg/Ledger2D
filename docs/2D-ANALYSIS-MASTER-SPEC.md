@@ -450,6 +450,65 @@ Narrative interpretation:
 
 ---
 
+## A-06 — Longest-currently-absent 2D pairs and single digits, by morning/evening/both
+
+**State:** User provided the **six requested output categories**. The time-gap measurement, data horizon, handling never-seen values and exact eligibility are **pending**, so these must NOT be silently assumed in code.  
+**Scope:** Historical confirmed 2D draw records, using three **separate observation streams**: (1) morning-only, (2) evening-only, (3) combined morning+evening chronological results. This is distinct from A-01 previous-week missing digits and A-04 previous-week category summary.
+
+### A-06.1 User's explicit instruction
+
+> "စစ်ဆေးနည်း၆ မနက်ပိုင်းသီးသန့် ပျောက်တာအကြာဆုံး ဂဏန်းတွဲ (ဥပမာ ၅၆) နဲ့ ပျောက်တာအကြာဆုံးဂဏန်း(ဥပမာ 0) ညနေသီးသန့် ပျောက်ဂဏန်းတွဲနဲ့ ဂဏန်း ပြီးတော့ နှစ်ကြိမ်လုံး ပျောက်ဂဏန်းတွဲနဲ့ ဂဏန်း"
+
+Interpret this as **three independent missing-duration examinations**, **each** covering both complete 2D values 00–99 and single digits 0–9.
+
+### A-06.2 Exact six output questions — USER SPECIFIED
+
+| Stream / filter | Full 2D-number question | Single-digit question |
+|---|---|---|
+| **Morning only (မနက်သီးသန့်)** | Among 00–99 pairs, which complete value has been absent the longest **from morning results**? Example candidate: **56**. | Among 0–9 digits, which digit has been absent the longest **from morning results**? Example candidate: **0**. |
+| **Evening only (ညနေသီးသန့်)** | Among 00–99 pairs, which complete value has been absent the longest **from evening results**? | Among 0–9 digits, which digit has been absent the longest **from evening results**? |
+| **Both combined (မနက်+ညနေ)** | Among 00–99 pairs, which complete value has been absent the longest when **both morning and evening results** are considered? | Among 0–9 digits, which digit has been absent the longest when **both morning and evening results** are considered? |
+
+**Do not accidentally reuse morning-only ranking for evening-only or both.** The three sets of draw occasions and their "last seen" points differ.
+
+### A-06.3 Necessary distinctions
+
+- **ဂဏန်းတွဲ** refers to the **exact two-digit result**, e.g., **56**. Seeing 65 is **not** seeing 56 (unless the user introduces a new reversal convention).
+- **ဂဏန်း** refers to a **single 0–9 digit**; seeing digit 0 within 20 or 03 normally constitutes an appearance for a one-digit check, whether tens or ones. The user has explicitly distinguished digits from pairs in prior methods.
+- **"ပျောက်တာအကြာဆုံး"** is about **time/observations since last occurrence**, not necessarily the result with the lowest overall frequency. A number can have appeared many times historically but still have the longest current absence.
+- Morning-only results should not reset morning-only absence due to an evening appearance; evening-only similarly should not be reset by a morning appearance. A **combined** stream can be reset by an appearance in either.
+- **Not a prediction**: longest absence alone does not establish a higher future chance.
+
+### A-06.4 Illustrative edge scenarios (not factual history)
+
+**Example 1 — morning vs evening distinction:** If **56** last appeared in a morning draw many mornings ago but appeared yesterday evening, the **morning-only** "last seen" remains the old morning occasion, while **combined** "last seen" is yesterday evening. Do not merge streams.
+
+**Example 2 — pair vs digit:** If 56 has not appeared recently but 59 has, digit 5 has appeared while complete pair 56 has not. They must have separate absence calculations.
+
+**Example 3 — ties:** If several candidate values have equally long absence by the approved metric, the method must not arbitrarily highlight only one without revealing the tie.
+
+### A-06.5 Required data/metric decisions (NOT confirmed yet)
+
+1. **Q-24 — Absence unit:** Does "ပျောက်တာအကြာဆုံး" mean **number of completed relevant draw occasions since last seen** (morning observations for AM, evening for PM, both for combined), **calendar days**, or another Myanmar 2D convention? The ranking can differ, especially with holidays and two draws per day.
+2. **Q-25 — Lookback boundary:** Should this be calculated over **all historical records available**, a specified number of months, or a user-selectable date range? What if a digit/pair has **never** been seen in available history?
+3. **Q-26 — Starting point / target session:** For the current target session, does analysis use only **previously completed results** (recommended for avoiding look-ahead) and when should a latest-result update refresh the ranking? Need explicit target timing.
+4. **Q-27 — Data sufficiency:** What if the source contains missing records, true holidays or import gaps? Do not count an unavailable draw as a verified nonappearance; preserve any inability to know the true absence length.
+5. **Q-28 — Desired user answer:** Should the result expose only the single longest candidate, **all ties**, a top N shortlist, last-seen date/time and the exact number of intervening relevant draws, or a full sortable table? UI grouping remains undecided.
+6. **Q-29 — Historic observed vs all-time:** Does the user mean the **longest absence ongoing now**, or the **longest historical absence streak ever recorded**? The wording sounds like ongoing absence, but this distinction affects the entire algorithm and has **not yet been explicitly confirmed**.
+
+### A-06.6 Relationship to other approved methods
+
+- **A-01:** Detect **digits absent for an entire previous calendar week** and whether they returned next week; week-to-week History comparison.
+- **A-04:** Report the previous week's frequencies and groups, including its remaining-number definition (still pending).
+- **A-05:** Track **new/old digits and remaining 0–9 digits within the CURRENT week**, activated after the first draw of that week.
+- **A-06:** Evaluate **duration of absence** for both full 2D pairs and single digits over **morning-only, evening-only, both** observation streams. No default week-only limitation or absence metric is approved yet.
+
+**Feature assignment:** undecided; do not add six separate screens simply because there are six questions.  
+**Code status:** not implemented or approved.  
+**Next action:** Confirm the time/observation unit and whether the user means the longest absence **as of now** or the longest historical absence **ever** before finalizing calculations.
+
+---
+
 # Part IV — Other user-described observations (not yet separate confirmed methods)
 
 These observations came from the user to illustrate the real-world analysis domain, **not** to authorize implementing new detectors:
@@ -491,6 +550,12 @@ When the user describes an exact method using any of these observations, **give 
 | Q-21 | A-05 history scope | Current-week descriptive flow only or any user-approved history matching |
 | Q-22 | A-05 presentation | Remaining current-week digits REQUIRED; final layout for draw/day flow and remaining set pending |
 | Q-23 | A-05 completeness | Closure vs missing records and eligibility |
+| Q-24 | A-06 absence unit | Relevant draw occasions vs calendar days vs another measure |
+| Q-25 | A-06 history horizon | All available vs selected interval; never-seen candidates |
+| Q-26 | A-06 target timing | Results eligible before target occasion, refresh behavior |
+| Q-27 | A-06 completeness | Holidays and absent/imported records vs verified nonappearance |
+| Q-28 | A-06 presentation | All ties/top N, last-seen date, duration details and drill-down |
+| Q-29 | A-06 meaning of longest | Longest currently ongoing absence vs longest historic streak ever |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -552,6 +617,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-04 ပြန်ကျ includes recurrence at any later occasion in the same week, including same-day AM→PM, with no adjacency rule | User explicitly confirmed; handling 3+ appearances still pending |
 | 2026-11-06 | A-05 current-week new/old single-digit flow: Mon 12,03 → Tue 02,35 | User supplied example; subsequent trigger/double/remaining rules confirmed |
 | 2026-11-06 | A-05 activates only after first weekly final result; display remaining 0–9 unseen digits; first 12 → remaining 34567890; first 11 → one new digit 1 and remaining 234567890 | Explicitly confirmed by user; layout and other edge cases pending |
+| 2026-11-06 | A-06 longest-absent 2D pair and 0–9 digit, each analyzed separately for AM-only, PM-only and both | User specified six checks; absence unit/horizon and current-vs-ever interpretation pending |
 
 ---
 
