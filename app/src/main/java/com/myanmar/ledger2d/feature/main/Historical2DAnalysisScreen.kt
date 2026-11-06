@@ -140,6 +140,10 @@ fun Historical2DAnalysisScreen(
             .sortedWith(compareByDescending<HistoricDraw> { it.date }
                 .thenByDescending { it.session.ordinal })
     }
+    val conflictsInPeriod = if (period == null) 0 else merged.conflicts.count {
+        it.date >= period.start && it.date <= period.end &&
+            (session == null || it.session == session)
+    }
     val navLabels = listOf(
         tr("သုံးသပ်", "Insights"), tr("ဂဏန်း", "Explorer"),
         tr("ပုံစံ", "Patterns"), tr("ပျောက်", "Missing"), tr("မူ", "Rules"),
@@ -168,7 +172,7 @@ fun Historical2DAnalysisScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = auroraPlum)
                 }
                 Column(Modifier.weight(1f)) {
-                    Text("2D Analysis", style = MaterialTheme.typography.titleLarge,
+                    Text(tr("2D သုံးသပ်ချက်", "2D Analysis"), style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold, color = auroraInk)
                     Text(
                         (periods.firstOrNull { it.first == periodKey }?.second ?: "") +
@@ -339,7 +343,7 @@ fun Historical2DAnalysisScreen(
                     AuroraEmpty(tr("ဒီကာလအတွက် အတည်ပြုရလဒ် မရှိသေးပါ",
                         "No confirmed results in this period"), onSettings)
                 } else when (active) {
-                    0 -> AuroraInsights(stats, filteredHistory, period, en,
+                    0 -> AuroraInsights(stats, filteredHistory, period, en, conflictsInPeriod,
                         { showHistory = true }, { chosenNumber = it })
                     1 -> AuroraExplorer(stats, en, search, { search = it },
                         sorting, { sorting = it }, { chosenNumber = it })
@@ -406,7 +410,7 @@ fun Historical2DAnalysisScreen(
                     Text(tr("နောက်ဆုံးတွေ့ရသောအကြိမ်", "Last seen") + ": " +
                         (detail?.lastSeen?.let {
                             it.date.toString() + " · " +
-                                (if (it.session == DrawSession.MORNING) "AM" else "PM")
+                                (if (it.session == DrawSession.MORNING) tr("မနက်", "AM") else tr("ညနေ", "PM"))
                         } ?: tr("ရရှိထားသောမှတ်တမ်းတွင် မတွေ့ပါ", "Not found in available history")))
                     Text(tr("နောက်ဆုံးတွေ့ပြီးနောက် အကြိမ်", "Observed draws since") +
                         ": " + (detail?.observedDrawsSince?.toString() ?: "—"))
@@ -474,9 +478,9 @@ private fun AuroraEmpty(message: String, onSettings: (() -> Unit)?) {
         AuroraPanel {
             Text(message, style = MaterialTheme.typography.titleMedium, color = auroraInk)
             if (onSettings != null) {
-                Text("History Result", style = MaterialTheme.typography.labelMedium,
+                Text(LocalLanguage.current.text("အတိတ်ရလဒ်", "History Result"), style = MaterialTheme.typography.labelMedium,
                     color = auroraMuted)
-                TextButton(onClick = onSettings) { Text("Settings") }
+                TextButton(onClick = onSettings) { Text(LocalLanguage.current.text("ဆက်တင်များ", "Settings")) }
             }
         }
     }
@@ -531,7 +535,7 @@ private fun AuroraHeroMetric(modifier: Modifier, label: String, value: String) {
 @Composable
 private fun AuroraInsights(
     stats: HistoricStatistics, history: List<HistoricDraw>, period: HistoricPeriod,
-    en: Boolean, onHistory: () -> Unit, onDigit: (String) -> Unit,
+    en: Boolean, conflicts: Int, onHistory: () -> Unit, onDigit: (String) -> Unit,
 ) {
     fun tr(my: String, english: String) = if (en) english else my
     val days = history.groupBy { it.date }.toList().sortedByDescending { it.first }.take(8)
@@ -589,19 +593,27 @@ private fun AuroraInsights(
                         val d = days[index]
                         val am = d.second.firstOrNull { it.session == DrawSession.MORNING }
                         val pm = d.second.firstOrNull { it.session == DrawSession.EVENING }
-                        Column(Modifier.width(93.dp).clip(RoundedCornerShape(15.dp))
+                        Column(Modifier.width(110.dp).clip(RoundedCornerShape(15.dp))
                             .background(auroraSoft).padding(10.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(d.first.toString().substring(5), color = auroraMuted,
                                 style = MaterialTheme.typography.labelSmall)
-                            Text("AM  " + (am?.digit ?: "—"), fontWeight = FontWeight.Bold,
+                            Text(tr("မနက်", "AM") + " " + (am?.digit ?: "—"), fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
-                            Text("PM  " + (pm?.digit ?: "—"), fontWeight = FontWeight.Bold,
+                            Text(tr("ညနေ", "PM") + " " + (pm?.digit ?: "—"), fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
                         }
                     }
                 }
             }
+        }
+        item {
+            Text(tr("နေ့စဉ်သိမ်း", "Daily") + " " +
+                history.count { it.source == HistoricSource.DAILY } + "  ·  " +
+                tr("အတိတ်မှတ်တမ်း", "History") + " " +
+                history.count { it.source == HistoricSource.HISTORY } +
+                (if (conflicts > 0) "  ·  " + tr("ကွဲလွဲမှု", "Conflicts") + " " + conflicts else ""),
+                style = MaterialTheme.typography.labelSmall, color = auroraMuted)
         }
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp),
