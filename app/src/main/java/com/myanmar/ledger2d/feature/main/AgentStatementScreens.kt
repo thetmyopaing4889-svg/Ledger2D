@@ -79,6 +79,7 @@ fun AgentStatementWorkspace(
         title = com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(if (results) "ဒိုင်စာရင်းရှင်းတမ်း" else "စာရင်းရွေးချယ်ရန်"),
         onBack = { if (results) results = false else onBack() },
         includeQuickEntryFab = false,
+        boldTitle = results,
     ) { padding ->
         if (!results) {
             LazyColumn(
@@ -156,7 +157,7 @@ fun AgentStatementWorkspace(
                 }
             }
         } else if (valid && range != null) {
-            AgentStatementResults(
+            AgentLedgerReportResults(
                 vm = vm, agentId = agentId, period = period, range = range,
                 session = selectedSession, subtitle = chosenAgent,
                 onReselect = { results = false },
@@ -322,7 +323,7 @@ private fun AgentStatementDigitDetails(draw: AgentStatementDraw) {
 }
 
 @Composable
-private fun AgentStatementDrawDetail(
+internal fun AgentStatementDrawDetail(
     draw: AgentStatementDraw,
     agentName: String,
     customerNames: Map<Long, String>,
