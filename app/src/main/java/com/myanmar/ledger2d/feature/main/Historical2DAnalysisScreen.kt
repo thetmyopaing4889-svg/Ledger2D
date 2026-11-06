@@ -293,11 +293,11 @@ fun Historical2DAnalysisScreen(
                             ) {
                                 val tint = if (tab == index) auroraCherry else Color(0xFFA69AA3)
                                 when (index) {
-                                    0 -> Icon(Icons.Default.Analytics, null, tint, Modifier.size(21.dp))
-                                    1 -> Icon(Icons.Default.GridView, null, tint, Modifier.size(21.dp))
-                                    2 -> Icon(Icons.Default.BarChart, null, tint, Modifier.size(21.dp))
-                                    3 -> Icon(Icons.Default.ManageSearch, null, tint, Modifier.size(21.dp))
-                                    else -> Icon(Icons.Default.MenuBook, null, tint, Modifier.size(21.dp))
+                                    0 -> Icon(Icons.Default.Analytics, null, modifier = Modifier.size(21.dp), tint = tint)
+                                    1 -> Icon(Icons.Default.GridView, null, modifier = Modifier.size(21.dp), tint = tint)
+                                    2 -> Icon(Icons.Default.BarChart, null, modifier = Modifier.size(21.dp), tint = tint)
+                                    3 -> Icon(Icons.Default.ManageSearch, null, modifier = Modifier.size(21.dp), tint = tint)
+                                    else -> Icon(Icons.Default.MenuBook, null, modifier = Modifier.size(21.dp), tint = tint)
                                 }
                                 Text(label,
                                     style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, language.code)
