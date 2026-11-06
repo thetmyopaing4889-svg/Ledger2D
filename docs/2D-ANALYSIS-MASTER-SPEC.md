@@ -588,53 +588,118 @@ The first 01/10 examples above are **only for the ပြန်ကျ criterion**
 
 ---
 
-## A-08 — Historical next-morning outcomes conditional on a previous morning's exact 2D result
+## A-08 — Historical exact-result conditional continuation: BOTH prior results AND each individually
 
-**Status:** **New idea identified, NOT yet a finalized method.** User asks whether this check was already in A-01 through A-07; **it was not**. Initial assistant interpretation below needs user validation, particularly whether the intervening evening result is a condition or just background.
+**State:** The user finished explaining the **core A-08 method**. Its three **always-run** searches, AM/PM-specific source-result windows, and the Friday→Monday weekly boundary example are **CONFIRMED**. Minor data-horizon, market-closure and presentation edge cases remain pending. **Do not modify analysis code/UI or group into features yet.**
 
-### A-08.1 User's exact example and question
+### A-08.1 What problem this answers (confirmed)
 
-> "ဥပမာ အခု session က tue မနက်ဖြစ်တယ်တော့ mon မနက် 02 ညနေ 98 ဖြစ်ခဲ့မယ်ဆိုရင် မနက် 02 ထွက်ပြီး နောက်မနက် ဘာတွေ ထွက်လဲ ရှာပေးတဲ့ စစ်ဆေးနည်း ပါသွားပြီလား ငါလဲရောကုန်ပြီ😂"
+The analysis centers on a **target draw that has not yet produced its result** and **two already confirmed relevant previous 2D results**. It asks: *On historical occurrences of these exact preceding results, what complete 2D values occurred in the corresponding next target session?*
 
-- **Current target:** Tuesday morning (Tue AM); its outcome has not yet occurred.
-- **Known previous-day results:** Monday AM **02**; Monday PM **98**.
-- **Question:** Historically, after **a morning result 02**, what complete 2D values occurred at the **following morning draw**?
-- Do **not** confuse this with simply taking all historical Tuesday morning frequency data.
+This is a **conditional historical-continuation check**, unlike A-02's unconditional frequency for the same weekday/session, and unlike A-03's 4+ consecutive parity-class matching.
 
-### A-08.2 Initial assistant interpretation to confirm
+The assistant previously assumed Mon PM was background and wrongly proposed a fallback ("match both or else match each separately"). **USER CORRECTED BOTH ASSUMPTIONS.** The two results are both matching inputs, and **all three checks ALWAYS run**, whether the two-result match exists or not.
 
-1. Search historical weeks in which **Monday morning was exactly 02**.
-2. For each qualifying week, inspect the **following Tuesday morning** confirmed 2D result.
-3. Summarize which exact 2D numbers occurred in those following Tuesday-morning results, their observed counts and historical dates, if applicable.
-4. **Monday evening 98 is known context in the current example, not automatically a second matching condition.** This is an unresolved choice; a stricter **Mon AM=02 AND Mon PM=98** two-condition match may be a different method or a user-required part of this one.
-5. Do not count the Monday evening draw itself as the *next morning*. The target is Tue AM in the explicit example.
-6. Never include a historical Tuesday morning result without the required preceding qualifying morning event; avoid look-ahead or claiming it predicts a future result.
+### A-08.2 Which TWO earlier results are used (confirmed)
 
-### A-08.3 Illustrative examples (invented, not real history)
+| Target draw to analyze | First reference result | Second reference result | Historical continuation slot |
+|---|---|---|---|
+| **Tuesday AM** | Monday AM | Monday PM | Tuesday AM |
+| **Tuesday PM** | Monday PM | Tuesday AM | Tuesday PM |
+| **Monday AM** | **Previous week's Friday AM** | **Previous week's Friday PM** | Following Monday AM |
+| **Monday PM** | **Previous week's Friday PM** | **Current Monday AM** | Monday PM |
 
-**Potential match:** History week X: Mon AM=02, Mon PM=44, Tue AM=56. If the method matches **only previous Mon AM 02**, Tue AM **56** is a valid historical continuation despite Mon PM differing from the current week's 98. If the user requires **both Monday sessions to match**, it is NOT a qualifying example. **This choice is not settled.**
+**General selection principle reflected in these examples:** For an upcoming **morning**, use the two sessions of the **preceding trading day**. For an upcoming **evening**, use the **preceding trading day's evening** plus **the current day's confirmed morning**. Friday→Monday **does cross the week boundary** in this specific A-08 analysis; **do not reuse A-03's same-week-only boundary rule**. The exact holiday/closed-day adjustment needs explicit verification later.
 
-**Nonmatch:** History week Y: Mon AM=20, Mon PM=98, Tue AM=56. Under exact previous morning matching, 20 is not 02; it does not qualify.
+The reference slots are positionally meaningful. Search historical comparable **weekday/session positions**, not arbitrary occurrences of the same number on different weekdays.
 
-**Incorrect shortcut:** Include every past Tue AM occurrence regardless of what came before. That is A-02's same weekday/session history population, **not** this conditioned-continuation analysis.
+### A-08.3 The THREE historical searches — ALWAYS performed
 
-### A-08.4 Contrast to previously recorded methods
+Given earlier references `A` (first slot) and `B` (second slot), and target session `T`:
 
-- **A-02**: Frequencies among all historical draws of the **same weekday and same AM/PM session** as the current target; **no prior exact-number condition**.
-- **A-03**: Matches a **minimum-four-draw ordered parity sequence** within historical weeks; examines the next **parity class**, not exact two-digit next-morning outcomes after a single prior morning result.
-- **A-05**: Current-week flow of **new/old individual digits**, not historical conditional exact-pair continuation.
-- **A-07**: Current-week special-group appearance status, not history of morning-to-following-morning outcomes.
+1. **Two-result exact match**: Find historical sequences where first reference slot **equals A** AND second reference slot **equals B**. For each, inspect what exact 2D result occurred in the corresponding **target T** session.
+2. **First reference only**: Separately find historical sequences where the first slot **equals A**, regardless of the second slot. Inspect the corresponding target **T** 2D results.
+3. **Second reference only**: Separately find historical sequences where the second slot **equals B**, regardless of the first slot. Inspect the corresponding target **T** 2D results.
 
-### A-08.5 Open decisions, do not assume
+**Critical business rule:** These are **three separate outputs, not a fallback hierarchy**. Even when search #1 finds many matches, **searches #2 and #3 must still be executed and reported**. If #1 finds none, do #2 and #3 anyway. Never stop early and never silently combine the result populations into one total (the same historical record may appear in more than one search).
 
-- **Q-34:** Is the actual filter **only Monday morning 02**, ignoring Monday evening 98, or must **both Monday sessions (02, 98)** match history before examining Tue AM?
-- **Q-35:** Does the method generalize to **any target morning whose preceding morning result is known** (e.g. Wed AM after Tue AM) or only Tue AM after Mon AM?
-- **Q-36:** On a closure/holiday, does "next morning" mean the **next actually held morning session**, or a **specific next-calendar-day morning slot**? Exclude unverifiable or nonexistent draw records.
-- **Q-37:** Historical lookback and data completeness thresholds, tied results and how many matching examples to display; avoid an invented predictive probability.
-- **Q-38:** Is there an analogous **evening-to-following-evening** case? User has not requested one; do not add automatically.
+The target result is an **exact 2D pair** in 00–99 (e.g., 02 is not 20). Historical outcomes are observations, not next-result guarantees.
 
-**Feature grouping:** undecided.  
-**Code/UI status:** not approved; document the candidate only and seek clarification on Q-34 before treating it as final.
+### A-08.4 Worked example for Tuesday MORNING — USER PROVIDED INPUT
+
+Current known confirmed results:
+- **Monday AM = 02**
+- **Monday PM = 89**
+- Target to inspect = **Tuesday AM** (not yet occurred).
+
+Run **all three**:
+- #1 **Mon AM=02 AND Mon PM=89** → what was **Tue AM** in each matching historical week?
+- #2 **Mon AM=02** (regardless of Mon PM) → what was **Tue AM** historically?
+- #3 **Mon PM=89** (regardless of Mon AM) → what was **Tue AM** historically?
+
+Illustrative hypothetical historical records (not actual database data):
+
+| History week | Mon AM | Mon PM | Tue AM | #1 both? | #2 AM only? | #3 PM only? |
+|---|---|---|---|---|---|---|
+| Example A | 02 | 89 | 35 | YES | YES | YES |
+| Example B | 02 | 44 | 71 | no | YES | no |
+| Example C | 77 | 89 | 40 | no | no | YES |
+| Example D | 77 | 44 | 10 | no | no | no |
+
+Then the three **separate** observed follow-on lists are:
+- #1 both matched → Tue AM historical outcome(s) **35**.
+- #2 Mon AM alone matched → Tue AM outcomes **35, 71**.
+- #3 Mon PM alone matched → Tue AM outcomes **35, 40**.
+
+**Example A must appear in all three relevant matched populations**; this overlap is correct and intentional. Never subtract it from the single-reference analyses or merge them into one disjoint sample. These numbers are illustrative only, not predictions or actual historical findings.
+
+### A-08.5 Worked example for Tuesday EVENING — USER SPECIFIED DIFFERENT REFERENCE WINDOW
+
+The user explicitly corrected: **Evening analysis must use yesterday's evening result plus today's morning result**, not yesterday's two results.
+
+For **Tuesday PM**:
+- First reference: **Monday PM=89**.
+- Second reference: **Tuesday AM=35** (illustrative).
+- Target: **Tuesday PM**.
+
+Always run:
+- #1 historical **Mon PM=89 AND Tue AM=35** → historical Tue PM result.
+- #2 historical **Mon PM=89** → historical Tue PM result.
+- #3 historical **Tue AM=35** → historical Tue PM result.
+
+This must **not** be mistaken for Tue AM's Mon AM+Mon PM comparison.
+
+### A-08.6 Worked example for MONDAY MORNING — USER CONFIRMED cross-week exception
+
+On **Monday AM**, the preceding relevant trading day is normally the **previous week's Friday**.
+
+Illustration:
+- Previous Friday AM=25.
+- Previous Friday PM=78.
+- Target=current Monday AM.
+
+Always search historical transitions **Fri AM=25 AND Fri PM=78 → next Mon AM**, **Fri AM=25 alone → next Mon AM**, **Fri PM=78 alone → next Mon AM**.
+
+This explicitly **crosses from one week to the next** and must not be blocked by weekly-reset logic from A-01, A-03, A-05, A-07.
+
+### A-08.7 Eligibility, observations and integrity
+
+- Run against **confirmed actual results**. The two reference slots are needed to run their intended searches; no rule for missing/closed source slots was approved yet.
+- Inspect the **correct future slot relative to the historical reference window**, not the immediately next result by accident. For Tue AM, the target is Tue AM even though Mon PM happens between morning draws.
+- Count/retain matching historical examples separately for each of the three groups; evidence can include dates and results. History matching **does not imply a future probability**.
+- Do not treat unknown historical target results as "not matching" outcomes. Do not allow a result from a different weekday/session to stand in unnoticed.
+- A-08 is about matching **actual 2D result values**, not shared digits, even/odd categories, or special groups.
+
+### A-08.8 What remains open (implementation details, not reasons to repeat the user's explanation)
+
+- **Q-34 RESOLVED:** Both reference slots **AND** each separate reference slot are **always examined**. They are not conditional fallback modes.
+- **Q-35 RESOLVED (core):** Morning and evening use **different two-result windows**, and the user explicitly included the Friday→Monday cross-week morning case; the table above captures the explained normal-week cases.
+- **Q-36 OPEN:** How do true holidays / unusual closures change "previous trading day" and comparable historical slot matching? Do not silently invent a rule.
+- **Q-37 OPEN:** Historical lookback duration, minimum verified sample, tie/evidence display, and whether counts need additional breakdowns.
+- **Q-38 RESOLVED:** Evening has its own logic: previous day's evening + current morning, then the same three historical searches.
+
+**Feature grouping:** undecided until all practical checks are collected.  
+**Code/UI:** No implementation authorized by this specification update; preserve "မူ" and other app behavior.
 
 ---
 
@@ -689,11 +754,11 @@ When the user describes an exact method using any of these observations, **give 
 | Q-31 | A-07 occurrence status | Whether to show counts, involved results, dates/sessions alongside appeared/not-yet |
 | Q-32 | A-07 ပြန်ကျ multiplicity | How to count/show the same pair appearing 3+ times |
 | Q-33 | A-07 missing source data | How to qualify "not appeared" for incomplete current-week result records |
-| Q-34 | A-08 Monday PM condition | Match only Mon AM=02, or Mon AM=02 AND Mon PM=98? |
-| Q-35 | A-08 target generality | Tue AM example only or any following morning day/session? |
-| Q-36 | A-08 closure | Next held morning vs fixed next-calendar-day morning |
+| Q-34 | A-08 three searches | RESOLVED: always match both references together AND first alone AND second alone; never fallback-only |
+| Q-35 | A-08 reference selection | RESOLVED core: AM = previous trading day's AM+PM; PM = previous trading day PM+today AM; Friday→Monday explicit |
+| Q-36 | A-08 holiday and closure | Pending how to align historical comparable slots when sessions or trading days are closed |
 | Q-37 | A-08 history sample | Lookback, missing records, counts, ties and examples |
-| Q-38 | A-08 evening counterpart | Not requested; avoid assuming PM→PM equivalent |
+| Q-38 | A-08 evening method | RESOLVED: today PM uses preceding day's PM + current day's AM, with all three searches |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -758,7 +823,9 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-06 longest-absent 2D pair and 0–9 digit, each analyzed separately for AM-only, PM-only and both | User specified six checks; details pending |
 | 2026-11-06 | A-06 absence counted in distinct relevant completed draws, not days. Morning 56 absent 100 AM results while PM 56 hit: AM remains missing; PM and combined reset on PM hit | Explicit user clarification, confirmed; do not re-ask this definition |
 | 2026-11-06 | A-07 current-week အပူး, ညီကို, ပါဝါ, နက္ခတ်, ပြန်ကျ appearance status starts after just one confirmed weekly result | User explicitly confirmed scope/activation; details and category mappings pending |
-| 2026-11-06 | A-08 candidate: current Tue AM after Mon AM=02 (Mon PM=98 supplied as context); find historical next-morning exact 2D outcomes after matched morning | New method not covered by A-01–A-07; whether Mon PM is a second matching criterion is pending |
+| 2026-11-06 | A-08 initially recorded as single prior-morning condition | SUPERSEDED by the user's later clarification below; do NOT implement fallback-only |
+| 2026-11-06 | A-08 three independent queries ALWAYS: exact pair of preceding reference draws, first draw alone, second draw alone | User confirmed; search all three even if two-draw match found |
+| 2026-11-06 | A-08 AM references preceding day AM+PM; PM references preceding day PM + current AM; Mon AM uses previous Fri AM+PM | User confirmed; cross-week Fri→Mon allowed; closure handling pending |
 
 ---
 
