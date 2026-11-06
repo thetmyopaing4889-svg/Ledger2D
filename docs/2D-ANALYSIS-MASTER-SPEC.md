@@ -317,20 +317,20 @@ The user wants **a practical analysis of the current target session**, based on 
 
 ## A-04 — Previous week's completed draw distribution and remaining digits
 
-**State:** Core check categories and the key meaning of **ပြန်ကျ** are **confirmed by user**; details of same-day repetition, category grouping and counting are pending. **Do not code yet.**  
+**State:** Core check categories and the precise **same-week exact-2D recurrence** meaning of **ပြန်ကျ** are **confirmed by user**; three-or-more recurrence presentation, counting method and other categories remain pending. **Do not code yet.**  
 **Scope:** The **entire previous Monday–Friday week**, including its completed AM and PM draws that have verified final results. **Do not confuse with A-02**, which filters to *the same weekday and same session* as the current target. **Do not confuse with A-01**, which continues from previous-week missing single digits into *current-week reappearance* and historical next-week behavior.
 
 ### A-04.1 User's actual request (captured from conversation)
 
 > "ပြီးခဲ့အပတ်ရဲ့ ဂဏန်းထွက်ရှိမှုအခြေအနေ 0 to 9 အကြိမ်ရေ, စုံစုံ မမ စုံမ မစုံ အကြိမ်ရေ, ပါဝါ ညီကို အပူး နက္ခတ်.ပြန်ကျ....ထွက်ရှိမှု, ကျန်ဂဏန်း"
 
-The user has **now explained ပြန်ကျ** as the **same exact two-digit number appearing again in the week**, e.g., Monday **01**, Tuesday **01**. **"ကျန်ဂဏန်း"** is still undefined. "ညီကို" may be the user's shorter term for an existing "ညီအကို" group; verify the synonym before coding.
+The user explicitly **confirmed ပြန်ကျ** as **the exact same two-digit number appearing at least twice within one Monday–Friday week, regardless of which days or AM/PM sessions**: e.g. Monday **01**, Tuesday **01** or Monday AM **01**, Monday PM **01**. It does **not** require consecutive draw occasions. **"ကျန်ဂဏန်း"** is still undefined. "ညီကို" may be the user's shorter term for an existing "ညီအကို" group; verify the synonym before coding.
 
 ### A-04.2 Components explicitly requested by user
 
 1. **0–9 digit appearance counts for the previous week.** Examine the week's 2D results and report occurrence statistics for individual digits 0 through 9. This concerns single digits, not the 00–99 2D pair frequency. The counting policy for a result such as `55` (one draw containing 5 or two digit-position occurrences) **remains pending**.
 2. **Four even/odd class counts for the previous week:** စုံစုံ, မမ, စုံမ, မစုံ — how often each category appeared in the week's draws. Validate the exact classification orientation and rules before implementing.
-3. **Special number-group appearances for the previous week:** ပါဝါ, ညီကို/ညီအကို, အပူး, နက္ခတ် and **ပြန်ကျ**. Count/report how each appeared. **ပြန်ကျ (confirmed core meaning):** repeat occurrence of an **identical 2D pair**, as with **01 on Monday, then 01 again on Tuesday**. This is different from a single 0 or 1 appearing again in a different pair, different from an unconfirmed reversal rule, and not restricted to two consecutive draws by the example. The exact membership definitions for the other named special groups remain pending; inspect existing verified app definitions and confirm with user. Do not assume the special groups are mutually exclusive.
+3. **Special number-group appearances for the previous week:** ပါဝါ, ညီကို/ညီအကို, အပူး, နက္ခတ် and **ပြန်ကျ**. Count/report how each appeared. **ပြန်ကျ (confirmed core meaning):** repeat occurrence of an **identical 2D pair**, as with **01 on Monday, then 01 again on Tuesday**. This is different from a single 0 or 1 appearing in another pair; it concerns identical complete 2D values. The two occurrences need not be consecutive in the draw sequence and can take place on the same day or different days. A reversed pair like 01 and 10 is not identical, so it is not an exact-number recurrence. The exact membership definitions for the other named special groups remain pending; inspect existing verified app definitions and confirm with user. Do not assume the special groups are mutually exclusive.
 4. **ကျန်ဂဏန်း (remaining numbers):** user wants a separate remaining-number component of the previous-week report. **Ambiguous scope:** Is this the 0–9 digits that did not appear, the 00–99 two-digit numbers that did not appear, or another locally defined "remaining" concept? **Keep unimplemented and pending until user clarifies.**
 
 ### A-04.2a Worked example of ပြန်ကျ — user supplied
@@ -339,8 +339,11 @@ The user has **now explained ပြန်ကျ** as the **same exact two-digit 
 - **Tuesday draw: 01**  
   The exact same **01** has appeared again in the same reporting week; this qualifies as **"ပြန်ကျ"**.
 - This is a **two-digit identity** check. A recurrence of digit 0 or 1 by itself is **not** sufficient to claim that the full 01 result repeated.
-- **No adjacency requirement has been confirmed:** the example crosses Monday to Tuesday but does not say that the Monday and Tuesday draws must be consecutive sessions.
-- **Still pending:** whether Monday morning 01 → Monday evening 01 is also called ပြန်ကျ; whether reverse order 01 → 10 counts separately (do not assume it qualifies); how to show a number occurring three or more times; whether a repetition across week boundaries qualifies (A-04 is scoped to *last week*, so cross-week data must not silently be included).
+- **User-confirmed: same day counts.** Monday AM **01** → Monday PM **01** = **ပြန်ကျ**.
+- **User-confirmed: any day/occasion within the same week counts.** Monday **01** → Thursday **01**, with other intervening results, also qualifies.
+- **User-confirmed: no cross-week merging.** Previous-week summary evaluates that single Monday–Friday week; repeating the number in a different week is not a recurrence *within that weekly summary*.
+- **Logical exclusion of non-identical pairs:** **01** followed by **10** is not the same exact two-digit number and is not "ပြန်ကျ" under this definition.
+- **Still pending:** How to present/count **three or more occurrences** of the same number (e.g. 01 on Monday, Wednesday and Friday): count repeat events, number of distinct repeated pairs, or both? Do not invent an aggregation formula.
 
 **Negative distinction (logical, not a separate agreed formula):** Monday **01**, Tuesday **02** share the single digit 0 but **not** the identical two-digit number 01; this is not the demonstrated ပြန်ကျ case.
 
@@ -363,7 +366,7 @@ Never combine A-04 totals with A-02 same-session counts, and never automatically
 
 ### A-04.5 Specific open questions for user
 
-- **Q-13 (partially resolved):** **ပြန်ကျ = identical two-digit number repeated**, e.g. Mon 01 → Tue 01 (**user confirmed**). Pending: same-day AM→PM, 01→10 reversed pair, multiple repeats/counting, cross-week scope.
+- **Q-13 (mostly resolved):** **ပြန်ကျ = identical full 2D value occurs at least twice in the same week** (any days, either AM/PM, not necessarily adjacent). 01→10 does not qualify as an identical pair. **Pending only:** how to present/count a pair appearing 3+ times.
 - **Q-14:** What are **"ကျန်ဂဏန်း"** here: remaining 0–9 digits, remaining 00–99 pairs, or something else?
 - **Q-15:** In 0–9 frequency, does `55` count digit 5 once (one draw) or twice (two positions)? Should tens and ones also be shown separately?
 - **Q-16:** Confirm definitions/overlap of the four parity classes and five named special groups, including whether **"ညီကို"** equals **"ညီအကို"**.
@@ -404,7 +407,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-10 | A-03 history horizon | Number of historical weeks and sufficient follow-up |
 | Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
-| Q-13 | A-04 ပြန်ကျ | Core confirmed: same 2D number Mon 01 → Tue 01; clarify same-day repetitions, reversed pair, multiple hits |
+| Q-13 | A-04 ပြန်ကျ | Confirmed: exact 2D recurrence anywhere within one week, same day or different day; pending 3+ occurrence count/presentation |
 | Q-14 | A-04 ကျန်ဂဏန်း | Remaining 0–9 digits vs 00–99 pairs vs another definition |
 | Q-15 | A-04 digit counts | Count 55 once or twice; whether to split tens/ones |
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
@@ -468,6 +471,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | Save detailed Master Specification in GitHub to avoid loss across conversations | Approved for documentation only |
 | 2026-11-06 | A-04 previous-week 0–9, parity, special-group and remaining-number review | User listed check categories; definitions/edge cases pending |
 | 2026-11-06 | A-04 ပြန်ကျ = exact 2D number repeated, e.g. Mon 01 then Tue 01 | User confirmed core definition; edge cases pending |
+| 2026-11-06 | A-04 ပြန်ကျ includes recurrence at any later occasion in the same week, including same-day AM→PM, with no adjacency rule | User explicitly confirmed; handling 3+ appearances still pending |
 
 ---
 
