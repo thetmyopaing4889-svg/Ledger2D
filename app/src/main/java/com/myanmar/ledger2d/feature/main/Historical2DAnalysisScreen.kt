@@ -6,6 +6,23 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.filled.MenuBook
+import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
+import com.myanmar.ledger2d.core.design.LedgerTextRole
+import kotlinx.coroutines.delay
+import java.time.ZoneId
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -44,6 +61,9 @@ private fun selectedHistoricPeriod(
     val first = today.withDayOfMonth(1)
     return when (key) {
         "today" -> HistoricPeriod(today, today)
+        "last7" -> HistoricPeriod(today.minusDays(6), today)
+        "last14" -> HistoricPeriod(today.minusDays(13), today)
+        "last28" -> HistoricPeriod(today.minusDays(27), today)
         "week" -> HistoricPeriod(monday, today)
         "previousWeek" -> HistoricPeriod(monday.minusWeeks(1), monday.minusDays(1))
         "month" -> HistoricPeriod(first, today)
@@ -57,264 +77,253 @@ private fun selectedHistoricPeriod(
     }
 }
 
+
+private val auroraPlum = Color(0xFF390D37)
+private val auroraCherry = Color(0xFF852454)
+private val auroraRose = Color(0xFFD5497D)
+private val auroraInk = Color(0xFF332331)
+private val auroraMuted = Color(0xFF876C7C)
+private val auroraCanvas = Color(0xFFF8F3F7)
+private val auroraSoft = Color(0xFFF8EAF1)
+private val auroraGradient = Brush.linearGradient(
+    listOf(auroraPlum, auroraCherry, auroraRose, Color(0xFFF18CA0))
+)
+
 @Composable
 fun Historical2DAnalysisScreen(
-    container: AppContainer,
-    onBack: () -> Unit,
-    onSettings: () -> Unit,
+    container: AppContainer, onBack: () -> Unit, onSettings: () -> Unit,
 ) {
     val language = LocalLanguage.current
     val en = language.code == "en"
     fun tr(my: String, english: String) = if (en) english else my
-    val today = remember { LocalDate.now() }
-    var periodKey by rememberSaveable { mutableStateOf("month") }
+    var today by remember { mutableStateOf(LocalDate.now(ZoneId.of("Asia/Yangon"))) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000L)
+            today = LocalDate.now(ZoneId.of("Asia/Yangon"))
+        }
+    }
+    var periodKey by rememberSaveable { mutableStateOf("week") }
+    var sessionKey by rememberSaveable { mutableStateOf("both") }
     var customStart by rememberSaveable { mutableStateOf(today.withDayOfMonth(1).toString()) }
     var customEnd by rememberSaveable { mutableStateOf(today.toString()) }
-    var sessionKey by rememberSaveable { mutableStateOf("both") }
-    var isResults by rememberSaveable { mutableStateOf(false) }
+    var draftPeriod by rememberSaveable { mutableStateOf(periodKey) }
+    var draftSession by rememberSaveable { mutableStateOf(sessionKey) }
+    var draftStart by rememberSaveable { mutableStateOf(customStart) }
+    var draftEnd by rememberSaveable { mutableStateOf(customEnd) }
+    var filterOpen by remember { mutableStateOf(false) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var selectedDigit by rememberSaveable { mutableStateOf<String?>(null) }
+    var patternTab by rememberSaveable { mutableIntStateOf(0) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var sorting by rememberSaveable { mutableStateOf(0) }
+    var chosenNumber by rememberSaveable { mutableStateOf<String?>(null) }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
+    var showAllMissing by rememberSaveable { mutableStateOf(false) }
+
     val historyFlow = remember(container) { container.history.observeAll() }
     val dailyFlow = remember(container) { container.liveResults.observeAll() }
     val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val daily by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val merged = remember(history, daily, today) {
-        Historic2DDataSource.resolve(daily, history, today)
-    }
+    val merged = remember(history, daily, today) { Historic2DDataSource.resolve(daily, history, today) }
     val period = selectedHistoricPeriod(periodKey, today, customStart, customEnd)
     val session = when (sessionKey) {
         "am" -> DrawSession.MORNING
         "pm" -> DrawSession.EVENING
         else -> null
     }
-    val statistics = remember(merged, period, session) {
+    val stats = remember(merged, period, session) {
         period?.let { HistoricStatisticsCalculator.calculate(merged.draws, it.start, it.end, session) }
     }
-
-    AppScaffold(
-        title = tr("2D ဂဏန်းသုံးသပ်ချက်", "2D Analysis"),
-        onBack = { if (isResults) isResults = false else onBack() },
-        includeQuickEntryFab = false,
-    ) { padding ->
-        if (!isResults) {
-            LazyColumn(
-                Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+    val filteredHistory = remember(merged, period, session) {
+        if (period == null) emptyList() else merged.draws
+            .filter { it.date in period.start..period.end && (session == null || it.session == session) }
+            .sortedWith(compareByDescending<HistoricDraw> { it.date }
+                .thenByDescending { it.session.ordinal })
+    }
+    val navLabels = listOf(
+        tr("သုံးသပ်", "Insights"), tr("ဂဏန်း", "Explorer"),
+        tr("ပုံစံ", "Patterns"), tr("ပျောက်", "Missing"), tr("မူ", "Rules"),
+    )
+    val periods = listOf(
+        "week" to tr("ယခုအပတ်", "This week"),
+        "previousWeek" to tr("အရင်အပတ်", "Last week"),
+        "last7" to tr("၇ ရက်", "7 days"),
+        "last14" to tr("၁၄ ရက်", "14 days"),
+        "last28" to tr("၂၈ ရက်", "28 days"),
+        "today" to tr("ယနေ့", "Today"),
+        "month" to tr("ယခုလ", "This month"),
+        "previousMonth" to tr("အရင်လ", "Last month"),
+        "custom" to tr("စိတ်ကြိုက်", "Custom"),
+    )
+    Scaffold(
+        containerColor = auroraCanvas,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            Row(
+                Modifier.fillMaxWidth().background(auroraCanvas).statusBarsPadding()
+                    .height(58.dp).padding(start = 7.dp, end = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                item {
-                    HistoricCard {
-                        Text(tr("လေ့လာမည့်ကာလ ရွေးချယ်ရန်", "Select analysis period"),
-                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(tr("အတိတ်ရလဒ်တွေကို ရက်စွဲနဲ့ အကြိမ်အလိုက် စစ်ဆေးနိုင်ပါတယ်။",
-                            "Explore historical draws by date and session."),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        val presets = listOf(
-                            "today" to tr("ယနေ့", "Today"),
-                            "week" to tr("ယခုအပတ်", "This week"),
-                            "previousWeek" to tr("အရင်အပတ်", "Last week"),
-                            "month" to tr("ယခုလ", "This month"),
-                            "previousMonth" to tr("အရင်လ", "Last month"),
-                            "custom" to tr("စိတ်ကြိုက်", "Custom"),
-                        )
-                        presets.chunked(3).forEach { row ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                row.forEach { (id, label) ->
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = auroraPlum)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("2D Analysis", style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = auroraInk)
+                    Text(
+                        (periods.firstOrNull { it.first == periodKey }?.second ?: "") +
+                            " · " + when (sessionKey) {
+                                "am" -> tr("မနက်", "AM")
+                                "pm" -> tr("ညနေ", "PM")
+                                else -> tr("နှစ်ကြိမ်လုံး", "Both")
+                            },
+                        style = MaterialTheme.typography.labelSmall, color = auroraMuted,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Box {
+                    Surface(
+                        onClick = {
+                            draftPeriod = periodKey
+                            draftSession = sessionKey
+                            draftStart = customStart
+                            draftEnd = customEnd
+                            filterOpen = true
+                        },
+                        shape = CircleShape, color = auroraSoft,
+                    ) {
+                        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Tune, tr("စစ်ထုတ်ရန်", "Filter"), tint = auroraCherry)
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = filterOpen,
+                        onDismissRequest = { filterOpen = false },
+                        modifier = Modifier.width(308.dp),
+                    ) {
+                        Column(
+                            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(tr("သုံးသပ်ချက် စစ်ထုတ်ရန်", "Analysis filters"),
+                                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                            Text(tr("အချိန်ကာလ", "Period"),
+                                style = MaterialTheme.typography.labelMedium, color = auroraMuted)
+                            periods.chunked(2).forEach { options ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    options.forEach { (id, label) ->
+                                        FilterChip(
+                                            selected = draftPeriod == id, onClick = { draftPeriod = id },
+                                            modifier = Modifier.weight(1f),
+                                            label = { Text(label, style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        )
+                                    }
+                                    if (options.size == 1) Spacer(Modifier.weight(1f))
+                                }
+                            }
+                            if (draftPeriod == "custom") {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Box(Modifier.weight(1f)) {
+                                        HistoricDatePicker(tr("စရက်", "From"), draftStart) { draftStart = it }
+                                    }
+                                    Box(Modifier.weight(1f)) {
+                                        HistoricDatePicker(tr("ဆုံးရက်", "To"), draftEnd) { draftEnd = it }
+                                    }
+                                }
+                            }
+                            Text(tr("အကြိမ်", "Draw"), style = MaterialTheme.typography.labelMedium,
+                                color = auroraMuted)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf(
+                                    "both" to tr("နှစ်ကြိမ်", "Both"),
+                                    "am" to tr("မနက်", "AM"),
+                                    "pm" to tr("ညနေ", "PM"),
+                                ).forEach { (id, label) ->
                                     FilterChip(
-                                        selected = periodKey == id,
-                                        onClick = { periodKey = id },
-                                        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        selected = draftSession == id, onClick = { draftSession = id },
                                         modifier = Modifier.weight(1f),
+                                        label = { Text(label, style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     )
                                 }
                             }
-                        }
-                        if (periodKey == "custom") {
+                            val valid = selectedHistoricPeriod(draftPeriod, today, draftStart, draftEnd) != null
+                            if (!valid) {
+                                Text(tr("ရက်စွဲများကို ပြန်စစ်ပါ", "Check the dates"),
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Box(Modifier.weight(1f)) {
-                                    HistoricDatePicker(tr("စတင်ရက်", "From"), customStart) { customStart = it }
+                                TextButton(onClick = {
+                                    periodKey = "week"; sessionKey = "both"; filterOpen = false
+                                }, modifier = Modifier.weight(1f)) {
+                                    Text(tr("မူလ", "Reset"))
                                 }
-                                Box(Modifier.weight(1f)) {
-                                    HistoricDatePicker(tr("ပြီးဆုံးရက်", "To"), customEnd) { customEnd = it }
-                                }
+                                Button(
+                                    onClick = {
+                                        periodKey = draftPeriod; sessionKey = draftSession
+                                        customStart = draftStart; customEnd = draftEnd
+                                        filterOpen = false
+                                    },
+                                    enabled = valid, modifier = Modifier.weight(1f),
+                                ) { Text(tr("အတည်ပြု", "Apply")) }
                             }
                         }
-                        if (period != null) {
-                            Text(period.start.toString() + "  —  " + period.end.toString(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = AppColors.PrimaryDeep)
-                        } else {
-                            Text(tr("စတင်ရက်၊ ပြီးဆုံးရက်ကို ပြန်စစ်ပါ။", "Check the selected date range."),
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
-                item {
-                    HistoricCard {
-                        Text(tr("အကြိမ်ရွေးချယ်ရန်", "Session"), fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(
-                                "both" to tr("နှစ်ကြိမ်လုံး", "Both"),
-                                "am" to tr("မနက်အကြိမ်", "Morning"),
-                                "pm" to tr("ညနေအကြိမ်", "Evening"),
-                            ).forEach { (id, label) ->
-                                FilterChip(
-                                    selected = sessionKey == id, onClick = { sessionKey = id },
-                                    modifier = Modifier.weight(1f),
-                                    label = { Text(label, maxLines = 2, textAlign = TextAlign.Center) },
-                                )
-                            }
-                        }
-                    }
-                }
-                item {
-                    HistoricCard {
-                        Text(tr("ပါဝင်မည့် အကြောင်းအရာ", "What you can explore"), fontWeight = FontWeight.Bold)
-                        HistoricFeatureRow(tr("ထွက်ဂဏန်းသုံးသပ်ချက်", "Draw statistics"),
-                            tr("00–99၊ ထိပ်/ပိတ်၊ ပြောင်းပြန်နှင့် အကြိမ်မှတ်တမ်း",
-                                "00–99, digits, reverse pairs and history"))
-                        HistoricFeatureRow(tr("ပျောက်ဂဏန်း", "Missing numbers"),
-                            tr("ကာလအတွင်း မထွက်သောဂဏန်းနှင့် နောက်ဆုံးတွေ့ချိန်",
-                                "Not seen in period and last observed draw"))
-                        HistoricFeatureRow(tr("မူဝါဒနှင့် ဖော်မြူလာ", "Rules and formulas"),
-                            tr("မူဝါဒတွေကို နောက်မှ ထည့်သွင်းမည်", "Rules will be added later"))
-                    }
-                }
-                item {
-                    Button(
-                        onClick = { isResults = true; tab = 0 },
-                        enabled = period != null,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    ) {
-                        Text(tr("သုံးသပ်ချက်ကြည့်မည်", "View analysis"))
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Default.ChevronRight, null)
                     }
                 }
             }
-        } else if (statistics != null && period != null) {
-            Column(Modifier.fillMaxSize().padding(padding)) {
-                Surface(color = Color.White, tonalElevation = 1.dp) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(period.start.toString() + " — " + period.end.toString(),
-                                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                                Text(
-                                    tr("စစ်ဆေးပြီးသော ရလဒ်", "Observed results") + ": " + statistics.totalDraws +
-                                        "  •  " + if (session == null) tr("နှစ်ကြိမ်လုံး", "Both") else
-                                        if (session == DrawSession.MORNING) tr("မနက်", "Morning") else tr("ညနေ", "Evening"),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+        },
+        bottomBar = {
+            Box(
+                Modifier.fillMaxWidth().background(auroraCanvas)
+                    .navigationBarsPadding().padding(horizontal = 9.dp, vertical = 6.dp),
+            ) {
+                Surface(color = Color.White, shadowElevation = 13.dp,
+                    shape = RoundedCornerShape(23.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 5.dp)) {
+                        navLabels.forEachIndexed { index, label ->
+                            Column(
+                                Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                                    .background(if (tab == index) auroraSoft else Color.Transparent)
+                                    .clickable { tab = index }
+                                    .padding(vertical = 8.dp, horizontal = 1.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                val tint = if (tab == index) auroraCherry else Color(0xFFA69AA3)
+                                when (index) {
+                                    0 -> Icon(Icons.Default.Analytics, null, tint, Modifier.size(21.dp))
+                                    1 -> Icon(Icons.Default.GridView, null, tint, Modifier.size(21.dp))
+                                    2 -> Icon(Icons.Default.BarChart, null, tint, Modifier.size(21.dp))
+                                    3 -> Icon(Icons.Default.ManageSearch, null, tint, Modifier.size(21.dp))
+                                    else -> Icon(Icons.Default.MenuBook, null, tint, Modifier.size(21.dp))
+                                }
+                                Text(label,
+                                    style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, language.code)
+                                        .copy(fontWeight = if (tab == index) FontWeight.Bold else FontWeight.Medium),
+                                    color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            TextButton(onClick = { isResults = false }) { Text(tr("ပြောင်းရန်", "Change")) }
                         }
                     }
                 }
-                ScrollableTabRow(
-                    selectedTabIndex = tab, edgePadding = 6.dp,
-                    containerColor = Color.White,
-                    contentColor = AppColors.PrimaryDeep,
-                ) {
-                    listOf(
-                        tr("အကျဉ်းချုပ်", "Overview"), "00–99",
-                        tr("ပျောက်ဂဏန်း", "Missing"), tr("မူဝါဒ", "Rules"),
-                    ).forEachIndexed { index, label ->
-                        Tab(selected = tab == index, onClick = { tab = index },
-                            text = { Text(label, maxLines = 1) })
-                    }
-                }
-                LazyColumn(
-                    Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item {
-                        if (period.end == today) {
-                            HistoricNotice(tr(
-                                "ယနေ့ Live ရလဒ်ကို အပြီးသတ်အတည်ပြုမှု မသိမ်းထားသေးသဖြင့် ဒီနေ့အကြိမ်တွေကို မတွက်ထားပါ။",
-                                "Today's LIVE values are excluded until independently settled; no provisional result is counted."
-                            ))
-                        }
-                        if (statistics.totalDraws == 0 && tab != 3) {
-                            HistoricCard {
-                                Text(tr("ဤကာလအတွက် ရလဒ်မရှိသေးပါ။", "No historical draw available for this period."),
-                                    fontWeight = FontWeight.SemiBold)
-                                Text(tr("Settings မှ History Result Update လုပ်ပြီး ပြန်ကြည့်ပါ။",
-                                    "Update History Result in Settings, then return."),
-                                    style = MaterialTheme.typography.bodySmall)
-                                TextButton(onClick = onSettings) {
-                                    Text(tr("Settings သို့သွားမည်", "Open Settings"))
-                                }
-                            }
-                        }
-                    }
-                    if (tab == 0 && statistics.totalDraws > 0) {
-                        item { HistoricOverview(statistics, en) }
-                    }
-                    if (tab == 1 && statistics.totalDraws > 0) {
+            }
+        },
+    ) { padding ->
+        Box(
+            Modifier.fillMaxSize().padding(padding).background(
+                Brush.verticalGradient(listOf(Color(0xFFF9EFF5), auroraCanvas, Color(0xFFFEFCFD)))
+            )
+        ) {
+            Crossfade(targetState = tab, animationSpec = tween(210), label = "analysisTabs") { active ->
+                if (active == 4) {
+                    LazyColumn(
+                        Modifier.fillMaxSize().padding(horizontal = 14.dp),
+                        contentPadding = PaddingValues(vertical = 12.dp),
+                    ) {
                         item {
-                            HistoricCard {
-                                Text(tr("00–99 အထွက်ဇယား", "00–99 frequency"),
-                                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(tr("တစ်ကွက်ချင်း နှိပ်ပြီး အသေးစိတ်ကြည့်နိုင်သည်။",
-                                    "Tap a number for its history and recency."),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                statistics.counts.chunked(5).forEach { numbers ->
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        numbers.forEach { number ->
-                                            val highlighted = number.count > 0
-                                            Box(
-                                                Modifier.weight(1f).height(56.dp)
-                                                    .background(
-                                                        if (highlighted) AppColors.Blush else Color(0xFFF4F1F2),
-                                                        RoundedCornerShape(9.dp),
-                                                    )
-                                                    .border(1.dp, if (highlighted) AppColors.Stone else Color(0xFFE8E3E5),
-                                                        RoundedCornerShape(9.dp))
-                                                    .clickable { selectedDigit = number.digit },
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Text(number.digit, fontWeight = FontWeight.Bold,
-                                                        color = if (highlighted) AppColors.PrimaryDeep else Color.DarkGray)
-                                                    Text(number.count.toString(), style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Spacer(Modifier.height(6.dp))
-                                }
-                            }
-                        }
-                        item {
-                            HistoricCard {
-                                Text(tr("ထိပ်ဂဏန်း အထွက်", "Tens frequency"), fontWeight = FontWeight.Bold)
-                                statistics.tens.forEachIndexed { n, count ->
-                                    HistoricBar(n.toString(), count, statistics.tens.maxOrNull() ?: 0)
-                                }
-                            }
-                        }
-                        item {
-                            HistoricCard {
-                                Text(tr("ပိတ်ဂဏန်း အထွက်", "Ones frequency"), fontWeight = FontWeight.Bold)
-                                statistics.ones.forEachIndexed { n, count ->
-                                    HistoricBar(n.toString(), count, statistics.ones.maxOrNull() ?: 0)
-                                }
-                            }
-                        }
-                    }
-                    if (tab == 2 && statistics.totalDraws > 0) {
-                        item { HistoricMissing(statistics, en, onDigit = { selectedDigit = it }) }
-                    }
-                    if (tab == 3) {
-                        item {
-                            HistoricCard {
+                            AuroraPanel {
+                                // Unchanged user-rules placeholder from Build 957.
                                 Text(tr("မူဝါဒနှင့် ဖော်မြူလာများ", "Rules and formulas"),
                                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(tr(
@@ -324,61 +333,89 @@ fun Historical2DAnalysisScreen(
                             }
                         }
                     }
-                    item {
-                        val primaryCount = merged.draws.count {
-                            it.date >= period.start && it.date <= period.end &&
-                                (session == null || it.session == session) && it.source == HistoricSource.DAILY
-                        }
-                        val historyCount = statistics.totalDraws - primaryCount
-                        val conflicts = merged.conflicts.count {
-                            it.date >= period.start && it.date <= period.end &&
-                                (session == null || it.session == session)
-                        }
-                        HistoricCard {
-                            Text(tr("အချက်အလက် အရင်းအမြစ်", "Data sources"), fontWeight = FontWeight.Bold)
-                            Text(tr("နေ့စဉ်သိမ်းမှတ်တမ်း", "Daily saved") + ": " + primaryCount +
-                                "  •  History: " + historyCount,
-                                style = MaterialTheme.typography.bodySmall)
-                            if (conflicts > 0) Text(
-                                tr("တူညီသောအကြိမ်တွင် Source မကိုက်ညီမှု", "Source conflicts") +
-                                    ": " + conflicts + " (" + tr("Primary ကိုသုံးထားသည်", "Primary selected") + ")",
-                                style = MaterialTheme.typography.bodySmall, color = AppColors.PrimaryDeep)
-                            Text(tr(
-                                "ပျောက်ဂဏန်းဆိုသည်မှာ ရွေးထားသောကာလအတွင်း မတွေ့ခဲ့သောဂဏန်းဖြစ်ပြီး နောက်အကြိမ်ပေါက်မည့်ဂဏန်း မဟုတ်ပါ။",
-                                "Missing and frequent numbers describe observed history, not future probabilities."
-                            ), style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
+                } else if (period == null || stats == null) {
+                    AuroraEmpty(tr("ရွေးထားသောရက်စွဲကို ပြန်စစ်ပါ", "Check the date range"), null)
+                } else if (stats.totalDraws == 0) {
+                    AuroraEmpty(tr("ဒီကာလအတွက် အတည်ပြုရလဒ် မရှိသေးပါ",
+                        "No confirmed results in this period"), onSettings)
+                } else when (active) {
+                    0 -> AuroraInsights(stats, filteredHistory, period, en,
+                        { showHistory = true }, { chosenNumber = it })
+                    1 -> AuroraExplorer(stats, en, search, { search = it },
+                        sorting, { sorting = it }, { chosenNumber = it })
+                    2 -> AuroraPatterns(stats, en, patternTab, { patternTab = it })
+                    else -> AuroraMissing(stats, en, { chosenNumber = it }, { showAllMissing = true })
                 }
             }
         }
     }
-
-    selectedDigit?.let { digit ->
-        val detail = statistics?.counts?.firstOrNull { it.digit == digit }
+    if (showHistory) {
         AlertDialog(
-            onDismissRequest = { selectedDigit = null },
-            title = { Text(tr("ဂဏန်း", "Number") + " " + digit) },
+            onDismissRequest = { showHistory = false },
+            title = { Text(tr("ရလဒ်မှတ်တမ်း", "Result history")) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(Modifier.heightIn(max = 470.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(filteredHistory.size) { i ->
+                        val draw = filteredHistory[i]
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(draw.date.toString(), style = MaterialTheme.typography.bodySmall)
+                            Text((if (draw.session == DrawSession.MORNING) "AM" else "PM") +
+                                "  " + draw.digit, fontWeight = FontWeight.Bold, color = auroraCherry)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHistory = false }) {
+                Text(tr("ပိတ်မည်", "Close"))
+            } },
+        )
+    }
+    if (showAllMissing && stats != null) {
+        val all = stats.missing.sortedWith(
+            compareByDescending<HistoricNumberStat> { it.observedDrawsSince ?: -1 }
+                .thenBy { it.digit })
+        AlertDialog(
+            onDismissRequest = { showAllMissing = false },
+            title = { Text(tr("ပျောက်ဂဏန်းအားလုံး", "All missing numbers") + " (" + all.size + ")") },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 470.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    items(all.chunked(5).size) { i ->
+                        AuroraNumberRow(all.chunked(5)[i], 1) {
+                            showAllMissing = false; chosenNumber = it
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAllMissing = false }) {
+                Text(tr("ပိတ်မည်", "Close"))
+            } },
+        )
+    }
+    chosenNumber?.let { digit ->
+        val detail = stats?.counts?.firstOrNull { it.digit == digit }
+        AlertDialog(
+            onDismissRequest = { chosenNumber = null },
+            title = { Text(tr("ဂဏန်း", "Number") + " " + digit,
+                color = auroraCherry, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(tr("ရွေးထားသောကာလအတွင်း", "In selected period") + ": " +
                         (detail?.count ?: 0) + " " + tr("ကြိမ်", "draws"))
                     Text(tr("နောက်ဆုံးတွေ့ရသောအကြိမ်", "Last seen") + ": " +
                         (detail?.lastSeen?.let {
-                            it.date.toString() + " • " + if (it.session == DrawSession.MORNING)
-                                tr("မနက်", "AM") else tr("ညနေ", "PM")
-                        } ?: tr("သိမ်းထားသည့် History တွင် မတွေ့ပါ", "Not found in available history")))
-                    Text(tr("နောက်ဆုံးတွေ့ပြီးနောက် ရလဒ်ရှိခဲ့သောအကြိမ်", "Observed draws since") +
+                            it.date.toString() + " · " +
+                                (if (it.session == DrawSession.MORNING) "AM" else "PM")
+                        } ?: tr("ရရှိထားသောမှတ်တမ်းတွင် မတွေ့ပါ", "Not found in available history")))
+                    Text(tr("နောက်ဆုံးတွေ့ပြီးနောက် အကြိမ်", "Observed draws since") +
                         ": " + (detail?.observedDrawsSince?.toString() ?: "—"))
                     Text(tr("ပြောင်းပြန်ဂဏန်း", "Reverse") + ": " + digit.reversed())
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { selectedDigit = null }) {
-                    Text(tr("ပိတ်မည်", "Close"))
-                }
-            },
+            confirmButton = { TextButton(onClick = { chosenNumber = null }) {
+                Text(tr("ပိတ်မည်", "Close"))
+            } },
         )
     }
 }
@@ -422,183 +459,380 @@ private fun HistoricDatePicker(label: String, date: String, onChange: (String) -
     }
 }
 
-@Composable
-private fun HistoricCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        color = Color.White, shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFD8E3)),
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp), content = content,
-        )
-    }
-}
+
 
 @Composable
-private fun HistoricFeatureRow(title: String, subtitle: String) {
-    Column {
-        Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-        Text(subtitle, style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun AuroraPanel(content: @Composable ColumnScope.() -> Unit) {
+    Surface(color = Color.White, shape = RoundedCornerShape(22.dp), shadowElevation = 5.dp) {
+        Column(Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp), content = content)
     }
 }
-
 @Composable
-private fun HistoricNotice(message: String) {
-    Surface(color = AppColors.Blush, shape = RoundedCornerShape(12.dp)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Default.Info, null, tint = AppColors.PrimaryDeep,
-                modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(message, style = MaterialTheme.typography.bodySmall, color = AppColors.Ink)
-        }
-    }
-    Spacer(Modifier.height(10.dp))
-}
-
-@Composable
-private fun HistoricBar(label: String, count: Int, maximum: Int) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        Text(label, modifier = Modifier.width(28.dp), style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold)
-        LinearProgressIndicator(
-            progress = { if (maximum == 0) 0f else count.toFloat() / maximum },
-            modifier = Modifier.weight(1f).height(8.dp),
-            color = AppColors.PrimaryDeep, trackColor = AppColors.Blush,
-        )
-        Text(count.toString(), modifier = Modifier.width(30.dp), textAlign = TextAlign.End,
-            style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-private fun HistoricOverview(stats: HistoricStatistics, en: Boolean) {
-    fun tr(my: String, english: String) = if (en) english else my
-    val leading = stats.topNumbers.firstOrNull()
-    HistoricCard {
-        Text(tr("အဓိကအချက်အလက်", "Overview"), style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            HistoricMetric(Modifier.weight(1f), tr("အကြိမ်စုစုပေါင်း", "Draws"), stats.totalDraws.toString())
-            HistoricMetric(Modifier.weight(1f), tr("ထွက်ဖူးသောဂဏန်း", "Distinct"), stats.distinctCount.toString())
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            HistoricMetric(Modifier.weight(1f), tr("အထွက်အများဆုံး", "Most frequent"),
-                leading?.let { it.digit + " (" + it.count + ")" } ?: "—")
-            HistoricMetric(Modifier.weight(1f), tr("ကာလအတွင်း ပျောက်", "Missing"),
-                stats.missing.size.toString())
-        }
-    }
-    HistoricCard {
-        Text(tr("အထွက်အများဆုံး ၁၀ ကွက်", "Top 10 numbers"), fontWeight = FontWeight.Bold)
-        stats.topNumbers.forEach { number ->
-            HistoricBar(number.digit, number.count, leading?.count ?: 1)
-        }
-        if (stats.topNumbers.isEmpty()) {
-            Text(tr("ရလဒ်မရှိပါ", "No results"))
-        }
-    }
-    HistoricCard {
-        Text(tr("ထိပ် / ပိတ် အနှစ်ချုပ်", "Tens / ones summary"),
-            fontWeight = FontWeight.Bold)
-        val topTens = stats.tens.indices.maxByOrNull { stats.tens[it] }
-        val topOnes = stats.ones.indices.maxByOrNull { stats.ones[it] }
-        Text(tr("ထိပ်အများဆုံး", "Top tens") + ": " +
-            (topTens?.toString() ?: "—") + " (" + (topTens?.let { stats.tens[it] } ?: 0) + ")")
-        Text(tr("ပိတ်အများဆုံး", "Top ones") + ": " +
-            (topOnes?.toString() ?: "—") + " (" + (topOnes?.let { stats.ones[it] } ?: 0) + ")")
-        Text(tr("အပူးဂဏန်း ထွက်ခဲ့သောအကြိမ်", "Double-number draws") +
-            ": " + stats.doubleCount)
-    }
-    if (stats.reversePairs.any { it.firstCount + it.reverseCount > 0 }) {
-        HistoricCard {
-            Text(tr("ပြောင်းပြန်ဂဏန်းအတွဲ", "Reverse pairs"), fontWeight = FontWeight.Bold)
-            stats.reversePairs.filter { it.firstCount + it.reverseCount > 0 }.take(8).forEach { pair ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(pair.first + " / " + pair.reverse, fontWeight = FontWeight.SemiBold)
-                    Text(pair.firstCount.toString() + " / " + pair.reverseCount)
-                }
+private fun AuroraEmpty(message: String, onSettings: (() -> Unit)?) {
+    Column(Modifier.fillMaxSize().padding(17.dp)) {
+        AuroraPanel {
+            Text(message, style = MaterialTheme.typography.titleMedium, color = auroraInk)
+            if (onSettings != null) {
+                Text("History Result", style = MaterialTheme.typography.labelMedium,
+                    color = auroraMuted)
+                TextButton(onClick = onSettings) { Text("Settings") }
             }
         }
     }
-    if (stats.dailyPairs.isNotEmpty()) {
-        HistoricCard {
-            Text(tr("မနက် / ညနေ တစ်ရက်တည်းရလဒ်များ", "Same-day AM / PM"),
+}
+@Composable
+private fun AuroraMiniHeader(title: String, subtitle: String) {
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(auroraGradient)) {
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 30.dp, y = (-40).dp)
+            .size(115.dp).background(Color.White.copy(alpha = .08f), CircleShape))
+        Column(Modifier.padding(horizontal = 17.dp, vertical = 17.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold)
-            stats.dailyPairs.takeLast(8).asReversed().forEach { pair ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(pair.date.toString(), style = MaterialTheme.typography.bodySmall)
-                    Text(pair.morning + "  →  " + pair.evening, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = Color(0xFFFFE5EF), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+@Composable
+private fun AuroraHero(stats: HistoricStatistics, period: HistoricPeriod, en: Boolean) {
+    fun tr(my: String, english: String) = if (en) english else my
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(auroraGradient)) {
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 58.dp, y = (-65).dp)
+            .size(185.dp).background(Color.White.copy(alpha = .08f), CircleShape))
+        Box(Modifier.align(Alignment.BottomStart).offset(x = (-65).dp, y = 82.dp)
+            .size(170.dp).background(Color.White.copy(alpha = .06f), CircleShape))
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("CHERRY'S ANALYTICS", color = Color(0xFFFFD9E9),
+                style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(tr("2D သုံးသပ်ချက်", "Your 2D insights"), color = Color.White,
+                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                AuroraHeroMetric(Modifier.weight(1f), tr("အကြိမ်စုစုပေါင်း", "Completed draws"),
+                    stats.totalDraws.toString())
+                AuroraHeroMetric(Modifier.weight(1f), tr("နောက်ဆုံးရလဒ်", "Last result"),
+                    stats.lastResult?.digit ?: "—")
+            }
+            Text(period.start.toString() + "  —  " + period.end.toString(),
+                style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFE3ED))
+        }
+    }
+}
+@Composable
+private fun AuroraHeroMetric(modifier: Modifier, label: String, value: String) {
+    Column(modifier.clip(RoundedCornerShape(16.dp))
+        .background(Color.White.copy(alpha = .15f)).padding(12.dp)) {
+        Text(label, color = Color(0xFFFFE0EA),
+            style = MaterialTheme.typography.labelSmall, maxLines = 2)
+        Text(value, color = Color.White, fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineLarge, maxLines = 1)
+    }
+}
+@Composable
+private fun AuroraInsights(
+    stats: HistoricStatistics, history: List<HistoricDraw>, period: HistoricPeriod,
+    en: Boolean, onHistory: () -> Unit, onDigit: (String) -> Unit,
+) {
+    fun tr(my: String, english: String) = if (en) english else my
+    val days = history.groupBy { it.date }.toList().sortedByDescending { it.first }.take(8)
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        item { AuroraHero(stats, period, en) }
+        item {
+            AuroraPanel {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("အထွက်အများဆုံး", "Most frequent"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = auroraInk, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f))
+                    Text(tr("ထွက်ဖူး", "Unique") + " " + stats.distinctCount,
+                        style = MaterialTheme.typography.labelMedium, color = auroraMuted)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    stats.topNumbers.take(4).forEachIndexed { i, number ->
+                        Surface(onClick = { onDigit(number.digit) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(15.dp),
+                            color = if (i == 0) auroraCherry else auroraSoft) {
+                            Column(Modifier.padding(vertical = 11.dp, horizontal = 2.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(number.digit, style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (i == 0) Color.White else auroraCherry)
+                                Text(number.count.toString() + "×",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (i == 0) Color.White else auroraMuted)
+                            }
+                        }
+                    }
+                    repeat((4 - stats.topNumbers.size).coerceAtLeast(0)) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun HistoricMetric(modifier: Modifier, label: String, value: String) {
-    Surface(modifier, color = AppColors.Blush, shape = RoundedCornerShape(12.dp)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-            Text(value, style = MaterialTheme.typography.titleLarge,
-                color = AppColors.PrimaryDeep, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun HistoricMissing(stats: HistoricStatistics, en: Boolean, onDigit: (String) -> Unit) {
-    fun tr(my: String, english: String) = if (en) english else my
-    val missing = stats.missing.sortedWith(
-        compareBy<HistoricNumberStat> { it.lastSeen == null }
-            .thenByDescending { it.observedDrawsSince ?: -1 }
-            .thenBy { it.digit }
-    )
-    HistoricCard {
-        Text(tr("ကာလအတွင်း မထွက်ခဲ့သောဂဏန်း", "Not seen in selected period"),
-            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(tr("စုစုပေါင်း", "Total") + ": " + missing.size,
-            style = MaterialTheme.typography.bodyMedium)
-        Text(tr("ရက်စွဲကာလအတွင်း မထွက်ခဲ့ခြင်းသာဖြစ်ပြီး ပေါက်ရန်နီးလာခြင်း မဟုတ်ပါ။",
-            "A missing number is not more likely to appear next."),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall)
-        missing.chunked(5).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { number ->
-                    Surface(
-                        modifier = Modifier.weight(1f).heightIn(min = 46.dp),
-                        onClick = { onDigit(number.digit) },
-                        color = AppColors.Blush,
-                        shape = RoundedCornerShape(10.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(number.digit, fontWeight = FontWeight.Bold,
-                                color = AppColors.PrimaryDeep)
+        item {
+            AuroraPanel {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("နောက်ဆုံးရလဒ်များ", "Recent draws"),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold, color = auroraInk,
+                        modifier = Modifier.weight(1f))
+                    TextButton(onClick = onHistory) {
+                        Text(tr("အားလုံး", "View all"), color = auroraCherry,
+                            style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(days.size) { index ->
+                        val d = days[index]
+                        val am = d.second.firstOrNull { it.session == DrawSession.MORNING }
+                        val pm = d.second.firstOrNull { it.session == DrawSession.EVENING }
+                        Column(Modifier.width(93.dp).clip(RoundedCornerShape(15.dp))
+                            .background(auroraSoft).padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(d.first.toString().substring(5), color = auroraMuted,
+                                style = MaterialTheme.typography.labelSmall)
+                            Text("AM  " + (am?.digit ?: "—"), fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
+                            Text("PM  " + (pm?.digit ?: "—"), fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
                         }
                     }
                 }
             }
         }
-    }
-    HistoricCard {
-        Text(tr("ကြာရှည်ပျောက်နေမှု (လက်ရှိဒေတာအရ)", "Observed recency"),
-            fontWeight = FontWeight.Bold)
-        missing.take(20).forEach { number ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(number.digit, fontWeight = FontWeight.Bold)
-                Text(
-                    number.observedDrawsSince?.let {
-                        it.toString() + " " + tr("အကြိမ်", "draws")
-                    } ?: tr("မှတ်တမ်းတွင် မတွေ့ပါ", "Not found"),
-                    style = MaterialTheme.typography.bodySmall)
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(tr("ပျောက်ဂဏန်း", "Missing") + "  " + stats.missing.size,
+                    style = MaterialTheme.typography.labelMedium, color = auroraMuted)
+                Text(tr("အပူး", "Doubles") + "  " + stats.doubleCount,
+                    style = MaterialTheme.typography.labelMedium, color = auroraMuted)
             }
         }
-        Text(tr("မရှိသော History အကြိမ်များကို ပျောက်အကြိမ်အဖြစ် မရေတွက်ပါ။",
-            "Recency counts only observed draws; unavailable records are excluded."),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+@Composable
+private fun AuroraNumberRow(numbers: List<HistoricNumberStat>, maximum: Int, onClick: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        numbers.forEach { number ->
+            val strong = maximum > 0 && number.count == maximum
+            Surface(onClick = { onClick(number.digit) },
+                modifier = Modifier.weight(1f).height(53.dp),
+                shape = RoundedCornerShape(11.dp),
+                color = if (strong) auroraCherry else if (number.count > 0)
+                    Color(0xFFF3D8E5) else Color(0xFFF2EFF2)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center) {
+                    Text(number.digit, style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (strong) Color.White else auroraInk)
+                    Text(number.count.toString() + "×",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (strong) Color.White else auroraMuted)
+                }
+            }
+        }
+        repeat(5 - numbers.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+@Composable
+private fun AuroraExplorer(
+    stats: HistoricStatistics, en: Boolean, search: String, onSearch: (String) -> Unit,
+    sort: Int, onSort: (Int) -> Unit, onClick: (String) -> Unit,
+) {
+    fun tr(my: String, english: String) = if (en) english else my
+    val max = stats.counts.maxOfOrNull { it.count } ?: 0
+    val numbers = when (sort) {
+        1 -> stats.counts.sortedWith(compareByDescending<HistoricNumberStat> { it.count }.thenBy { it.digit })
+        2 -> stats.counts.sortedWith(compareBy<HistoricNumberStat> { it.count }.thenBy { it.digit })
+        else -> stats.counts
+    }.filter { it.digit.contains(search.trim()) }
+    val rows = numbers.chunked(5)
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        item { AuroraMiniHeader(tr("ဂဏန်းရှာဖွေ", "Number explorer"),
+            tr("00–99 အထွက်အကြိမ်ရေ", "Frequency across 00–99")) }
+        item {
+            AuroraPanel {
+                OutlinedTextField(value = search,
+                    onValueChange = { if (it.length <= 2) onSearch(it.filter(Char::isDigit)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(tr("ဂဏန်းရှာရန်", "Search 00–99")) },
+                    leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    listOf(tr("ဂဏန်းစဉ်", "00–99"), tr("အများဆုံး", "Most"),
+                        tr("အနည်းဆုံး", "Least")).forEachIndexed { i, label ->
+                        FilterChip(selected = sort == i, onClick = { onSort(i) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text(label, style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                    }
+                }
+            }
+        }
+        item { Text(tr("အရောင်ရင့်သည့်ဂဏန်းများ ပိုမိုထွက်ခဲ့သည်",
+            "Highlighted numbers have higher observed counts"),
+            style = MaterialTheme.typography.labelSmall, color = auroraMuted) }
+        items(rows.size) { i -> AuroraNumberRow(rows[i], max, onClick) }
+    }
+}
+@Composable
+private fun AuroraBar(label: String, count: Int, maximum: Int) {
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Text(label, modifier = Modifier.width(29.dp), color = auroraInk,
+            style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Box(Modifier.weight(1f).height(10.dp).clip(CircleShape).background(auroraSoft)) {
+            if (count > 0 && maximum > 0) Box(
+                Modifier.fillMaxWidth(count.toFloat() / maximum).fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(Brush.horizontalGradient(listOf(auroraRose, auroraCherry))))
+        }
+        Text(count.toString(), modifier = Modifier.width(27.dp),
+            color = auroraCherry, style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.End)
+    }
+}
+@Composable
+private fun AuroraPatterns(
+    stats: HistoricStatistics, en: Boolean, active: Int, onChange: (Int) -> Unit,
+) {
+    fun tr(my: String, english: String) = if (en) english else my
+    val names = listOf(tr("ထိပ်", "Tens"), tr("ပိတ်", "Ones"),
+        tr("အတွဲ", "Pairs"), tr("အပူး", "Doubles"))
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { AuroraMiniHeader(tr("ဂဏန်းပုံစံများ", "Digit patterns"),
+            tr("ထိပ်၊ ပိတ်၊ ပြောင်းပြန်နှင့် အပူး", "Tens, ones, reverse pairs and doubles")) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                names.forEachIndexed { i, label ->
+                    FilterChip(selected = active == i, onClick = { onChange(i) },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                }
+            }
+        }
+        item {
+            AuroraPanel {
+                when (active) {
+                    0, 1 -> {
+                        Text(if (active == 0) tr("ထိပ်ဂဏန်း အထွက်", "Tens frequency")
+                            else tr("ပိတ်ဂဏန်း အထွက်", "Ones frequency"),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = auroraInk)
+                        val values = if (active == 0) stats.tens else stats.ones
+                        val max = values.maxOrNull() ?: 0
+                        values.forEachIndexed { i, count ->
+                            AuroraBar(i.toString(), count, max)
+                        }
+                    }
+                    2 -> {
+                        Text(tr("ပြောင်းပြန်ဂဏန်းအတွဲ", "Reverse pairs"),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = auroraInk)
+                        val pairs = stats.reversePairs.filter { it.firstCount + it.reverseCount > 0 }
+                        if (pairs.isEmpty()) Text(tr("မရှိသေးပါ", "No pairs"), color = auroraMuted)
+                        pairs.take(12).forEach { pair ->
+                            Row(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(pair.first + " / " + pair.reverse,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold, color = auroraInk)
+                                Text(pair.firstCount.toString() + " / " + pair.reverseCount,
+                                    style = MaterialTheme.typography.bodyMedium, color = auroraCherry)
+                            }
+                        }
+                    }
+                    else -> {
+                        Text(tr("အပူးဂဏန်း", "Double-number draws") + "  " + stats.doubleCount,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = auroraInk)
+                        val doubles = (0..9).map { stats.counts[it * 11] }
+                        val max = doubles.maxOfOrNull { it.count } ?: 0
+                        doubles.forEach { AuroraBar(it.digit, it.count, max) }
+                    }
+                }
+            }
+        }
+    }
+}
+@Composable
+private fun AuroraMissing(
+    stats: HistoricStatistics, en: Boolean,
+    onClick: (String) -> Unit, onAll: () -> Unit,
+) {
+    fun tr(my: String, english: String) = if (en) english else my
+    val missing = stats.missing.sortedWith(
+        compareByDescending<HistoricNumberStat> { it.observedDrawsSince ?: -1 }
+            .thenBy { it.digit })
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { AuroraMiniHeader(tr("ပျောက်ဂဏန်း", "Missing numbers"),
+            tr("ကာလအတွင်း မတွေ့ခဲ့သော ဂဏန်းများ",
+                "Not observed in the selected period")) }
+        item {
+            AuroraPanel {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("မထွက်ခဲ့သောဂဏန်း", "Not observed"),
+                            color = auroraMuted, style = MaterialTheme.typography.labelMedium)
+                        Text(missing.size.toString(), color = auroraCherry,
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold)
+                    }
+                    Text(tr("အတည်ပြုရလဒ်", "Completed draws") + ": " + stats.totalDraws,
+                        color = auroraMuted, style = MaterialTheme.typography.labelSmall)
+                }
+                Text(tr("မထွက်တာကြာခြင်းသည် နောက်အကြိမ်ပေါက်နိုင်ခြေ တိုးခြင်းမဟုတ်ပါ။",
+                    "A longer absence does not increase the chance of the next draw."),
+                    color = auroraMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        if (missing.isNotEmpty()) {
+            item {
+                AuroraPanel {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("နောက်ဆုံးတွေ့ခဲ့ချိန်", "Last observed"),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = auroraInk, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f))
+                        TextButton(onClick = onAll) {
+                            Text(tr("အားလုံး", "View all"), color = auroraCherry)
+                        }
+                    }
+                    missing.take(6).forEach { number ->
+                        Surface(onClick = { onClick(number.digit) },
+                            color = auroraSoft, shape = RoundedCornerShape(12.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text(number.digit, color = auroraCherry,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold, modifier = Modifier.width(45.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(number.lastSeen?.date?.toString() ?:
+                                        tr("မှတ်တမ်းတွင် မတွေ့ပါ", "Not found in available history"),
+                                        color = auroraInk, style = MaterialTheme.typography.labelMedium)
+                                    Text(number.observedDrawsSince?.let {
+                                        it.toString() + " " + tr("အကြိမ်ကျော်", "observed draws since")
+                                    } ?: tr("မသိနိုင်ပါ", "Unknown"),
+                                        color = auroraMuted, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Icon(Icons.Default.ChevronRight, null, tint = auroraCherry)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
