@@ -315,6 +315,54 @@ The user wants **a practical analysis of the current target session**, based on 
 
 ---
 
+## A-04 — Previous week's completed draw distribution and remaining digits
+
+**State:** Initial check categories **provided by user**; exact definitions and counting policies **pending user explanation**. **Do not code yet.**  
+**Scope:** The **entire previous Monday–Friday week**, including its completed AM and PM draws that have verified final results. **Do not confuse with A-02**, which filters to *the same weekday and same session* as the current target. **Do not confuse with A-01**, which continues from previous-week missing single digits into *current-week reappearance* and historical next-week behavior.
+
+### A-04.1 User's actual request (captured from conversation)
+
+> "ပြီးခဲ့အပတ်ရဲ့ ဂဏန်းထွက်ရှိမှုအခြေအနေ 0 to 9 အကြိမ်ရေ, စုံစုံ မမ စုံမ မစုံ အကြိမ်ရေ, ပါဝါ ညီကို အပူး နက္ခတ်.ပြန်ကျ....ထွက်ရှိမှု, ကျန်ဂဏန်း"
+
+The assistant should retain the user's terms **"ပြန်ကျ"** and **"ကျန်ဂဏန်း"** without guessing their meaning. "ညီကို" may be the user's shorter term for an existing "ညီအကို" group; verify the correct grouping and synonym before coding.
+
+### A-04.2 Components explicitly requested by user
+
+1. **0–9 digit appearance counts for the previous week.** Examine the week's 2D results and report occurrence statistics for individual digits 0 through 9. This concerns single digits, not the 00–99 2D pair frequency. The counting policy for a result such as `55` (one draw containing 5 or two digit-position occurrences) **remains pending**.
+2. **Four even/odd class counts for the previous week:** စုံစုံ, မမ, စုံမ, မစုံ — how often each category appeared in the week's draws. Validate the exact classification orientation and rules before implementing.
+3. **Special number-group appearances for the previous week:** ပါဝါ, ညီကို/ညီအကို, အပူး, နက္ခတ် and the user-mentioned **ပြန်ကျ**. Count/report how each appeared. **The exact numeric membership definitions for these terms have not yet been confirmed in this discussion**, especially `ပြန်ကျ`; inspect existing verified app definitions and confirm with user. Do not assume the special groups are mutually exclusive.
+4. **ကျန်ဂဏန်း (remaining numbers):** user wants a separate remaining-number component of the previous-week report. **Ambiguous scope:** Is this the 0–9 digits that did not appear, the 00–99 two-digit numbers that did not appear, or another locally defined "remaining" concept? **Keep unimplemented and pending until user clarifies.**
+
+### A-04.3 Important distinction in business purpose
+
+- **A-04:** "What exactly occurred / was absent during the completed **previous week**?" — a standalone structured, useful previous-week state review.
+- **A-01:** "What **single digit was missing last week**; did it return **this week**; and how did it behave after historically missing weeks?" — an inter-week follow-up/history comparison.
+- **A-02:** "Among historical draws matching the **current target's weekday AND morning/evening**, what numbers/digits/classes/groups occurred most?" — a different history population.
+- **A-03:** "Does the **chronological four-class pattern** of this week match an ordered historical week prefix, and what came after?" — a strict pattern search.
+
+Never combine A-04 totals with A-02 same-session counts, and never automatically treat "remaining" as a missing digit until confirmed.
+
+### A-04.4 Data safety and suggested verification cases (NOT yet approved formulas)
+
+- Explicitly identify the Monday–Friday date range and how many *verified final draws* exist in that range, without assuming 10 draws when holidays occur.
+- Distinguish a real closure from an unknown/missing source record. Incomplete history cannot prove a digit was absent.
+- Preserve ties; avoid visually inflating one of equally frequent categories.
+- Example for scope only: if last week's verified results include 14, 26, 35, all three results belong to **last week's** data regardless of which weekdays produced them. **No frequency or group classification formula is implied by this example.**
+- Displaying what happened last week does not establish what will happen this week.
+
+### A-04.5 Specific open questions for user
+
+- **Q-13:** Exactly what is **"ပြန်ကျ"**? Which 2D numbers qualify?
+- **Q-14:** What are **"ကျန်ဂဏန်း"** here: remaining 0–9 digits, remaining 00–99 pairs, or something else?
+- **Q-15:** In 0–9 frequency, does `55` count digit 5 once (one draw) or twice (two positions)? Should tens and ones also be shown separately?
+- **Q-16:** Confirm definitions/overlap of the four parity classes and five named special groups, including whether **"ညီကို"** equals **"ညီအကို"**.
+- **Q-17:** Which incomplete/holiday weeks are eligible for last-week review, and how should missing records be represented?
+- **Q-18:** Whether the default view should show all group counts, only groups that appeared, and where/when to show drill-down — **UI not decided yet**.
+
+**Feature assignment:** undecided. **Code change:** none. **Next action:** listen to user's elaboration, ask to resolve `ပြန်ကျ` and `ကျန်ဂဏန်း` before implementation, and add worked positive/negative cases after meanings are confirmed.
+
+---
+
 # Part IV — Other user-described observations (not yet separate confirmed methods)
 
 These observations came from the user to illustrate the real-world analysis domain, **not** to authorize implementing new detectors:
@@ -345,6 +393,12 @@ When the user describes an exact method using any of these observations, **give 
 | Q-10 | A-03 history horizon | Number of historical weeks and sufficient follow-up |
 | Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
+| Q-13 | A-04 ပြန်ကျ | Meaning and exact qualifying 2D-number set |
+| Q-14 | A-04 ကျန်ဂဏန်း | Remaining 0–9 digits vs 00–99 pairs vs another definition |
+| Q-15 | A-04 digit counts | Count 55 once or twice; whether to split tens/ones |
+| Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
+| Q-17 | A-04 data completeness | Which holiday/partially recorded weeks qualify |
+| Q-18 | A-04 presentation | Default groups and drill-down after all methods collected |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -401,6 +455,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-03 strict four-class chronological sequence, min 4 confirmed draws, grows to 9 preceding Fri PM, same-week only | Core logic confirmed; holiday comparison pending |
 | 2026-11-06 | Do not modify "မူ"; keep user's custom research idea separate for later feature planning | Confirmed |
 | 2026-11-06 | Save detailed Master Specification in GitHub to avoid loss across conversations | Approved for documentation only |
+| 2026-11-06 | A-04 previous-week 0–9, parity, special-group and remaining-number review | User listed check categories; definitions/edge cases pending |
 
 ---
 
