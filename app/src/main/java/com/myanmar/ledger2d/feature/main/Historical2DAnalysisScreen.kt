@@ -112,6 +112,7 @@ fun Historical2DAnalysisScreen(
     var draftStart by rememberSaveable { mutableStateOf(customStart) }
     var draftEnd by rememberSaveable { mutableStateOf(customEnd) }
     var filterOpen by remember { mutableStateOf(false) }
+    var editingCustomDate by remember { mutableStateOf<String?>(null) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var patternTab by rememberSaveable { mutableIntStateOf(0) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -228,11 +229,21 @@ fun Historical2DAnalysisScreen(
                             }
                             if (draftPeriod == "custom") {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Box(Modifier.weight(1f)) {
-                                        HistoricDatePicker(tr("စရက်", "From"), draftStart) { draftStart = it }
+                                    OutlinedButton(
+                                        onClick = { filterOpen = false; editingCustomDate = "start" },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 6.dp),
+                                    ) {
+                                        Text(draftStart, style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1)
                                     }
-                                    Box(Modifier.weight(1f)) {
-                                        HistoricDatePicker(tr("ဆုံးရက်", "To"), draftEnd) { draftEnd = it }
+                                    OutlinedButton(
+                                        onClick = { filterOpen = false; editingCustomDate = "end" },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 6.dp),
+                                    ) {
+                                        Text(draftEnd, style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1)
                                     }
                                 }
                             }
@@ -352,6 +363,35 @@ fun Historical2DAnalysisScreen(
                 }
             }
         }
+    }
+    if (editingCustomDate != null) {
+        val dateToEdit = if (editingCustomDate == "start") draftStart else draftEnd
+        val initial = remember(dateToEdit) {
+            runCatching {
+                LocalDate.parse(dateToEdit).atStartOfDay(ZoneOffset.UTC)
+                    .toInstant().toEpochMilli()
+            }.getOrNull()
+        }
+        val picker = rememberDatePickerState(initialSelectedDateMillis = initial)
+        DatePickerDialog(
+            onDismissRequest = { editingCustomDate = null; filterOpen = true },
+            confirmButton = {
+                TextButton(onClick = {
+                    picker.selectedDateMillis?.let { millis ->
+                        val chosen = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC)
+                            .toLocalDate().toString()
+                        if (editingCustomDate == "start") draftStart = chosen else draftEnd = chosen
+                    }
+                    editingCustomDate = null
+                    filterOpen = true
+                }) { Text(tr("အတည်ပြု", "OK")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingCustomDate = null; filterOpen = true }) {
+                    Text(tr("မလုပ်တော့ပါ", "Cancel"))
+                }
+            },
+        ) { DatePicker(state = picker) }
     }
     if (showHistory) {
         AlertDialog(
