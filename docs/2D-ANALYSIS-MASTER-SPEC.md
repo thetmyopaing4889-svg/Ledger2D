@@ -379,7 +379,7 @@ Never combine A-04 totals with A-02 same-session counts, and never automatically
 
 ## A-05 — Current-week single-digit flow: new and previously seen digits
 
-**State:** User described the central method with a concrete ordered four-draw example. The main new/old interpretation below is **assistant's restatement awaiting user's confirmation**; the precise edge cases in A-05.5 are **pending**. Do not implement or assign to a UI feature until the user confirms.  
+**State:** User confirmed the initial draw trigger, the meaning of unobserved remaining digits (ကျန်ဂဏန်း) **for A-05**, the original four-draw example, and special single-digit handling for doubles such as 11. Other presentation/history/edge-case policies remain **pending**. Do not implement or assign to a UI feature until all essential rules are settled.  
 **Scope:** The current Monday–Friday week's **chronologically ordered confirmed 2D results**, considering only earlier results in the **same week** when deciding whether a digit is new/old. This is a *within-week sequential flow*, not A-04's previous-week review and not A-03's historical four-class matching.
 
 ### A-05.1 User's exact intent
@@ -405,15 +405,30 @@ Narrative interpretation:
 - **Tuesday evening:** 3 had appeared Monday PM in 03, whereas 5 was new; hence **အဟောင်း+အသစ်**.
 - After Tuesday PM, the **observed unique single digits** are **0, 1, 2, 3, 5**; those **not yet observed** among 0–9 are **4, 6, 7, 8, 9**. This is background data for the new/old classification, not a predictive statement.
 
-### A-05.3 Provisional algorithm interpretation (confirm before coding)
+### A-05.2a Start condition and remaining single digits — USER CONFIRMED
 
-1. Start a new single-digit seen-set at the **beginning of each Monday–Friday week**. The earlier week must not mark digits as old in a new week.
+**Eligibility / activation:** This checking method does **NOT** run before the first confirmed 2D draw of the current week. It begins **immediately after the first result becomes confirmed**, even if only one morning result is available. A Monday morning example does not imply the session must literally be Monday when a holiday closes the market; the trigger is the **first real completed draw within the week**.
+
+**ကျန်ဂဏန်း (for this method):** The single-digit values among **0–9 that have never appeared in any confirmed 2D result so far in the CURRENT week** (in either tens or ones). After each new confirmed draw, remove newly seen digits from the remaining set. Already seen digits must not return to the remaining list just because absent in a later draw.
+
+**Exact user examples:**
+
+1. **Before Monday morning's draw:** This A-05 check is **inactive** — not an empty "all 10 remaining" analysis screen.
+2. **Monday AM result = 12:** 1 and 2 are both newly seen → **အသစ် + အသစ်**. The user explicitly gives remaining digits as **`34567890`** (set {0,3,4,5,6,7,8,9}; display order may be finalized later).
+3. **Alternatively, first confirmed result = 11 (အပူး):** digit **1 appears as ONE distinct single digit**. The classification is **"1 အသစ်"**, not a fabricated "two different new digits" or two counted appearances. The user explicitly gives remaining digits as **`234567890`** (set {0,2,3,4,5,6,7,8,9}).
+4. Following the four-draw example 12 → 03 → 02 → 35, remaining digits are {4,6,7,8,9}; 0,1,2,3,5 have appeared during the week.
+
+**Critical separation:** The confirmed meaning of **ကျန်ဂဏန်း** here is **A-05's current-week remaining single digits**. Do **NOT** silently assume that the same term in **A-04 previous-week review** is fully defined; ask whether the intended scopes/units are identical.
+
+### A-05.3 Algorithm interpretation (core rules user confirmed; remaining choices pending)
+
+1. Start a new single-digit seen-set at the **beginning of each Monday–Friday week**. The earlier week must not mark digits as old in a new week. **Do not activate A-05 until at least one verified current-week result has been saved**.
 2. In ascending chronological order, consider each **verified finalized** result that already occurred within the same week.
 3. For the currently inspected result, compare its tens and ones digits with **the seen-set from *prior* results**, not with only the immediately preceding result.
 4. Label a digit **အသစ်** when absent from that prior seen-set; label **အဟောင်း** when present.
-5. Combine these labels in the result's order. The user specifically demonstrated **အသစ်+အသစ်**, **အဟောင်း+အဟောင်း**, and **အဟောင်း+အသစ်**. The **အသစ်+အဟောင်း** ordering should be handled sensibly, but exact user-facing grouping/orientation remains pending.
-6. After inspecting the result, add both of its digit values to the seen-set. This permits a new digit in one result to be old in a later result, morning or evening and across days.
-7. Produce a readable **draw-by-draw and day-by-day flow explanation**, grounded in the actual digits and their appearance history (e.g. "Monday both sessions contained two new digits"; "Tuesday morning both old, evening one old and one new"). Exact visualization will be decided later.
+5. For results containing **two distinct digits**, combine the labels in the result's order. The user specifically demonstrated **အသစ်+အသစ်**, **အဟောင်း+အဟောင်း**, and **အဟောင်း+အသစ်**; handling **အသစ်+အဟောင်း** in display summaries remains pending. For **doubles such as 11**, classify and count the **one distinct digit only**: if previously unseen, user explicitly calls it **အသစ်** (singular). Do not count a first 11 as two new single-digit values.
+6. After inspecting the result, add each **distinct digit value** present to the seen-set (so 11 adds **only digit 1 once**). This permits a new digit in one result to be old in a later result, morning or evening and across days. Recompute **ကျန်ဂဏန်း = {0–9} minus seen-set** immediately after each confirmed result.
+7. Produce a readable **draw-by-draw and day-by-day flow explanation**, grounded in the actual digits and their appearance history (e.g. "Monday both sessions contained two new digits"; "Tuesday morning both old, evening one old and one new"). **Also show the remaining digit set after each confirmed result, or at minimum the current remaining set**; exact placement/visualization will be decided later.
 8. Do not infer this week's unseen digit is more likely to appear in the next result.
 
 ### A-05.4 Negative and contrast cases
@@ -421,17 +436,17 @@ Narrative interpretation:
 - **Tuesday 02** is **အဟောင်း+အဟောင်း** even if full 2D pair `02` never appeared earlier; the single digits **0 and 2** did.
 - A digit that was seen on **Monday**, absent on some later sessions, and then appears again on **Friday** remains **အဟောင်း** (prior appearances in the *entire ongoing week*, not only in adjacent draws).
 - A digit seen **only in last week's** results must **not** automatically count as old for the beginning of this week; weekly status resets.
-- **Pending special case:** when both positions contain the same newly seen digit (e.g. **11** is the week's first result), should they both be **အသစ်**, because the two positions are checked against the *prior-draw* set, or is a position within the same result considered an earlier occurrence? User has not confirmed yet.
+- **Confirmed double handling:** If the week's first result is **11**, count **digit 1 once** and classify **1 အသစ်** (not as two separate new digits); remaining set excludes 1 and includes all other digits. If an already-seen digit appears later in a double, the precise wording/presentation can be validated before UI implementation.
 
 ### A-05.5 Pending points requiring explicit user guidance
 
-- **Q-19:** For a double-digit result `11` appearing when digit 1 has never occurred in that week, should it be **အသစ်+အသစ်** (both assessed before updating) or something else? Likewise, if 1 occurred earlier, presumably both are old — verify.
+- **Q-19 (resolved for first appearance):** User confirmed first **11** = single digit **1 အသစ်**, count digit 1 **once**, not အသစ်+အသစ်. Remaining digits **234567890**. **Pending minor wording:** if 1 was previously seen, use a one-digit old label for 11 (rather than two duplicated labels)? Confirm if needed at UI design.
 - **Q-20:** Should **အသစ်+အဟောင်း** and **အဟောင်း+အသစ်** be separate classes depending on tens/ones position, or one combined "one new, one old" class? User's precise order in example is preserved, but whether to merge categories in summary charts is undecided.
 - **Q-21:** Is A-05 intended only for explanation of the current week's observed sequence, or also to find similar new/old flow patterns in historical weeks? No history matching was requested for A-05 yet; don't add it on assumption.
-- **Q-22:** What aggregation should the first view prioritize: each draw's two-label flow, day summary, proportions of new/old combinations, latest streak or another meaningful form? Decide with user after all checks.
+- **Q-22:** User **confirmed that ကျန်ဂဏန်း must also be shown** for A-05, as unobserved 0–9 digits in the current week. Exact first-view hierarchy remains open: draw flow, day explanation, remaining-digit placement, counts, latest streak etc. Decide with user after all checks.
 - **Q-23:** How should actual holiday closures and historical-record gaps be displayed? Do not assume missing draws are completed; do not interpolate a flow.
   
-**Feature assignment:** undecided. **Code change:** none. **Next action:** user confirms/corrects this interpretation and elaborates any additional rules.
+**Feature assignment:** undecided. **Code change:** none. **Next action:** continue collecting user's remaining methods; do not guess classification formulas or UI layout.
 
 ---
 
@@ -471,10 +486,10 @@ When the user describes an exact method using any of these observations, **give 
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
 | Q-17 | A-04 data completeness | Which holiday/partially recorded weeks qualify |
 | Q-18 | A-04 presentation | Default groups and drill-down after all methods collected |
-| Q-19 | A-05 repeated digit within one draw | First 11 treated as new+new or another classification? |
+| Q-19 | A-05 repeated digit within one draw | RESOLVED: first 11 = one new digit, remaining 234567890; optional wording for later already-seen doubles |
 | Q-20 | A-05 tens/ones order | New+old and old+new separate versus aggregated |
 | Q-21 | A-05 history scope | Current-week descriptive flow only or any user-approved history matching |
-| Q-22 | A-05 presentation | Best useful output (draw/day progression, counts, latest streak) |
+| Q-22 | A-05 presentation | Remaining current-week digits REQUIRED; final layout for draw/day flow and remaining set pending |
 | Q-23 | A-05 completeness | Closure vs missing records and eligibility |
 
 Do not mistake the table for a user-approved implementation plan.
@@ -535,7 +550,8 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-04 previous-week 0–9, parity, special-group and remaining-number review | User listed check categories; definitions/edge cases pending |
 | 2026-11-06 | A-04 ပြန်ကျ = exact 2D number repeated, e.g. Mon 01 then Tue 01 | User confirmed core definition; edge cases pending |
 | 2026-11-06 | A-04 ပြန်ကျ includes recurrence at any later occasion in the same week, including same-day AM→PM, with no adjacency rule | User explicitly confirmed; handling 3+ appearances still pending |
-| 2026-11-06 | A-05 current-week new/old single-digit flow: Mon 12,03 → Tue 02,35 | User supplied example; interpretation recorded awaiting confirmation; edge cases pending |
+| 2026-11-06 | A-05 current-week new/old single-digit flow: Mon 12,03 → Tue 02,35 | User supplied example; subsequent trigger/double/remaining rules confirmed |
+| 2026-11-06 | A-05 activates only after first weekly final result; display remaining 0–9 unseen digits; first 12 → remaining 34567890; first 11 → one new digit 1 and remaining 234567890 | Explicitly confirmed by user; layout and other edge cases pending |
 
 ---
 
