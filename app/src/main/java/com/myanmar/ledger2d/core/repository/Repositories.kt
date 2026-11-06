@@ -603,9 +603,8 @@ class RoomHistoryResultRepository(private val db: LedgerDatabase): HistoryResult
         var updated = 0
         rows.forEach { row -> updated += upsertIfChanged(row) }
 
-        // Keep Room bounded to the current rolling window only after a valid
-        // source response has been received and merged successfully.
-        dao.deleteBefore(start)
+        // Do not delete existing history before this rolling download window.
+        // Long-term historical analysis must preserve previously synced records.
 
         return HistorySyncSummary(start, end, updated)
     }
