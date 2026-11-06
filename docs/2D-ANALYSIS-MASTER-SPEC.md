@@ -526,6 +526,68 @@ The user confirmed the meaning clearly and does **not** want another speculative
 
 ---
 
+## A-07 — Current-week occurrence status of special 2D groups
+
+**State:** User explicitly confirmed the **scope (current week)**, the **five named categories**, and the **start condition (at least one result in this week)**. Exact special-group mappings (other than the already defined "ပြန်ကျ") and the final presentation/aggregation remain pending. **Documentation only; no code/UI feature assignment yet.**
+
+### A-07.1 User's explicit instruction
+
+> "စစ်ဆေးနည်း ၇ လက်ရှိအပတ်ရဲ့ အပူး ညီကို ပါဝါ နက္ခတ် ပြန်ကျ...ထွက်ရှိမှု အခြေအနေ (အခု အပတ်ရဲ့ result တစ်ကြိမ် ထွက်ပြီးမှ စတင်တွက်မယ်)"
+
+**Purpose:** Report the **actual occurrence status so far this current Monday–Friday week** for the named special-number groups. Unlike A-04, which reviews the **previous week**, A-07 progresses whenever a new final result is confirmed within the **current week**.
+
+### A-07.2 Start and data scope — USER CONFIRMED
+
+- **Before the first confirmed draw of the week:** **A-07 is not active**. Do not claim to have analyzed categories from zero weekly results; do not silently use previous week's results.
+- **As soon as the first result of the current week is confirmed:** **A-07 starts**. It must **not** wait until four draws (the minimum-four condition belongs to A-03, not A-07).
+- For each subsequent confirmed morning/evening result in that same calendar week, include it in the week's occurrence status. Weekdays/market closures do not themselves count as results.
+- **At the beginning of the next week, reset current-week occurrence status**. Do not carry last week's observations into the current-week tally.
+- **Use finalized confirmed results only**; never count an upcoming or provisional live result as already occurred.
+
+### A-07.3 Five categories to inspect — USER NAMED
+
+| Category | Current-week question | Domain rule to apply |
+|---|---|---|
+| **အပူး** | Has this group appeared among the actual current-week results; what occurred? | Exact number membership must follow the validated 2D domain rule, not a new invented classification |
+| **ညီကို / ညီအကို** | Has this group appeared among the actual current-week results; what occurred? | Confirm exact synonym/membership via existing app logic/user |
+| **ပါဝါ** | Has this group appeared among the actual current-week results; what occurred? | Verify existing app definition/user rule before implementation |
+| **နက္ခတ်** | Has this group appeared among the actual current-week results; what occurred? | Verify existing app definition/user rule before implementation |
+| **ပြန်ကျ** | Has an **identical full 2D pair** appeared again within this same week? | Already confirmed in A-04: pair repeats across **any two draw occasions** within one week, same day or different days, **no adjacency required** |
+
+The user's wording **"ထွက်ရှိမှု အခြေအနေ"** means report **what has/has not appeared so far**, not forecast the next result. Counts, numbers, exact occurrence sessions and breakdown may be useful but **their first-view detail/priority has not been confirmed yet**. Do not turn them into invented requirements.
+
+### A-07.4 Confirmed relationship to ပြန်ကျ, and a worked example
+
+**Previously confirmed meaning carried forward from A-04:** If **01** appeared Monday AM and reappeared Monday PM, Tuesday AM, or another later draw in the same week, the second appearance is **ပြန်ကျ**. It does not require consecutive sessions. Seeing **01** and **10** is *not* repetition of the identical full 2D pair.
+
+**Illustrative test scenarios (not real historical results):**
+
+- **Before Mon AM is finalized:** A-07 inactive.
+- **After first confirmed result Mon AM = 01:** A-07 active. For **ပြန်ကျ**, **there has not yet been an exact pair repetition** in the one-result history. Do not label the entire A-07 inactive merely because ပြန်ကျ requires a second result.
+- **After Mon PM = 01:** Current-week **ပြန်ကျ occurred** for complete pair **01**. This qualifies even though both draws are on Monday.
+- **After Mon PM = 10 instead:** No identical 2D pair repetition of 01 yet; sharing the individual digits/reversal does not fulfill ပြန်ကျ.
+
+The first 01/10 examples above are **only for the ပြန်ကျ criterion**. Do not infer the classification of 01 into **အပူး/ညီကို/ပါဝါ/နက္ခတ်** without their validated membership rules.
+
+### A-07.5 Keep A-07 distinct from adjacent methods
+
+- **A-04:** Last week's 0–9 frequencies, parity, named special groups, ပြန်ကျ and still-to-be-clarified "ကျန်ဂဏန်း".
+- **A-05:** Current week's **single-digit new/old flow and remaining 0–9 digits**, activated after one result. This is not the same as special-group occurrence.
+- **A-06:** Longest **ongoing** absence counts across historical AM-only, PM-only and combined draw streams; not limited to special groups this week.
+- **A-07:** **This week's** named special-group appearance status, activated after **one confirmed result**. In particular, **ပြန်ကျ is repetition of a complete 2D pair**, not a repeated single digit.
+
+### A-07.6 Pending; do not invent
+
+- **Q-30:** Verify exact category definitions for **အပူး, ညီကို, ပါဝါ, နက္ခတ်** and any group overlaps; reuse verified app domain behavior.
+- **Q-31:** Precisely how should the weekly status be summarized for each category (appeared yes/no, which result(s), occurrence count, draw dates and sessions, or some combination)? The essential current-week *appearance-status check* is agreed, but UI detail has not been finalized.
+- **Q-32:** For ပြန်ကျ with a pair observed three or more times in this same week, how should repeats be counted and presented? This shares A-04's unresolved multiple-repeat presentation rule.
+- **Q-33:** When source data for a past scheduled current-week draw is missing, how should incompleteness affect "not appeared yet" claims? Known holiday/no-draw does not produce a missing result.
+
+**Feature assignment:** undecided until the user finishes explaining all methods.  
+**Code/UI status:** do not implement; Master Document update only.
+
+---
+
 # Part IV — Other user-described observations (not yet separate confirmed methods)
 
 These observations came from the user to illustrate the real-world analysis domain, **not** to authorize implementing new detectors:
@@ -573,6 +635,10 @@ When the user describes an exact method using any of these observations, **give 
 | Q-27 | A-06 completeness | Holidays and absent/imported records vs verified nonappearance |
 | Q-28 | A-06 presentation | All ties/top N, last-seen date, duration details and drill-down |
 | Q-29 | A-06 meaning of longest | Current ongoing absence at the latest confirmed result is the user-described case; no unrequested all-time streak leaderboard |
+| Q-30 | A-07 category definitions | Verify အပူး, ညီကို, ပါဝါ, နက္ခတ် groups and overlaps |
+| Q-31 | A-07 occurrence status | Whether to show counts, involved results, dates/sessions alongside appeared/not-yet |
+| Q-32 | A-07 ပြန်ကျ multiplicity | How to count/show the same pair appearing 3+ times |
+| Q-33 | A-07 missing source data | How to qualify "not appeared" for incomplete current-week result records |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -636,6 +702,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-05 activates only after first weekly final result; display remaining 0–9 unseen digits; first 12 → remaining 34567890; first 11 → one new digit 1 and remaining 234567890 | Explicitly confirmed by user; layout and other edge cases pending |
 | 2026-11-06 | A-06 longest-absent 2D pair and 0–9 digit, each analyzed separately for AM-only, PM-only and both | User specified six checks; details pending |
 | 2026-11-06 | A-06 absence counted in distinct relevant completed draws, not days. Morning 56 absent 100 AM results while PM 56 hit: AM remains missing; PM and combined reset on PM hit | Explicit user clarification, confirmed; do not re-ask this definition |
+| 2026-11-06 | A-07 current-week အပူး, ညီကို, ပါဝါ, နက္ခတ်, ပြန်ကျ appearance status starts after just one confirmed weekly result | User explicitly confirmed scope/activation; details and category mappings pending |
 
 ---
 
