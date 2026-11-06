@@ -377,6 +377,64 @@ Never combine A-04 totals with A-02 same-session counts, and never automatically
 
 ---
 
+## A-05 — Current-week single-digit flow: new and previously seen digits
+
+**State:** User described the central method with a concrete ordered four-draw example. The main new/old interpretation below is **assistant's restatement awaiting user's confirmation**; the precise edge cases in A-05.5 are **pending**. Do not implement or assign to a UI feature until the user confirms.  
+**Scope:** The current Monday–Friday week's **chronologically ordered confirmed 2D results**, considering only earlier results in the **same week** when deciding whether a digit is new/old. This is a *within-week sequential flow*, not A-04's previous-week review and not A-03's historical four-class matching.
+
+### A-05.1 User's exact intent
+
+User described **"ဂဏန်းစီးဆင်းမှု အခြေအနေ — အသစ်+အသစ် လား အသစ်+အဟောင်းလား"** and provided:
+
+> "mon- 12 03 tue 02 35 ဆိုရင် mon အသစ်+အသစ် နဲ့ အသစ်+အသစ် တစ်နေကုန် ဂဏန်းအသစ်များထွက်သည် tue အဟောင်း+အဟောင်း နဲ့ အဟောင်း+အသစ် မနက်ပိုင်းတွင် အဟောင်းပြန်ထွက်ပြီး ညနေပိုင်းတွင် အဟောင်းတစ်လုံး အသစ်တစ်လုံး ထွက်သွားသည်"
+
+This method evaluates whether **the individual digits in each 2D result** have appeared in earlier completed results of the ongoing week. It does **not** require the whole 2D pair to have appeared before (that is A-04 ပြန်ကျ). "New" is relative to the previously observed digits **in the week**, not just the preceding draw or day.
+
+### A-05.2 Worked example — USER-SUPPLIED, preserve exactly
+
+| Occasion | Confirmed 2D result | Previously observed digits in week, before this result | First digit | Second digit | New/old flow classification |
+|---|---|---|---|---|---|
+| Monday AM | **12** | none | 1 **အသစ်** | 2 **အသစ်** | **အသစ် + အသစ်** |
+| Monday PM | **03** | 1, 2 | 0 **အသစ်** | 3 **အသစ်** | **အသစ် + အသစ်** |
+| Tuesday AM | **02** | 0, 1, 2, 3 | 0 **အဟောင်း** | 2 **အဟောင်း** | **အဟောင်း + အဟောင်း** |
+| Tuesday PM | **35** | 0, 1, 2, 3 | 3 **အဟောင်း** | 5 **အသစ်** | **အဟောင်း + အသစ်** |
+
+Narrative interpretation:
+- **Monday:** Both morning and evening drew **two never-before-seen digits** in that week. Across the day, all four digit appearances introduced new digits.
+- **Tuesday morning:** Both 0 and 2 had already appeared on Monday; hence **အဟောင်း+အဟောင်း**, even though complete 2D number **02** had not appeared before.
+- **Tuesday evening:** 3 had appeared Monday PM in 03, whereas 5 was new; hence **အဟောင်း+အသစ်**.
+- After Tuesday PM, the **observed unique single digits** are **0, 1, 2, 3, 5**; those **not yet observed** among 0–9 are **4, 6, 7, 8, 9**. This is background data for the new/old classification, not a predictive statement.
+
+### A-05.3 Provisional algorithm interpretation (confirm before coding)
+
+1. Start a new single-digit seen-set at the **beginning of each Monday–Friday week**. The earlier week must not mark digits as old in a new week.
+2. In ascending chronological order, consider each **verified finalized** result that already occurred within the same week.
+3. For the currently inspected result, compare its tens and ones digits with **the seen-set from *prior* results**, not with only the immediately preceding result.
+4. Label a digit **အသစ်** when absent from that prior seen-set; label **အဟောင်း** when present.
+5. Combine these labels in the result's order. The user specifically demonstrated **အသစ်+အသစ်**, **အဟောင်း+အဟောင်း**, and **အဟောင်း+အသစ်**. The **အသစ်+အဟောင်း** ordering should be handled sensibly, but exact user-facing grouping/orientation remains pending.
+6. After inspecting the result, add both of its digit values to the seen-set. This permits a new digit in one result to be old in a later result, morning or evening and across days.
+7. Produce a readable **draw-by-draw and day-by-day flow explanation**, grounded in the actual digits and their appearance history (e.g. "Monday both sessions contained two new digits"; "Tuesday morning both old, evening one old and one new"). Exact visualization will be decided later.
+8. Do not infer this week's unseen digit is more likely to appear in the next result.
+
+### A-05.4 Negative and contrast cases
+
+- **Tuesday 02** is **အဟောင်း+အဟောင်း** even if full 2D pair `02` never appeared earlier; the single digits **0 and 2** did.
+- A digit that was seen on **Monday**, absent on some later sessions, and then appears again on **Friday** remains **အဟောင်း** (prior appearances in the *entire ongoing week*, not only in adjacent draws).
+- A digit seen **only in last week's** results must **not** automatically count as old for the beginning of this week; weekly status resets.
+- **Pending special case:** when both positions contain the same newly seen digit (e.g. **11** is the week's first result), should they both be **အသစ်**, because the two positions are checked against the *prior-draw* set, or is a position within the same result considered an earlier occurrence? User has not confirmed yet.
+
+### A-05.5 Pending points requiring explicit user guidance
+
+- **Q-19:** For a double-digit result `11` appearing when digit 1 has never occurred in that week, should it be **အသစ်+အသစ်** (both assessed before updating) or something else? Likewise, if 1 occurred earlier, presumably both are old — verify.
+- **Q-20:** Should **အသစ်+အဟောင်း** and **အဟောင်း+အသစ်** be separate classes depending on tens/ones position, or one combined "one new, one old" class? User's precise order in example is preserved, but whether to merge categories in summary charts is undecided.
+- **Q-21:** Is A-05 intended only for explanation of the current week's observed sequence, or also to find similar new/old flow patterns in historical weeks? No history matching was requested for A-05 yet; don't add it on assumption.
+- **Q-22:** What aggregation should the first view prioritize: each draw's two-label flow, day summary, proportions of new/old combinations, latest streak or another meaningful form? Decide with user after all checks.
+- **Q-23:** How should actual holiday closures and historical-record gaps be displayed? Do not assume missing draws are completed; do not interpolate a flow.
+  
+**Feature assignment:** undecided. **Code change:** none. **Next action:** user confirms/corrects this interpretation and elaborates any additional rules.
+
+---
+
 # Part IV — Other user-described observations (not yet separate confirmed methods)
 
 These observations came from the user to illustrate the real-world analysis domain, **not** to authorize implementing new detectors:
@@ -413,6 +471,11 @@ When the user describes an exact method using any of these observations, **give 
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
 | Q-17 | A-04 data completeness | Which holiday/partially recorded weeks qualify |
 | Q-18 | A-04 presentation | Default groups and drill-down after all methods collected |
+| Q-19 | A-05 repeated digit within one draw | First 11 treated as new+new or another classification? |
+| Q-20 | A-05 tens/ones order | New+old and old+new separate versus aggregated |
+| Q-21 | A-05 history scope | Current-week descriptive flow only or any user-approved history matching |
+| Q-22 | A-05 presentation | Best useful output (draw/day progression, counts, latest streak) |
+| Q-23 | A-05 completeness | Closure vs missing records and eligibility |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -472,6 +535,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-04 previous-week 0–9, parity, special-group and remaining-number review | User listed check categories; definitions/edge cases pending |
 | 2026-11-06 | A-04 ပြန်ကျ = exact 2D number repeated, e.g. Mon 01 then Tue 01 | User confirmed core definition; edge cases pending |
 | 2026-11-06 | A-04 ပြန်ကျ includes recurrence at any later occasion in the same week, including same-day AM→PM, with no adjacency rule | User explicitly confirmed; handling 3+ appearances still pending |
+| 2026-11-06 | A-05 current-week new/old single-digit flow: Mon 12,03 → Tue 02,35 | User supplied example; interpretation recorded awaiting confirmation; edge cases pending |
 
 ---
 
