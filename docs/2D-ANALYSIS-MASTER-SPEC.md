@@ -1,0 +1,407 @@
+# Cherry's 2D Ledger — 2D Analysis Master Specification
+
+> **Status:** Requirements collection / redesign planning; implementation **NOT approved**.  
+> **Version:** 0.1 — 2026-11-06  
+> **Repository branch at creation:** \`experiment/font-typography-lab-build930\`  
+> **Baseline code reviewed:** Build #963, commit \`522a37c8637ad847677931756bcdef916693f343\` (CI success).  
+> **Purpose:** Transfer the complete *why, what, definitions, examples, open questions and decisions* across conversations and eventually into implementation tests. **This document is a working source of truth, not permission to change app code.**
+
+## Reading guide — important
+
+1. Read **Part I (why redesign)** before interpreting the analysis rules. The existing UI must not be treated as the desired specification.
+2. Read **Part II (data and timing)** before implementing any method.
+3. Every method in **Part III** has **Confirmed** instructions, illustrative examples, and **Pending** choices. Never silently convert a pending choice into a product rule.
+4. In follow-up conversations, append new rules; **do not compress old rules** into a one-line summary or delete the worked examples.
+5. User explicitly said: collect all useful checks first, **then** organize them into features, **then** decide first views / UI, **then** implement. Do not prematurely fit methods into the existing navigation labels.
+6. User-specified "မူ" (Rules) is reserved for later. **Do not change it** under this redesign.
+7. Historical observation, including a frequent pattern or a missing digit, is **not** a guarantee of future outcome. Do not market observed ratios as predictive certainty.
+
+---
+
+# Part I — Project background and why redesign exists
+
+## I.1 Existing app
+
+Cherry's 2D Ledger is an Android ledger app for Myanmar 2D sales agents, customers and dai (agents). It includes transaction entry, customer / agent management, per-session commission and payout snapshots, reports, vouchers and live/historical result handling. The analysis discussed here is **historical 2D result analysis**, not the separate customer-specific financial risk analysis.
+
+The existing historical 2D Analysis has already been built. Around Build #961–#963 it presents five bottom destinations: **Insights, Explorer, Patterns, Missing, မူ (Rules)** with an upper-right period/session filter. Existing analytics include draw counts, 00–99 frequencies, timelines, tens/ones bars, reverse-pair and double displays, and missing-number lists. A source merger reads saved daily results and historical results; current-day analysis must use confirmed final results, not provisional live values.
+
+This project is **not** an initial request to build a screen from scratch. It is a **reconsideration after the user opened each feature on a real phone and shared first-view screenshots on 2026-11-06**.
+
+## I.2 Why the built version was rejected as insufficient
+
+### Fundamental problem: wrong information priorities
+
+The user found that the application could display data but often did not give a meaningful service to a Myanmar 2D user. For example, displaying "10 draws this week; no 2-digit number repeated" as a hero insight is not necessarily useful; a player can already see such a fact, and knowing it alone does not resolve a concrete question. Showing four "top" 2-digit numbers each observed once, visually elevating the first one, can be misleading: it implies significance despite a tie.
+
+Similarly, a grid of 00–99 with mostly 0× entries, or a list of 90 not-yet-seen 2-digit numbers, can consume most of the first screen without communicating the things the target user actually cares about. The issue is **not** that missing numbers or frequency are inherently useless. The issue is **what is inspected, for what time scope, how it is connected to practical Myanmar 2D reasoning, and what is shown first**.
+
+The user corrected the earlier assistant's tendency to dismiss missing/frequency analyses or replace them wholesale. **Missing numbers matter** when framed as (for example) a digit absent in a prior week, whether it has returned this week, and what happened in comparable historical weeks.
+
+### Visual/interaction problem
+
+The slight improvement in gradient styling did not meet the user's intended premium design. Cards were perceived as rectangular outlines on a background with a little shadow rather than clearly elevated, separated, layered surfaces. Some small cards nested in large cards had no meaningful depth. Giant gradient headers and low-value lists used prime first-view space. The user wants **distinct, properly layered/elevated cards**, a compact but readable hierarchy, and MM/EN layouts that fit. Styling alone cannot fix information priority.
+
+Do not claim the old UI is "premium" merely because it uses gradients, border, or small shadow; evaluate actual on-device screenshots.
+
+## I.3 User's real-world analysis frame
+
+Myanmar 2D normally runs Monday–Friday, morning and evening (up to ten draw occasions in a normal week; closures/holidays change this). Many 2D players habitually reason **by current calendar week**: "this week doubles have not appeared", "power has not appeared", "one-digit numbers kept changing", "an even/odd class has appeared repeatedly", etc.
+
+**Central product direction:**
+
+- Focus on the **current target day/session** (မနက်အကြိမ် / ညနေအကြိမ်).
+- For many methods, the natural observational unit is the **Monday–Friday week**; take only already-completed, confirmed results before the target result.
+- Some checks require comparison with **the preceding week**; other checks require **same weekday and same AM/PM session** in history; still others require **matching ordered within-week patterns**. These are distinct scopes.
+- Produce *answers to concrete user checks*, not generic charts just because charts exist.
+- Allow appropriate evidence/drill-down; do not imply that history forces future outcomes.
+- A separately discussed **user-directed research/testing workspace** may become its own analysis feature. This idea does **not** replace the checks the user is now teaching, and feature grouping is **not decided**.
+- "မူ" stays untouched until separately instructed.
+
+## I.4 Agreed workflow before changing source code
+
+1. User describes each practical Myanmar 2D checking method in their own terms and with examples.
+2. Assistant restates exact conditions, identifies ambiguous edge cases, and asks only relevant questions. **The user confirms** the rule.
+3. Save the method **verbatim in meaning**, with detailed worked examples, matching and non-matching cases, data scope, expected output, and pending decisions.
+4. Only after all methods are collected: decide which belong together in a feature and which should be separate.
+5. Decide valuable first-view answers, navigation, cards and interactions.
+6. Then implement minimally, with automated tests and regression review; preserve existing unrelated app functionality.
+7. Keep a decision/change log for future refinements.
+
+No analysis code/UI change is authorized merely by adding or editing this document.
+
+---
+
+# Part II — Shared vocabulary, data, and computation constraints
+
+## II.1 Time / draw session
+
+- A standard week is Monday–Friday, **morning and evening**, max 10 occasions; public holidays may remove some or all occasions.
+- The app user prefers **မနက်အကြိမ် / ညနေအကြိမ်** rather than technical "session" on user-facing Burmese screens.
+- Morning normal boundary 12:01 and evening 16:30 Myanmar time. Analyze confirmed stored final results; **do not count a provisional/live value** as confirmed.
+- For a target occasion that has not happened, do **not** include its own future result in "already happened this week".
+- Missing/unavailable records and true scheduled no-draw holidays **must not silently become a 00 result or be mistaken for a negative observation**.
+- Where data sufficiency is uncertain, mark the condition as pending/insufficient instead of fabricating an outcome.
+
+## II.2 Single digit vs 2D number
+
+- **တစ်လုံးဂဏန်း (digit):** 0 through 9, regardless of whether used in the tens (ထိပ်) or ones (ပိတ်) place when evaluating an appearance (unless a specific method says otherwise).
+- **2D number (နှစ်လုံးတွဲ):** 00 through 99, e.g. 39.
+- Example confirmed by user: \`14 → 26 → 35\` uses the six single digits 1,4,2,6,3,5, **none repeating** among these draws.
+- Example: \`14 → 45 → 65\` shows a **single-digit carry/reappearance between consecutive results**: 4 in 14/45; then 5 in 45/65. It is *not* the same digit repeating in all three results, and not the same 2D pair repeating.
+- Patterns based on sequential appearance of digits are **candidate methods/examples**, not yet a separately confirmed, fully specified check in this register.
+
+## II.3 Even/odd classes and special 2D groups
+
+- User explicitly names **စုံစုံ, မမ, စုံမ, မစုံ** as a four-class classification used for 2D draw results.
+- User also names **အပူး, ပါဝါ, နက္ခတ်, ညီအကို** as relevant special sets.
+- **Do not invent the exact mapping, counts, overlaps or exclusions** of special sets. Inspect existing parser/domain definitions and have user validate them before implementing the analysis engine. Even for the parity labels, verify tens/ones orientation and terminology rather than silently assuming.
+- Whether a single result may count in more than one special set is an open rule; avoid summing potentially overlapping category counts as if mutually exclusive.
+
+## II.4 Three different history questions
+
+These must **never** be collapsed into one generic "last N results" query:
+
+1. **A-01: previous-week digit missing / following-week return** (week-to-week).
+2. **A-02: target weekday+session history** (e.g. compare *Monday Morning only* to past *Monday Morning* results).
+3. **A-03: strict ordered four-class sequence of the current week and historical matching weeks**, followed by looking at the next draw/class.
+
+## II.5 Test/data integrity guardrails
+
+- Match actual draws and their date/session identities; avoid duplicates across daily and imported history.
+- Historical sample size and unavailable/incomplete weeks must be visible to developers/tests. Do not assume the source contains a complete week merely because some rows exist.
+- For ties in "most" or "least", keep all tied results rather than elevating an arbitrary digit/number.
+- Separate descriptive historical occurrence from prediction; a long absence does not by itself raise the chance of appearing next.
+- Pending definitions below are **not instructions for implementation**.
+
+---
+
+# Part III — Method register (detailed requirements)
+
+## A-01 — Previous-week missing single digits and their return
+
+**State:** Core intent and stages confirmed; holiday/incomplete-history handling and history horizon pending.  
+**Scope:** Prior completed Monday–Friday week → current week confirmed results → past historical weeks with same missing digit.
+
+### A-01.1 User's question
+
+"အရင်အပတ်က Mon to Fri ဘာတစ်လုံးဂဏန်းပျောက်ခဲ့သလဲ? အဲ့ဒီပျောက်ဂဏန်း ဒီအပတ် ထွက်ပြီလား? အရင် History မှာ အဲဒီဂဏန်း ပျောက်ခဲ့ဖူးလား၊ နောက်တစ်ပတ် တန်းပြန်ပေါ်ခဲ့ဖူးလား?"
+
+### A-01.2 Definition (confirmed)
+
+A digit 0–9 is **ပျောက်ဂဏန်း** for a week if it **did not appear anywhere** (neither tens nor ones) in that week's observed 2D results. The user's explicit example: if 0 did not appear in **any of the 10 completed draws last week**, say **"0 ပျောက်"**. This is about a **single digit**, not an absent two-digit number such as 00 or 39.
+
+Multiple digits can be absent; the method must inspect each digit, not assume at most one.
+
+### A-01.3 Exact inspection stages (confirmed)
+
+**Stage 1 — Last week**
+1. Identify the prior Monday–Friday week (do not bridge two calendar weeks).
+2. Read the completed, confirmed 2D results.
+3. For each digit 0–9, mark whether it occurs in any draw (either position).
+4. List digits that did not occur. If none, the user has no previous-week missing digits (presentation is a later UI decision).
+5. Distinguish truly absent digits from results that cannot be verified as recorded (pending detail).
+
+**Stage 2 — Current week**
+1. For **each** digit found missing last week, inspect the current week's confirmed results **up to the target session**.
+2. Determine if the digit has reappeared.
+3. If yes, identify first observed return: weekday/date, morning/evening, actual 2D result, and digit placement (tens or ones).
+4. If not yet, report that it **has not appeared yet among the confirmed current-week results**; do not label that as an outcome for the whole unfinished week.
+
+**Stage 3 — Historic comparisons**
+1. Find historical completed weeks where **the same digit** was absent for the whole week.
+2. For each qualifying week, inspect the **immediately following week**.
+3. Record whether the digit appeared in that next week; if so, when it **first returned** (weekday, AM/PM, 2D number).
+4. Summarize number of historically missing weeks, number returning the following week, and number absent again **only among weeks with sufficient verified following-week data**.
+5. If following-week data is unavailable/incomplete, treat as **unknown**, not "failed to return".
+
+### A-01.4 Worked example — illustrative, NOT actual source data
+
+- Prior week: 10 confirmed results; digit **0** appears in no tens or ones position → **"0 ပျောက်"**.
+- Current week: Wed AM confirmed result is **40** and this is the first appearance of 0 → returned Wed AM in the **ones** position.
+- History may contain other absent-0 weeks; inspect the immediately subsequent week for the first reappearance and whether it happened at all.
+
+**Negative example:** If prior week's result includes **70** even once, 0 was **not missing**, even if no result had tens digit 0.
+
+### A-01.5 Pending; do not invent
+
+- How to assess a shortened week due to true exchange holidays versus incomplete records, both for the previous week and the history population.
+- Historical lookback period (all available, 1/3/6 months, or user-selectable).
+- Whether a historically missing digit should still be compared when its following week is partially recorded, and how prominently sample sizes should be displayed.
+- Date/session evidence for restored/imported results when availability is uncertain.
+
+---
+
+## A-02 — Same weekday + same morning/evening: frequency/class comparisons
+
+**State:** Five checks and *exact matching day/session scope* confirmed; horizon and counting details pending.  
+**Scope:** Historical results with **the same weekday AND morning/evening** as the target session. This is **not** the current week's cumulative tally.
+
+### A-02.1 User's question and explicit correction
+
+For a user looking at **Mon morning**, inspect **historical Mon mornings**. For **Wed evening**, inspect **historical Wed evenings**. Do not take all historical Mon–Fri draws, all mornings, or this week's previous results as substitutes.
+
+### A-02.2 Five checks (confirmed)
+
+**A-02.a — 2D number frequency (00–99)**
+- Which complete two-digit number (e.g. **39**) occurred most frequently in this matched historical population?
+- Show counts, preserve ties, and provide records supporting a number.
+
+**A-02.b — Single-digit frequency (0–9)**
+- Which digit occurred most and which occurred least?
+- Distinguish the one-digit answer from a two-digit result.
+- Counting a double such as 55 as one draw containing 5 versus two digit positions is **pending**. Do not silently pick.
+
+**A-02.c — Four odd/even classes**
+- Compare historical frequencies of **စုံစုံ, မမ, စုံမ, မစုံ**.
+- Identify the most observed class; retain ties.
+- Verify exact tens/ones order against user/business definitions.
+
+**A-02.d — Special-number groups**
+- Compare appearance counts of **အပူး, ပါဝါ, နက္ခတ်, ညီအကို** in the matched historical sample.
+- The user has NOT yet given authoritative mapping for every group in this discussion. Validate those sets before coding.
+- Handle potential overlapping group membership explicitly.
+
+**A-02.e — Tens and ones maxima**
+- Compute most-observed **ထိပ် (tens)** digit and most-observed **ပိတ် (ones)** digit **separately**.
+- Example 39: tens=3, ones=9.
+- Retain all ties. Do not combine tens and ones to create one misleading leaderboard.
+
+### A-02.3 Worked scope examples
+
+| Current target | Include from history | Exclude |
+|---|---|---|
+| Mon AM | past Monday morning results | Monday evening, other weekdays |
+| Mon PM | past Monday evening results | Monday morning, other weekdays |
+| Wed AM | past Wednesday morning results | Wednesday evening, other weekdays |
+| Fri PM | past Friday evening results | Friday morning, other weekdays |
+
+**Illustrative only:** In the selected Mon AM history, if number 39 occurs three times and 45 twice, 39 outranks 45 (unless another number ties or exceeds it). Actual statistics must come from the data, not the example.
+
+### A-02.4 Pending; do not invent
+
+- History horizon / period choice.
+- Should the target draw be excluded when already completed? The user framed the check for the current target session; no look-ahead must be introduced.
+- For digit frequency, does 55 count once for digit 5 (draws containing it), or twice (digit positions)?
+- Does least frequent include digits at zero occurrences?
+- Exact boundaries of all special groups; treatment of overlap.
+- Handling an empty/small matched sample and available-data vs full-schedule distinction.
+
+---
+
+## A-03 — Strict chronological weekly even/odd-pattern matching
+
+**State:** Core order, minimum count, dynamic length, week boundary and no-match behavior confirmed. Holiday alignment and incomplete-history rules pending.  
+**Scope:** Current Monday–Friday week's **confirmed chronological four-class sequence** BEFORE the target session, matched to historical within-week sequences, then inspect each match's **next result**.
+
+### A-03.1 User's question
+
+At the current target session, take already finished draws this week, convert each to **စုံစုံ / မမ / စုံမ / မစုံ**, and check whether history contains a week whose **ordered sequence is exactly the same**. If yes, what class came **immediately after** that sequence in the historical week? If no history match, **do not display that check/result**.
+
+### A-03.2 Conditions confirmed by the user
+
+1. **Only within a Monday–Friday week**. Never splice Fri PM of one week into Mon AM of the next.
+2. **At least four confirmed draws must already exist** before the target session. Earlier than four, this check is not eligible.
+3. **Order is mandatory:** equal category totals in a different order are **NOT** a match.
+4. The observed sequence grows as new draws complete this week. It is **not fixed at four**; e.g., Wed AM=4 prior draws, Wed PM=5 prior draws, continuing through Fri PM=9 prior draws in an ordinary fully open week.
+5. If exchange/market closure prevents Monday or Tuesday draws, **wait until four real results have been collected** within the week. Do not infer four draws just because it is Wednesday.
+6. For matching historical weeks, inspect the **next actual result/class following the matching prefix**; show it only when that follow-up result is available and valid.
+7. If **no matching historic sequence**, user explicitly says **do not show this check's result**. Do not manufacture a fallback forecast.
+
+### A-03.3 Ordinary open-week progression (confirmed example)
+
+| Target session | Confirmed preceding draws this week | Eligible? |
+|---|---:|---|
+| Mon AM | 0 | No |
+| Mon PM | 1 | No |
+| Tue AM | 2 | No |
+| Tue PM | 3 | No |
+| **Wed AM** | **4** | **Yes** |
+| Wed PM | 5 | Yes |
+| Thu AM | 6 | Yes |
+| Thu PM | 7 | Yes |
+| Fri AM | 8 | Yes |
+| Fri PM | 9 | Yes |
+
+These values assume **all earlier scheduled sessions really occurred**. With holidays, calculate from actual confirmed results, not the calendar cell number.
+
+### A-03.4 Exact-order example
+
+Current week, four chronological completed classes:
+
+1. စုံစုံ
+2. မမ
+3. စုံမ
+4. မစုံ
+
+**Matching historical candidate:**
+1. စုံစုံ → 2. မမ → 3. စုံမ → 4. မစုံ — **MATCH**.
+
+**Non-matching historical candidate:**
+1. မမ → 2. စုံစုံ → 3. မစုံ → 4. စုံမ — **NO MATCH**, despite each class occurring once.
+
+**Another explicit user example:** if Mon AM, Mon PM, Tue AM, Tue PM were **စုံစုံ four consecutive times**, find historical within-week occurrences of that same **four-consecutive** ordered pattern and inspect their following session's category.
+
+### A-03.5 Subsequent historical outcome — illustrative, NOT actual historical data
+
+Suppose the current four-class prefix matches three historical weeks:
+
+- History week A: next draw class **စုံစုံ**
+- History week B: next draw class **မမ**
+- History week C: next draw class **စုံစုံ**
+
+Then, among **three matched weeks with known next draws**, the descriptive breakdown is **စုံစုံ=2, မမ=1**, with dates and result details available for inspection. It is NOT a claimed 2/3 chance of future စုံစုံ.
+
+If a matched historical week lacks a valid next draw, do not invent an outcome or count it as the opposite outcome.
+
+### A-03.6 Holiday and historical alignment — unresolved and important
+
+The user confirmed: **a holiday does not reset the required four observations; the first eligible target moves later in the same week**.
+
+The user has **not** yet decided whether, for historical matches when calendars differ:
+- match **the ordered sequence of real draws only**, ignoring which weekday/session slot was closed, OR
+- require **the identical weekday and AM/PM slot positions as well as class order**.
+
+Likewise, unconfirmed:
+- whether a missing record that should exist makes a historical week unusable rather than compressing the sequence;
+- whether matching is always anchored at the first actual draw of the historical week (rather than a four-draw window starting midweek); user examples imply week-start comparison, **but holiday alignment must be resolved before coding**;
+- history horizon and whether different market holiday schedules qualify.
+
+**Do not silently define any of the above.** These choices materially change match counts and next-draw outcomes.
+
+### A-03.7 Presentation intent (not yet designed)
+
+The user wants **a practical analysis of the current target session**, based on matching *real* weekly sequences, not an attractive but unrelated historical chart. If no matches, the requested behavior is **omit the result**; broader UI empty-state choices are not approved yet.
+
+---
+
+# Part IV — Other user-described observations (not yet separate confirmed methods)
+
+These observations came from the user to illustrate the real-world analysis domain, **not** to authorize implementing new detectors:
+
+- This week's **အပူး, ပါဝါ, နက္ခတ်, ညီအကို** appearing/not appearing.
+- Weekly **စုံစုံ, မမ, စုံမ, မစုံ** progression.
+- \`14 → 26 → 35\`: no single digit repeats between the three successive draws; all six digits are new.
+- \`14 → 45 → 65\`: successive draws share one digit (4 then 5), even though the shared digit changes.
+- Week's missing single-digit set and the interplay of current and historical weeks.
+
+When the user describes an exact method using any of these observations, **give it a new method ID or attach it by explicit user agreement**. Do not create implied formulas.
+
+---
+
+# Part V — Pending decisions index
+
+| ID | Topic | Needed clarification |
+|---|---|---|
+| Q-01 | A-01 holiday week | What counts as a sufficiently complete week when true holidays remove sessions? |
+| Q-02 | A-01 history | Full lookback, denominator, handling partial following weeks |
+| Q-03 | A-02 horizon | Month(s), all available or selectable period |
+| Q-04 | A-02 digit tally | For 55, count digit 5 once per result or twice by position? |
+| Q-05 | A-02 minimum | Is 0 occurrence included when showing 'least'? |
+| Q-06 | A-02 groups | User-approved exact mapping of doubles/power/nakhat/siblings and overlap rules |
+| Q-07 | A-03 holidays | Must historical weekday/session slot positions match, or only actual result class order? |
+| Q-08 | A-03 missing records | Skip weeks with missing results or treat absent slots as legitimate closures only with proof? |
+| Q-09 | A-03 sequence location | Historic prefix anchored at first real weekly draw versus any contiguous intraweek substring |
+| Q-10 | A-03 history horizon | Number of historical weeks and sufficient follow-up |
+| Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
+| Q-12 | Spec workflow | User to teach remaining checks before feature organization |
+
+Do not mistake the table for a user-approved implementation plan.
+
+---
+
+# Part VI — UI/UX constraints after method collection
+
+- **Do not redesign screens yet.** Start with valuable user-facing answers and the evidence behind them, then decide if they should live in one feature or multiple.
+- **First view must prioritize the current target occasion's relevant checks**, not static counts, generic 00–99 grids, giant empty headers or accidental rankings.
+- Missing-number analysis is important; show meaningful context (week, previous-week absence, current-week return, historical comparison), not just an overwhelming 0× list.
+- Modern/premium, clear foreground/background layering and perceptible card elevation (including selected nested cards); coherent light/highlight and shadow, not only thin borders.
+- Compact, readable Burmese and English parity; user-facing term မနက်အကြိမ် / ညနေအကြိမ်.
+- Every emphasized statistic should have a **reason for being emphasized**; ties must not be randomly ranked.
+- Display actual data coverage and dates to prevent a user from mistaking incomplete historical samples for full records.
+
+# Part VII — Code/change safety
+
+- This document is created **without code changes**. Existing analysis implementation is reference material, **not the newly approved business specification**.
+- Preserve transaction entry, parser, commission/payout snapshots, customer and dai reporting, closed/limit logic, vouchers, live result reconciliation and background persistence.
+- Preserve "မူ" unchanged.
+- Keep analysis read-only over confirmed result data unless a future explicitly approved requirement changes that.
+- In a future implementation, make unit tests for: correct 0–9 vs 00–99 scope, weekly boundaries, no look-ahead, holiday eligibility, ordered vs unordered matching, matched-next-result existence, duplicate-source handling, ties, and data completeness.
+- Old analysis code files relevant for orientation: 
+  - \`app/src/main/java/com/myanmar/ledger2d/feature/main/Historical2DAnalysisScreen.kt\`
+  - \`app/src/main/java/com/myanmar/ledger2d/feature/main/Historic2DDataSource.kt\`
+  - \`app/src/test/java/com/myanmar/ledger2d/feature/main/Historic2DDataSourceTest.kt\`
+- Existing restore point before the Aurora analysis redesign: \`backup/pre-aurora-analysis-build957-20261106\`. Do not reset to it without explicit user direction.
+
+# Part VIII — Requirement register / change-log template
+
+**For each new user-described checking method, append:**
+
+- **ID and provisional name**
+- **Purpose / exact user question**
+- **Data scope:** current target occasion, current/previous week, historical same weekday+session, historical weeks/pattern
+- **Eligibility:** minimum confirmed draws, date/session constraints, holidays, missing-data handling
+- **Exact classification/counting/matching algorithm in plain language**
+- **Positive worked example:** input draws and expected check output
+- **Negative worked example:** what must NOT match or be counted
+- **Result contract:** counts, dates, matches, any no-result rule, evidence
+- **Confirmed by user vs pending**
+- **Tests to create after approval**
+- **Feature assignment: undecided until all methods collected**
+- **Change note and approval date** if later modified
+
+## Decision log
+
+| Date | Decision | Status |
+|---|---|---|
+| 2026-11-06 | Rebuild historical 2D Analysis around *useful checks* before redesigning UI/navigation | Confirmed |
+| 2026-11-06 | Current target session + primarily Monday–Friday weekly frame; different methods use distinct history scopes | Confirmed |
+| 2026-11-06 | A-01 previous-week missing digit and current-week return + historical next-week comparisons | Core logic confirmed; edge cases pending |
+| 2026-11-06 | A-02 same weekday AND same AM/PM historical checks, five breakdowns | Core logic confirmed; counting/horizon pending |
+| 2026-11-06 | A-03 strict four-class chronological sequence, min 4 confirmed draws, grows to 9 preceding Fri PM, same-week only | Core logic confirmed; holiday comparison pending |
+| 2026-11-06 | Do not modify "မူ"; keep user's custom research idea separate for later feature planning | Confirmed |
+| 2026-11-06 | Save detailed Master Specification in GitHub to avoid loss across conversations | Approved for documentation only |
+
+---
+
+**Next action:** Continue listening to the user's further analysis methods. Update this document with full detail and explicit confirmed/pending states after each method is clarified. **Do not begin redesign implementation or assume feature assignments.**
