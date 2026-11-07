@@ -27,7 +27,8 @@ data class HistoricMerge(
     val draws: List<HistoricDraw>,
     val conflicts: List<HistoricConflict>,
 ) {
-    val dailyCount: Int get() = draws.count { it.source == HistoricSource.DAILY }
+    /** Operational verified winners are authoritative Room results, not historical imports. */
+    val dailyCount: Int get() = draws.count { it.source != HistoricSource.HISTORY }
     val historyCount: Int get() = draws.count { it.source == HistoricSource.HISTORY }
 }
 

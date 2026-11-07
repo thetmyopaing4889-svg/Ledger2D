@@ -15,9 +15,10 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 /**
- * Read-only historical analytics projection. Prior dates keep the existing
- * daily-first/history-fallback rule. Today is different: only an independently
- * recorded Luke result checkpoint can be included, never live/provisional values.
+ * Read-only historical analytics projection. Verified operational winners take
+ * precedence over daily checkpoints and historical imports. Today admits only
+ * reached-boundary saved winners or confirmed final Luke result checkpoints,
+ * never provisional live values.
  */
 internal object Historic2DDataSource {
     private val yangon = ZoneId.of("Asia/Yangon")
@@ -98,7 +99,7 @@ internal object Historic2DDataSource {
             draws = merged.draws.filterNot { (it.date to it.session) in suppressed },
             conflicts = (available.conflicts + merged.conflicts).filterNot {
                 (it.date to it.session) in suppressed
-            },
+            }.distinctBy { it.date to it.session },
         )
     }
 }

@@ -137,6 +137,10 @@ class Historic2DDataSourceTest {
         assertEquals(HistoricSource.WINNER,
             result.draws.first { it.date == date && it.session == DrawSession.MORNING }.source)
         assertEquals("56", result.draws.first { it.date == date && it.session == DrawSession.EVENING }.digit)
+        assertEquals(1, result.conflicts.count {
+            it.date == date && it.session == DrawSession.MORNING
+        })
+        assertEquals(1, result.dailyCount)
     }
 
     @Test fun manualDeletionLockPreventsHistoricFallbackResurrection() {
