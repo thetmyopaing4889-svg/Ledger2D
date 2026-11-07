@@ -230,14 +230,19 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
             AnalysisDetailLine(tr("ပြီးခဲ့တဲ့အပတ်", "Previous week"), a.weekStart.toString())
             AnalysisDetailLine(tr("မှတ်တမ်းအကြိမ်", "Verified draws"),
                 "${a.observedDraws} / ${a.expectedOpenDraws}")
-            if (!a.complete) AnalysisDetailNote(tr(
+            if (a.observedDraws == 0) AnalysisDetailNote(tr(
+                "ပြီးခဲ့တဲ့အပတ် အတည်ပြုရလဒ် မတွေ့ပါ။ ကျန်ဂဏန်းကို မသတ်မှတ်နိုင်ပါ။",
+                "No verified draw last week; cannot establish missing digits.",
+            ))
+            if (!a.complete && a.observedDraws > 0) AnalysisDetailNote(tr(
                 "Result မတွေ့သော အကြိမ်များရှိသည်။ ကျန်ဂဏန်းကို အတည်မပြုနိုင်သေးပါ။",
                 "Some open draw results are missing; absence cannot be confirmed.",
             ))
             AnalysisDetailLine(
                 if (a.complete) tr("ကျန်ဂဏန်း", "Absent digits")
                     else tr("ရှိသောမှတ်တမ်းတွင် မပေါ်", "Unseen in available records"),
-                a.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") },
+                (if (a.observedDraws == 0) tr("Result မတွေ့", "No verified draws")
+                else a.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") }),
             )
             AnalysisDetailNote(tr("တစ်လုံးဂဏန်း 0–9 အကြိမ်ရေ", "Single digit frequency"))
             AnalysisDetailLine("", a.singleDigitFrequency.joinToString("  ") { "${it.digit}:${it.count}" })
@@ -271,8 +276,15 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 if (item.thisWeekFirstSeen != null && !item.firstSeenVerified)
                     AnalysisDetailNote(tr("အရင် Result မတွေ့၍ ပထမပြန်ပေါ်မှု မသေချာပါ။",
                         "Earlier slots missing: first return cannot be verified."))
-                AnalysisDetailLine(tr("History ပြန်ပေါ်ဖြစ်စဉ်", "Historical first-return episodes"),
-                    n(item.historyFirstReturnEpisodes))
+                AnalysisDetailLine(tr("History ပျောက်ခဲ့သောအပတ်", "Historical missing weeks"),
+                    item.historicalMissingWeeks.toString() + tr(" ပတ်", " weeks"))
+                AnalysisDetailLine(tr("နောက်အပတ် ပထမပြန်ပေါ်", "Returned next week"),
+                    item.historyFirstReturnEpisodes.toString() + tr(" ပတ်", " weeks"))
+                AnalysisDetailLine(tr("နောက်အပတ် မပေါ်", "Still absent next week"),
+                    item.historicalNoReturnWeeks.toString() + tr(" ပတ်", " weeks"))
+                if (item.historicalUnknownNextWeeks > 0)
+                    AnalysisDetailLine(tr("အထောက်အထား မပြည့်", "Incomplete follow-up"),
+                        item.historicalUnknownNextWeeks.toString() + tr(" ပတ်", " weeks"))
                 AnalysisDetailLine(tr("အတွေ့များဆုံး တွဲဖက်", "Most common companion"),
                     item.commonCompanions.joinToString(" · ") {
                         "${it.companion} (${it.count})"

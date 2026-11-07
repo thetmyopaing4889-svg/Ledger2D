@@ -312,7 +312,10 @@ fun Historical2DTimelineScreen(
                 val group3 = listOf(
                     (if (report.a04.complete) tr("ကျန်ဂဏန်း", "Absent single digits")
                         else tr("တွေ့ရှိထားသမျှအရ မပေါ်", "Not seen in available records")) to
-                        report.a04.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") },
+                        (if (report.a04.observedDraws == 0)
+                            tr("Result မတွေ့", "No verified draws")
+                        else report.a04.remainingDigits.joinToString(" ")
+                            .ifEmpty { tr("မရှိ", "None") }),
                     (if (report.a01.previousWeekComplete) tr("ဒီအပတ် ပြန်ပေါ်", "Returned this week")
                     else tr("ပြန်ပေါ်မှု အတည်မပြုနိုင်", "Returns unverified")) to
                         (if (report.a01.previousWeekComplete) returned.toString() + tr(" လုံး", " digits")

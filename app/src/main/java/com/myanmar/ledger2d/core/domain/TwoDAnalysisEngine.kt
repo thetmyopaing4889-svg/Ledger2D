@@ -94,6 +94,12 @@ data class TwoDMissingDigitReturn(
     val digit: Char,
     val thisWeekFirstSeen: TwoDMatch?,
     val firstSeenVerified: Boolean,
+    /** Historical completed weeks where this digit was verified missing. */
+    val historicalMissingWeeks: Int,
+    /** Complete following weeks with no return at all. */
+    val historicalNoReturnWeeks: Int,
+    /** Unknown later draw slots or selected-window boundary prevent a conclusion. */
+    val historicalUnknownNextWeeks: Int,
     val historyFirstReturnEpisodes: Int,
     val commonCompanions: List<TwoDReturnCompanion>,
     val historicalFirstReturns: List<TwoDMatch>,
@@ -285,8 +291,8 @@ object TwoDAnalysisEngine {
         val values = draws.map { it.digit }
         val observed = values.flatMap { it.toList() }.toSet()
         return TwoDWeekReview(
-            start, draws.size, expected.size, expected.all { it in bySlot },
-            singles(values), allDigits.filter { it !in observed },
+            start, draws.size, expected.size, expected.isNotEmpty() && expected.all { it in bySlot },
+            singles(values), if (values.isEmpty()) emptyList() else allDigits.filter { it !in observed },
             parityCounts(values), TwoDigitGroups.counts(values), repeats(values),
         )
     }
@@ -458,13 +464,17 @@ object TwoDAnalysisEngine {
                     .all { it in bySlot }
             }
             val historicalReturns = mutableListOf<TwoDMatch>()
+            var qualifyingMissingWeeks = 0
+            var noReturnWeeks = 0
+            var unknownNextWeeks = 0
             for (week in episodes) {
                 val sourceSlots = slotsForWeek(week, closed)
                 // Never call a historical "missing" week complete if an open slot is unknown.
-                if (!sourceSlots.all { it in bySlot }) continue
+                if (sourceSlots.isEmpty() || !sourceSlots.all { it in bySlot }) continue
                 if (sourceSlots.any { digit in bySlot.getValue(it).digit }) continue
                 val nextWeek = week.plusWeeks(1)
                 val followingSlots = slotsForWeek(nextWeek, closed)
+                if (followingSlots.isEmpty() || followingSlots.none { range.includes(it.first) }) continue
                 var firstObserved: HistoricDraw? = null
                 var prefixComplete = true
                 for (slot in followingSlots) {
@@ -472,9 +482,18 @@ object TwoDAnalysisEngine {
                     if (draw == null) { prefixComplete = false; break }
                     if (digit in draw.digit) { firstObserved = draw; break }
                 }
-                val returnDraw = firstObserved ?: continue
-                if (!prefixComplete || !range.includes(returnDraw.date)) continue
-                historicalReturns.add(TwoDMatch(returnDraw.date, returnDraw.session, returnDraw.digit))
+                if (prefixComplete && firstObserved != null) {
+                    if (!range.includes(firstObserved.date)) continue
+                    qualifyingMissingWeeks++
+                    historicalReturns.add(TwoDMatch(
+                        firstObserved.date, firstObserved.session, firstObserved.digit,
+                    ))
+                } else {
+                    qualifyingMissingWeeks++
+                    if (prefixComplete && followingSlots.all { range.includes(it.first) })
+                        noReturnWeeks++
+                    else unknownNextWeeks++
+                }
             }
             val companions = historicalReturns.map { returned ->
                 if (returned.digit[0] == digit) returned.digit[1] else returned.digit[0]
@@ -484,7 +503,8 @@ object TwoDAnalysisEngine {
             TwoDMissingDigitReturn(
                 digit,
                 firstReturn?.let { TwoDMatch(it.date, it.session, it.digit) },
-                previous.complete && precedingKnown, companions.size,
+                previous.complete && precedingKnown, qualifyingMissingWeeks,
+                noReturnWeeks, unknownNextWeeks, companions.size,
                 counts.filterValues { it == highest }.map { TwoDReturnCompanion(it.key, it.value) }
                     .sortedBy { it.companion },
                 historicalReturns,

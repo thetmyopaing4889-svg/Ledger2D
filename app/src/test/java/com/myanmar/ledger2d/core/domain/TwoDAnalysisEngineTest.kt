@@ -180,8 +180,38 @@ class TwoDAnalysisEngineTest {
         assertEquals("03", zero.thisWeekFirstSeen?.digit)
         assertTrue(zero.firstSeenVerified)
         assertEquals(1, zero.historyFirstReturnEpisodes)
+        assertEquals(1, zero.historicalMissingWeeks)
+        assertEquals(0, zero.historicalNoReturnWeeks)
+        assertEquals(0, zero.historicalUnknownNextWeeks)
         assertEquals('4', zero.commonCompanions.single().companion)
         assertEquals("40", zero.historicalFirstReturns.single().digit)
+    }
+
+    @Test fun a01SeparatesConfirmedNonReturnFromUnknownFollowup() {
+        val previous = week("2026-10-26",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        val oldMissing = week("2026-10-05",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        val noReturn = week("2026-10-12",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        val report = TwoDAnalysisEngine.calculate(
+            previous + oldMissing + noReturn,
+            target("2026-11-02", am),
+        )
+        val zero = report.a01.results.single { it.digit == '0' }
+        // Oct 05's fully observed following week had no 0.
+        // Oct 12's following week is missing data: unknown, not a false non-return.
+        assertEquals(2, zero.historicalMissingWeeks)
+        assertEquals(1, zero.historicalNoReturnWeeks)
+        assertEquals(1, zero.historicalUnknownNextWeeks)
+        assertEquals(0, zero.historyFirstReturnEpisodes)
+    }
+
+    @Test fun a04NoObservedResultsMustNotClaimEveryDigitIsMissing() {
+        val a = TwoDAnalysisEngine.calculate(emptyList(), target("2026-11-02")).a04
+        assertEquals(0, a.observedDraws)
+        assertFalse(a.complete)
+        assertTrue(a.remainingDigits.isEmpty())
     }
 
     @Test fun a06SelectedHistoryEndIsNotMistakenForMissingLaterDraws() {
