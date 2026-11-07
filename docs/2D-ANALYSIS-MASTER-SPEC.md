@@ -817,7 +817,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-08 | A-03 missing records | PARTLY RESOLVED: closed-day weeks excluded from A-03; unknown open-day result gaps are flagged and not compressed/shifted. Final week eligibility for unknown records pending |
 | Q-09 | A-03 sequence location | Historic prefix anchored at first real weekly draw versus any contiguous intraweek substring |
 | Q-10 | A-03 history horizon | PARTLY RESOLVED: all available verified historical weeks by default, user-selectable one-week/one-month/custom range; qualifying next draw and boundary cases pending |
-| Q-11 | Design | PARTLY RESOLVED: exact three timeline groups and 4+2+2 assignments user-approved; UI navigation, first-view layout, evidence drill-down, typography/elevation still pending |
+| Q-11 | Design | PARTLY RESOLVED: 4+2+2 timeline grouping plus useful short previews under each of the three group headings (not a single shared highlight block) user-approved; specific highlight choice, navigation, layout and visual style pending |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
 | Q-13 | A-04 ပြန်ကျ | RESOLVED: exact 2D repeat count per number = max(0, occurrences within previous week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
 | Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
@@ -886,6 +886,23 @@ Do not mistake the table for a user-approved implementation plan.
 - Every emphasized statistic should have a **reason for being emphasized**; ties must not be randomly ranked.
 - Display actual data coverage and dates to prevent a user from mistaking incomplete historical samples for full records.
 
+## VI.1 Approved progressive disclosure — meaningful previews under EACH timeline group
+
+**USER CONFIRMED on 2026-11-07:** The three approved 4+2+2 timeline groups are presented as clear, concise section headings. **Under every individual group heading (1, 2 and 3), provide a small summary of that same group's most important/useful actual findings even when the user has not opened the group.** These summaries are **NOT one shared/global highlight block** placed between groups. More complete checks/results remain accessible by expanding/opening the respective group.
+
+**Priority:** Help an ordinary Myanmar 2D user immediately grasp what matters for the selected occasion while avoiding a screen full of text. The primary goal is practical usability and familiarity, **not implementation convenience or a minimal group count**. Use recognizable terms such as လက်ရှိအကြိမ်, ယခုအပတ်အခြေအနေ, ပြီးခဲ့တဲ့အပတ်, ကျန်ဂဏန်း, ပြန်ကျ, မနက်အကြိမ် and ညနေအကြိမ်. The technical method identifiers A-01...A-08 need not appear in the consumer UI.
+
+**Information behavior:**
+- Collapsed state: show the group title **and only a few short, useful, verifiable results from its own assigned checks**; do not enumerate all eight methods or expose lengthy explanations.
+- Expanded state: allow access to the full results and evidence for all checks assigned to that group, preserving its same timeline context.
+- A group's highlights should be **selected for relevance and availability**, not fixed arbitrary numbers, fabricated example results, claimed prediction probabilities, or overconfident "most likely to come out" labels.
+- Clearly distinguish **no data**, **incomplete source records**, **no verified historical matches**, and **not yet eligible for a check**. When unavailable, do not fill the preview with guessed values.
+- Preserve confirmed timeline assignment: group 1 A-02/A-03/A-06/A-08, group 2 A-05/A-07, group 3 A-04/A-01. In particular, A-01 stays in group 3; its current-week return portion is its supporting detail.
+- **Still to design:** exact first-view highlight-selection policy, numbers of preview facts, wording, expand/collapse interaction, card/table/chart form, controls, screen navigation, and visual style. Do not treat an illustrative 2-value-per-group mockup as a confirmed fixed numerical requirement.
+
+**Scope of approval:** Approves the group-specific visible preview idea and usability-first progressive disclosure; **no app code changed**, no finalized pixel layout, no commitment to a single-page implementation yet.
+
+
 # Part VII — Code/change safety
 
 - This document is created **without code changes**. Existing analysis implementation is reference material, **not the newly approved business specification**.
@@ -950,6 +967,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | Verified closed date is excluded from draw analysis; other methods still use available draws, but **A-03's strict slot-pattern check excludes a week with a confirmed closed date** | Earlier general closure-skip rule refined by latest user correction; Q-07 resolved, A-08 trading-day mapping still open |
 | 2026-11-07 | A-03 historical MATCH needs **same weekday + same morning/evening occasion + same parity class** in each compared slot; do not compact holidays or shift results into different slots; verified closure-week is excluded from A-03 | Explicit corrective explanation by user; previous optional A/B interpretation superseded |
 | 2026-11-07 | **Timeline grouping approved**: 1) လက်ရှိအကြိမ် = A-02/A-03/A-06/A-08; 2) ယခုအပတ်အခြေအနေ = A-05/A-07; 3) ပြီးခဲ့တဲ့အပတ် = A-04/A-01. **Keep A-01 in group 3** | User explicitly confirmed the 4+2+2 grouping and A-01 placement; layout and UI are not decided |
+| 2026-11-07 | **Visible, relevant preview below each of the three timeline headings**: show a few of that group's most important/useful actual findings without opening it; full details expand within respective group, not one global highlight area | User explicitly confirmed per-group highlights and prioritizing user utility/readability; exact choices/design pending |
 
 ---
 
