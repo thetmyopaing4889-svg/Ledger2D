@@ -32,7 +32,6 @@ import com.myanmar.ledger2d.core.design.LedgerTextRole
 import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
 import com.myanmar.ledger2d.core.domain.TwoDCount
 import com.myanmar.ledger2d.core.domain.TwoDSameSlot
-import kotlin.math.max
 
 /**
  * Data-first A-02 pilot. It deliberately consumes the existing engine output,
@@ -239,12 +238,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
     if (explanationOpen) {
         AlertDialog(
             onDismissRequest = { explanationOpen = false },
-            title = { Text(tr("လက်ရှိအကြိမ်အတွက် ယခင်ထွက်ရှိမှုမှတ်တမ်း",
-                "Historical results for this draw")) },
-            text = { Text(tr(
-                "နေ့တူ အကြိမ်တူ ယခင်က ထွက်ရှိခဲ့သော ဂဏန်းတွဲများအား စစ်ဆေးထားခြင်း ဖြစ်ပါသည်။",
-                "Shows recorded 2D results from past matching weekdays and draw sessions."
-            )) },
+            title = { Text(TwoDAnalysisText.title("02", en)) },
+            text = { Text(TwoDAnalysisText.description("02", en)) },
             confirmButton = { TextButton(onClick = { explanationOpen = false }) {
                 Text(tr("ပိတ်မည်", "Close"))
             } },

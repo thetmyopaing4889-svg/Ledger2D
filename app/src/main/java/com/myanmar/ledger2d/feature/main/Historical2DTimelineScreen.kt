@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.AppContainer
 import com.myanmar.ledger2d.core.design.LocalLanguage
+import com.myanmar.ledger2d.core.design.LedgerTextRole
+import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
@@ -153,14 +155,14 @@ fun Historical2DTimelineScreen(
             caption = tr("လက်ရှိအကြိမ်အတွက် စစ်ဆေးချက်များ", "Checks for the selected draw"),
             icon = Icons.Default.Troubleshoot,
             methods = listOf(
-                TwoDMethodSpec("02", tr("လက်ရှိအကြိမ်အတွက် ယခင်ထွက်ရှိမှုမှတ်တမ်း", "Same weekday and draw history"),
-                    tr("နေ့တူ၊ အကြိမ်တူ ယခင်မှတ်တမ်း", "Matching weekday and session"), Icons.Default.History),
-                TwoDMethodSpec("03", tr("ယခုအပတ်အတွက် ယခင် စုံ/မ ထွက်ရှိမှု", "Historical parity sequence"),
-                    tr("စုံ/မ ပုံစံတူ အပတ်များ", "Matching parity patterns"), Icons.Default.AutoGraph),
-                TwoDMethodSpec("06", tr("မထွက်တာကြာနေသော ဂဏန်းနှင့် ဂဏန်းတွဲများ", "Long-absent digits and pairs"),
-                    tr("0–9 နှင့် 00–99 ပျောက်နေသောအကြိမ်ရေ", "Single digits and 2D pairs"), Icons.Default.GridView),
-                TwoDMethodSpec("08", tr("ယခင်ထွက်ဂဏန်းပေါ် အခြေခံ၍ လက်ရှိအကြိမ်အတွက် စစ်ဆေးခြင်း", "Match previous results"),
-                    tr("ရှေ့အကြိမ်ထွက်ဂဏန်းများနဲ့ တိုက်စစ်", "Compare preceding results"), Icons.Default.Search),
+                TwoDMethodSpec("02", TwoDAnalysisText.title("02", en),
+                    TwoDAnalysisText.subtitle("02", en), Icons.Default.History),
+                TwoDMethodSpec("03", TwoDAnalysisText.title("03", en),
+                    TwoDAnalysisText.subtitle("03", en), Icons.Default.AutoGraph),
+                TwoDMethodSpec("06", TwoDAnalysisText.title("06", en),
+                    TwoDAnalysisText.subtitle("06", en), Icons.Default.GridView),
+                TwoDMethodSpec("08", TwoDAnalysisText.title("08", en),
+                    TwoDAnalysisText.subtitle("08", en), Icons.Default.Search),
             ),
         ),
         TwoDSectionSpec(
@@ -168,10 +170,10 @@ fun Historical2DTimelineScreen(
             caption = tr("ဒီအပတ်အတွင်း စစ်ဆေးချက်များ", "This week's activity"),
             icon = Icons.Default.DateRange,
             methods = listOf(
-                TwoDMethodSpec("05", tr("အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု", "New / old digit flow"),
-                    tr("ဒီအပတ် ထွက်ပြီး/မထွက်သေးသောဂဏန်း", "Observed and unseen digits"), Icons.Default.SwapHoriz),
-                TwoDMethodSpec("07", tr("အထူးဂဏန်းအုပ်စုများ", "Special number groups"),
-                    tr("အပူး၊ ညီကို၊ ပါဝါ၊ နက္ခတ်", "Doubles, siblings, power, astrology"), Icons.Default.StarOutline),
+                TwoDMethodSpec("05", TwoDAnalysisText.title("05", en),
+                    TwoDAnalysisText.subtitle("05", en), Icons.Default.SwapHoriz),
+                TwoDMethodSpec("07", TwoDAnalysisText.title("07", en),
+                    TwoDAnalysisText.subtitle("07", en), Icons.Default.StarOutline),
             ),
         ),
         TwoDSectionSpec(
@@ -179,10 +181,10 @@ fun Historical2DTimelineScreen(
             caption = tr("ပြီးခဲ့တဲ့အပတ်ကို ပြန်လည်စစ်ဆေးရန်", "Review last week's records"),
             icon = Icons.Default.EventRepeat,
             methods = listOf(
-                TwoDMethodSpec("04", tr("ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းစာရင်းချုပ်", "Previous week's results summary"),
-                    tr("ထွက်ဂဏန်းအကြိမ်ရေနှင့် ပျောက်ဂဏန်း", "Frequencies and missing digits"), Icons.Default.BarChart),
-                TwoDMethodSpec("01", tr("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်းထွက်ရှိမှု", "Missing-digit return history"),
-                    tr("ပျောက်ဂဏန်းတွေ ဒီအပတ် ပြန်ဆင်းမှု", "Observed missing-digit returns"), Icons.Default.Restore),
+                TwoDMethodSpec("04", TwoDAnalysisText.title("04", en),
+                    TwoDAnalysisText.subtitle("04", en), Icons.Default.BarChart),
+                TwoDMethodSpec("01", TwoDAnalysisText.title("01", en),
+                    TwoDAnalysisText.subtitle("01", en), Icons.Default.Restore),
             ),
         ),
     )
@@ -463,6 +465,30 @@ fun Historical2DTimelineScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 if (method != null && report != null) {
+                    if (openCheck == "02") {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = scheme.surface,
+                            shape = RoundedCornerShape(17.dp),
+                            shadowElevation = 2.dp,
+                            tonalElevation = 1.dp,
+                        ) {
+                            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(method.title,
+                                    style = LedgerTypographyStandard.style(
+                                        LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
+                                    maxLines = 3)
+                                Text(date.toString() + " · " +
+                                    (if (target.session == DrawSession.MORNING)
+                                        tr("မနက်အကြိမ်", "Morning") else tr("ညနေအကြိမ်", "Evening")) +
+                                    " · " + lookbackLabel,
+                                    style = LedgerTypographyStandard.style(
+                                        LedgerTextRole.HELPER, if (en) "en" else "my"),
+                                    color = scheme.onSurfaceVariant)
+                            }
+                        }
+                    } else {
                     Surface(
                         shape = RoundedCornerShape(24.dp),
                         color = scheme.surface,
@@ -493,6 +519,7 @@ fun Historical2DTimelineScreen(
                                 style = MaterialTheme.typography.labelMedium,
                                 color = scheme.onSurfaceVariant)
                         }
+                    }
                     }
                     if (openCheck == "02") {
                         TwoDA02Dashboard(report.a02, en)
