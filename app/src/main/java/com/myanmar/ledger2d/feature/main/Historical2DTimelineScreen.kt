@@ -265,7 +265,9 @@ fun Historical2DTimelineScreen(
                     }
                 val group1 = listOfNotNull(
                     if (a06.observedDraws > 0 && longMissing != null) {
-                        tr("ပျောက်နေတဲ့ 2D", "Longest missing 2D") to
+                        (if (longMissing.historyStartTruncated || a06.hasUnknownOpenSlots)
+                            tr("History တွင် မပေါ်သော 2D", "2D unseen in recorded draws")
+                        else tr("ပျောက်နေတဲ့ 2D", "Longest missing 2D")) to
                             ((if (equalMissing.size > 1)
                                 equalMissing.size.toString() + tr(" လုံးတူ", " numbers tied")
                             else longMissing.value) +
@@ -309,6 +311,29 @@ fun Historical2DTimelineScreen(
                     secondWeekHighlight,
                 )
                 val returned = report.a01.results.count { it.firstSeenVerified && it.thisWeekFirstSeen != null }
+                // A-01 user's high-priority finding: the historical companion
+                // on a VERIFIED first return, never a forecast or fabricated pick.
+                val returnCompanion = if (report.a01.previousWeekComplete)
+                    report.a01.results
+                        .filter { it.firstSeenVerified && it.thisWeekFirstSeen != null &&
+                            it.commonCompanions.isNotEmpty() }
+                        .maxWithOrNull(compareBy<TwoDMissingDigitReturn> {
+                            it.historyFirstReturnEpisodes
+                        }.thenByDescending { it.digit })
+                    else null
+                val secondLastWeekHighlight = when {
+                    !report.a01.previousWeekComplete ->
+                        tr("ပြန်ပေါ်မှု အတည်မပြုနိုင်", "Returns unverified") to
+                            tr("ယခင်အပတ် Result မပြည့်", "Last week incomplete")
+                    returnCompanion != null ->
+                        tr("ပြန်ပေါ်ဂဏန်း တွဲဖက် History", "Historical return companions") to
+                            (returnCompanion.digit.toString() + " + " +
+                                returnCompanion.commonCompanions.joinToString(",") { it.companion.toString() } +
+                                " · " + returnCompanion.historyFirstReturnEpisodes +
+                                tr(" ပတ်", " weeks"))
+                    else -> tr("ဒီအပတ် ပြန်ပေါ်", "Returned this week") to
+                        (returned.toString() + tr(" လုံး", " digits"))
+                }
                 val group3 = listOf(
                     (if (report.a04.complete) tr("ကျန်ဂဏန်း", "Absent single digits")
                         else tr("တွေ့ရှိထားသမျှအရ မပေါ်", "Not seen in available records")) to
@@ -316,10 +341,7 @@ fun Historical2DTimelineScreen(
                             tr("Result မတွေ့", "No verified draws")
                         else report.a04.remainingDigits.joinToString(" ")
                             .ifEmpty { tr("မရှိ", "None") }),
-                    (if (report.a01.previousWeekComplete) tr("ဒီအပတ် ပြန်ပေါ်", "Returned this week")
-                    else tr("ပြန်ပေါ်မှု အတည်မပြုနိုင်", "Returns unverified")) to
-                        (if (report.a01.previousWeekComplete) returned.toString() + tr(" လုံး", " digits")
-                         else tr("ယခင်အပတ် Result မပြည့်", "Last week incomplete")),
+                    secondLastWeekHighlight,
                 )
                 TimelineAnalysisGroup(
                     title = tr("၁။ လက်ရှိအကြိမ်", "1. Current draw"),
