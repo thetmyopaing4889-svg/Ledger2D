@@ -303,8 +303,8 @@ object TwoDAnalysisEngine {
     ): Map<String, TwoDStreakStream> {
         fun scan(rows: List<HistoricDraw>, session: DrawSession?): TwoDStreakStream {
             val first = rows.firstOrNull()?.date
-            val hasUnknown = first != null && run {
-                var cursor = first
+            val hasUnknown = if (first == null) false else run {
+                var cursor: LocalDate = first
                 var gap = false
                 val slots = rows.map { it.date to it.session }.toSet()
                 while (!cursor.isAfter(target.date)) {
