@@ -184,6 +184,48 @@ class TwoDAnalysisEngineTest {
         assertEquals("40", zero.historicalFirstReturns.single().digit)
     }
 
+    @Test fun a06SelectedHistoryEndIsNotMistakenForMissingLaterDraws() {
+        val rows = listOf(
+            row("2026-11-02", am, "12"),
+            row("2026-11-02", pm, "34"),
+        )
+        val report = TwoDAnalysisEngine.calculate(
+            rows, target("2026-11-04"),
+            historyRange = TwoDHistoryRange(
+                LocalDate.parse("2026-11-02"), LocalDate.parse("2026-11-02"),
+            ),
+        )
+        assertFalse(report.a06.getValue("combined").hasUnknownOpenSlots)
+        assertEquals(2, report.a06.getValue("combined").observedDraws)
+        assertFalse(report.a06.getValue("morning").hasUnknownOpenSlots)
+        assertFalse(report.a06.getValue("evening").hasUnknownOpenSlots)
+    }
+
+    @Test fun a05AfterUnknownEarlierDrawIsNotPresentedAsVerifiedNewOld() {
+        val rows = listOf(
+            row("2026-11-02", am, "12"),
+            // Monday PM is missing; Tuesday AM could have been seen before.
+            row("2026-11-03", am, "35"),
+        )
+        val result = TwoDAnalysisEngine.calculate(rows, target("2026-11-03", pm))
+        assertFalse(result.a05.completeThroughTarget)
+        assertTrue(result.a05.transitions[0].classificationVerified)
+        assertFalse(result.a05.transitions[1].classificationVerified)
+        assertFalse(result.a07.completeThroughTarget)
+        assertEquals(2, result.a07.observedDraws)
+    }
+
+    @Test fun a01IncompletePreviousWeekCannotClaimVerifiedFirstReturn() {
+        val prior = week("2026-10-26",
+            listOf("11","22","33","44","55","66","77","88","99","12")).dropLast(1)
+        val today = row("2026-11-02", am, "03")
+        val result = TwoDAnalysisEngine.calculate(prior + today, target("2026-11-02", pm))
+        assertFalse(result.a01.previousWeekComplete)
+        val zero = result.a01.results.single { it.digit == '0' }
+        assertEquals("03", zero.thisWeekFirstSeen?.digit)
+        assertFalse(zero.firstSeenVerified)
+    }
+
     @Test fun futureTargetIsExcludedAndUnverifiedAbsenceIsNotClaimedComplete() {
         val draws = listOf(
             row("2026-11-02", am, "12"),

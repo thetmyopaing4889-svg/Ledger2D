@@ -55,6 +55,8 @@ data class TwoDTransition(
     val newTens: Boolean,
     val newOnes: Boolean,
     val newlySeenDigits: Set<Char>,
+    /** False if an earlier open result of this week is unknown. */
+    val classificationVerified: Boolean,
 )
 data class TwoDWeekFlow(
     val transitions: List<TwoDTransition>,
@@ -65,6 +67,7 @@ data class TwoDWeekFlow(
 
 data class TwoDWeekSpecial(
     val observedDraws: Int,
+    val completeThroughTarget: Boolean,
     val groups: Map<String, Int>,
     val groupOccurrences: Map<String, List<TwoDMatch>>,
     /** Exact same 2D returning: every appearance after its first counts. */
@@ -157,15 +160,17 @@ object TwoDAnalysisEngine {
         val previousWeek = known.filter { it.date >= lastMonday && it.date < currentMonday }
         val historical = known.filter { historyRange.includes(it.date) }
         val a04 = review(lastMonday, previousWeek, bySlot, verifiedClosedDays)
+        val currentWeekSlots = slotsForWeek(currentMonday, verifiedClosedDays)
+            .filter { isBefore(it.first, it.second, target) }
+        val currentWeekComplete = currentWeekSlots.all { it in bySlot }
         return TwoDAnalysisReport(
             target = target,
             a02 = sameSlot(historical, target),
             a03 = pattern(known, bySlot, target, verifiedClosedDays, historyRange),
-            a06 = streaks(historical, target, verifiedClosedDays),
+            a06 = streaks(historical, target, verifiedClosedDays, historyRange),
             a08 = priorResults(historical, bySlot, target, verifiedClosedDays, historyRange),
-            a05 = flow(thisWeek, slotsForWeek(currentMonday, verifiedClosedDays)
-                .filter { isBefore(it.first, it.second, target) }.all { it in bySlot }),
-            a07 = special(thisWeek),
+            a05 = flow(thisWeek, currentWeekSlots),
+            a07 = special(thisWeek, currentWeekComplete),
             a04 = a04,
             a01 = returns(known, bySlot, a04, currentMonday, target, verifiedClosedDays, historyRange),
         )
@@ -287,15 +292,24 @@ object TwoDAnalysisEngine {
     }
 
     /** A-05: chronological within-week new/old, tens and ones order never reversed. */
-    private fun flow(draws: List<HistoricDraw>, complete: Boolean): TwoDWeekFlow {
+    private fun flow(
+        draws: List<HistoricDraw>,
+        expectedSlots: List<Pair<LocalDate, DrawSession>>,
+    ): TwoDWeekFlow {
         val seen = mutableSetOf<Char>()
+        val knownSlots = draws.map { it.date to it.session }.toSet()
+        val complete = expectedSlots.all { it in knownSlots }
         val transitions = draws.map { draw ->
             val a = draw.digit[0]
             val b = draw.digit[1]
             val newValues = listOf(a, b).filter { it !in seen }.toSet()
+            val earlierFullyObserved = expectedSlots.takeWhile { (day, session) ->
+                day.isBefore(draw.date) ||
+                    (day == draw.date && session.ordinal < draw.session.ordinal)
+            }.all { it in knownSlots }
             val transition = TwoDTransition(
                 TwoDMatch(draw.date, draw.session, draw.digit),
-                a !in seen, b !in seen, newValues,
+                a !in seen, b !in seen, newValues, earlierFullyObserved,
             )
             seen.add(a); seen.add(b)
             transition
@@ -304,14 +318,14 @@ object TwoDAnalysisEngine {
     }
 
     /** A-07: actual current-week occurrences and exact-pair repeat EVENTS. */
-    private fun special(draws: List<HistoricDraw>): TwoDWeekSpecial {
+    private fun special(draws: List<HistoricDraw>, complete: Boolean): TwoDWeekSpecial {
         val values = draws.map { it.digit }
         val occurrences = TwoDigitGroups.named.mapValues { (_, members) ->
             draws.filter { it.digit in members }.map {
                 TwoDMatch(it.date, it.session, it.digit)
             }
         }
-        return TwoDWeekSpecial(draws.size, TwoDigitGroups.counts(values), occurrences, repeats(values))
+        return TwoDWeekSpecial(draws.size, complete, TwoDigitGroups.counts(values), occurrences, repeats(values))
     }
 
     /** A-06: ongoing absence separately for AM, PM and both, per observed draw. */
@@ -319,14 +333,20 @@ object TwoDAnalysisEngine {
         historical: List<HistoricDraw>,
         target: DrawIdentity,
         closed: Set<LocalDate>,
+        range: TwoDHistoryRange,
     ): Map<String, TwoDStreakStream> {
         fun scan(rows: List<HistoricDraw>, session: DrawSession?): TwoDStreakStream {
-            val first = rows.firstOrNull()?.date
+            // A selected end date is an intentional cutoff, not "missing data"
+            // between the chosen period and the target occasion.
+            val effectiveEnd = if (range.end != null && range.end.isBefore(target.date))
+                range.end else target.date
+            val first = range.start?.takeIf { !it.isAfter(effectiveEnd) }
+                ?: rows.firstOrNull()?.date
             val hasUnknown = if (first == null) false else run {
                 var cursor: LocalDate = first
                 var gap = false
                 val slots = rows.map { it.date to it.session }.toSet()
-                while (!cursor.isAfter(target.date)) {
+                while (!cursor.isAfter(effectiveEnd)) {
                     if (isWeekday(cursor) && cursor !in closed) {
                         for (s in DrawSession.entries) {
                             if (session != null && s != session) continue
@@ -464,7 +484,7 @@ object TwoDAnalysisEngine {
             TwoDMissingDigitReturn(
                 digit,
                 firstReturn?.let { TwoDMatch(it.date, it.session, it.digit) },
-                precedingKnown, companions.size,
+                previous.complete && precedingKnown, companions.size,
                 counts.filterValues { it == highest }.map { TwoDReturnCompanion(it.key, it.value) }
                     .sortedBy { it.companion },
                 historicalReturns,

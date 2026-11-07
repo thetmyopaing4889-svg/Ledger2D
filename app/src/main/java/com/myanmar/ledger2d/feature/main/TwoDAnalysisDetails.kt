@@ -189,7 +189,11 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                         (if (t.newTens) tr("အသစ်", "New") else tr("အဟောင်း", "Old")) + " + " +
                             (if (t.newOnes) tr("အသစ်", "New") else tr("အဟောင်း", "Old"))
                     }
-                    AnalysisDetailLine(match(t.result), wording)
+                    AnalysisDetailLine(
+                        match(t.result),
+                        if (t.classificationVerified) wording
+                        else wording + tr(" (ရရှိသောမှတ်တမ်းအရ)", " (available records only)"),
+                    )
                 }
                 AnalysisDetailLine(
                     if (a.completeThroughTarget) tr("မပေါ်သေးတဲ့ တစ်လုံးဂဏန်း", "Unseen single digits")
@@ -203,6 +207,10 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 "ဒီအပတ် ရလဒ် မရှိသေးပါ။", "No confirmed result this week.",
             )) else {
                 AnalysisDetailLine(tr("ဒီအပတ် ရလဒ်", "This week's draws"), n(a.observedDraws))
+                if (!a.completeThroughTarget) AnalysisDetailNote(tr(
+                    "Result မတွေ့သောအကြိမ်ရှိသည်။ အုပ်စုအရေအတွက်သည် ရရှိထားသောမှတ်တမ်းအတွက်သာ ဖြစ်သည်။",
+                    "Some open draw slots are unknown; group counts cover observed results only.",
+                ))
                 a.groups.forEach { (name, count) ->
                     AnalysisDetailLine(twoDGroupLabel(name, en), n(count))
                     val occurrences = a.groupOccurrences[name].orEmpty()
@@ -256,7 +264,9 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
             a.results.forEach { item ->
                 HorizontalDivider()
                 AnalysisDetailLine(tr("ဂဏန်း", "Digit"), item.digit.toString())
-                AnalysisDetailLine(tr("ဒီအပတ် ပထမပြန်ပေါ်", "First return this week"),
+                AnalysisDetailLine(
+                    if (item.firstSeenVerified) tr("ဒီအပတ် ပထမပြန်ပေါ်", "Verified first return this week")
+                    else tr("ဒီအပတ် တွေ့ရှိထားသောရလဒ်", "Observed result this week"),
                     item.thisWeekFirstSeen?.let(::match) ?: tr("မတွေ့သေး", "Not seen yet"))
                 if (item.thisWeekFirstSeen != null && !item.firstSeenVerified)
                     AnalysisDetailNote(tr("အရင် Result မတွေ့၍ ပထမပြန်ပေါ်မှု မသေချာပါ။",

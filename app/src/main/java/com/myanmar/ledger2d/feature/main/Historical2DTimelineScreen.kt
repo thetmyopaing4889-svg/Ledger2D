@@ -270,7 +270,7 @@ fun Historical2DTimelineScreen(
                                 equalMissing.size.toString() + tr(" လုံးတူ", " numbers tied")
                             else longMissing.value) +
                                 " · " + longMissing.observedDrawsSince +
-                                tr(" ကြိမ် (ရှိသမျှမှတ်တမ်း)", " observed draws"))
+                                tr(" ကြိမ် (ရွေးထားသော History)", " observed draws in selected history"))
                     } else null,
                     if (report.a08.both.matches.isNotEmpty()) {
                         tr("ရှေ့ ၂ ကြိမ်တူ History", "Both-reference matches") to
@@ -313,8 +313,10 @@ fun Historical2DTimelineScreen(
                     (if (report.a04.complete) tr("ကျန်ဂဏန်း", "Absent single digits")
                         else tr("တွေ့ရှိထားသမျှအရ မပေါ်", "Not seen in available records")) to
                         report.a04.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") },
-                    tr("ဒီအပတ် ပြန်ပေါ်", "Returned this week") to
-                        (returned.toString() + tr(" လုံး", " digits")),
+                    (if (report.a01.previousWeekComplete) tr("ဒီအပတ် ပြန်ပေါ်", "Returned this week")
+                    else tr("ပြန်ပေါ်မှု အတည်မပြုနိုင်", "Returns unverified")) to
+                        (if (report.a01.previousWeekComplete) returned.toString() + tr(" လုံး", " digits")
+                         else tr("ယခင်အပတ် Result မပြည့်", "Last week incomplete")),
                 )
                 TimelineAnalysisGroup(
                     title = tr("၁။ လက်ရှိအကြိမ်", "1. Current draw"),
