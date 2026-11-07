@@ -191,7 +191,7 @@ Multiple digits can be absent; the method must inspect each digit, not assume at
 ### A-01.5 Pending; do not invent
 
 - How to assess a shortened week due to true exchange holidays versus incomplete records, both for the previous week and the history population.
-- Historical lookback period (all available, 1/3/6 months, or user-selectable).
+- **RESOLVED (shared history range):** Default **all available verified history**, with optional user-selected one-week/one-month/custom dates. Cross-boundary missing-week→next-week episode eligibility remains pending.
 - Whether a historically missing digit should still be compared when its following week is partially recorded, and how prominently sample sizes should be displayed.
 - Date/session evidence for restored/imported results when availability is uncertain.
 - **Q-39 RESOLVED:** Only the first confirmed 2D return result in the immediately following week counts; one partner observation per historical missing-week episode. Later same-week appearances are ignored for this ranking.
@@ -246,7 +246,7 @@ For a user looking at **Mon morning**, inspect **historical Mon mornings**. For 
 
 ### A-02.4 Pending; do not invent
 
-- History horizon / period choice.
+- **RESOLVED (shared history range):** Default **all available verified history**, with optional one-week/one-month/custom date selection; exact shortcut semantics and sample eligibility at range boundaries remain pending.
 - Should the target draw be excluded when already completed? The user framed the check for the current target session; no look-ahead must be introduced.
 - **RESOLVED:** 55 counts **twice** for single digit 5 (tens + ones positions).
 - Does least frequent include digits at zero occurrences?
@@ -331,7 +331,7 @@ The user has **not** yet decided whether, for historical matches when calendars 
 Likewise, unconfirmed:
 - whether a missing record that should exist makes a historical week unusable rather than compressing the sequence;
 - whether matching is always anchored at the first actual draw of the historical week (rather than a four-draw window starting midweek); user examples imply week-start comparison, **but holiday alignment must be resolved before coding**;
-- history horizon and whether different market holiday schedules qualify.
+- **History horizon RESOLVED (shared history range):** All available verified history by default, optional user one-week/one-month/custom date range. Whether different market holiday schedules qualify, and how to handle cross-boundary sequences, remain pending.
 
 **Do not silently define any of the above.** These choices materially change match counts and next-draw outcomes.
 
@@ -480,7 +480,7 @@ Narrative interpretation:
 
 ## A-06 — Longest-currently-absent 2D pairs and single digits, by morning/evening/both
 
-**State:** The six requested output categories and **absence counted in relevant draw occasions**, not elapsed calendar days, are **confirmed by the user**. Morning-only, evening-only and combined results each maintain independent absence tracking. Data horizon, never-seen candidates, record gaps and layout remain open; do NOT invent them in code.  
+**State:** The six requested output categories and **absence counted in relevant draw occasions**, not elapsed calendar days, are **confirmed by the user**. Morning-only, evening-only and combined results each maintain independent absence tracking. History range now **CONFIRMED** (all available verified history by default, optional one-week/one-month/custom window). Never-seen candidates, record gaps, truncated streaks and layout remain open; do NOT invent them in code.  
 **Scope:** Historical confirmed 2D draw records, using three **separate observation streams**: (1) morning-only, (2) evening-only, (3) combined morning+evening chronological results. This is distinct from A-01 previous-week missing digits and A-04 previous-week category summary.
 
 ### A-06.1 User's explicit instruction
@@ -546,7 +546,7 @@ The user confirmed the meaning clearly and does **not** want another speculative
 - **A-01:** Detect **digits absent for an entire previous calendar week** and whether they returned next week; week-to-week History comparison.
 - **A-04:** Report the previous week's frequencies and groups, including its remaining-number definition (still pending).
 - **A-05:** Track **new/old digits and remaining 0–9 digits within the CURRENT week**, activated after the first draw of that week.
-- **A-06:** Evaluate **ongoing absence measured in relevant completed-draw counts** for both full 2D pairs and single digits over **morning-only, evening-only, both** observation streams. Historical depth is not yet fixed.
+- **A-06:** Evaluate **ongoing absence measured in relevant completed-draw counts** for both full 2D pairs and single digits over **morning-only, evening-only, both** observation streams. Historical depth defaults to **all available verified history**, but user can select a shorter range; disclose when this truncates any current-absence measurement.
 
 **Feature assignment:** undecided; do not add six separate screens simply because there are six questions.  
 **Code status:** not implemented or approved.  
@@ -618,7 +618,7 @@ The first 01/10 examples above are **only for the ပြန်ကျ criterion**
 
 ## A-08 — Historical exact-result conditional continuation: BOTH prior results AND each individually
 
-**State:** The user finished explaining the **core A-08 method**. Its three **always-run** searches, AM/PM-specific source-result windows, and the Friday→Monday weekly boundary example are **CONFIRMED**. Minor data-horizon, market-closure and presentation edge cases remain pending. **Do not modify analysis code/UI or group into features yet.**
+**State:** The user finished explaining the **core A-08 method**. Its three **always-run** searches, AM/PM-specific source-result windows, and the Friday→Monday weekly boundary example are **CONFIRMED**. History-range default/option is confirmed; market-closure, range-boundary and presentation edge cases remain pending. **Do not modify analysis code/UI or group into features yet.**
 
 ### A-08.1 What problem this answers (confirmed)
 
@@ -723,7 +723,7 @@ This explicitly **crosses from one week to the next** and must not be blocked by
 - **Q-34 RESOLVED:** Both reference slots **AND** each separate reference slot are **always examined**. They are not conditional fallback modes.
 - **Q-35 RESOLVED (core):** Morning and evening use **different two-result windows**, and the user explicitly included the Friday→Monday cross-week morning case; the table above captures the explained normal-week cases.
 - **Q-36 OPEN:** How do true holidays / unusual closures change "previous trading day" and comparable historical slot matching? Do not silently invent a rule.
-- **Q-37 OPEN:** Historical lookback duration, minimum verified sample, tie/evidence display, and whether counts need additional breakdowns.
+- **Q-37 OPEN:** History-range choice is **resolved** (all available by default, optional week/month/custom); minimum verified sample, eligible episodes spanning filter boundaries, tie/evidence display, and additional breakdowns remain open.
 - **Q-38 RESOLVED:** Evening has its own logic: previous day's evening + current morning, then the same three historical searches.
 
 **Feature grouping:** undecided until all practical checks are collected.  
@@ -745,20 +745,39 @@ When the user describes an exact method using any of these observations, **give 
 
 ---
 
+## Shared history-range policy — USER CONFIRMED 2026-11-07
+
+**Scope:** All methods which examine historical periods beyond their intrinsically fixed week — in particular **A-01, A-02, A-03, A-06, A-08** — should use the full locally **available verified history** by default, not a hard-coded 1-year/3-year or last-month analytical cap. The limit is **what the App actually has and can verify**, not an assumed amount of data. Historical result sync/depth is an independent ingestion concern.
+
+**User-selectable range:** User may override the default and analyze a **selected time window**, including **one-week**, **one-month**, and **custom start/end dates** (examples explicitly requested by user). The precise quick-filter definitions (rolling 7 days vs calendar week, rolling month vs calendar month), plus other useful presets, can be settled during UI design. The default must remain **All available history**.
+
+**Behavioral boundaries:**
+- The selected range filters the **historical evidence** used for qualifying and counting matches; it must not secretly change a method's underlying calculation rules, weekday/session identity, or other confirmed data scope.
+- **A-04** is intrinsically the **previous completed Monday–Friday week**, and **A-05/A-07** intrinsically describe the **current Monday–Friday week**. Do **not** reinterpret them as arbitrary "last 7 days" or last-month methods because of a shared History filter.
+- For A-01's missing-week→following-week pairs, A-03's within-week prefix+next result, and A-08's reference draws+target, selected-window boundaries may split a **logical analysis episode**. Do **not** silently treat an incomplete episode as negative/no match; specify later whether eligible episodes are defined by the date of the historical source week/target or whether every supporting draw must be inside the requested window.
+- A-06's ongoing missing streak can be truncated by a selected start date. Do **not** state a truncated duration as an all-history streak, and never convert a never-observed candidate within a short range into a verified long absence.
+- Show the **actual effective history start/end and eligible confirmed sample size**; distinguish "no matches in this selected period" from "no matches in all available history".
+- Historical matching must use only source records appropriate to the method and must not introduce data look-ahead beyond its intended observation cutoff.
+- UI and analytics must remain responsive for large available historical datasets; no arbitrary shortened data horizon may be silently applied.
+
+**Approved policy:** All available by default; week/month/custom optional user range. **Pending implementation details:** exact shortcut date semantics, cross-boundary episode eligibility, and stream-specific truncated-streak labels.
+
+---
+
 # Part V — Pending decisions index
 
 | ID | Topic | Needed clarification |
 |---|---|---|
 | Q-01 | A-01 holiday week | What counts as a sufficiently complete week when true holidays remove sessions? |
-| Q-02 | A-01 history | Full lookback, denominator, handling partial following weeks |
-| Q-03 | A-02 horizon | Month(s), all available or selectable period |
+| Q-02 | A-01 history | PARTLY RESOLVED: all available verified history default, optional one-week/one-month/custom; denominator, incomplete follow-up weeks and range-boundary episodes pending |
+| Q-03 | A-02 horizon | RESOLVED: all available verified history by default, optional user one-week/one-month/custom dates |
 | Q-04 | A-02 digit tally | RESOLVED: count both positions; 55 contributes two occurrences of digit 5 |
 | Q-05 | A-02 minimum | Is 0 occurrence included when showing 'least'? |
 | Q-06 | A-02 groups | User-approved exact mapping of doubles/power/nakhat/siblings and overlap rules |
 | Q-07 | A-03 holidays | Must historical weekday/session slot positions match, or only actual result class order? |
 | Q-08 | A-03 missing records | Skip weeks with missing results or treat absent slots as legitimate closures only with proof? |
 | Q-09 | A-03 sequence location | Historic prefix anchored at first real weekly draw versus any contiguous intraweek substring |
-| Q-10 | A-03 history horizon | Number of historical weeks and sufficient follow-up |
+| Q-10 | A-03 history horizon | PARTLY RESOLVED: all available verified historical weeks by default, user-selectable one-week/one-month/custom range; qualifying next draw and boundary cases pending |
 | Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
 | Q-13 | A-04 ပြန်ကျ | RESOLVED: exact 2D repeat count per number = max(0, occurrences within previous week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
@@ -773,7 +792,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-22 | A-05 presentation | Remaining current-week digits REQUIRED; final layout for draw/day flow and remaining set pending |
 | Q-23 | A-05 completeness | Closure vs missing records and eligibility |
 | Q-24 | A-06 absence unit | RESOLVED: consecutive relevant completed result occasions, not calendar days; independent AM/PM/combined counters |
-| Q-25 | A-06 history horizon | All available vs selected interval; never-seen candidates |
+| Q-25 | A-06 history horizon | PARTLY RESOLVED: all available verified history default, optional week/month/custom range; never-seen, truncated-streak boundaries pending |
 | Q-26 | A-06 target timing | Results eligible before target occasion, refresh behavior |
 | Q-27 | A-06 completeness | Holidays and absent/imported records vs verified nonappearance |
 | Q-28 | A-06 presentation | All ties/top N, last-seen date, duration details and drill-down |
@@ -785,7 +804,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-34 | A-08 three searches | RESOLVED: always match both references together AND first alone AND second alone; never fallback-only |
 | Q-35 | A-08 reference selection | RESOLVED core: AM = previous trading day's AM+PM; PM = previous trading day PM+today AM; Friday→Monday explicit |
 | Q-36 | A-08 holiday and closure | Pending how to align historical comparable slots when sessions or trading days are closed |
-| Q-37 | A-08 history sample | Lookback, missing records, counts, ties and examples |
+| Q-37 | A-08 history sample | PARTLY RESOLVED: all available verified history default, optional week/month/custom range; incomplete/cross-boundary episodes, counts, ties and evidence pending |
 | Q-38 | A-08 evening method | RESOLVED: today PM uses preceding day's PM + current day's AM, with all three searches |
 | Q-39 | A-01 return partner frequency | RESOLVED OPTION A: first eligible confirmed 2D return result only in the following week; count one companion per historical missing-week episode |
 
@@ -862,6 +881,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | A-04 ကျန်ဂဏန်း means unique digits 0–9 not observed in any confirmed AM/PM result of the completed previous week, tens or ones; not unused 00–99 pairs | Explicit user confirmation; Q-14 resolved |
 | 2026-11-07 | A-02 and A-04 0–9 single-digit frequency counts **each digit position**; `55` adds 2 occurrences of digit 5, unlike A-05's distinct new/old set | Explicit user choice of 2; Q-04 resolved, Q-15 frequency portion resolved |
 | 2026-11-07 | A-04/A-07 ပြန်ကျ = number's second and each subsequent same-week exact 2D occurrence, never its first; 01 occurring three times → 2 repeat events | Explicit user confirmation; Q-13 and Q-32 counting resolved |
+| 2026-11-07 | History-based checks A-01/A-02/A-03/A-06/A-08 default to **all available verified historical data**; user can limit to **one week, one month or custom start/end dates** | Explicit confirmation by user; preserve fixed previous/current-week scopes of A-04/A-05/A-07 |
 
 ---
 
