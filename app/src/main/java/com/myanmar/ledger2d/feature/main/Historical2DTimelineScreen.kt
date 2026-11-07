@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -186,101 +190,114 @@ fun Historical2DTimelineScreen(
     val scheme = MaterialTheme.colorScheme
     Scaffold(
         containerColor = scheme.background,
+
         topBar = {
             Row(
                 Modifier.fillMaxWidth().background(scheme.background)
-                    .statusBarsPadding().heightIn(min = 60.dp)
-                    .padding(horizontal = 10.dp),
+                    .statusBarsPadding().heightIn(min = 58.dp)
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(onClick = { if (openCheck.isNotEmpty()) openCheck = "" else onBack() }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = tr("ပြန်ရန်", "Back"))
                 }
-                Column(Modifier.weight(1f)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Text(tr("CHERRY • ANALYSIS", "CHERRY • ANALYSIS"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.primary, fontWeight = FontWeight.Bold)
                     Text(tr("2D စစ်ဆေးမှု", "2D Analysis"),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
-                    if (openCheck.isNotEmpty()) {
-                        Text(tr("စစ်ဆေးချက် အသေးစိတ်", "Check details"),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onSurfaceVariant)
-                    }
                 }
                 if (openCheck.isEmpty()) {
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Tune, contentDescription = tr("ဆက်တင်", "Settings"))
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = scheme.primaryContainer.copy(alpha = 0.75f),
+                    ) {
+                        IconButton(onClick = onSettings) {
+                            Icon(Icons.Default.Tune, contentDescription = tr("ဆက်တင်", "Settings"),
+                                tint = scheme.onPrimaryContainer)
+                        }
                     }
                 }
             }
         },
         bottomBar = {
             if (openCheck.isEmpty()) {
-                NavigationBar(
-                    containerColor = scheme.surface,
-                    tonalElevation = 5.dp,
+                Surface(
+                    color = scheme.surface,
+                    tonalElevation = 4.dp,
+                    shadowElevation = 7.dp,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 ) {
-                    NavigationBarItem(
-                        selected = true, onClick = { openCheck = "" },
-                        icon = { Icon(Icons.Default.Analytics, null) },
-                        label = { Text(tr("စစ်ဆေးမှု", "Analysis"), maxLines = 1) },
-                    )
-                    NavigationBarItem(
-                        selected = false, onClick = onLegacy,
-                        icon = { Icon(Icons.Default.MenuBook, null) },
-                        label = { Text(tr("လေ့လာရန်", "Research"), maxLines = 1) },
-                    )
-                    NavigationBarItem(
-                        selected = false, onClick = { rulesOpen = true },
-                        icon = { Icon(Icons.Default.Rule, null) },
-                        label = { Text(tr("မူ", "Rules"), maxLines = 1) },
-                    )
+                    Row(Modifier.fillMaxWidth().navigationBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        TwoDNavAction(
+                            modifier = Modifier.weight(1f), active = true,
+                            label = tr("စစ်ဆေးမှု", "Analysis"),
+                            icon = Icons.Default.Analytics,
+                            onClick = { openCheck = "" },
+                        )
+                        TwoDNavAction(
+                            modifier = Modifier.weight(1f), active = false,
+                            label = tr("လေ့လာရန်", "Research"),
+                            icon = Icons.Default.MenuBook, onClick = onLegacy,
+                        )
+                        TwoDNavAction(
+                            modifier = Modifier.weight(1f), active = false,
+                            label = tr("မူ", "Rules"),
+                            icon = Icons.Default.Rule, onClick = { rulesOpen = true },
+                        )
+                    }
                 }
             }
         },
     ) { inset ->
         if (openCheck.isEmpty()) {
+            val selectedSection = sections.first { it.key == openGroup }
             Column(
                 Modifier.fillMaxSize().padding(inset)
                     .background(Brush.verticalGradient(listOf(
-                        scheme.primaryContainer.copy(alpha = 0.28f),
+                        scheme.primaryContainer.copy(alpha = 0.16f),
                         scheme.background, scheme.background,
                     )))
                     .verticalScroll(overviewScroll)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Text(tr("စစ်ဆေးမည့် အကြိမ်", "Choose a draw"),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold)
+                // A compact context toolbar, rather than a half-screen filter card.
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = scheme.surface,
-                    tonalElevation = 2.dp,
-                    shadowElevation = 7.dp,
+                    shadowElevation = 3.dp,
+                    tonalElevation = 1.dp,
                 ) {
-                    Column(Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             OutlinedButton(
                                 onClick = { datePickerMode = "target" },
-                                modifier = Modifier.weight(1.1f).heightIn(min = 48.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.weight(1.05f).heightIn(min = 48.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp),
                             ) {
-                                Icon(Icons.Default.CalendarMonth, contentDescription = null,
-                                    modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.CalendarMonth, null,
+                                    modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(5.dp))
                                 Text(date.toString(), maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.labelMedium)
                             }
                             Surface(
-                                shape = RoundedCornerShape(15.dp),
-                                color = scheme.surfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.weight(1.2f),
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                                color = scheme.surfaceVariant,
                             ) {
                                 Row(Modifier.padding(3.dp)) {
                                     listOf(
@@ -290,23 +307,21 @@ fun Historical2DTimelineScreen(
                                         val active = target.session == session
                                         Surface(
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = if (active) scheme.primaryContainer
-                                                else scheme.surfaceVariant.copy(alpha = 0.2f),
-                                            shadowElevation = if (active) 2.dp else 0.dp,
+                                            shape = RoundedCornerShape(11.dp),
+                                            color = if (active) scheme.primaryContainer else Color.Transparent,
+                                            shadowElevation = if (active) 3.dp else 0.dp,
                                             onClick = {
                                                 userChosen = true
                                                 selectedSession = session.name
                                             },
                                         ) {
-                                            Box(Modifier.defaultMinSize(minHeight = 44.dp)
-                                                .padding(horizontal = 3.dp),
+                                            Box(Modifier.defaultMinSize(minHeight = 42.dp),
                                                 contentAlignment = Alignment.Center) {
                                                 Text(label,
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                                                     color = if (active) scheme.onPrimaryContainer
                                                         else scheme.onSurfaceVariant,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                                     maxLines = 1)
                                             }
                                         }
@@ -314,19 +329,22 @@ fun Historical2DTimelineScreen(
                                 }
                             }
                         }
-                        HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.History, contentDescription = null,
-                                tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        Row(Modifier.fillMaxWidth().heightIn(min = 41.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.History, null,
+                                modifier = Modifier.size(17.dp),
+                                tint = scheme.onSurfaceVariant)
+                            Spacer(Modifier.width(7.dp))
                             Text(tr("မှတ်တမ်းကာလ", "History period"),
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = scheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f))
                             Box {
                                 TextButton(onClick = { rangeMenu = true }) {
                                     Text(lookbackLabel, maxLines = 1,
                                         style = MaterialTheme.typography.labelLarge)
-                                    Icon(Icons.Default.KeyboardArrowDown, null)
+                                    Icon(Icons.Default.KeyboardArrowDown, null,
+                                        modifier = Modifier.size(18.dp))
                                 }
                                 DropdownMenu(
                                     expanded = rangeMenu,
@@ -354,13 +372,13 @@ fun Historical2DTimelineScreen(
                                 OutlinedButton(
                                     onClick = { datePickerMode = "start" },
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp),
                                 ) { Text(customStart, style = MaterialTheme.typography.labelSmall,
                                     maxLines = 1) }
                                 OutlinedButton(
                                     onClick = { datePickerMode = "end" },
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp),
                                 ) { Text(customEnd, style = MaterialTheme.typography.labelSmall,
                                     maxLines = 1) }
                             }
@@ -378,35 +396,56 @@ fun Historical2DTimelineScreen(
                     TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
                         "Check the selected date range"), true)
                 }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("စစ်ဆေးနည်းများ", "Analysis checks"),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Surface(shape = RoundedCornerShape(12.dp),
-                        color = scheme.secondaryContainer) {
-                        Text(tr("စုစုပေါင်း ၈ ခု", "8 checks"),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("စစ်ဆေးမှုများ", "Explore analysis"),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold)
+                        Text(tr("အုပ်စု ၃ ခု · စစ်ဆေးနည်း ၈ ခု", "3 groups · 8 checks"),
                             style = MaterialTheme.typography.labelMedium,
-                            color = scheme.onSecondaryContainer)
+                            color = scheme.onSurfaceVariant)
+                    }
+                    Surface(shape = RoundedCornerShape(10.dp),
+                        color = scheme.secondaryContainer) {
+                        Icon(Icons.Default.AutoAwesome, null,
+                            modifier = Modifier.padding(9.dp).size(20.dp),
+                            tint = scheme.onSecondaryContainer)
                     }
                 }
-                sections.forEach { section ->
-                    TwoDSectionCard(
-                        section = section,
-                        expanded = openGroup == section.key,
-                        enabled = report != null,
-                        onToggle = { openGroup = if (openGroup == section.key) "" else section.key },
-                        onMethod = { openCheck = it },
-                        en = en,
+                // The selected group is an elevated, gradient bento tile.
+                TwoDBentoGroup(
+                    section = sections[0], selected = openGroup == "1",
+                    featured = true, onClick = { openGroup = "1" },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TwoDBentoGroup(
+                        section = sections[1], selected = openGroup == "2",
+                        featured = false, onClick = { openGroup = "2" },
+                        modifier = Modifier.weight(1f),
+                    )
+                    TwoDBentoGroup(
+                        section = sections[2], selected = openGroup == "3",
+                        featured = false, onClick = { openGroup = "3" },
+                        modifier = Modifier.weight(1f),
                     )
                 }
+                // Selecting a group immediately changes this list; there are no
+                // nested expanders or result values mixed into the overview.
+                TwoDMethodDirectory(
+                    section = selectedSection,
+                    enabled = report != null,
+                    en = en,
+                    onMethod = { openCheck = it },
+                )
                 if (merged.draws.isEmpty()) {
                     TwoDStatusMessage(tr("ထွက်ဂဏန်းမှတ်တမ်း မတွေ့သေးပါ။",
                         "No verified results found yet."), false)
                     TextButton(onClick = onSettings) { Text(tr("ဆက်တင်", "Settings")) }
                 }
                 Text(tr("ရှိတဲ့ထွက်ဂဏန်းမှတ်တမ်းတွေအပေါ်မှာပဲ စစ်ဆေးထားပါတယ်။ နောက်အကြိမ်ထွက်ဂဏန်းကို အာမခံထားတာ မဟုတ်ပါ။",
-                    "Based only on recorded results, not a prediction or a guarantee."),
+                    "Based on recorded results only; not a prediction or guarantee."),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
@@ -547,114 +586,209 @@ private data class TwoDSectionSpec(
 )
 
 @Composable
-private fun TwoDSectionCard(
+private fun TwoDBentoGroup(
     section: TwoDSectionSpec,
-    expanded: Boolean,
+    selected: Boolean,
+    featured: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(if (featured) 26.dp else 23.dp)
+    val wine = Color(0xFF66213F)
+    val rose = Color(0xFFB7375C)
+    val ink = if (selected) Color.White else scheme.onSurface
+    val secondary = if (selected) Color.White.copy(alpha = 0.84f)
+        else scheme.onSurfaceVariant
+    Box(modifier.padding(bottom = if (selected) 5.dp else 3.dp)) {
+        // The offset underlay gives the active tile a physical, layered edge.
+        Box(Modifier.matchParentSize().offset(y = if (selected) 5.dp else 3.dp)
+            .background(if (selected) Color(0xFF41142D)
+                else scheme.primary.copy(alpha = 0.15f), shape))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = shape,
+            color = if (selected) wine else scheme.surface,
+            tonalElevation = if (selected) 5.dp else 1.dp,
+            shadowElevation = if (selected) 13.dp else 5.dp,
+            onClick = onClick,
+        ) {
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(
+                        if (selected) Brush.linearGradient(
+                            listOf(wine, rose, Color(0xFFD06879)))
+                        else Brush.linearGradient(listOf(
+                            scheme.surface, scheme.primaryContainer.copy(alpha = 0.34f))),
+                    )
+                    .heightIn(min = if (featured) 120.dp else 112.dp),
+            ) {
+                Canvas(Modifier.matchParentSize()) {
+                    val center = Offset(size.width * 0.94f, size.height * 0.05f)
+                    val radius = size.minDimension * if (featured) 0.63f else 0.77f
+                    drawCircle(
+                        color = (if (selected) Color.White else scheme.primary)
+                            .copy(alpha = if (selected) 0.13f else 0.05f),
+                        radius = radius, center = center,
+                    )
+                    drawCircle(
+                        color = (if (selected) Color.White else scheme.primary)
+                            .copy(alpha = if (selected) 0.22f else 0.10f),
+                        radius = radius * 0.64f, center = center,
+                        style = Stroke(width = 2.dp.toPx()),
+                    )
+                }
+                Column(
+                    Modifier.align(Alignment.CenterStart)
+                        .padding(horizontal = if (featured) 19.dp else 13.dp,
+                            vertical = 13.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (selected) Color.White.copy(alpha = 0.19f)
+                                else scheme.primaryContainer.copy(alpha = 0.76f),
+                        ) {
+                            Icon(section.icon, null,
+                                modifier = Modifier.padding(9.dp).size(
+                                    if (featured) 24.dp else 21.dp),
+                                tint = if (selected) Color.White else scheme.primary)
+                        }
+                        Text(section.key + " / 03",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold, color = secondary)
+                        if (featured) {
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Default.NorthEast, null, tint = ink,
+                                modifier = Modifier.size(21.dp))
+                        }
+                    }
+                    Text(section.title,
+                        color = ink,
+                        fontWeight = FontWeight.Bold,
+                        style = if (featured) MaterialTheme.typography.titleMedium
+                            else MaterialTheme.typography.titleSmall,
+                        maxLines = if (featured) 2 else 3,
+                        overflow = TextOverflow.Ellipsis)
+                    Text(section.methods.size.toString() + " " +
+                            (if (section.title.startsWith("1.") ||
+                                section.title.startsWith("2.") ||
+                                section.title.startsWith("3.")) "checks" else "စစ်ဆေးနည်း"),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = secondary, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TwoDMethodDirectory(
+    section: TwoDSectionSpec,
     enabled: Boolean,
-    onToggle: () -> Unit,
-    onMethod: (String) -> Unit,
     en: Boolean,
+    onMethod: (String) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(width = 4.dp, height = 29.dp)
+                .background(scheme.primary, RoundedCornerShape(3.dp)))
+            Column(Modifier.weight(1f)) {
+                Text(section.title, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold)
+                Text(section.caption, style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant)
+            }
+            Text(section.methods.size.toString() + " / 08",
+                style = MaterialTheme.typography.labelMedium, color = scheme.primary,
+                fontWeight = FontWeight.Bold)
+        }
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = scheme.surface,
+            tonalElevation = 1.dp,
+            shadowElevation = 4.dp,
+        ) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                section.methods.forEachIndexed { index, method ->
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clickable(enabled = enabled) { onMethod(method.key) }
+                            .defaultMinSize(minHeight = 66.dp)
+                            .padding(horizontal = 3.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(13.dp),
+                            color = scheme.primaryContainer.copy(alpha = 0.55f),
+                        ) {
+                            Box(Modifier.size(41.dp), contentAlignment = Alignment.Center) {
+                                Icon(method.icon, null, tint = scheme.primary,
+                                    modifier = Modifier.size(21.dp))
+                            }
+                        }
+                        Column(Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(method.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (enabled) scheme.onSurface
+                                    else scheme.onSurfaceVariant)
+                            Text(method.subtitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onSurfaceVariant,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Surface(shape = RoundedCornerShape(9.dp),
+                            color = scheme.surfaceVariant) {
+                            Icon(Icons.Default.ChevronRight, null,
+                                tint = scheme.primary,
+                                modifier = Modifier.padding(5.dp).size(20.dp))
+                        }
+                    }
+                    if (index != section.methods.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 54.dp, end = 5.dp),
+                            color = scheme.outlineVariant.copy(alpha = 0.45f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TwoDNavAction(
+    modifier: Modifier,
+    active: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(23.dp),
-        color = scheme.surface,
-        tonalElevation = if (expanded) 3.dp else 1.dp,
-        shadowElevation = if (expanded) 9.dp else 5.dp,
+        modifier = modifier,
+        shape = RoundedCornerShape(17.dp),
+        color = if (active) scheme.primaryContainer else Color.Transparent,
+        shadowElevation = if (active) 3.dp else 0.dp,
+        onClick = onClick,
     ) {
-        Column {
-            Row(
-                Modifier.fillMaxWidth().clickable(onClick = onToggle)
-                    .background(Brush.horizontalGradient(listOf(
-                        scheme.primaryContainer.copy(alpha = if (expanded) 0.62f else 0.34f),
-                        scheme.surface,
-                    )))
-                    .defaultMinSize(minHeight = 74.dp)
-                    .padding(horizontal = 14.dp, vertical = 13.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = scheme.surface,
-                    shadowElevation = 2.dp,
-                    tonalElevation = 2.dp,
-                ) {
-                    Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
-                        Icon(section.icon, null, tint = scheme.primary,
-                            modifier = Modifier.size(24.dp))
-                    }
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(section.title, style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold)
-                    Text(section.caption, style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis)
-                }
-                Surface(shape = RoundedCornerShape(9.dp),
-                    color = scheme.secondaryContainer.copy(alpha = 0.85f)) {
-                    Text(section.methods.size.toString(),
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold, color = scheme.onSecondaryContainer)
-                }
-                Icon(
-                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (en) "Expand or collapse" else "ဖွင့်/ပိတ်",
-                    tint = scheme.primary,
-                )
-            }
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(tween(230)) + fadeIn(tween(190)),
-                exit = shrinkVertically(tween(190)) + fadeOut(tween(130)),
-            ) {
-                Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                    section.methods.forEachIndexed { index, method ->
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .clickable(enabled = enabled) { onMethod(method.key) }
-                                .defaultMinSize(minHeight = 64.dp)
-                                .padding(horizontal = 7.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(11.dp),
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = scheme.surfaceVariant.copy(alpha = 0.7f),
-                                tonalElevation = 1.dp,
-                            ) {
-                                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                                    Icon(method.icon, null, tint = scheme.primary,
-                                        modifier = Modifier.size(20.dp))
-                                }
-                            }
-                            Column(Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text(method.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (enabled) scheme.onSurface else scheme.onSurfaceVariant)
-                                Text(method.subtitle,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = scheme.onSurfaceVariant,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            Icon(Icons.Default.ChevronRight, null,
-                                tint = scheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp))
-                        }
-                        if (index < section.methods.lastIndex) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 59.dp, end = 8.dp),
-                                color = scheme.outlineVariant.copy(alpha = 0.5f),
-                            )
-                        }
-                    }
-                }
-            }
+        Column(Modifier.defaultMinSize(minHeight = 58.dp)
+            .padding(horizontal = 3.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
+            Icon(icon, null, modifier = Modifier.size(21.dp),
+                tint = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.labelMedium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                color = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
         }
     }
 }
