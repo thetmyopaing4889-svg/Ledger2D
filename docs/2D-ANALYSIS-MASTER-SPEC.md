@@ -120,7 +120,7 @@ These must **never** be collapsed into one generic "last N results" query:
 
 ## A-01 — Previous-week missing single digits and their return
 
-**State:** Core intent and stages confirmed; holiday/incomplete-history handling and history horizon pending.  
+**State:** Core intent confirmed and A-01 gained a **high-priority returning-digit partner-frequency check**, explicitly approved by user 2026-11-07. Return-event counting convention, holiday/incomplete-history handling and lookback horizon remain pending.  
 **Scope:** Prior completed Monday–Friday week → current week confirmed results → past historical weeks with same missing digit.
 
 ### A-01.1 User's question
@@ -155,6 +155,23 @@ Multiple digits can be absent; the method must inspect each digit, not assume at
 4. Summarize number of historically missing weeks, number returning the following week, and number absent again **only among weeks with sufficient verified following-week data**.
 5. If following-week data is unavailable/incomplete, treat as **unknown**, not "failed to return".
 
+### A-01.3a HIGH-PRIORITY — Partner digit most frequent when a missing digit returns
+
+**USER APPROVED on 2026-11-07:** When a previously missing **single digit** returns after having been absent for a completed week, also inspect historical episodes of that digit missing for a week and returning in the following week to answer: **"ဘယ်ဂဏန်းနဲ့ အများဆုံးတွဲပြီး ပြန်ပေါ်လဲ?"**. Give the most common **companion single digit** prominence in the answer, rather than only presenting missing/return counts.
+
+**Illustrative, NOT real history:**
+- Previously missing digit = **0**.
+- Suppose five historical episodes have full 2D return outcomes **03, 07, 03, 05, 03**.
+- Accompanying digits = **3, 7, 3, 5, 3**, so **3** is the most frequently paired digit in this *illustrative* set, **3/5 observations**.
+- The 0 can appear as tens or ones (03 and 30 each pair 0 with 3); preserve original full 2D value, date and occasion as supporting evidence.
+- A double such as 00 has companion digit 0, and must not be silently excluded from a count of exact returned 2D values.
+- If companion digits tie for highest observed count, show all tied digits with counts; no arbitrary winner.
+- This is the frequency of a digit **paired on the 2D return outcomes after a missing week**, NOT global most frequent digit across all historical draws, and NOT a claim about likely next outcomes.
+
+**Important scope ambiguity to resolve before coding:** Stage 3 already captures the **first return result** in each matching historical following week. The user did not explicitly say whether **this partner ranking** should use only the **first return result per historical missing-week episode**, or **all following-week results containing the returning digit**. Both interpretations could produce different rankings. The five-outcome example above uses **one example return observation per historical episode**, not an approved final denominator.
+
+**Presentation priority (CONFIRMED):** Prominently display the top accompanying digit(s), observed count, and the supporting full result(s), alongside the previous-week missing digit and its current-week/historical return status. Exact UI details remain to be designed.
+
 ### A-01.4 Worked example — illustrative, NOT actual source data
 
 - Prior week: 10 confirmed results; digit **0** appears in no tens or ones position → **"0 ပျောက်"**.
@@ -169,6 +186,7 @@ Multiple digits can be absent; the method must inspect each digit, not assume at
 - Historical lookback period (all available, 1/3/6 months, or user-selectable).
 - Whether a historically missing digit should still be compared when its following week is partially recorded, and how prominently sample sizes should be displayed.
 - Date/session evidence for restored/imported results when availability is uncertain.
+- **Q-39**: For the prioritized partner-digit frequency after return, count first return per historical episode only or all return occurrences within the following week.
 
 ---
 
@@ -759,6 +777,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-36 | A-08 holiday and closure | Pending how to align historical comparable slots when sessions or trading days are closed |
 | Q-37 | A-08 history sample | Lookback, missing records, counts, ties and examples |
 | Q-38 | A-08 evening method | RESOLVED: today PM uses preceding day's PM + current day's AM, with all three searches |
+| Q-39 | A-01 return partner frequency | First return only per historical missing-week episode or all appearances in following week? Priority is confirmed |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -827,10 +846,12 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-08 three independent queries ALWAYS: exact pair of preceding reference draws, first draw alone, second draw alone | User confirmed; search all three even if two-draw match found |
 | 2026-11-06 | A-08 AM references preceding day AM+PM; PM references preceding day PM + current AM; Mon AM uses previous Fri AM+PM | User confirmed; cross-week Fri→Mon allowed; closure handling pending |
 | 2026-11-06 | 2D Research Workspace as a separate user-controlled historical-question testing feature, distinct from eight automatic checks and unchanged မူ | Previously approved by user; reiterated after completing A-08; implementation design pending |
+| 2026-11-07 | User reviewed detailed restatement of A-01 through A-08 and found the core logic complete and correct, with new A-01 addition below | Confirmed main understanding; previously pending details remain open |
+| 2026-11-07 | A-01: prominently display which digit most frequently pairs with a digit when it returns after a missing week, grounded in historical returned 2D outcomes | User explicitly approved; first-return-only vs all next-week occurrences pending |
 
 ---
 
-**Next action:** Continue listening to the user's further analysis methods. Update this document with full detail and explicit confirmed/pending states after each method is clarified. **Do not begin redesign implementation or assume feature assignments.**
+**Next action:** The user has now reviewed and confirmed the core understanding of all eight methods. Resolve relevant pending calculation details before implementation; group into features and design the UI only after methods are stable. **Do not begin redevelopment or assume feature assignments.**
 
 # Part IX — 2D Research Workspace: separate feature concept (NOT a ninth fixed method)
 
