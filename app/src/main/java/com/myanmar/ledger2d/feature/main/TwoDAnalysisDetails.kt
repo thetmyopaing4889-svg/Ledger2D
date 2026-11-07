@@ -336,21 +336,35 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
 
 @Composable
 private fun AnalysisDetailLine(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Top) {
-        if (label.isNotEmpty()) {
-            Text(label, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(0.9f))
+    val scheme = MaterialTheme.colorScheme
+    val stacked = label.isEmpty() || label.length > 22 || value.length > 34
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        if (stacked) {
+            if (label.isNotEmpty()) {
+                Text(label, style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant)
+            }
+            Text(value, style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(label, style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                Text(value, style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold, color = scheme.onSurface,
+                    modifier = Modifier.weight(1f))
+            }
         }
-        Text(value, style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(if (label.isEmpty()) 1f else 1.1f))
+        HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.42f))
     }
 }
 
 @Composable
 private fun AnalysisDetailNote(text: String) {
     Text(text, style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp))
 }
