@@ -128,7 +128,7 @@ class Historic2DDataSourceTest {
             createdAt = 0, updatedAt = 0,
         )
         val result = Historic2DDataSource.resolve(
-            liveDaily = listOf(daily("2026-11-05", morning = "12")),
+            liveDaily = listOf(daily("2026-11-05", "12", null)),
             history = listOf(history("2026-11-05", "34", "56")),
             today = LocalDate.parse("2026-11-07"),
             winners = listOf(winner),
