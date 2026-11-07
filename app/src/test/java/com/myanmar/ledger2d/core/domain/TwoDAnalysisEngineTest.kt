@@ -165,6 +165,63 @@ class TwoDAnalysisEngineTest {
         assertEquals(1, range.both.matches.size) // references lie before the chosen evidence window
     }
 
+    @Test fun a08CanCrossFridayMondayWithoutCompressingSessions() {
+        val rows = listOf(
+            row("2026-10-30", am, "25"),
+            row("2026-10-30", pm, "78"),
+            row("2026-10-23", am, "25"),
+            row("2026-10-23", pm, "78"),
+            row("2026-10-26", am, "36"),
+        )
+        val a = TwoDAnalysisEngine.calculate(rows, target("2026-11-02", am)).a08
+        assertEquals("25", a.firstReference?.digit)
+        assertEquals("78", a.secondReference?.digit)
+        assertEquals(listOf("36"), a.both.matches.map { it.digit })
+        assertEquals(listOf("36"), a.firstOnly.matches.map { it.digit })
+        assertEquals(listOf("36"), a.secondOnly.matches.map { it.digit })
+    }
+
+    @Test fun a08VerifiedClosedDaySkipsToEarlierTradingDayButUnknownGapDoesNot() {
+        val rows = listOf(
+            row("2026-11-02", am, "12"),
+            row("2026-11-02", pm, "34"),
+            row("2026-10-26", am, "12"),
+            row("2026-10-26", pm, "34"),
+            row("2026-10-28", am, "78"),
+        )
+        val verifiedClosures = setOf(
+            LocalDate.parse("2026-11-03"),
+            LocalDate.parse("2026-10-27"),
+        )
+        val good = TwoDAnalysisEngine.calculate(
+            rows, target("2026-11-04", am), verifiedClosures,
+        ).a08
+        assertEquals("12", good.firstReference?.digit)
+        assertEquals("34", good.secondReference?.digit)
+        assertEquals(listOf("78"), good.both.matches.map { it.digit })
+        val unknownIsNotHoliday = TwoDAnalysisEngine.calculate(
+            rows, target("2026-11-04", am),
+        ).a08
+        assertNull(unknownIsNotHoliday.firstReference)
+        assertNull(unknownIsNotHoliday.secondReference)
+        assertTrue(unknownIsNotHoliday.both.matches.isEmpty())
+    }
+
+    @Test fun a06VerifiedClosedDayIsNotAFalseUnknownDrawSlot() {
+        val rows = listOf(
+            row("2026-11-02", am, "11"),
+            row("2026-11-02", pm, "22"),
+            row("2026-11-04", am, "33"),
+        )
+        val a = TwoDAnalysisEngine.calculate(
+            rows, target("2026-11-04", pm),
+            setOf(LocalDate.parse("2026-11-03")),
+        ).a06
+        assertFalse(a.getValue("combined").hasUnknownOpenSlots)
+        assertFalse(a.getValue("morning").hasUnknownOpenSlots)
+        assertEquals(1, a.getValue("morning").fullNumbers.single { it.value == "11" }.observedDrawsSince)
+    }
+
     @Test fun a01FirstReturnCompanionUsesOnePerCompleteHistoricalEpisode() {
         val lastWeek = week("2026-10-26",
             listOf("11", "22", "33", "44", "55", "66", "77", "88", "99", "12"))
