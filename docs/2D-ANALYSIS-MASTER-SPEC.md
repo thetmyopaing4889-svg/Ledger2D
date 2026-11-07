@@ -200,7 +200,7 @@ Multiple digits can be absent; the method must inspect each digit, not assume at
 
 ## A-02 — Same weekday + same morning/evening: frequency/class comparisons
 
-**State:** Five checks and *exact matching day/session scope* confirmed; horizon and counting details pending.  
+**State:** Five checks, *exact matching day/session scope*, and **single-digit frequency counting each tens/ones position separately (55 contributes 5 twice)** confirmed by user. Historical horizon and other details pending.  
 **Scope:** Historical results with **the same weekday AND morning/evening** as the target session. This is **not** the current week's cumulative tally.
 
 ### A-02.1 User's question and explicit correction
@@ -216,7 +216,7 @@ For a user looking at **Mon morning**, inspect **historical Mon mornings**. For 
 **A-02.b — Single-digit frequency (0–9)**
 - Which digit occurred most and which occurred least?
 - Distinguish the one-digit answer from a two-digit result.
-- Counting a double such as 55 as one draw containing 5 versus two digit positions is **pending**. Do not silently pick.
+- **CONFIRMED:** Count **digit positions**, not unique digits per draw. A result `55` contributes **two occurrences of single digit 5**; `03` contributes **one 0 and one 3**. This combined 0–9 frequency policy matches A-04. Do NOT confuse it with A-05's distinct-digit new/old tracking (first 11 = one *new* digit).
 
 **A-02.c — Four odd/even classes**
 - Compare historical frequencies of **စုံစုံ, မမ, စုံမ, မစုံ**.
@@ -248,7 +248,7 @@ For a user looking at **Mon morning**, inspect **historical Mon mornings**. For 
 
 - History horizon / period choice.
 - Should the target draw be excluded when already completed? The user framed the check for the current target session; no look-ahead must be introduced.
-- For digit frequency, does 55 count once for digit 5 (draws containing it), or twice (digit positions)?
+- **RESOLVED:** 55 counts **twice** for single digit 5 (tens + ones positions).
 - Does least frequent include digits at zero occurrences?
 - Exact boundaries of all special groups; treatment of overlap.
 - Handling an empty/small matched sample and available-data vs full-schedule distinction.
@@ -343,7 +343,7 @@ The user wants **a practical analysis of the current target session**, based on 
 
 ## A-04 — Previous week's completed draw distribution and remaining digits
 
-**State:** Core check categories, the precise **same-week exact-2D recurrence** meaning of **ပြန်ကျ**, and **ကျန်ဂဏန်း = the previous week's still-unseen single digits in 0–9** are **confirmed by user**. Three-or-more recurrence presentation, 0–9 frequency counting policy and certain data-completeness details remain pending. **Do not code yet.**  
+**State:** Core categories, exact same-week **ပြန်ကျ**, previous-week **ကျန်ဂဏန်း = still-unseen single digits in 0–9**, and **A-04 0–9 frequency = count each tens/ones position (55 yields two 5s)** are **confirmed**. Three-or-more recurrence presentation and some data-completeness/display details remain pending. **Do not code yet.**  
 **Scope:** The **entire previous Monday–Friday week**, including its completed AM and PM draws that have verified final results. **Do not confuse with A-02**, which filters to *the same weekday and same session* as the current target. **Do not confuse with A-01**, which continues from previous-week missing single digits into *current-week reappearance* and historical next-week behavior.
 
 ### A-04.1 User's actual request (captured from conversation)
@@ -354,7 +354,7 @@ The user explicitly **confirmed ပြန်ကျ** as **the exact same two-dig
 
 ### A-04.2 Components explicitly requested by user
 
-1. **0–9 digit appearance counts for the previous week.** Examine the week's 2D results and report occurrence statistics for individual digits 0 through 9. This concerns single digits, not the 00–99 2D pair frequency. The counting policy for a result such as `55` (one draw containing 5 or two digit-position occurrences) **remains pending**.
+1. **0–9 digit appearance counts for the previous week.** Examine the week's 2D results and report occurrence statistics for individual digits 0 through 9. This concerns single digits, not the 00–99 2D pair frequency. **CONFIRMED:** Count each digit **position**; `55` contributes **2** to digit 5's 0–9 occurrence frequency (one for tens, one for ones). `03` contributes one 0 and one 3. This combined 0–9 frequency count is different from A-05's distinct-digit new/old and remaining-digit sets.
 2. **Four even/odd class counts for the previous week:** စုံစုံ, မမ, စုံမ, မစုံ — how often each category appeared in the week's draws. Validate the exact classification orientation and rules before implementing.
 3. **Special number-group appearances for the previous week:** ပါဝါ, ညီကို/ညီအကို, အပူး, နက္ခတ် and **ပြန်ကျ**. Count/report how each appeared. **ပြန်ကျ (confirmed core meaning):** repeat occurrence of an **identical 2D pair**, as with **01 on Monday, then 01 again on Tuesday**. This is different from a single 0 or 1 appearing in another pair; it concerns identical complete 2D values. The two occurrences need not be consecutive in the draw sequence and can take place on the same day or different days. A reversed pair like 01 and 10 is not identical, so it is not an exact-number recurrence. The exact membership definitions for the other named special groups remain pending; inspect existing verified app definitions and confirm with user. Do not assume the special groups are mutually exclusive.
 4. **ကျန်ဂဏန်း (remaining numbers) — CONFIRMED 2026-11-07:** For the entire preceding Monday–Friday week, collect the **unique digits 0–9** that occurred in *either the tens or ones position* in its confirmed 2D draw results. Return the **complement within 0–9** (the single digits that never appeared at all during that previous week). **Do not calculate the complement of 00–99**. An identical-digit result such as `44` means digit 4 appeared, so it is NOT a remaining digit. If all ten single digits appeared, the remaining set is empty. For an incomplete/uncertain week, describe coverage clearly; do not claim absence from missing records.
@@ -396,12 +396,12 @@ Never combine A-04 totals with A-02 same-session counts. **The user has now expl
 
 - **Q-13 (mostly resolved):** **ပြန်ကျ = identical full 2D value occurs at least twice in the same week** (any days, either AM/PM, not necessarily adjacent). 01→10 does not qualify as an identical pair. **Pending only:** how to present/count a pair appearing 3+ times.
 - **Q-14 RESOLVED:** **"ကျန်ဂဏန်း" = digits 0–9 not appearing anywhere (tens or ones) in last week’s confirmed results.** Not remaining 00–99 pairs.
-- **Q-15:** In 0–9 frequency, does `55` count digit 5 once (one draw) or twice (two positions)? Should tens and ones also be shown separately?
+- **Q-15 PARTLY RESOLVED:** For the combined 0–9 frequency **`55` counts twice** (each digit position separately). Whether to additionally show tens and ones in separate subviews is a pending presentation choice; A-02.e already separately requires tens and ones maxima.
 - **Q-16:** Confirm definitions/overlap of the four parity classes and five named special groups, including whether **"ညီကို"** equals **"ညီအကို"**.
 - **Q-17:** Which incomplete/holiday weeks are eligible for last-week review, and how should missing records be represented?
 - **Q-18:** Whether the default view should show all group counts, only groups that appeared, and where/when to show drill-down — **UI not decided yet**.
 
-**Feature assignment:** undecided. **Code change:** none. **Next action:** clarify remaining A-04 frequency counting details (especially repeated digits such as `55`), `ပြန်ကျ` 3+ appearance presentation, and data quality; do not implement unconfirmed rules.
+**Feature assignment:** undecided. **Code change:** none. **Next action:** clarify remaining `ပြန်ကျ` 3+ appearance presentation, history completeness and relevant policy details; do not implement unconfirmed rules.
 
 ---
 
@@ -752,7 +752,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-01 | A-01 holiday week | What counts as a sufficiently complete week when true holidays remove sessions? |
 | Q-02 | A-01 history | Full lookback, denominator, handling partial following weeks |
 | Q-03 | A-02 horizon | Month(s), all available or selectable period |
-| Q-04 | A-02 digit tally | For 55, count digit 5 once per result or twice by position? |
+| Q-04 | A-02 digit tally | RESOLVED: count both positions; 55 contributes two occurrences of digit 5 |
 | Q-05 | A-02 minimum | Is 0 occurrence included when showing 'least'? |
 | Q-06 | A-02 groups | User-approved exact mapping of doubles/power/nakhat/siblings and overlap rules |
 | Q-07 | A-03 holidays | Must historical weekday/session slot positions match, or only actual result class order? |
@@ -763,7 +763,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
 | Q-13 | A-04 ပြန်ကျ | Confirmed: exact 2D recurrence anywhere within one week, same day or different day; pending 3+ occurrence count/presentation |
 | Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
-| Q-15 | A-04 digit counts | Count 55 once or twice; whether to split tens/ones |
+| Q-15 | A-04 digit counts | PARTLY RESOLVED: 55 contributes two occurrences of digit 5; optional separate tens/ones display still undecided |
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
 | Q-17 | A-04 data completeness | Which holiday/partially recorded weeks qualify |
 | Q-18 | A-04 presentation | Default groups and drill-down after all methods collected |
@@ -860,6 +860,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | A-01: prominently display which digit most frequently pairs with a digit when it returns after a missing week, grounded in historical returned 2D outcomes | User explicitly approved; ranking priority confirmed |
 | 2026-11-07 | A-01 first-return partner frequency uses OPTION A: only the first result in the immediately following week containing the missing digit, one observation per historical missing-week episode; ignore subsequent occurrences for this ranking | Explicitly confirmed by user; Q-39 resolved |
 | 2026-11-07 | A-04 ကျန်ဂဏန်း means unique digits 0–9 not observed in any confirmed AM/PM result of the completed previous week, tens or ones; not unused 00–99 pairs | Explicit user confirmation; Q-14 resolved |
+| 2026-11-07 | A-02 and A-04 0–9 single-digit frequency counts **each digit position**; `55` adds 2 occurrences of digit 5, unlike A-05's distinct new/old set | Explicit user choice of 2; Q-04 resolved, Q-15 frequency portion resolved |
 
 ---
 
