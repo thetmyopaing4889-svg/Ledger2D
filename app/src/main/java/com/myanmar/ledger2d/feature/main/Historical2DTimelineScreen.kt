@@ -204,7 +204,7 @@ fun Historical2DTimelineScreen(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(tr("History", "History"),
+                        Text(tr("မှတ်တမ်းကာလ", "History"),
                             style = MaterialTheme.typography.labelMedium,
                             color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                         Box {
@@ -266,22 +266,22 @@ fun Historical2DTimelineScreen(
                 val group1 = listOfNotNull(
                     if (a06.observedDraws > 0 && longMissing != null) {
                         (if (longMissing.historyStartTruncated || a06.hasUnknownOpenSlots)
-                            tr("History တွင် မပေါ်သော 2D", "2D unseen in recorded draws")
-                        else tr("ပျောက်နေတဲ့ 2D", "Longest missing 2D")) to
+                            tr("မှတ်တမ်းအရ ပျောက်ဂဏန်းတွဲ", "2D unseen in recorded draws")
+                        else tr("ပျောက်ဂဏန်းတွဲ", "Longest missing 2D")) to
                             ((if (equalMissing.size > 1)
                                 equalMissing.size.toString() + tr(" လုံးတူ", " numbers tied")
                             else longMissing.value) +
                                 " · " + longMissing.observedDrawsSince +
-                                tr(" ကြိမ် (ရွေးထားသော History)", " observed draws in selected history"))
+                                tr(" ကြိမ် (ရွေးထားသောမှတ်တမ်းအရ)", " observed draws in selected history"))
                     } else null,
                     if (report.a08.both.matches.isNotEmpty()) {
-                        tr("ရှေ့ ၂ ကြိမ်တူ History", "Both-reference matches") to
+                        tr("ရှေ့အကြိမ်နှစ်ခုလုံး တူခဲ့သောမှတ်တမ်း", "Both-reference matches") to
                             (report.a08.both.matches.size.toString() + tr(" ကြိမ်", " matches"))
                     } else if (report.a03.matched.isNotEmpty()) {
                         tr("စုံ/မ အစဉ်တူ", "Same parity sequence") to
                             (report.a03.matched.size.toString() + tr(" ပတ်", " weeks"))
                     } else if (report.a02.samples > 0) {
-                        tr("နေ့/အကြိမ်တူ မှတ်တမ်း", "Same day/draw history") to
+                        tr("နေ့တူ အကြိမ်တူ ယခင်မှတ်တမ်း", "Same day/draw history") to
                             (report.a02.samples.toString() + tr(" ကြိမ်", " draws"))
                     } else null,
                 )
@@ -302,11 +302,11 @@ fun Historical2DTimelineScreen(
                 }
                 val group2 = if (flow.transitions.isEmpty()) {
                     listOf(tr("ယခုအပတ်", "This week") to
-                        tr("Result မရှိသေး", "No confirmed results yet"))
+                        tr("ထွက်ဂဏန်းမရှိသေး", "No confirmed results yet"))
                 } else listOf(
                     (if (flow.completeThroughTarget)
-                        tr("မပေါ်သေးတဲ့ဂဏန်း", "Unseen single digits")
-                    else tr("ရရှိသောမှတ်တမ်း၌ မပေါ်", "Unseen in available records")) to
+                        tr("ပျောက်နေသော ဂဏန်း", "Unseen single digits")
+                    else tr("မှတ်တမ်းအရှိ", "Unseen in available records")) to
                         (flow.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") }),
                     secondWeekHighlight,
                 )
@@ -323,35 +323,35 @@ fun Historical2DTimelineScreen(
                     else null
                 val secondLastWeekHighlight = when {
                     !report.a01.previousWeekComplete ->
-                        tr("ပြန်ပေါ်မှု အတည်မပြုနိုင်", "Returns unverified") to
-                            tr("ယခင်အပတ် Result မပြည့်", "Last week incomplete")
+                        tr("ပျောက်ဂဏန်း ပြန်ဆင်းမှု", "Returns unverified") to
+                            tr("ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းမှတ်တမ်း မပြည့်", "Last week incomplete")
                     returnCompanion != null ->
-                        tr("ပြန်ပေါ်ဂဏန်း တွဲဖက် History", "Historical return companions") to
+                        tr("ပျောက်ဂဏန်း ပြန်ဆင်းချိန် တွဲဖက်ဂဏန်း", "Historical return companions") to
                             (returnCompanion.digit.toString() + " + " +
                                 returnCompanion.commonCompanions.joinToString(",") { it.companion.toString() } +
                                 " · " + returnCompanion.historyFirstReturnEpisodes +
                                 tr(" ပတ်", " weeks"))
-                    else -> tr("ဒီအပတ် ပြန်ပေါ်", "Returned this week") to
+                    else -> tr("ဒီအပတ် ပျောက်ဂဏန်းပြန်ဆင်း", "Returned this week") to
                         (returned.toString() + tr(" လုံး", " digits"))
                 }
                 val group3 = listOf(
-                    (if (report.a04.complete) tr("ကျန်ဂဏန်း", "Absent single digits")
-                        else tr("တွေ့ရှိထားသမျှအရ မပေါ်", "Not seen in available records")) to
+                    (if (report.a04.complete) tr("ပျောက်ဂဏန်း", "Absent single digits")
+                        else tr("ပျောက်ဂဏန်း", "Not seen in available records")) to
                         (if (report.a04.observedDraws == 0)
-                            tr("Result မတွေ့", "No verified draws")
+                            tr("ထွက်ဂဏန်းမတွေ့", "No verified draws")
                         else report.a04.remainingDigits.joinToString(" ")
                             .ifEmpty { tr("မရှိ", "None") }),
                     secondLastWeekHighlight,
                 )
                 TimelineAnalysisGroup(
-                    title = tr("၁။ လက်ရှိအကြိမ်", "1. Current draw"),
+                    title = tr("၁။ ယခုထွက်မယ့်အကြိမ်", "1. Current draw"),
                     previews = group1.ifEmpty { listOf(tr("မှတ်တမ်း", "History") to
                         tr("အချက်အလက် မလုံလောက်သေး", "Not enough records yet")) },
                     methods = listOf(
-                        "02" to tr("နေ့/အကြိမ်တူ အထွက်", "Same day/draw frequency"),
-                        "03" to tr("စုံ/မ အစဉ်တူ", "Parity sequence matches"),
-                        "06" to tr("ပျောက်နေတဲ့ ဂဏန်းများ", "Ongoing missing digits"),
-                        "08" to tr("ရှေ့ဂဏန်းနဲ့ တိုက်စစ်", "Previous results matching"),
+                        "02" to tr("လက်ရှိအကြိမ်အတွက် ယခင်ထွက်ရှိမှုမှတ်တမ်း", "Same day/draw frequency"),
+                        "03" to tr("ယခုအပတ်အတွက် ယခင် စုံ/မ ထွက်ရှိမှု", "Parity sequence matches"),
+                        "06" to tr("မထွက်တာကြာနေသော ဂဏန်းနှင့် ဂဏန်းတွဲများ", "Ongoing missing digits"),
+                        "08" to tr("ယခင်ထွက်ဂဏန်းပေါ် အခြေခံ၍ လက်ရှိအကြိမ်အတွက် စစ်ဆေးခြင်း", "Previous results matching"),
                     ),
                     expanded = openGroup == "1", selectedMethod = openCheck,
                     onToggle = { openGroup = if (openGroup == "1") "" else "1"; openCheck = "" },
@@ -362,7 +362,7 @@ fun Historical2DTimelineScreen(
                     title = tr("၂။ ယခုအပတ်အခြေအနေ", "2. This week"),
                     previews = group2,
                     methods = listOf(
-                        "05" to tr("အသစ်/အဟောင်း စီးဆင်းမှု", "New / old digit flow"),
+                        "05" to tr("အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု", "New / old digit flow"),
                         "07" to tr("အထူးဂဏန်းအုပ်စုများ", "Special number groups"),
                     ),
                     expanded = openGroup == "2", selectedMethod = openCheck,
@@ -374,8 +374,8 @@ fun Historical2DTimelineScreen(
                     title = tr("၃။ ပြီးခဲ့တဲ့အပတ်", "3. Last week"),
                     previews = group3,
                     methods = listOf(
-                        "04" to tr("ပြီးခဲ့တဲ့အပတ် အထွက်စာရင်း", "Previous week's results"),
-                        "01" to tr("ကျန်ဂဏန်း ပြန်ပေါ်မှု", "Missing-digit returns"),
+                        "04" to tr("ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းစာရင်းချုပ်", "Previous week's results"),
+                        "01" to tr("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်းထွက်ရှိမှု", "Missing-digit returns"),
                     ),
                     expanded = openGroup == "3", selectedMethod = openCheck,
                     onToggle = { openGroup = if (openGroup == "3") "" else "3"; openCheck = "" },
@@ -383,13 +383,13 @@ fun Historical2DTimelineScreen(
                     report = report, en = en,
                 )
                 if (merged.draws.isEmpty()) {
-                    Text(tr("Result မတွေ့။ အတည်ပြုမှတ်တမ်း မရှိသေးပါ။",
+                    Text(tr("ထွက်ဂဏန်းမှတ်တမ်း မတွေ့သေးပါ။",
                         "No verified results found."),
                         style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant)
                     TextButton(onClick = onSettings) { Text(tr("ဆက်တင်", "Settings")) }
                 }
-                Text(tr("တွေ့ရှိထားသော History မှတ်တမ်းကိုသာ စစ်ဆေးထားသည်။ နောက်အကြိမ်အတွက် အာမခံချက် မဟုတ်ပါ။",
+                Text(tr("ရှိတဲ့ထွက်ဂဏန်းမှတ်တမ်းတွေအပေါ်မှာပဲ စစ်ဆေးထားပါတယ်။ နောက်အကြိမ်ထွက်ဂဏန်းကို အာမခံထားတာ မဟုတ်ပါ။",
                     "Based on verified history only, not a prediction or guarantee."),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant)
