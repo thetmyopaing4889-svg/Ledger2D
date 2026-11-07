@@ -114,6 +114,8 @@ data class TwoDConditional(
     val sourceDigit: String?,
     val matches: List<TwoDMatch>,
     val frequencies: List<TwoDCount>,
+    /** Historical source matches whose corresponding target result is unknown. */
+    val missingTargetCount: Int,
 )
 data class TwoDPreviousResults(
     val firstReference: TwoDMatch?,
@@ -413,9 +415,9 @@ object TwoDAnalysisEngine {
         val (aSlot, bSlot) = referenceSlots(target, closed)
         val a = bySlot[aSlot]
         val b = bySlot[bSlot]
-        fun match(rows: List<HistoricDraw>, source: String?): TwoDConditional =
+        fun match(rows: List<HistoricDraw>, source: String?, missing: Int): TwoDConditional =
             TwoDConditional(source, rows.map { TwoDMatch(it.date, it.session, it.digit) },
-                numberCounts(rows.map { it.digit }))
+                numberCounts(rows.map { it.digit }), missing)
         val candidates = historical.filter {
             range.includes(it.date) && it.date.dayOfWeek == target.date.dayOfWeek &&
                 it.session == target.session && it.date != target.date
@@ -433,12 +435,36 @@ object TwoDAnalysisEngine {
             if (bMatch) second.add(candidate)
             if (aMatch && bMatch) both.add(candidate)
         }
+        // A historical source sequence can match even when its target 2D is
+        // unrecorded. Do not call these "no matching history" or invent outcomes.
+        var missingBoth = 0
+        var missingFirst = 0
+        var missingSecond = 0
+        val earliest = bySlot.keys.minOfOrNull { it.first }
+        if (earliest != null) {
+            var candidateDate = earliest
+            while (candidateDate.dayOfWeek != target.date.dayOfWeek)
+                candidateDate = candidateDate.plusDays(1)
+            while (candidateDate.isBefore(target.date)) {
+                if (candidateDate !in closed && range.includes(candidateDate) &&
+                    (candidateDate to target.session) !in bySlot) {
+                    val (candidateFirst, candidateSecond) =
+                        referenceSlots(DrawIdentity(candidateDate, target.session), closed)
+                    val firstMatches = a != null && bySlot[candidateFirst]?.digit == a.digit
+                    val secondMatches = b != null && bySlot[candidateSecond]?.digit == b.digit
+                    if (firstMatches) missingFirst++
+                    if (secondMatches) missingSecond++
+                    if (firstMatches && secondMatches) missingBoth++
+                }
+                candidateDate = candidateDate.plusWeeks(1)
+            }
+        }
         return TwoDPreviousResults(
             a?.let { TwoDMatch(it.date, it.session, it.digit) },
             b?.let { TwoDMatch(it.date, it.session, it.digit) },
-            match(both, if (a != null && b != null) a.digit + " + " + b.digit else null),
-            match(first, a?.digit),
-            match(second, b?.digit),
+            match(both, if (a != null && b != null) a.digit + " + " + b.digit else null, missingBoth),
+            match(first, a?.digit, missingFirst),
+            match(second, b?.digit, missingSecond),
         )
     }
 

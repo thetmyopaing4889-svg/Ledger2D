@@ -165,6 +165,24 @@ class TwoDAnalysisEngineTest {
         assertEquals(1, range.both.matches.size) // references lie before the chosen evidence window
     }
 
+    @Test fun a08MatchingHistoricalSourcesWithMissingTargetAreReportedSeparately() {
+        val rows = listOf(
+            row("2026-11-02", am, "02"),
+            row("2026-11-02", pm, "89"),
+            row("2026-10-26", am, "02"),
+            row("2026-10-26", pm, "89"),
+            // Tuesday Oct 27 morning target is missing from imported history.
+        )
+        val a = TwoDAnalysisEngine.calculate(rows, target("2026-11-03", am)).a08
+        assertEquals("02", a.firstReference?.digit)
+        assertEquals("89", a.secondReference?.digit)
+        assertTrue(a.both.matches.isEmpty())
+        assertEquals(1, a.both.missingTargetCount)
+        assertEquals(1, a.firstOnly.missingTargetCount)
+        assertEquals(1, a.secondOnly.missingTargetCount)
+        assertTrue(a.both.frequencies.isEmpty())
+    }
+
     @Test fun a08CanCrossFridayMondayWithoutCompressingSessions() {
         val rows = listOf(
             row("2026-10-30", am, "25"),

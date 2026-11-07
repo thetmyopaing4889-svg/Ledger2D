@@ -159,8 +159,19 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 AnalysisDetailLine(title,
                     if (result.sourceDigit == null) tr("Result မတွေ့", "Reference missing")
                     else n(result.matches.size))
-                if (result.sourceDigit != null && result.matches.isEmpty())
-                    AnalysisDetailNote(tr("တူညီမှု မတွေ့", "No verified matches"))
+                if (result.missingTargetCount > 0)
+                    AnalysisDetailLine(
+                        tr("ရှေ့ဂဏန်းတူ၊ နောက် Result မတွေ့", "Source matched, next result missing"),
+                        n(result.missingTargetCount),
+                    )
+                if (result.sourceDigit != null && result.matches.isEmpty()) {
+                    AnalysisDetailNote(
+                        if (result.missingTargetCount > 0)
+                            tr("နောက် Result မရှိ၍ အဖြေကို မသတ်မှတ်နိုင်ပါ။",
+                                "Matching sources exist, but their outcomes are unrecorded.")
+                        else tr("အတည်ပြုတူညီမှု မတွေ့", "No verified matches"),
+                    )
+                }
                 result.frequencies.take(8).forEach {
                     AnalysisDetailLine(it.digit, n(it.count))
                 }
