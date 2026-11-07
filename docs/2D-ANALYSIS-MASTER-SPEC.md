@@ -787,6 +787,44 @@ Do not mistake the table for a user-approved implementation plan.
   - `app/src/test/java/com/myanmar/ledger2d/feature/main/Historic2DDataSourceTest.kt`
 - Existing restore point before the Aurora analysis redesign: `backup/pre-aurora-analysis-build957-20261106`. Do not reset to it without explicit user direction.
 
+# Part IX — 2D Research Workspace: separate feature concept (NOT a ninth fixed method)
+
+**Decision status:** User previously **agreed** this should be an independent feature inside historical **2D Analysis**, separate from the fixed automatic checks A-01–A-08. The user reminded us again after finishing all eight methods. The **concept is approved**, but detailed inputs, navigation, UI and code are **not yet specified or implemented**.
+
+## IX.1 Why Research is different from the eight checks
+
+- **A-01–A-08:** Eight predefined analysis methods; the app chooses and runs their fixed, user-taught checks automatically with the appropriate current/previous/historical scope.
+- **2D Research Workspace:** The **user invents a question/condition** and asks the app to test it **against the historical 2D results**, receiving matched source observations and clearly reported sample sizes. It is an exploratory *workspace*, not just another fixed frequency dashboard.
+- **မူ (Rules):** A separate existing app area that the user explicitly requested **not to modify yet**. Research must not be silently renamed into, or replace, this Rules destination.
+- **Other 2D candidate/policy/formula ideas:** Not automatically part of Research; no approval to implement unconfirmed generating/predictive formulas or gambler-odds assertions.
+
+## IX.2 Example from the original Research conversation — illustrative
+
+The user may ask:
+
+> "**မနက် 12 ထွက်တဲ့နေ့တွေမှာ ညနေ 21 ထွက်ဖူးသလား?**"
+
+A Research interaction should allow the user to express this **conditional historical question** rather than hard-code a special case. It would inspect historical dates with **AM=12** and identify which of their **PM results were 21**, showing the actual matching dates/results, number of checked records and data limitations. The example illustrates the intended type of question; it is **not a claim that 12 predicts 21**, and no results are implied before the real history is queried.
+
+The initial proposed concept also allowed exploring chosen **numbers, groups, time intervals and relationships** in historical data. The precise form and available condition operators require a later explicit specification; do not claim all combinations are already supported.
+
+## IX.3 Intended user experience — high-level only
+
+1. User specifies the number/condition/relationship to research (and potentially a historical range, when the design is agreed).
+2. App checks only the relevant confirmed historical results, preserving exact draw dates and AM/PM identity and checking for missing records.
+3. App returns direct factual answers, **matched dates and 2D values**, counts of matches, the number of eligible records, and limitations such as insufficient/partial data.
+4. The user can study another question without needing a new preset analysis method for every pattern.
+
+## IX.4 Strict exclusions and remaining design work
+
+- Do **not** treat Research as **A-09**; it is **a separate user-driven tool**, whereas A-01–A-08 are eight specified automated checks.
+- Do **not** merge Research with "မူ", change "မူ", or repurpose its current UI.
+- Do not claim future-draw probability or guarantee from historical conditional counts.
+- **Pending:** Which condition types/operators can users select? Can they combine two or more reference draws? Which historical ranges can be chosen? How will matched results and total eligible cases be presented? Are saved queries needed? These are design questions, not already approved behavior.
+- **Implementation:** No source code changes authorized; define Research inputs and workflow after reviewing the eight methods and grouping the overall 2D Analysis features.
+
+---
+
 # Part VIII — Requirement register / change-log template
 
 **For each new user-described checking method, append:**
@@ -826,6 +864,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-08 initially recorded as single prior-morning condition | SUPERSEDED by the user's later clarification below; do NOT implement fallback-only |
 | 2026-11-06 | A-08 three independent queries ALWAYS: exact pair of preceding reference draws, first draw alone, second draw alone | User confirmed; search all three even if two-draw match found |
 | 2026-11-06 | A-08 AM references preceding day AM+PM; PM references preceding day PM + current AM; Mon AM uses previous Fri AM+PM | User confirmed; cross-week Fri→Mon allowed; closure handling pending |
+| 2026-11-06 | 2D Research Workspace as a separate user-controlled historical-question testing feature, distinct from eight automatic checks and unchanged မူ | Previously approved by user; reiterated after completing A-08; implementation design pending |
 
 ---
 
