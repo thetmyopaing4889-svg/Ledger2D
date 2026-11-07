@@ -133,6 +133,9 @@ fun Historical2DTimelineScreen(
     }
     var openGroup by rememberSaveable { mutableStateOf("1") }
     var openCheck by rememberSaveable { mutableStateOf("") }
+    var streakStream by remember(target.session) { mutableStateOf(
+        if (target.session == DrawSession.MORNING) "morning" else "evening"
+    ) }
     val overviewScroll = rememberScrollState()
     BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
     var rulesOpen by remember { mutableStateOf(false) }
@@ -452,7 +455,7 @@ fun Historical2DTimelineScreen(
                                 color = scheme.onSurfaceVariant)
                         }
                     }
-                    TwoDPrimaryFinding(openCheck, report, en)
+                    TwoDPrimaryFinding(openCheck, report, en, streakStream)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(22.dp),
@@ -466,7 +469,9 @@ fun Historical2DTimelineScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold)
                             HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
-                            TwoDAnalysisDetails(openCheck, report, en)
+                            TwoDAnalysisDetails(openCheck, report, en,
+                                selectedStreakStream = streakStream,
+                                onStreakStreamChange = { streakStream = it })
                         }
                     }
                     Spacer(Modifier.height(20.dp))
@@ -673,7 +678,9 @@ private fun TwoDStatusMessage(message: String, warning: Boolean) {
 }
 
 @Composable
-private fun TwoDPrimaryFinding(id: String, report: TwoDAnalysisReport, en: Boolean) {
+private fun TwoDPrimaryFinding(
+    id: String, report: TwoDAnalysisReport, en: Boolean, streakStream: String,
+) {
     fun tr(mm: String, english: String) = if (en) english else mm
     val scheme = MaterialTheme.colorScheme
     val noData = tr("မှတ်တမ်းမရှိသေး", "No records yet")
@@ -685,26 +692,32 @@ private fun TwoDPrimaryFinding(id: String, report: TwoDAnalysisReport, en: Boole
                 it.digit + "  ·  " + it.count + tr(" ကြိမ်", " times")
             } ?: noData, tr("နေ့တူ၊ အကြိမ်တူမှတ်တမ်း", "Same weekday and draw"))
         "03" -> Triple(tr("တူညီသောအပတ်", "Matching weeks"),
-            report.a03.matched.size.toString() + tr(" ပတ်", " weeks"),
+            if (!report.a03.eligible) noData
+            else report.a03.matched.size.toString() + tr(" ပတ်", " weeks"),
             tr("မှတ်တမ်းပေါ် အခြေခံထားသည်", "Historical matches only"))
         "06" -> {
-            val stream = report.a06.getValue(
-                if (report.target.session == DrawSession.MORNING) "morning" else "evening")
+            val stream = report.a06.getValue(streakStream)
             val longest = stream.fullNumbers.firstOrNull()
             Triple(tr("မထွက်တာကြာနေသော ဂဏန်းတွဲ", "Longest absent pair"),
                 if (stream.observedDraws == 0 || longest == null) noData
                 else longest.value + "  ·  " + longest.observedDrawsSince + tr(" ကြိမ်", " draws"),
-                tr("ရွေးထားသောအကြိမ်နှင့် မှတ်တမ်းကာလအရ", "Selected draw and history window"))
+                (when (streakStream) {
+                    "morning" -> tr("မနက်အကြိမ်", "Morning draws")
+                    "evening" -> tr("ညနေအကြိမ်", "Evening draws")
+                    else -> tr("မနက်/ညနေ ပေါင်း", "Morning and evening")
+                }) + tr(" · ရှိသောမှတ်တမ်းအရ", " · available history"))
         }
         "08" -> Triple(tr("ရှေ့အကြိမ်နှစ်ခုလုံး တူခဲ့မှု", "Both preceding results matched"),
-            report.a08.both.matches.size.toString() + tr(" ကြိမ်", " matches"),
+            if (report.a08.firstReference == null || report.a08.secondReference == null)
+                noData else report.a08.both.matches.size.toString() + tr(" ကြိမ်", " matches"),
             tr("ယခင်ထွက်ဂဏန်းမှတ်တမ်းအရ", "Recorded historical matches"))
         "05" -> Triple(tr("ဒီအပတ် ပျောက်နေသော ဂဏန်း", "This week's unseen digits"),
             if (report.a05.transitions.isEmpty()) noData
             else report.a05.remainingDigits.joinToString(" ").ifEmpty { none },
             tr("ရှိထားသော ထွက်ဂဏန်းပေါ်တွက်ထားသည်", "Based on available results"))
         "07" -> Triple(tr("ဒီအပတ် ပြန်ကျအကြိမ်", "Exact repeats this week"),
-            report.a07.repeatedNumbers.sumOf { it.count }.toString() +
+            if (report.a07.observedDraws == 0) noData
+            else report.a07.repeatedNumbers.sumOf { it.count }.toString() +
                 tr(" ကြိမ်", " times"),
             tr("ရှိထားသော ထွက်ဂဏန်းမှတ်တမ်းအရ", "Based on recorded draws"))
         "04" -> Triple(tr("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း", "Missing digits last week"),
