@@ -817,7 +817,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-08 | A-03 missing records | PARTLY RESOLVED: closed-day weeks excluded from A-03; unknown open-day result gaps are flagged and not compressed/shifted. Final week eligibility for unknown records pending |
 | Q-09 | A-03 sequence location | Historic prefix anchored at first real weekly draw versus any contiguous intraweek substring |
 | Q-10 | A-03 history horizon | PARTLY RESOLVED: all available verified historical weeks by default, user-selectable one-week/one-month/custom range; qualifying next draw and boundary cases pending |
-| Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
+| Q-11 | Design | PARTLY RESOLVED: exact three timeline groups and 4+2+2 assignments user-approved; UI navigation, first-view layout, evidence drill-down, typography/elevation still pending |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
 | Q-13 | A-04 ပြန်ကျ | RESOLVED: exact 2D repeat count per number = max(0, occurrences within previous week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
 | Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
@@ -851,9 +851,34 @@ Do not mistake the table for a user-approved implementation plan.
 
 ---
 
+# Part V-A — User-approved timeline-based grouping (2026-11-07)
+
+**APPROVED BY USER:** Organize the eight checks based on **which time context the user wants to understand**, NOT by the history source, algorithm type or forcing the smallest possible number of groups. The user explicitly prefers **three chronologically ordered groups** with a **4 + 2 + 2** assignment:
+
+| Timeline order | User-facing group | Included methods | Why these belong together |
+|---|---|---|---|
+| **1** | **လက်ရှိအကြိမ်** (Current occasion) | **A-02, A-03, A-06, A-08** | Questions pertinent to the selected/next AM or PM occasion: same-day/session historical distribution, strict weekly parity pattern through the previous slots, as-of-now ongoing missing streaks, and continuation of preceding exact results |
+| **2** | **ယခုအပတ်အခြေအနေ** (Current-week status) | **A-05, A-07** | Current week's observed new/old single-digit flow and named special-group occurrence/repeat status |
+| **3** | **ပြီးခဲ့တဲ့အပတ်** (Previous-week review) | **A-04, A-01** | Completed previous-week frequencies/groups/missing digits, and a follow-up on that previous week's missing single digits into this week and historical return companion comparisons |
+
+**A-01 placement explicitly confirmed:** Keep A-01 under **group 3 (previous week)**, **not** group 2, despite its continuation checking this week's return. Its entry question starts from the *previous* week's missing digits; its history and current-week comparison are part of that one method, not a new feature.
+
+**A-06 placement:** The ongoing missing-streak metric uses all available earlier history but is **as of the selected occasion**, so group 1 is about *the question being answered*, not the period of source data. Enforce analysis cutoff so an already-completed later draw cannot leak into the selected earlier occasion.
+
+**Important non-duplication and logic boundaries:**
+- A-04's previous-week `ကျန်ဂဏန်း` is a summary; A-01's previous-week missing digits can reuse the same source set but must retain its additional current-week/historical first-return analysis.
+- A-04 and A-07 share group categories and same-week `ပြန်ကျ` counting rule but remain distinct by **previous vs current week**.
+- A-03's current-week sequence powers the *current/next occasion question*, so it stays in group 1 rather than being moved to group 2.
+- Historical lookback (all available by default, optional one-week/one-month/custom) is a **data filter**, not an extra history group. Do not modify fixed-week scopes of A-01/A-04/A-05/A-07 just to match a UI filter.
+- **2D Research Workspace remains separate**, not A-09 and not counted in the 4+2+2. The existing **မူ (Rules)** section remains independent and its logic/UI untouched.
+
+**This approval confirms only the INFORMATION ARCHITECTURE / METHOD GROUPING.** It does **NOT** approve screen count, card layout, tabs, landing page, navigation style, colors, first-view answer order, or the placement of Research/Rules on screen. Those are **the next distinct discussion stage**. **Do not start implementing UI or engine based solely on grouping approval.** Retain each method's already confirmed calculation and evidence-safety rules unchanged.
+
+---
+
 # Part VI — UI/UX constraints after method collection
 
-- **Do not redesign screens yet.** Start with valuable user-facing answers and the evidence behind them, then decide if they should live in one feature or multiple.
+- **Grouping is now approved: timeline-based 4+2+2, see Part V-A. Do not redesign screens yet.** Decide the visual presentation/navigation in a separate discussion; prioritize clear user-facing answers and their evidence.
 - **First view must prioritize the current target occasion's relevant checks**, not static counts, generic 00–99 grids, giant empty headers or accidental rankings.
 - Missing-number analysis is important; show meaningful context (week, previous-week absence, current-week return, historical comparison), not just an overwhelming 0× list.
 - Modern/premium, clear foreground/background layering and perceptible card elevation (including selected nested cards); coherent light/highlight and shadow, not only thin borders.
@@ -924,10 +949,11 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | If a result is not found, explicitly say "Result မတွေ့" but keep analyzing all other available confirmed results rather than dropping the whole week/range; unknown slots are not proven negative results or safely compressible ordered history | Explicitly confirmed by user; partial-history data-coverage policy established, true holiday alignment still open |
 | 2026-11-07 | Verified closed date is excluded from draw analysis; other methods still use available draws, but **A-03's strict slot-pattern check excludes a week with a confirmed closed date** | Earlier general closure-skip rule refined by latest user correction; Q-07 resolved, A-08 trading-day mapping still open |
 | 2026-11-07 | A-03 historical MATCH needs **same weekday + same morning/evening occasion + same parity class** in each compared slot; do not compact holidays or shift results into different slots; verified closure-week is excluded from A-03 | Explicit corrective explanation by user; previous optional A/B interpretation superseded |
+| 2026-11-07 | **Timeline grouping approved**: 1) လက်ရှိအကြိမ် = A-02/A-03/A-06/A-08; 2) ယခုအပတ်အခြေအနေ = A-05/A-07; 3) ပြီးခဲ့တဲ့အပတ် = A-04/A-01. **Keep A-01 in group 3** | User explicitly confirmed the 4+2+2 grouping and A-01 placement; layout and UI are not decided |
 
 ---
 
-**Next action:** The user has now reviewed and confirmed the core understanding of all eight methods. Resolve relevant pending calculation details before implementation; group into features and design the UI only after methods are stable. **Do not begin redevelopment or assume feature assignments.**
+**Next action:** Timeline-based method grouping (4+2+2) is now user-approved; the next step is **to discuss UI/navigation arrangement separately**, using the three groups as fixed information architecture. Do not confuse this grouping approval with UI or coding authorization. Preserve confirmed calculations, Research Workspace and မူ.
 
 # Part IX — 2D Research Workspace: separate feature concept (NOT a ninth fixed method)
 
