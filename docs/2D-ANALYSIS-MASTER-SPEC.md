@@ -343,21 +343,23 @@ The user wants **a practical analysis of the current target session**, based on 
 
 ## A-04 — Previous week's completed draw distribution and remaining digits
 
-**State:** Core check categories and the precise **same-week exact-2D recurrence** meaning of **ပြန်ကျ** are **confirmed by user**; three-or-more recurrence presentation, counting method and other categories remain pending. **Do not code yet.**  
+**State:** Core check categories, the precise **same-week exact-2D recurrence** meaning of **ပြန်ကျ**, and **ကျန်ဂဏန်း = the previous week's still-unseen single digits in 0–9** are **confirmed by user**. Three-or-more recurrence presentation, 0–9 frequency counting policy and certain data-completeness details remain pending. **Do not code yet.**  
 **Scope:** The **entire previous Monday–Friday week**, including its completed AM and PM draws that have verified final results. **Do not confuse with A-02**, which filters to *the same weekday and same session* as the current target. **Do not confuse with A-01**, which continues from previous-week missing single digits into *current-week reappearance* and historical next-week behavior.
 
 ### A-04.1 User's actual request (captured from conversation)
 
 > "ပြီးခဲ့အပတ်ရဲ့ ဂဏန်းထွက်ရှိမှုအခြေအနေ 0 to 9 အကြိမ်ရေ, စုံစုံ မမ စုံမ မစုံ အကြိမ်ရေ, ပါဝါ ညီကို အပူး နက္ခတ်.ပြန်ကျ....ထွက်ရှိမှု, ကျန်ဂဏန်း"
 
-The user explicitly **confirmed ပြန်ကျ** as **the exact same two-digit number appearing at least twice within one Monday–Friday week, regardless of which days or AM/PM sessions**: e.g. Monday **01**, Tuesday **01** or Monday AM **01**, Monday PM **01**. It does **not** require consecutive draw occasions. **"ကျန်ဂဏန်း"** is still undefined. "ညီကို" may be the user's shorter term for an existing "ညီအကို" group; verify the synonym before coding.
+The user explicitly **confirmed ပြန်ကျ** as **the exact same two-digit number appearing at least twice within one Monday–Friday week, regardless of which days or AM/PM sessions**: e.g. Monday **01**, Tuesday **01** or Monday AM **01**, Monday PM **01**. It does **not** require consecutive draw occasions. **"ကျန်ဂဏန်း"** has now been explicitly clarified as **single digits 0–9 not present in either position in any of the previous week’s confirmed draw results**. "ညီကို" may be the user's shorter term for an existing "ညီအကို" group; verify the synonym before coding.
 
 ### A-04.2 Components explicitly requested by user
 
 1. **0–9 digit appearance counts for the previous week.** Examine the week's 2D results and report occurrence statistics for individual digits 0 through 9. This concerns single digits, not the 00–99 2D pair frequency. The counting policy for a result such as `55` (one draw containing 5 or two digit-position occurrences) **remains pending**.
 2. **Four even/odd class counts for the previous week:** စုံစုံ, မမ, စုံမ, မစုံ — how often each category appeared in the week's draws. Validate the exact classification orientation and rules before implementing.
 3. **Special number-group appearances for the previous week:** ပါဝါ, ညီကို/ညီအကို, အပူး, နက္ခတ် and **ပြန်ကျ**. Count/report how each appeared. **ပြန်ကျ (confirmed core meaning):** repeat occurrence of an **identical 2D pair**, as with **01 on Monday, then 01 again on Tuesday**. This is different from a single 0 or 1 appearing in another pair; it concerns identical complete 2D values. The two occurrences need not be consecutive in the draw sequence and can take place on the same day or different days. A reversed pair like 01 and 10 is not identical, so it is not an exact-number recurrence. The exact membership definitions for the other named special groups remain pending; inspect existing verified app definitions and confirm with user. Do not assume the special groups are mutually exclusive.
-4. **ကျန်ဂဏန်း (remaining numbers):** user wants a separate remaining-number component of the previous-week report. **Ambiguous scope:** Is this the 0–9 digits that did not appear, the 00–99 two-digit numbers that did not appear, or another locally defined "remaining" concept? **Keep unimplemented and pending until user clarifies.**
+4. **ကျန်ဂဏန်း (remaining numbers) — CONFIRMED 2026-11-07:** For the entire preceding Monday–Friday week, collect the **unique digits 0–9** that occurred in *either the tens or ones position* in its confirmed 2D draw results. Return the **complement within 0–9** (the single digits that never appeared at all during that previous week). **Do not calculate the complement of 00–99**. An identical-digit result such as `44` means digit 4 appeared, so it is NOT a remaining digit. If all ten single digits appeared, the remaining set is empty. For an incomplete/uncertain week, describe coverage clearly; do not claim absence from missing records.
+
+   **Illustrative:** Previous week's observed single digits are `0, 1, 2, 3, 5, 7, 9`, so **ကျန်ဂဏန်း = 4, 6, 8**. This is the same *single-digit unseen* concept as A-05, but **A-04 uses the finished previous week**, whereas **A-05 tracks the current week dynamically after the first verified draw**. This is not the same as A-06's 00–99 pair absence ranking.
 
 ### A-04.2a Worked example of ပြန်ကျ — user supplied
 
@@ -380,7 +382,7 @@ The user explicitly **confirmed ပြန်ကျ** as **the exact same two-dig
 - **A-02:** "Among historical draws matching the **current target's weekday AND morning/evening**, what numbers/digits/classes/groups occurred most?" — a different history population.
 - **A-03:** "Does the **chronological four-class pattern** of this week match an ordered historical week prefix, and what came after?" — a strict pattern search.
 
-Never combine A-04 totals with A-02 same-session counts, and never automatically treat "remaining" as a missing digit until confirmed.
+Never combine A-04 totals with A-02 same-session counts. **The user has now explicitly confirmed** that A-04 "remaining" means previously unseen **single digits 0–9** for the completed previous week.
 
 ### A-04.4 Data safety and suggested verification cases (NOT yet approved formulas)
 
@@ -393,13 +395,13 @@ Never combine A-04 totals with A-02 same-session counts, and never automatically
 ### A-04.5 Specific open questions for user
 
 - **Q-13 (mostly resolved):** **ပြန်ကျ = identical full 2D value occurs at least twice in the same week** (any days, either AM/PM, not necessarily adjacent). 01→10 does not qualify as an identical pair. **Pending only:** how to present/count a pair appearing 3+ times.
-- **Q-14:** What are **"ကျန်ဂဏန်း"** here: remaining 0–9 digits, remaining 00–99 pairs, or something else?
+- **Q-14 RESOLVED:** **"ကျန်ဂဏန်း" = digits 0–9 not appearing anywhere (tens or ones) in last week’s confirmed results.** Not remaining 00–99 pairs.
 - **Q-15:** In 0–9 frequency, does `55` count digit 5 once (one draw) or twice (two positions)? Should tens and ones also be shown separately?
 - **Q-16:** Confirm definitions/overlap of the four parity classes and five named special groups, including whether **"ညီကို"** equals **"ညီအကို"**.
 - **Q-17:** Which incomplete/holiday weeks are eligible for last-week review, and how should missing records be represented?
 - **Q-18:** Whether the default view should show all group counts, only groups that appeared, and where/when to show drill-down — **UI not decided yet**.
 
-**Feature assignment:** undecided. **Code change:** none. **Next action:** clarify the remaining edge cases of `ပြန်ကျ`, the meaning of `ကျန်ဂဏန်း`, and other special-set definitions; do not implement unconfirmed rules.
+**Feature assignment:** undecided. **Code change:** none. **Next action:** clarify remaining A-04 frequency counting details (especially repeated digits such as `55`), `ပြန်ကျ` 3+ appearance presentation, and data quality; do not implement unconfirmed rules.
 
 ---
 
@@ -760,7 +762,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
 | Q-13 | A-04 ပြန်ကျ | Confirmed: exact 2D recurrence anywhere within one week, same day or different day; pending 3+ occurrence count/presentation |
-| Q-14 | A-04 ကျန်ဂဏန်း | Remaining 0–9 digits vs 00–99 pairs vs another definition |
+| Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
 | Q-15 | A-04 digit counts | Count 55 once or twice; whether to split tens/ones |
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
 | Q-17 | A-04 data completeness | Which holiday/partially recorded weeks qualify |
@@ -857,6 +859,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | User reviewed detailed restatement of A-01 through A-08 and found the core logic complete and correct, with new A-01 addition below | Confirmed main understanding; previously pending details remain open |
 | 2026-11-07 | A-01: prominently display which digit most frequently pairs with a digit when it returns after a missing week, grounded in historical returned 2D outcomes | User explicitly approved; ranking priority confirmed |
 | 2026-11-07 | A-01 first-return partner frequency uses OPTION A: only the first result in the immediately following week containing the missing digit, one observation per historical missing-week episode; ignore subsequent occurrences for this ranking | Explicitly confirmed by user; Q-39 resolved |
+| 2026-11-07 | A-04 ကျန်ဂဏန်း means unique digits 0–9 not observed in any confirmed AM/PM result of the completed previous week, tens or ones; not unused 00–99 pairs | Explicit user confirmation; Q-14 resolved |
 
 ---
 
