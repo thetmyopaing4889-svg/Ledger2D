@@ -442,7 +442,7 @@ object TwoDAnalysisEngine {
         var missingSecond = 0
         val earliest = bySlot.keys.minOfOrNull { it.first }
         if (earliest != null) {
-            var candidateDate = earliest
+            var candidateDate: LocalDate = earliest ?: target.date
             while (candidateDate.dayOfWeek != target.date.dayOfWeek)
                 candidateDate = candidateDate.plusDays(1)
             while (candidateDate.isBefore(target.date)) {
