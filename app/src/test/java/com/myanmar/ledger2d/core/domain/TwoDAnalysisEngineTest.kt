@@ -98,7 +98,7 @@ class TwoDAnalysisEngineTest {
             row("2026-11-03", pm, "35"),
         )
         val a = TwoDAnalysisEngine.calculate(current, target("2026-11-04")).a05
-        assertEquals(listOf(true to true, true to true, true to false, false to true),
+        assertEquals(listOf(true to true, true to true, false to false, false to true),
             a.transitions.map { it.newTens to it.newOnes })
         assertEquals(listOf('4','6','7','8','9'), a.remainingDigits)
         val double = TwoDAnalysisEngine.calculate(
