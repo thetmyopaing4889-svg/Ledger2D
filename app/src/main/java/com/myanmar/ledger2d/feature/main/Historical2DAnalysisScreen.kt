@@ -126,10 +126,24 @@ fun Historical2DAnalysisScreen(
 
     val historyFlow = remember(container) { container.history.observeAll() }
     val dailyFlow = remember(container) { container.liveResults.observeAll() }
+    val winnerFlow = remember(container) { container.winners.observeAll() }
+    val manualLockFlow = remember(container) { container.database.manualWinnerLockDao().observeAll() }
+    val closedDayFlow = remember(container) { container.closedDays.observeAll() }
     val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val daily by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val merged = remember(history, daily, today, currentYangonTime.hour, currentYangonTime.minute) {
-        Historic2DDataSource.resolve(daily, history, today, currentYangonTime.toLocalTime())
+    val winners by winnerFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val manualLocks by manualLockFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val closedDays by closedDayFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val merged = remember(history, daily, winners, manualLocks, closedDays,
+        today, currentYangonTime.hour, currentYangonTime.minute) {
+        val verified = Historic2DDataSource.resolve(
+            daily, history, today, currentYangonTime.toLocalTime(), winners, manualLocks,
+        )
+        val closedDates = closedDays.map { it.date }.toSet()
+        verified.copy(
+            draws = verified.draws.filterNot { it.date in closedDates },
+            conflicts = verified.conflicts.filterNot { it.date in closedDates },
+        )
     }
     val period = selectedHistoricPeriod(periodKey, today, customStart, customEnd)
     val session = when (sessionKey) {

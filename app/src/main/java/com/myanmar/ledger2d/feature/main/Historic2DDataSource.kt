@@ -2,6 +2,8 @@ package com.myanmar.ledger2d.feature.main
 
 import com.myanmar.ledger2d.core.database.HistoryResultEntity
 import com.myanmar.ledger2d.core.database.LiveDailyResultEntity
+import com.myanmar.ledger2d.core.database.WinningNumberEntity
+import com.myanmar.ledger2d.core.database.ManualWinnerLockEntity
 import com.myanmar.ledger2d.core.domain.HistoricDraw
 import com.myanmar.ledger2d.core.domain.HistoricDrawMerger
 import com.myanmar.ledger2d.core.domain.HistoricMerge
@@ -50,6 +52,8 @@ internal object Historic2DDataSource {
         history: List<HistoryResultEntity>,
         today: LocalDate,
         now: LocalTime = LocalTime.now(yangon),
+        winners: List<WinningNumberEntity> = emptyList(),
+        manualLocks: List<ManualWinnerLockEntity> = emptyList(),
     ): HistoricMerge {
         val primary = liveDaily.flatMap { row ->
             val isToday = row.date == today
@@ -70,6 +74,31 @@ internal object Historic2DDataSource {
                 HistoricDraw(row.date, DrawSession.EVENING, row.evening2d, HistoricSource.HISTORY),
             )
         }
-        return HistoricDrawMerger.merge(primary, secondary, today)
+        val available = HistoricDrawMerger.merge(primary, secondary, today)
+        // Operational winners are authoritative: user-owned corrections override
+        // Luke checkpoints, historical imports and previous daily projections.
+        // Respect today's result boundary even if the winner was manually saved early.
+        val authoritative = winners.mapNotNull { winner ->
+            val close = when (winner.session) {
+                DrawSession.MORNING -> morningClose
+                DrawSession.EVENING -> eveningClose
+            }
+            if (winner.date > today || (winner.date == today && now.isBefore(close))) {
+                null
+            } else {
+                HistoricDraw(winner.date, winner.session, winner.digit, HistoricSource.WINNER)
+            }
+        }
+        val merged = HistoricDrawMerger.merge(authoritative, available.draws, today)
+        // A deleted manual winner leaves a lock/tombstone. In that case a
+        // historical or live fallback MUST NOT resurrect the withdrawn result.
+        val winnerKeys = authoritative.map { it.date to it.session }.toSet()
+        val suppressed = manualLocks.map { it.date to it.session }.toSet() - winnerKeys
+        return HistoricMerge(
+            draws = merged.draws.filterNot { (it.date to it.session) in suppressed },
+            conflicts = (available.conflicts + merged.conflicts).filterNot {
+                (it.date to it.session) in suppressed
+            },
+        )
     }
 }

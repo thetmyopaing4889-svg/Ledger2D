@@ -145,6 +145,8 @@ data class AgentStatementCommissionRow(
 }
 
 @Dao interface ManualWinnerLockDao {
+    @Query("SELECT * FROM manual_winner_locks ORDER BY date DESC, session")
+    fun observeAll(): Flow<List<ManualWinnerLockEntity>>
     @Query("SELECT * FROM manual_winner_locks WHERE date=:date AND session=:session LIMIT 1")
     suspend fun get(date: LocalDate, session: DrawSession): ManualWinnerLockEntity?
 

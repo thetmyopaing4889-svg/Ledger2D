@@ -120,4 +120,76 @@ class Historic2DDataSourceTest {
         )
         assertTrue(merged.draws.isEmpty())
     }
+
+    @Test fun operationalWinnerOverridesDailyAndImportedHistory() {
+        val date = LocalDate.parse("2026-11-05")
+        val winner = com.myanmar.ledger2d.core.database.WinningNumberEntity(
+            date = date, session = DrawSession.MORNING, digit = "78",
+            createdAt = 0, updatedAt = 0,
+        )
+        val result = Historic2DDataSource.resolve(
+            liveDaily = listOf(daily("2026-11-05", morning = "12")),
+            history = listOf(history("2026-11-05", "34", "56")),
+            today = LocalDate.parse("2026-11-07"),
+            winners = listOf(winner),
+        )
+        assertEquals("78", result.draws.first { it.date == date && it.session == DrawSession.MORNING }.digit)
+        assertEquals(HistoricSource.WINNER,
+            result.draws.first { it.date == date && it.session == DrawSession.MORNING }.source)
+        assertEquals("56", result.draws.first { it.date == date && it.session == DrawSession.EVENING }.digit)
+    }
+
+    @Test fun manualDeletionLockPreventsHistoricFallbackResurrection() {
+        val date = LocalDate.parse("2026-11-05")
+        val lock = com.myanmar.ledger2d.core.database.ManualWinnerLockEntity(
+            date = date, session = DrawSession.MORNING,
+            createdAt = 0, updatedAt = 0,
+        )
+        val result = Historic2DDataSource.resolve(
+            liveDaily = emptyList(),
+            history = listOf(history("2026-11-05", "12", "34")),
+            today = LocalDate.parse("2026-11-07"),
+            manualLocks = listOf(lock),
+        )
+        assertFalse(result.draws.any { it.date == date && it.session == DrawSession.MORNING })
+        assertTrue(result.draws.any { it.date == date && it.session == DrawSession.EVENING })
+    }
+
+    @Test fun existingManualWinnerRemainsVisibleWithItsLock() {
+        val date = LocalDate.parse("2026-11-05")
+        val lock = com.myanmar.ledger2d.core.database.ManualWinnerLockEntity(
+            date = date, session = DrawSession.MORNING,
+            createdAt = 0, updatedAt = 0,
+        )
+        val winner = com.myanmar.ledger2d.core.database.WinningNumberEntity(
+            date = date, session = DrawSession.MORNING, digit = "89",
+            createdAt = 0, updatedAt = 0,
+        )
+        val result = Historic2DDataSource.resolve(
+            liveDaily = emptyList(),
+            history = listOf(history("2026-11-05", "12", "34")),
+            today = LocalDate.parse("2026-11-07"),
+            winners = listOf(winner), manualLocks = listOf(lock),
+        )
+        assertEquals("89", result.draws.first { it.session == DrawSession.MORNING }.digit)
+    }
+
+    @Test fun currentWinnerRequiresReachedResultBoundary() {
+        val date = LocalDate.parse("2026-11-06")
+        val winner = com.myanmar.ledger2d.core.database.WinningNumberEntity(
+            date = date, session = DrawSession.EVENING, digit = "45",
+            createdAt = 0, updatedAt = 0,
+        )
+        val early = Historic2DDataSource.resolve(
+            emptyList(), emptyList(), date, LocalTime.of(15, 59),
+            winners = listOf(winner),
+        )
+        assertTrue(early.draws.isEmpty())
+        val onTime = Historic2DDataSource.resolve(
+            emptyList(), emptyList(), date, LocalTime.of(16, 30),
+            winners = listOf(winner),
+        )
+        assertEquals("45", onTime.draws.single().digit)
+    }
+
 }

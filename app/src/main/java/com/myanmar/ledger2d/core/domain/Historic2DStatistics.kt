@@ -7,7 +7,7 @@ import java.time.LocalDate
  * A read-only, independent historical draw. It is never an operational ledger winner.
  * One draw is uniquely identified by (date, session), not by its number.
  */
-enum class HistoricSource { DAILY, HISTORY }
+enum class HistoricSource { DAILY, HISTORY, WINNER }
 
 data class HistoricDraw(
     val date: LocalDate,
