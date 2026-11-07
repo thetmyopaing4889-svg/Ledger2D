@@ -1,10 +1,10 @@
 # Cherry's 2D Ledger — 2D Analysis Master Specification
 
-> **Status:** Requirements collection / redesign planning; implementation **NOT approved**.  
-> **Version:** 0.1 — 2026-11-06  
+> **Status:** Eight-method redesign **authorized and implemented on isolated experimental branch** `feature/2d-analysis-timeline-redesign`; CI regression and real-device acceptance still required before merge.  
+> **Version:** 0.2 — 2026-11-07  
 > **Repository branch at creation:** `experiment/font-typography-lab-build930`  
 > **Baseline code reviewed:** Build #963, commit `522a37c8637ad847677931756bcdef916693f343` (CI success).  
-> **Purpose:** Transfer the complete *why, what, definitions, examples, open questions and decisions* across conversations and eventually into implementation tests. **This document is a working source of truth, not permission to change app code.**
+> **Purpose:** Transfer the complete *why, what, definitions, examples, open questions and decisions* across conversations and eventually into implementation tests. **This document is the working source of truth; implementation was subsequently authorized explicitly on 2026-11-07 for the isolated redesign branch, not for merging into the baseline without acceptance.**
 
 ## Reading guide — important
 
@@ -811,14 +811,14 @@ When the user describes an exact method using any of these observations, **give 
 | Q-02 | A-01 history | PARTLY RESOLVED: all available verified history default, optional week/month/custom; show/use known evidence; unknown before apparent first return is not verified first return; denominator and range boundaries pending |
 | Q-03 | A-02 horizon | RESOLVED: all available verified history by default, optional user one-week/one-month/custom dates |
 | Q-04 | A-02 digit tally | RESOLVED: count both positions; 55 contributes two occurrences of digit 5 |
-| Q-05 | A-02 minimum | Is 0 occurrence included when showing 'least'? |
+| Q-05 | A-02 minimum | RESOLVED: least frequency excludes zeros; zero-observation values are listed separately as never observed |
 | Q-06 | A-02 groups | User-approved exact mapping of doubles/power/nakhat/siblings and overlap rules |
 | Q-07 | A-03 holidays | RESOLVED: historical match MUST align identical weekday, identical AM/PM, identical corresponding even/odd class; any week with a verified closed day is excluded from A-03 strict pattern matching, not compressed |
 | Q-08 | A-03 missing records | PARTLY RESOLVED: closed-day weeks excluded from A-03; unknown open-day result gaps are flagged and not compressed/shifted. Final week eligibility for unknown records pending |
-| Q-09 | A-03 sequence location | Historic prefix anchored at first real weekly draw versus any contiguous intraweek substring |
+| Q-09 | A-03 sequence location | RESOLVED: prefix strictly anchored at Monday morning at start of week, never sliding midweek; verified closure-week excluded |
 | Q-10 | A-03 history horizon | PARTLY RESOLVED: all available verified historical weeks by default, user-selectable one-week/one-month/custom range; qualifying next draw and boundary cases pending |
-| Q-11 | Design | PARTLY RESOLVED: 4+2+2 timeline grouping plus useful short previews under each of the three group headings (not a single shared highlight block) user-approved; specific highlight choice, navigation, layout and visual style pending |
-| Q-12 | Spec workflow | User to teach remaining checks before feature organization |
+| Q-11 | Design | PARTLY RESOLVED: 4+2+2 timeline grouping with per-group concise previews, expandable details, compact premium Material 3 and soft elevated surfaces approved; mobile screenshot acceptance pending |
+| Q-12 | Spec workflow | RESOLVED: eight checks collected, grouped 4+2+2, UI approved, implementation authorized on isolated branch |
 | Q-13 | A-04 ပြန်ကျ | RESOLVED: exact 2D repeat count per number = max(0, occurrences within previous week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
 | Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
 | Q-15 | A-04 digit counts | PARTLY RESOLVED: 55 contributes two occurrences of digit 5; optional separate tens/ones display still undecided |
@@ -826,13 +826,13 @@ When the user describes an exact method using any of these observations, **give 
 | Q-17 | A-04 data completeness | RESOLVED base policy: exclude verified closed dates, analyze other known previous-week results, label missing open-day slots and unverified weeks |
 | Q-18 | A-04 presentation | Default groups and drill-down after all methods collected |
 | Q-19 | A-05 repeated digit within one draw | RESOLVED: first 11 = one new digit, remaining 234567890; optional wording for later already-seen doubles |
-| Q-20 | A-05 tens/ones order | New+old and old+new separate versus aggregated |
+| Q-20 | A-05 tens/ones order | RESOLVED: preserve tens/ones order; new+old and old+new distinct |
 | Q-21 | A-05 history scope | Current-week descriptive flow only or any user-approved history matching |
 | Q-22 | A-05 presentation | Remaining current-week digits REQUIRED; final layout for draw/day flow and remaining set pending |
 | Q-23 | A-05 completeness | PARTLY RESOLVED: skip verified closed dates, continue with known weekly results, flag unknown open-day gaps; historic closure evidence still needs validation |
 | Q-24 | A-06 absence unit | RESOLVED: consecutive relevant completed result occasions, not calendar days; independent AM/PM/combined counters |
 | Q-25 | A-06 history horizon | PARTLY RESOLVED: all available verified history default, optional week/month/custom range; never-seen, truncated-streak boundaries pending |
-| Q-26 | A-06 target timing | Results eligible before target occasion, refresh behavior |
+| Q-26 | A-06 target timing | RESOLVED: eligible confirmed results strictly BEFORE target draw; selected historical target is an exclusive cutoff, no later result leakage |
 | Q-27 | A-06 completeness | PARTLY RESOLVED: skip verified closures with zero draw occasions; count confirmed observations only; missing open-day slots and unverifiable streak lengths remain flagged |
 | Q-28 | A-06 presentation | All ties/top N, last-seen date, duration details and drill-down |
 | Q-29 | A-06 meaning of longest | Current ongoing absence at the latest confirmed result is the user-described case; no unrequested all-time streak leaderboard |
@@ -842,7 +842,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-33 | A-07 missing source data | RESOLVED base policy: skip verified closed dates; count observed current-week groups, flag unknown results and do not claim unseen digits as complete-week fact |
 | Q-34 | A-08 three searches | RESOLVED: always match both references together AND first alone AND second alone; never fallback-only |
 | Q-35 | A-08 reference selection | RESOLVED core: AM = previous trading day's AM+PM; PM = previous trading day PM+today AM; Friday→Monday explicit |
-| Q-36 | A-08 holiday and closure | PARTLY RESOLVED: skip verified closed dates; use fully-evidenced episodes only, flag unavailable reference/target slots; how to select preceding trading-day reference slots across closures still OPEN |
+| Q-36 | A-08 holiday and closure | PARTLY RESOLVED: use nearest prior verified-open weekday across known closures, keeping slot identity and unknown records explicit; historic closure evidence completeness still needs validation |
 | Q-37 | A-08 history sample | PARTLY RESOLVED: all available verified history default, optional week/month/custom range; incomplete/cross-boundary episodes, counts, ties and evidence pending |
 | Q-38 | A-08 evening method | RESOLVED: today PM uses preceding day's PM + current day's AM, with all three searches |
 | Q-39 | A-01 return partner frequency | RESOLVED OPTION A: first eligible confirmed 2D return result only in the following week; count one companion per historical missing-week episode |
@@ -903,6 +903,20 @@ Do not mistake the table for a user-approved implementation plan.
 **Scope of approval:** Approves the group-specific visible preview idea and usability-first progressive disclosure; **no app code changed**, no finalized pixel layout, no commitment to a single-page implementation yet.
 
 
+## VI.2 Implementation and user acceptance stage (authorized 2026-11-07)
+
+The user subsequently approved moving from discussion to actual implementation. The historical "not approved" and "design later" notes elsewhere in the spec describe the **earlier planning phase**, not an instruction to stop the already-authorized rebuild.
+
+- Working branch: `feature/2d-analysis-timeline-redesign`. The original `experiment/font-typography-lab-build930` baseline has not been modified by this rebuild.
+- Implemented: Pure `TwoDAnalysisEngine` covering A-01 through A-08 with individual typed outputs and evidence, shared `TwoDigitGroups` with Quick Entry, and new `Historical2DTimelineScreen` plus detailed panels.
+- Entry is one 2D Analysis feature, with three concise expandable timeline group cards in 4+2+2 order. Each card displays useful verifiable findings even while collapsed. A previous-screen route remains available for regression/fallback. `မူ` retains its placeholder scope.
+- Result sources: operational `winning_numbers` take precedence; deleted-manual-result lock/tombstone blocks live/history fallback; in-progress current-day values cannot pass final result cutoff; verified closed dates excluded; unknown gaps surfaced.
+- History lookback: all available verified history (default), one week, one month, or custom dates. Intrinsic current/previous-week checks stay fixed to their true week.
+- Visual approach: material surfaces, subtle soft shadows/tonal elevation, expand/collapse motion, compact responsive labels, full MM/EN labels and evidence drill-down, not decorative heavy 3D.
+- Automated regression: checks added for all eight engines, exact repeat counting, weekday/session anchoring, no look-ahead, source precedence, manual deletion locks, and chosen history-range boundaries.
+- CI evidence: Android CI Build #995 completed successfully at commit `f3cd17ff0d345cf0f8bce0a58bc43dfe55c08e33`. **Later changes are NOT implied to pass by that earlier successful run**; confirm the latest branch-head CI before a release or merge.
+- Remaining acceptance: user inspection on actual phone (layout, legibility, MM/EN wrapping, compact highlights) and historical data completeness in real imported feeds. No guarantee of next-result prediction.
+
 # Part VII — Code/change safety
 
 - This document is created **without code changes**. Existing analysis implementation is reference material, **not the newly approved business specification**.
@@ -930,7 +944,7 @@ Do not mistake the table for a user-approved implementation plan.
 - **Result contract:** counts, dates, matches, any no-result rule, evidence
 - **Confirmed by user vs pending**
 - **Tests to create after approval**
-- **Feature assignment: undecided until all methods collected**
+- **Feature assignment: APPROVED; timeline-based three-group 4+2+2, see Part V-A**
 - **Change note and approval date** if later modified
 
 ## Decision log
@@ -971,7 +985,7 @@ Do not mistake the table for a user-approved implementation plan.
 
 ---
 
-**Next action:** Timeline-based method grouping (4+2+2) is now user-approved; the next step is **to discuss UI/navigation arrangement separately**, using the three groups as fixed information architecture. Do not confuse this grouping approval with UI or coding authorization. Preserve confirmed calculations, Research Workspace and မူ.
+**Next action:** User authorized the isolated 2D Analysis rebuild after reviewing the 4+2+2 grouping, per-group highlights and premium soft-elevation visual direction. Validate full Android CI on the latest commit, then obtain real-phone visual/behavioral acceptance before merging. Keep Research Workspace and မူ independent.
 
 # Part IX — 2D Research Workspace: separate feature concept (NOT a ninth fixed method)
 
