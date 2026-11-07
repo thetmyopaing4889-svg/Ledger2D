@@ -172,13 +172,10 @@ class BetParser {
 }
 
 class BetExpansionEngine(private val parser: BetParser = BetParser()) {
-    private val power = listOf("05", "50", "16", "61", "27", "72", "38", "83", "49", "94")
-    private val astrology = listOf("07", "70", "18", "81", "24", "42", "35", "53", "69", "96")
-    private val doubles = (0..9).map { "$it$it" }
-    private val siblings = listOf(
-        "01", "10", "12", "21", "23", "32", "34", "43", "45", "54",
-        "56", "65", "67", "76", "78", "87", "89", "98", "09", "90",
-    )
+    private val power = TwoDigitGroups.power
+    private val astrology = TwoDigitGroups.astrology
+    private val doubles = TwoDigitGroups.doubles
+    private val siblings = TwoDigitGroups.siblings
     // Longest matching alias wins. E.g. ပါဝါ before ပါ, ခွေပူး before ခွေ.
     private val aliases = listOf(
         "အခွေပူး" to QuickFormat.COMBINATION_DOUBLES,
