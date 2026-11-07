@@ -29,7 +29,13 @@ internal fun twoDParityLabel(name: String, en: Boolean): String = if (!en) name 
 }
 
 @Composable
-internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boolean) {
+internal fun TwoDAnalysisDetails(
+    id: String,
+    report: TwoDAnalysisReport,
+    en: Boolean,
+    selectedStreakStream: String? = null,
+    onStreakStreamChange: ((String) -> Unit)? = null,
+) {
     fun tr(mm: String, english: String) = if (en) english else mm
     fun n(count: Int) = count.toString() + tr(" ကြိမ်", " times")
     fun slot(s: DrawSession) = if (s == DrawSession.MORNING) tr("မနက်", "AM") else tr("ညနေ", "PM")
@@ -100,16 +106,20 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
             }
         }
         "06" -> {
-            var stream by remember(report.target) { mutableStateOf(
+            var localStream by remember(report.target) { mutableStateOf(
                 if (report.target.session == DrawSession.MORNING) "morning" else "evening",
             ) }
+            val stream = selectedStreakStream ?: localStream
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(
                     "morning" to tr("မနက်", "AM"),
                     "evening" to tr("ညနေ", "PM"),
                     "combined" to tr("ပေါင်း", "Both"),
                 ).forEach { (key, name) ->
-                    FilterChip(selected = stream == key, onClick = { stream = key },
+                    FilterChip(selected = stream == key, onClick = {
+                        if (onStreakStreamChange != null) onStreakStreamChange(key)
+                        else localStream = key
+                    },
                         label = { Text(name, style = MaterialTheme.typography.labelSmall) })
                 }
             }
