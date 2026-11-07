@@ -151,12 +151,23 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
             )) else {
                 AnalysisDetailLine(tr("ဒီအပတ် စစ်ထားသောအကြိမ်", "This week's draws"),
                     n(a.transitions.size))
+                if (!a.completeThroughTarget) AnalysisDetailNote(tr(
+                    "ဒီအပတ် အချို့အကြိမ် Result မတွေ့ပါ။ ကျန်ဂဏန်းစာရင်းမှာ ရရှိထားသောမှတ်တမ်းအပေါ်သာ အခြေခံသည်။",
+                    "Some open draw slots are unknown. Unseen digits refer only to available records.",
+                ))
                 a.transitions.take(10).forEach { t ->
-                    AnalysisDetailLine(match(t.result),
+                    val wording = if (t.result.digit[0] == t.result.digit[1]) {
+                        if (t.newlySeenDigits.isNotEmpty()) tr("ဂဏန်းအသစ် ၁ လုံး", "1 new digit")
+                        else tr("ဂဏန်းအဟောင်း ၁ လုံး", "1 old digit")
+                    } else {
                         (if (t.newTens) tr("အသစ်", "New") else tr("အဟောင်း", "Old")) + " + " +
-                            (if (t.newOnes) tr("အသစ်", "New") else tr("အဟောင်း", "Old")))
+                            (if (t.newOnes) tr("အသစ်", "New") else tr("အဟောင်း", "Old"))
+                    }
+                    AnalysisDetailLine(match(t.result), wording)
                 }
-                AnalysisDetailLine(tr("မပေါ်သေးတဲ့ တစ်လုံးဂဏန်း", "Unseen single digits"),
+                AnalysisDetailLine(
+                    if (a.completeThroughTarget) tr("မပေါ်သေးတဲ့ တစ်လုံးဂဏန်း", "Unseen single digits")
+                    else tr("ရရှိသောမှတ်တမ်း၌ မပေါ်", "Unseen in available records"),
                     a.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") })
             }
         }

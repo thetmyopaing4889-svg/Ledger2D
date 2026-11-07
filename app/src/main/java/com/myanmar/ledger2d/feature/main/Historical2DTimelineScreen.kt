@@ -123,7 +123,7 @@ fun Historical2DTimelineScreen(
         )
     }
     val validTarget = DrawSchedule.isWorkingDate(date, closedDates)
-    val report = remember(merged, target, closedDates, range, validTarget) {
+    val report = remember(merged, target, closedDates, range, validTarget, lookback, customValid) {
         if (validTarget && (lookback != "custom" || customValid))
             TwoDAnalysisEngine.calculate(merged.draws, target, closedDates, range)
         else null
@@ -259,11 +259,18 @@ fun Historical2DTimelineScreen(
                 val a06 = report.a06.getValue(
                     if (target.session == DrawSession.MORNING) "morning" else "evening")
                 val longMissing = a06.fullNumbers.firstOrNull()
+                val equalMissing = if (longMissing == null) emptyList()
+                    else a06.fullNumbers.takeWhile {
+                        it.observedDrawsSince == longMissing.observedDrawsSince
+                    }
                 val group1 = listOfNotNull(
                     if (a06.observedDraws > 0 && longMissing != null) {
                         tr("ပျောက်နေတဲ့ 2D", "Longest missing 2D") to
-                            (longMissing.value + " · " + longMissing.observedDrawsSince +
-                                tr(" ကြိမ်", " draws"))
+                            ((if (equalMissing.size > 1)
+                                equalMissing.size.toString() + tr(" လုံးတူ", " numbers tied")
+                            else longMissing.value) +
+                                " · " + longMissing.observedDrawsSince +
+                                tr(" ကြိမ် (ရှိသမျှမှတ်တမ်း)", " observed draws"))
                     } else null,
                     if (report.a08.both.matches.isNotEmpty()) {
                         tr("ရှေ့ ၂ ကြိမ်တူ History", "Both-reference matches") to
@@ -281,7 +288,9 @@ fun Historical2DTimelineScreen(
                     listOf(tr("ယခုအပတ်", "This week") to
                         tr("Result မရှိသေး", "No confirmed results yet"))
                 } else listOf(
-                    tr("မပေါ်သေးတဲ့ဂဏန်း", "Unseen single digits") to
+                    (if (flow.completeThroughTarget)
+                        tr("မပေါ်သေးတဲ့ဂဏန်း", "Unseen single digits")
+                    else tr("ရရှိသောမှတ်တမ်း၌ မပေါ်", "Unseen in available records")) to
                         (flow.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") }),
                     tr("ပြန်ကျ", "Exact 2D repeats") to
                         (report.a07.repeatedNumbers.sumOf { it.count }.toString() +

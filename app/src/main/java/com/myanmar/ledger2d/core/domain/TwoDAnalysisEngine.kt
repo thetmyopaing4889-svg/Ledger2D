@@ -57,6 +57,8 @@ data class TwoDTransition(
 data class TwoDWeekFlow(
     val transitions: List<TwoDTransition>,
     val remainingDigits: List<Char>,
+    /** Missing open slots prevent a definitive claim of complete weekly absence. */
+    val completeThroughTarget: Boolean,
 )
 
 data class TwoDWeekSpecial(
@@ -157,7 +159,8 @@ object TwoDAnalysisEngine {
             a03 = pattern(known, bySlot, target, verifiedClosedDays, historyRange),
             a06 = streaks(historical, target, verifiedClosedDays),
             a08 = priorResults(historical, bySlot, target, verifiedClosedDays, historyRange),
-            a05 = flow(thisWeek),
+            a05 = flow(thisWeek, slotsForWeek(currentMonday, verifiedClosedDays)
+                .filter { isBefore(it.first, it.second, target) }.all { it in bySlot }),
             a07 = special(thisWeek),
             a04 = a04,
             a01 = returns(known, bySlot, a04, currentMonday, target, verifiedClosedDays, historyRange),
@@ -273,7 +276,7 @@ object TwoDAnalysisEngine {
     }
 
     /** A-05: chronological within-week new/old, tens and ones order never reversed. */
-    private fun flow(draws: List<HistoricDraw>): TwoDWeekFlow {
+    private fun flow(draws: List<HistoricDraw>, complete: Boolean): TwoDWeekFlow {
         val seen = mutableSetOf<Char>()
         val transitions = draws.map { draw ->
             val a = draw.digit[0]
@@ -286,7 +289,7 @@ object TwoDAnalysisEngine {
             seen.add(a); seen.add(b)
             transition
         }
-        return TwoDWeekFlow(transitions, allDigits.filter { it !in seen })
+        return TwoDWeekFlow(transitions, allDigits.filter { it !in seen }, complete)
     }
 
     /** A-07: actual current-week occurrences and exact-pair repeat EVENTS. */
