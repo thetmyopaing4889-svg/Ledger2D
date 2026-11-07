@@ -120,7 +120,7 @@ These must **never** be collapsed into one generic "last N results" query:
 
 ## A-01 — Previous-week missing single digits and their return
 
-**State:** Core intent confirmed and A-01 gained a **high-priority returning-digit partner-frequency check**, explicitly approved by user 2026-11-07. Return-event counting convention, holiday/incomplete-history handling and lookback horizon remain pending.  
+**State:** Core intent confirmed. A-01 gained a **high-priority returning-digit partner-frequency check**, explicitly approved on 2026-11-07. **Counting convention confirmed: OPTION A — only the FIRST confirmed return 2D draw in the immediately following week, one observation per historical missing-week episode.** Holiday/incomplete-history handling and lookback horizon remain pending.  
 **Scope:** Prior completed Monday–Friday week → current week confirmed results → past historical weeks with same missing digit.
 
 ### A-01.1 User's question
@@ -168,7 +168,15 @@ Multiple digits can be absent; the method must inspect each digit, not assume at
 - If companion digits tie for highest observed count, show all tied digits with counts; no arbitrary winner.
 - This is the frequency of a digit **paired on the 2D return outcomes after a missing week**, NOT global most frequent digit across all historical draws, and NOT a claim about likely next outcomes.
 
-**Important scope ambiguity to resolve before coding:** Stage 3 already captures the **first return result** in each matching historical following week. The user did not explicitly say whether **this partner ranking** should use only the **first return result per historical missing-week episode**, or **all following-week results containing the returning digit**. Both interpretations could produce different rankings. The five-outcome example above uses **one example return observation per historical episode**, not an approved final denominator.
+**Confirmed counting rule — OPTION A (2026-11-07):**
+1. Identify a completed historical Monday–Friday week in which a particular digit `d` (0–9) was entirely missing.
+2. Inspect the **immediately following week** in chronological order (date and AM before PM). Find the **FIRST eligible confirmed 2D result that contains `d`**.
+3. Extract the *other* digit of that first return result as `d`'s historical companion; count **ONE observation for that missing-week → following-week return episode**. A return result of 03 for missing 0 contributes companion 3 once; return 30 also contributes companion 3 once. A double 00 contributes companion 0.
+4. **Ignore later 2D results containing `d` in the same following week for this companion-frequency ranking**. Do not use every appearance in that week; do not double-count a historical episode.
+5. Aggregate first-return companions **across distinct qualifying historical episodes**, rank by observed count, preserve ties, and show eligible episode count and original return dates/sessions/results.
+6. If the following week has **no observed return** or has insufficient confirmed source records to verify the first return, **do not contribute a companion observation**; distinguish confirmed non-return from incomplete/unknown as decided under A-01 data completeness policy.
+
+**User's explicit counterexample:** Previously missing digit 0; next week's sequence includes Mon AM=03, Tue PM=07 and Thu AM=05. **ONLY 03 counts** for the partner ranking (companion 3 ×1); **07 and 05 must not enter this ranking**, despite also containing 0. This particular rule is about historical first-return companion frequencies and does not discard other current-week appearance information outside this ranking.
 
 **Presentation priority (CONFIRMED):** Prominently display the top accompanying digit(s), observed count, and the supporting full result(s), alongside the previous-week missing digit and its current-week/historical return status. Exact UI details remain to be designed.
 
@@ -186,7 +194,7 @@ Multiple digits can be absent; the method must inspect each digit, not assume at
 - Historical lookback period (all available, 1/3/6 months, or user-selectable).
 - Whether a historically missing digit should still be compared when its following week is partially recorded, and how prominently sample sizes should be displayed.
 - Date/session evidence for restored/imported results when availability is uncertain.
-- **Q-39**: For the prioritized partner-digit frequency after return, count first return per historical episode only or all return occurrences within the following week.
+- **Q-39 RESOLVED:** Only the first confirmed 2D return result in the immediately following week counts; one partner observation per historical missing-week episode. Later same-week appearances are ignored for this ranking.
 
 ---
 
@@ -777,7 +785,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-36 | A-08 holiday and closure | Pending how to align historical comparable slots when sessions or trading days are closed |
 | Q-37 | A-08 history sample | Lookback, missing records, counts, ties and examples |
 | Q-38 | A-08 evening method | RESOLVED: today PM uses preceding day's PM + current day's AM, with all three searches |
-| Q-39 | A-01 return partner frequency | First return only per historical missing-week episode or all appearances in following week? Priority is confirmed |
+| Q-39 | A-01 return partner frequency | RESOLVED OPTION A: first eligible confirmed 2D return result only in the following week; count one companion per historical missing-week episode |
 
 Do not mistake the table for a user-approved implementation plan.
 
@@ -847,7 +855,8 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-06 | A-08 AM references preceding day AM+PM; PM references preceding day PM + current AM; Mon AM uses previous Fri AM+PM | User confirmed; cross-week Fri→Mon allowed; closure handling pending |
 | 2026-11-06 | 2D Research Workspace as a separate user-controlled historical-question testing feature, distinct from eight automatic checks and unchanged မူ | Previously approved by user; reiterated after completing A-08; implementation design pending |
 | 2026-11-07 | User reviewed detailed restatement of A-01 through A-08 and found the core logic complete and correct, with new A-01 addition below | Confirmed main understanding; previously pending details remain open |
-| 2026-11-07 | A-01: prominently display which digit most frequently pairs with a digit when it returns after a missing week, grounded in historical returned 2D outcomes | User explicitly approved; first-return-only vs all next-week occurrences pending |
+| 2026-11-07 | A-01: prominently display which digit most frequently pairs with a digit when it returns after a missing week, grounded in historical returned 2D outcomes | User explicitly approved; ranking priority confirmed |
+| 2026-11-07 | A-01 first-return partner frequency uses OPTION A: only the first result in the immediately following week containing the missing digit, one observation per historical missing-week episode; ignore subsequent occurrences for this ranking | Explicitly confirmed by user; Q-39 resolved |
 
 ---
 
