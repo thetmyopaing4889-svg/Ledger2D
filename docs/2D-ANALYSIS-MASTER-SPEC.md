@@ -343,7 +343,7 @@ The user wants **a practical analysis of the current target session**, based on 
 
 ## A-04 — Previous week's completed draw distribution and remaining digits
 
-**State:** Core categories, exact same-week **ပြန်ကျ**, previous-week **ကျန်ဂဏန်း = still-unseen single digits in 0–9**, and **A-04 0–9 frequency = count each tens/ones position (55 yields two 5s)** are **confirmed**. Three-or-more recurrence presentation and some data-completeness/display details remain pending. **Do not code yet.**  
+**State:** Core categories, exact same-week **ပြန်ကျ**, previous-week **ကျန်ဂဏန်း = still-unseen single digits in 0–9**, and **A-04 0–9 frequency = count each tens/ones position (55 yields two 5s)** are **confirmed**. **ပြန်ကျ repeat-event count is confirmed for 2, 3, 4+ appearances** (repeat count = complete-pair occurrences within this week minus its first appearance); some data-completeness/display details remain pending. **Do not code yet.**  
 **Scope:** The **entire previous Monday–Friday week**, including its completed AM and PM draws that have verified final results. **Do not confuse with A-02**, which filters to *the same weekday and same session* as the current target. **Do not confuse with A-01**, which continues from previous-week missing single digits into *current-week reappearance* and historical next-week behavior.
 
 ### A-04.1 User's actual request (captured from conversation)
@@ -371,7 +371,7 @@ The user explicitly **confirmed ပြန်ကျ** as **the exact same two-dig
 - **User-confirmed: any day/occasion within the same week counts.** Monday **01** → Thursday **01**, with other intervening results, also qualifies.
 - **User-confirmed: no cross-week merging.** Previous-week summary evaluates that single Monday–Friday week; repeating the number in a different week is not a recurrence *within that weekly summary*.
 - **Logical exclusion of non-identical pairs:** **01** followed by **10** is not the same exact two-digit number and is not "ပြန်ကျ" under this definition.
-- **Still pending:** How to present/count **three or more occurrences** of the same number (e.g. 01 on Monday, Wednesday and Friday): count repeat events, number of distinct repeated pairs, or both? Do not invent an aggregation formula.
+- **USER CONFIRMED (2026-11-07):** For a given exact two-digit number `n` in one week, **ပြန်ကျ count = max(0, occurrencesOf(n) - 1)**. Its **first** appearance is **NOT** counted as ပြန်ကျ; each additional appearance is a separate repeat event. For **01** observed Mon AM, Wed PM, and Fri AM, report **"01 ပြန်ကျ ၂ ကြိမ်"**, not three. Example counts: one occurrence→0; two→1; three→2; four→3. This rule is identical for A-04's previous week and A-07's current week and is **independent of day/AM/PM adjacency**. Reset when the week changes, and do not count 01→10 as a repeat. The UI choice of additionally showing original total appearances remains separate from the confirmed repeat count.
 
 **Negative distinction (logical, not a separate agreed formula):** Monday **01**, Tuesday **02** share the single digit 0 but **not** the identical two-digit number 01; this is not the demonstrated ပြန်ကျ case.
 
@@ -394,14 +394,14 @@ Never combine A-04 totals with A-02 same-session counts. **The user has now expl
 
 ### A-04.5 Specific open questions for user
 
-- **Q-13 (mostly resolved):** **ပြန်ကျ = identical full 2D value occurs at least twice in the same week** (any days, either AM/PM, not necessarily adjacent). 01→10 does not qualify as an identical pair. **Pending only:** how to present/count a pair appearing 3+ times.
+- **Q-13 RESOLVED (counting):** **ပြန်ကျ = every occurrence after the first appearance of the exact same 2D number within one week**; 01 occurring 3 times → ပြန်ကျ 2 times. Count per-number repeat events; additional visual reporting of total original occurrences can be decided during UI design.
 - **Q-14 RESOLVED:** **"ကျန်ဂဏန်း" = digits 0–9 not appearing anywhere (tens or ones) in last week’s confirmed results.** Not remaining 00–99 pairs.
 - **Q-15 PARTLY RESOLVED:** For the combined 0–9 frequency **`55` counts twice** (each digit position separately). Whether to additionally show tens and ones in separate subviews is a pending presentation choice; A-02.e already separately requires tens and ones maxima.
 - **Q-16:** Confirm definitions/overlap of the four parity classes and five named special groups, including whether **"ညီကို"** equals **"ညီအကို"**.
 - **Q-17:** Which incomplete/holiday weeks are eligible for last-week review, and how should missing records be represented?
 - **Q-18:** Whether the default view should show all group counts, only groups that appeared, and where/when to show drill-down — **UI not decided yet**.
 
-**Feature assignment:** undecided. **Code change:** none. **Next action:** clarify remaining `ပြန်ကျ` 3+ appearance presentation, history completeness and relevant policy details; do not implement unconfirmed rules.
+**Feature assignment:** undecided. **Code change:** none. **Next action:** clarify remaining data completeness and optional visual presentation details; `ပြန်ကျ` repeat-event count is now confirmed. Do not implement unconfirmed rules.
 
 ---
 
@@ -556,7 +556,7 @@ The user confirmed the meaning clearly and does **not** want another speculative
 
 ## A-07 — Current-week occurrence status of special 2D groups
 
-**State:** User explicitly confirmed the **scope (current week)**, the **five named categories**, and the **start condition (at least one result in this week)**. Exact special-group mappings (other than the already defined "ပြန်ကျ") and the final presentation/aggregation remain pending. **Documentation only; no code/UI feature assignment yet.**
+**State:** User confirmed **current-week scope**, **five groups**, **start after first finalized weekly result**, and **ပြန်ကျ repeat-event counting** (first exact 2D occurrence uncounted; each subsequent one counts, so 01 occurring three times gives two repeat events). The presentation for other categories and data-quality cases remains pending. **Documentation only; no code/UI feature assignment yet.**
 
 ### A-07.1 User's explicit instruction
 
@@ -586,7 +586,7 @@ The user's wording **"ထွက်ရှိမှု အခြေအနေ"** me
 
 ### A-07.4 Confirmed relationship to ပြန်ကျ, and a worked example
 
-**Previously confirmed meaning carried forward from A-04:** If **01** appeared Monday AM and reappeared Monday PM, Tuesday AM, or another later draw in the same week, the second appearance is **ပြန်ကျ**. It does not require consecutive sessions. Seeing **01** and **10** is *not* repetition of the identical full 2D pair.
+**Confirmed from A-04 and user clarification on 2026-11-07:** Each **additional** appearance of the exact same complete 2D number **after its first appearance within that week** is one **ပြန်ကျ event**. For **01** appearing Monday AM, Wednesday PM and Friday AM, show **01 ပြန်ကျ ၂ ကြိမ်**. More generally a number's repeat count = `max(0, weeklyNumberOccurrences - 1)`. The first occurrence contributes zero. It does not require consecutive sessions. Seeing 01 and 10 is *not* recurrence of the identical full 2D pair. This same count rule applies to A-07 (current week) and A-04 (previous week).
 
 **Illustrative test scenarios (not real historical results):**
 
@@ -608,7 +608,7 @@ The first 01/10 examples above are **only for the ပြန်ကျ criterion**
 
 - **Q-30:** Verify exact category definitions for **အပူး, ညီကို, ပါဝါ, နက္ခတ်** and any group overlaps; reuse verified app domain behavior.
 - **Q-31:** Precisely how should the weekly status be summarized for each category (appeared yes/no, which result(s), occurrence count, draw dates and sessions, or some combination)? The essential current-week *appearance-status check* is agreed, but UI detail has not been finalized.
-- **Q-32:** For ပြန်ကျ with a pair observed three or more times in this same week, how should repeats be counted and presented? This shares A-04's unresolved multiple-repeat presentation rule.
+- **Q-32 RESOLVED (counting):** For a pair observed N times in the same current week, ပြန်ကျ = max(0, N−1); e.g. 01 observed three times → two repeats. The exact UI layout/optional separate total-appearance number remains a design decision, not a counting ambiguity.
 - **Q-33:** When source data for a past scheduled current-week draw is missing, how should incompleteness affect "not appeared yet" claims? Known holiday/no-draw does not produce a missing result.
 
 **Feature assignment:** undecided until the user finishes explaining all methods.  
@@ -761,7 +761,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-10 | A-03 history horizon | Number of historical weeks and sufficient follow-up |
 | Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
 | Q-12 | Spec workflow | User to teach remaining checks before feature organization |
-| Q-13 | A-04 ပြန်ကျ | Confirmed: exact 2D recurrence anywhere within one week, same day or different day; pending 3+ occurrence count/presentation |
+| Q-13 | A-04 ပြန်ကျ | RESOLVED: exact 2D repeat count per number = max(0, occurrences within previous week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
 | Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
 | Q-15 | A-04 digit counts | PARTLY RESOLVED: 55 contributes two occurrences of digit 5; optional separate tens/ones display still undecided |
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
@@ -780,7 +780,7 @@ When the user describes an exact method using any of these observations, **give 
 | Q-29 | A-06 meaning of longest | Current ongoing absence at the latest confirmed result is the user-described case; no unrequested all-time streak leaderboard |
 | Q-30 | A-07 category definitions | Verify အပူး, ညီကို, ပါဝါ, နက္ခတ် groups and overlaps |
 | Q-31 | A-07 occurrence status | Whether to show counts, involved results, dates/sessions alongside appeared/not-yet |
-| Q-32 | A-07 ပြန်ကျ multiplicity | How to count/show the same pair appearing 3+ times |
+| Q-32 | A-07 ပြန်ကျ multiplicity | RESOLVED: exact 2D repeat count per number = max(0, occurrences within current week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
 | Q-33 | A-07 missing source data | How to qualify "not appeared" for incomplete current-week result records |
 | Q-34 | A-08 three searches | RESOLVED: always match both references together AND first alone AND second alone; never fallback-only |
 | Q-35 | A-08 reference selection | RESOLVED core: AM = previous trading day's AM+PM; PM = previous trading day PM+today AM; Friday→Monday explicit |
@@ -861,6 +861,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | A-01 first-return partner frequency uses OPTION A: only the first result in the immediately following week containing the missing digit, one observation per historical missing-week episode; ignore subsequent occurrences for this ranking | Explicitly confirmed by user; Q-39 resolved |
 | 2026-11-07 | A-04 ကျန်ဂဏန်း means unique digits 0–9 not observed in any confirmed AM/PM result of the completed previous week, tens or ones; not unused 00–99 pairs | Explicit user confirmation; Q-14 resolved |
 | 2026-11-07 | A-02 and A-04 0–9 single-digit frequency counts **each digit position**; `55` adds 2 occurrences of digit 5, unlike A-05's distinct new/old set | Explicit user choice of 2; Q-04 resolved, Q-15 frequency portion resolved |
+| 2026-11-07 | A-04/A-07 ပြန်ကျ = number's second and each subsequent same-week exact 2D occurrence, never its first; 01 occurring three times → 2 repeat events | Explicit user confirmation; Q-13 and Q-32 counting resolved |
 
 ---
 
