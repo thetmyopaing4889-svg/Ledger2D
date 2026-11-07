@@ -320,7 +320,7 @@ class TwoDAnalysisEngineTest {
         assertEquals(2, result.a07.observedDraws)
     }
 
-    @Test fun a01IncompletePreviousWeekCannotClaimVerifiedFirstReturn() {
+    @Test fun a01IncompletePreviousWeekStillTracksRecordedFirstReturn() {
         val prior = week("2026-10-26",
             listOf("11","22","33","44","55","66","77","88","99","12")).dropLast(1)
         val today = row("2026-11-02", am, "03")
@@ -328,7 +328,52 @@ class TwoDAnalysisEngineTest {
         assertFalse(result.a01.previousWeekComplete)
         val zero = result.a01.results.single { it.digit == '0' }
         assertEquals("03", zero.thisWeekFirstSeen?.digit)
-        assertFalse(zero.firstSeenVerified)
+        assertTrue(zero.firstSeenVerified)
+    }
+
+    @Test fun a06SingleDigitStreaksCountTensAndOnesInAllThreeStreams() {
+        val rows = listOf(
+            row("2026-11-02", am, "56"),
+            row("2026-11-02", pm, "70"),
+            row("2026-11-03", am, "12"),
+            row("2026-11-03", pm, "45"),
+        )
+        val a = TwoDAnalysisEngine.calculate(rows, target("2026-11-04")).a06
+        fun digit(stream: String, value: String) =
+            a.getValue(stream).singleDigits.single { it.value == value }
+        // 6 and 0 appeared only in the ones position.
+        assertEquals(1, digit("morning", "6").observedDrawsSince)
+        assertEquals(1, digit("evening", "0").observedDrawsSince)
+        assertEquals(3, digit("combined", "6").observedDrawsSince)
+        assertEquals(2, digit("combined", "0").observedDrawsSince)
+        assertEquals(0, digit("combined", "5").observedDrawsSince)
+        assertEquals(4, a.getValue("combined").fullNumbers.single { it.value == "55" }.observedDrawsSince)
+        assertEquals(10, a.getValue("combined").singleDigits.size)
+        assertEquals(100, a.getValue("combined").fullNumbers.size)
+    }
+
+    @Test fun a01PartialWeeksUseRecordedResultsForMissingAndReturnCompanions() {
+        val previous = week("2026-10-26",
+            listOf("11", "22", "33", "44", "66", "77", "88", "99", "12", "34")).dropLast(2)
+        // Historical missing week has only two known draws; 5 did not occur.
+        val historical = listOf(
+            row("2026-10-05", am, "11"),
+            row("2026-10-06", am, "22"),
+            // Historical following week also has gaps, but 5 returned in 59.
+            row("2026-10-12", pm, "59"),
+            row("2026-11-02", am, "50"),
+        )
+        val report = TwoDAnalysisEngine.calculate(previous + historical, target("2026-11-02", pm))
+        assertEquals(8, report.a04.observedDraws)
+        assertFalse(report.a04.complete)
+        assertTrue('5' in report.a04.remainingDigits)
+        val five = report.a01.results.single { it.digit == '5' }
+        assertEquals("50", five.thisWeekFirstSeen?.digit)
+        assertTrue(five.firstSeenVerified)
+        assertEquals(1, five.historicalMissingWeeks)
+        assertEquals(1, five.historyFirstReturnEpisodes)
+        assertEquals('9', five.commonCompanions.single().companion)
+        assertEquals("59", five.historicalFirstReturns.single().digit)
     }
 
     @Test fun futureTargetIsExcludedAndUnverifiedAbsenceIsNotClaimedComplete() {

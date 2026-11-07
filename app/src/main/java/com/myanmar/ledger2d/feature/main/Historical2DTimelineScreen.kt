@@ -310,21 +310,18 @@ fun Historical2DTimelineScreen(
                         (flow.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") }),
                     secondWeekHighlight,
                 )
-                val returned = report.a01.results.count { it.firstSeenVerified && it.thisWeekFirstSeen != null }
+                val returned = report.a01.results.count { it.thisWeekFirstSeen != null }
                 // A-01 user's high-priority finding: the historical companion
                 // on a VERIFIED first return, never a forecast or fabricated pick.
-                val returnCompanion = if (report.a01.previousWeekComplete)
-                    report.a01.results
-                        .filter { it.firstSeenVerified && it.thisWeekFirstSeen != null &&
-                            it.commonCompanions.isNotEmpty() }
-                        .maxWithOrNull(compareBy<TwoDMissingDigitReturn> {
-                            it.historyFirstReturnEpisodes
-                        }.thenByDescending { it.digit })
-                    else null
+                val returnCompanion = report.a01.results
+                    .filter { it.thisWeekFirstSeen != null && it.commonCompanions.isNotEmpty() }
+                    .maxWithOrNull(compareBy<TwoDMissingDigitReturn> {
+                        it.historyFirstReturnEpisodes
+                    }.thenByDescending { it.digit })
                 val secondLastWeekHighlight = when {
-                    !report.a01.previousWeekComplete ->
-                        tr("ပျောက်ဂဏန်း ပြန်ဆင်းမှု", "Returns unverified") to
-                            tr("ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းမှတ်တမ်း မပြည့်", "Last week incomplete")
+                    report.a04.observedDraws == 0 ->
+                        tr("ပျောက်ဂဏန်း ပြန်ဆင်းမှု", "Missing-digit returns") to
+                            tr("ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းမတွေ့", "No previous-week draws")
                     returnCompanion != null ->
                         tr("ပျောက်ဂဏန်း ပြန်ဆင်းချိန် တွဲဖက်ဂဏန်း", "Historical return companions") to
                             (returnCompanion.digit.toString() + " + " +
@@ -335,8 +332,7 @@ fun Historical2DTimelineScreen(
                         (returned.toString() + tr(" လုံး", " digits"))
                 }
                 val group3 = listOf(
-                    (if (report.a04.complete) tr("ပျောက်ဂဏန်း", "Absent single digits")
-                        else tr("ပျောက်ဂဏန်း", "Not seen in available records")) to
+                    tr("ပျောက်ဂဏန်း", "Missing digits") to
                         (if (report.a04.observedDraws == 0)
                             tr("ထွက်ဂဏန်းမတွေ့", "No verified draws")
                         else report.a04.remainingDigits.joinToString(" ")

@@ -94,11 +94,11 @@ data class TwoDMissingDigitReturn(
     val digit: Char,
     val thisWeekFirstSeen: TwoDMatch?,
     val firstSeenVerified: Boolean,
-    /** Historical completed weeks where this digit was verified missing. */
+    /** Past weeks where this digit is absent from at least one available draw. */
     val historicalMissingWeeks: Int,
-    /** Complete following weeks with no return at all. */
+    /** Following weeks where available draws do not contain the digit. */
     val historicalNoReturnWeeks: Int,
-    /** Unknown later draw slots or selected-window boundary prevent a conclusion. */
+    /** Following weeks with no usable recorded draws in the selected range. */
     val historicalUnknownNextWeeks: Int,
     val historyFirstReturnEpisodes: Int,
     val commonCompanions: List<TwoDReturnCompanion>,
@@ -282,7 +282,7 @@ object TwoDAnalysisEngine {
         )
     }
 
-    /** A-04: previous completed Mon–Fri week, no fabricated absence with missing slots. */
+    /** A-04: previous week, missing digits derived from all available recorded draws. */
     private fun review(
         start: LocalDate,
         draws: List<HistoricDraw>,
@@ -377,7 +377,7 @@ object TwoDAnalysisEngine {
             val allNumbers = (0..99).map { it.toString().padStart(2, '0') }
                 .map { find(it) { n, v -> n == v } }
                 .sortedWith(compareByDescending<TwoDStreak> { it.observedDrawsSince }.thenBy { it.value })
-            val digits = allDigits.map { find(it.toString()) { n, v -> v[0] in n } }
+            val digits = allDigits.map { find(it.toString()) { n, v -> v.any { digit -> digit in n } } }
                 .sortedWith(compareByDescending<TwoDStreak> { it.observedDrawsSince }.thenBy { it.value })
             return TwoDStreakStream(rows.size, hasUnknown, allNumbers, digits)
         }
@@ -468,7 +468,7 @@ object TwoDAnalysisEngine {
         )
     }
 
-    /** A-01: previous-week unseen single digits, next-week first returns only. */
+    /** A-01: absent digits in recorded previous-week draws, observed next-week returns. */
     private fun returns(
         known: List<HistoricDraw>,
         bySlot: Map<Pair<LocalDate, DrawSession>, HistoricDraw>,
@@ -495,30 +495,30 @@ object TwoDAnalysisEngine {
             var unknownNextWeeks = 0
             for (week in episodes) {
                 val sourceSlots = slotsForWeek(week, closed)
-                // Never call a historical "missing" week complete if an open slot is unknown.
-                if (sourceSlots.isEmpty() || !sourceSlots.all { it in bySlot }) continue
-                if (sourceSlots.any { digit in bySlot.getValue(it).digit }) continue
+                // A digit is "missing" if it did not appear in ANY available
+                // draw of that week, even when other scheduled slots are unknown.
+                val recordedSource = sourceSlots.mapNotNull { bySlot[it] }
+                if (recordedSource.isEmpty() || recordedSource.any { digit in it.digit }) continue
                 val nextWeek = week.plusWeeks(1)
                 val followingSlots = slotsForWeek(nextWeek, closed)
                 if (followingSlots.isEmpty() || followingSlots.none { range.includes(it.first) }) continue
-                var firstObserved: HistoricDraw? = null
-                var prefixComplete = true
-                for (slot in followingSlots) {
-                    val draw = bySlot[slot]
-                    if (draw == null) { prefixComplete = false; break }
-                    if (digit in draw.digit) { firstObserved = draw; break }
+                val recordedFollowing = followingSlots
+                    .filter { range.includes(it.first) }
+                    .mapNotNull { bySlot[it] }
+                qualifyingMissingWeeks++
+                if (recordedFollowing.isEmpty()) {
+                    unknownNextWeeks++
+                    continue
                 }
-                if (prefixComplete && firstObserved != null) {
-                    if (!range.includes(firstObserved.date)) continue
-                    qualifyingMissingWeeks++
+                // Only recorded results decide whether the missing digit returned.
+                // The first observed return is not a claim about unrecorded slots.
+                val firstObserved = recordedFollowing.firstOrNull { digit in it.digit }
+                if (firstObserved != null) {
                     historicalReturns.add(TwoDMatch(
                         firstObserved.date, firstObserved.session, firstObserved.digit,
                     ))
                 } else {
-                    qualifyingMissingWeeks++
-                    if (prefixComplete && followingSlots.all { range.includes(it.first) })
-                        noReturnWeeks++
-                    else unknownNextWeeks++
+                    noReturnWeeks++
                 }
             }
             val companions = historicalReturns.map { returned ->
@@ -529,7 +529,7 @@ object TwoDAnalysisEngine {
             TwoDMissingDigitReturn(
                 digit,
                 firstReturn?.let { TwoDMatch(it.date, it.session, it.digit) },
-                previous.complete && precedingKnown, qualifyingMissingWeeks,
+                precedingKnown, qualifyingMissingWeeks,
                 noReturnWeeks, unknownNextWeeks, companions.size,
                 counts.filterValues { it == highest }.map { TwoDReturnCompanion(it.key, it.value) }
                     .sortedBy { it.companion },
