@@ -48,6 +48,10 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 ) { Text(tr("ဂဏန်းအားလုံး ကြည့်ရန်", "See all numbers")) }
                 AnalysisDetailNote(tr("တစ်လုံးဂဏန်း 0–9 (ထိပ် + ပိတ်)", "Single digits 0–9 (tens + ones)"))
                 AnalysisDetailLine("", a.singles.joinToString("  ") { "${it.digit}:${it.count}" })
+                AnalysisDetailNote(tr("ထိပ် (0–9)", "Tens position (0–9)"))
+                AnalysisDetailLine("", a.tens.joinToString("  ") { "${it.digit}:${it.count}" })
+                AnalysisDetailNote(tr("ပိတ် (0–9)", "Ones position (0–9)"))
+                AnalysisDetailLine("", a.ones.joinToString("  ") { "${it.digit}:${it.count}" })
                 a.parity.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
                 a.groups.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
             }
@@ -101,13 +105,15 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 a.fullNumbers.take(8).forEach {
                     AnalysisDetailLine(it.value,
                         n(it.observedDrawsSince) +
-                            if (it.historyStartTruncated) tr(" · အစမသိ", " · start unknown") else "")
+                            if (it.historyStartTruncated) tr(" · အစမသိ", " · start unknown")
+                            else it.lastSeen?.let { previous -> " · " + match(previous) }.orEmpty())
                 }
                 TextButton(onClick = {
                     show(tr("ပျောက်နေသော 2D အားလုံး", "All 2D absence streaks"),
                         a.fullNumbers.map {
                             it.value + " · " + n(it.observedDrawsSince) +
-                                if (it.historyStartTruncated) tr(" (အစမသိ)", " (start unknown)") else ""
+                                if (it.historyStartTruncated) tr(" (အစမသိ)", " (start unknown)")
+                                else it.lastSeen?.let { previous -> " · " + match(previous) }.orEmpty()
                         })
                 }) { Text(tr("2D အားလုံးကြည့်ရန်", "View all 2D numbers")) }
                 AnalysisDetailNote(tr("တစ်လုံးဂဏန်း (0–9)", "Single digits (0–9)"))
@@ -177,7 +183,15 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 "ဒီအပတ် ရလဒ် မရှိသေးပါ။", "No confirmed result this week.",
             )) else {
                 AnalysisDetailLine(tr("ဒီအပတ် ရလဒ်", "This week's draws"), n(a.observedDraws))
-                a.groups.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
+                a.groups.forEach { (name, count) ->
+                    AnalysisDetailLine(name, n(count))
+                    val occurrences = a.groupOccurrences[name].orEmpty()
+                    if (occurrences.isNotEmpty()) {
+                        TextButton(onClick = {
+                            show(name, occurrences.map(::match))
+                        }) { Text(tr("ထွက်ခဲ့သောရက်များ", "View occurrence dates")) }
+                    }
+                }
                 AnalysisDetailLine(tr("ပြန်ကျ စုစုပေါင်း", "Exact repeats total"),
                     n(a.repeatedNumbers.sumOf { it.count }))
                 a.repeatedNumbers.forEach { AnalysisDetailLine(it.digit, n(it.count)) }
@@ -229,6 +243,12 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                     item.commonCompanions.joinToString(" · ") {
                         "${it.companion} (${it.count})"
                     }.ifEmpty { tr("Result မတွေ့", "No verified episodes") })
+                if (item.historicalFirstReturns.isNotEmpty()) {
+                    TextButton(onClick = {
+                        show(item.digit.toString() + " · " + tr("ပထမပြန်ပေါ်မှတ်တမ်း", "First-return history"),
+                            item.historicalFirstReturns.map(::match))
+                    }) { Text(tr("History အထောက်အထား", "View historical evidence")) }
+                }
             }
         }
     }

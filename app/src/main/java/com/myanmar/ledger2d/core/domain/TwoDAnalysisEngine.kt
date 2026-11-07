@@ -22,6 +22,8 @@ data class TwoDSameSlot(
     val samples: Int,
     val numbers: List<TwoDCount>,
     val singles: List<TwoDCount>,
+    val tens: List<TwoDCount>,
+    val ones: List<TwoDCount>,
     val parity: Map<String, Int>,
     val groups: Map<String, Int>,
     val unseenNumbers: List<String>,
@@ -64,6 +66,7 @@ data class TwoDWeekFlow(
 data class TwoDWeekSpecial(
     val observedDraws: Int,
     val groups: Map<String, Int>,
+    val groupOccurrences: Map<String, List<TwoDMatch>>,
     /** Exact same 2D returning: every appearance after its first counts. */
     val repeatedNumbers: List<TwoDCount>,
 )
@@ -90,6 +93,7 @@ data class TwoDMissingDigitReturn(
     val firstSeenVerified: Boolean,
     val historyFirstReturnEpisodes: Int,
     val commonCompanions: List<TwoDReturnCompanion>,
+    val historicalFirstReturns: List<TwoDMatch>,
 )
 data class TwoDMissingReturn(
     val previousWeekComplete: Boolean,
@@ -195,6 +199,11 @@ object TwoDAnalysisEngine {
             TwoDCount(digit.toString(), values.sumOf { n -> n.count { it == digit } })
         }.sortedWith(compareByDescending<TwoDCount> { it.count }.thenBy { it.digit })
 
+    private fun positionCounts(values: List<String>, position: Int): List<TwoDCount> =
+        allDigits.map { digit ->
+            TwoDCount(digit.toString(), values.count { it[position] == digit })
+        }.sortedWith(compareByDescending<TwoDCount> { it.count }.thenBy { it.digit })
+
     private fun parityCounts(values: List<String>): Map<String, Int> {
         val counts = values.groupingBy { TwoDigitGroups.parity(it) }.eachCount()
         return parityNames.associateWith { counts[it] ?: 0 }
@@ -214,6 +223,8 @@ object TwoDAnalysisEngine {
             samples = candidates.size,
             numbers = numberCounts(digits).filter { it.count > 0 },
             singles = singles(digits),
+            tens = positionCounts(digits, 0),
+            ones = positionCounts(digits, 1),
             parity = parityCounts(digits),
             groups = TwoDigitGroups.counts(digits),
             unseenNumbers = numberCounts(digits, includeZero = true).filter { it.count == 0 }.map { it.digit },
@@ -295,7 +306,12 @@ object TwoDAnalysisEngine {
     /** A-07: actual current-week occurrences and exact-pair repeat EVENTS. */
     private fun special(draws: List<HistoricDraw>): TwoDWeekSpecial {
         val values = draws.map { it.digit }
-        return TwoDWeekSpecial(draws.size, TwoDigitGroups.counts(values), repeats(values))
+        val occurrences = TwoDigitGroups.named.mapValues { (_, members) ->
+            draws.filter { it.digit in members }.map {
+                TwoDMatch(it.date, it.session, it.digit)
+            }
+        }
+        return TwoDWeekSpecial(draws.size, TwoDigitGroups.counts(values), occurrences, repeats(values))
     }
 
     /** A-06: ongoing absence separately for AM, PM and both, per observed draw. */
@@ -421,7 +437,7 @@ object TwoDAnalysisEngine {
                 thisWeekSlots.takeWhile { it.first != firstReturn.date || it.second != firstReturn.session }
                     .all { it in bySlot }
             }
-            val companions = mutableListOf<Char>()
+            val historicalReturns = mutableListOf<TwoDMatch>()
             for (week in episodes) {
                 val sourceSlots = slotsForWeek(week, closed)
                 // Never call a historical "missing" week complete if an open slot is unknown.
@@ -438,8 +454,10 @@ object TwoDAnalysisEngine {
                 }
                 val returnDraw = firstObserved ?: continue
                 if (!prefixComplete || !range.includes(returnDraw.date)) continue
-                val other = if (returnDraw.digit[0] == digit) returnDraw.digit[1] else returnDraw.digit[0]
-                companions.add(other)
+                historicalReturns.add(TwoDMatch(returnDraw.date, returnDraw.session, returnDraw.digit))
+            }
+            val companions = historicalReturns.map { returned ->
+                if (returned.digit[0] == digit) returned.digit[1] else returned.digit[0]
             }
             val counts = companions.groupingBy { it }.eachCount()
             val highest = counts.values.maxOrNull() ?: 0
@@ -449,6 +467,7 @@ object TwoDAnalysisEngine {
                 precedingKnown, companions.size,
                 counts.filterValues { it == highest }.map { TwoDReturnCompanion(it.key, it.value) }
                     .sortedBy { it.companion },
+                historicalReturns,
             )
         }
         return TwoDMissingReturn(previous.complete, previous.remainingDigits, results)

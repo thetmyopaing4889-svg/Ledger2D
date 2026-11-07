@@ -284,6 +284,20 @@ fun Historical2DTimelineScreen(
                     } else null,
                 )
                 val flow = report.a05
+                val activeGroups = report.a07.groups.filterValues { it > 0 }
+                val repeatsThisWeek = report.a07.repeatedNumbers.sumOf { it.count }
+                val secondWeekHighlight = if (repeatsThisWeek > 0) {
+                    tr("ပြန်ကျ", "Exact 2D repeats") to
+                        (repeatsThisWeek.toString() + tr(" ကြိမ်", " events"))
+                } else if (activeGroups.isNotEmpty()) {
+                    tr("ထွက်ပြီးသောအုပ်စုများ", "Observed special groups") to
+                        activeGroups.entries.joinToString(" · ") {
+                            it.key + " " + it.value
+                        }
+                } else {
+                    tr("အထူးဂဏန်းအုပ်စု", "Special groups") to
+                        tr("မတွေ့သေး", "No observed groups yet")
+                }
                 val group2 = if (flow.transitions.isEmpty()) {
                     listOf(tr("ယခုအပတ်", "This week") to
                         tr("Result မရှိသေး", "No confirmed results yet"))
@@ -292,9 +306,7 @@ fun Historical2DTimelineScreen(
                         tr("မပေါ်သေးတဲ့ဂဏန်း", "Unseen single digits")
                     else tr("ရရှိသောမှတ်တမ်း၌ မပေါ်", "Unseen in available records")) to
                         (flow.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") }),
-                    tr("ပြန်ကျ", "Exact 2D repeats") to
-                        (report.a07.repeatedNumbers.sumOf { it.count }.toString() +
-                            tr(" ကြိမ်", " events")),
+                    secondWeekHighlight,
                 )
                 val returned = report.a01.results.count { it.firstSeenVerified && it.thisWeekFirstSeen != null }
                 val group3 = listOf(

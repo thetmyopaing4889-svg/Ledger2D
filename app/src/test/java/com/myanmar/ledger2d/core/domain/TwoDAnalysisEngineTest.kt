@@ -32,6 +32,8 @@ class TwoDAnalysisEngineTest {
         val a = TwoDAnalysisEngine.calculate(rows, target("2026-11-04")).a02
         assertEquals(2, a.samples)
         assertEquals(3, a.singles.single { it.digit == "5" }.count)
+        assertEquals(1, a.tens.single { it.digit == "5" }.count)
+        assertEquals(2, a.ones.single { it.digit == "5" }.count)
         assertEquals(1, a.singles.single { it.digit == "1" }.count)
         assertEquals(1, a.numbers.single { it.digit == "55" }.count)
         assertTrue("99" in a.unseenNumbers)
@@ -134,6 +136,8 @@ class TwoDAnalysisEngineTest {
         assertEquals(1, a.groups["နက္ခတ်"])
         assertEquals(1, a.groups["ပါဝါ"])
         assertEquals(2, a.repeatedNumbers.single { it.digit == "01" }.count)
+        assertEquals(3, a.groupOccurrences.getValue("ညီကို").size)
+        assertEquals("35", a.groupOccurrences.getValue("နက္ခတ်").single().digit)
         assertEquals(listOf("05","50","16","61","27","72","38","83","49","94"), TwoDigitGroups.power)
     }
 
@@ -177,6 +181,7 @@ class TwoDAnalysisEngineTest {
         assertTrue(zero.firstSeenVerified)
         assertEquals(1, zero.historyFirstReturnEpisodes)
         assertEquals('4', zero.commonCompanions.single().companion)
+        assertEquals("40", zero.historicalFirstReturns.single().digit)
     }
 
     @Test fun futureTargetIsExcludedAndUnverifiedAbsenceIsNotClaimedComplete() {
