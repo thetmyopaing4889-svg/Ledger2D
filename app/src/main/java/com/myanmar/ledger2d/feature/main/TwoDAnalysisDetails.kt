@@ -68,7 +68,7 @@ internal fun TwoDAnalysisDetails(
                             "$digit · ${a.numbers.firstOrNull { it.digit == digit }?.count ?: 0}"
                         }) },
                 ) { Text(tr("ဂဏန်းအားလုံး ကြည့်ရန်", "See all numbers")) }
-                AnalysisDetailNote(tr("တစ်လုံးဂဏန်း 0–9 (ထိပ် + ပိတ်)", "Single digits 0–9 (tens + ones)"))
+                AnalysisDetailNote(tr("ဂဏန်း 0–9 အကြိမ်ရေ (ထိပ် + ပိတ်)", "Digit frequencies 0–9 (tens + ones)"))
                 AnalysisDetailLine("", a.singles.joinToString("  ") { "${it.digit}:${it.count}" })
                 AnalysisDetailNote(tr("ထိပ် (0–9)", "Tens position (0–9)"))
                 AnalysisDetailLine("", a.tens.joinToString("  ") { "${it.digit}:${it.count}" })
@@ -268,7 +268,7 @@ internal fun TwoDAnalysisDetails(
                 (if (a.observedDraws == 0) tr("ထွက်ဂဏန်းမတွေ့", "No verified draws")
                 else a.remainingDigits.joinToString(" ").ifEmpty { tr("မရှိ", "None") }),
             )
-            AnalysisDetailNote(tr("တစ်လုံးဂဏန်း 0–9 အကြိမ်ရေ", "Single digit frequency"))
+            AnalysisDetailNote(tr("ဂဏန်း 0–9 အကြိမ်ရေ", "Digit frequency 0–9"))
             AnalysisDetailLine("", a.singleDigitFrequency.joinToString("  ") { "${it.digit}:${it.count}" })
             a.parity.forEach { (name, count) ->
                 AnalysisDetailLine(twoDParityLabel(name, en), n(count))

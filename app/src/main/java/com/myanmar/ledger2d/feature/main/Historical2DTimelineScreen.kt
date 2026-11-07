@@ -494,8 +494,11 @@ fun Historical2DTimelineScreen(
                                 color = scheme.onSurfaceVariant)
                         }
                     }
-                    TwoDPrimaryFinding(openCheck, report, en, streakStream)
-                    Surface(
+                    if (openCheck == "02") {
+                        TwoDA02Dashboard(report.a02, en)
+                    } else {
+                        TwoDPrimaryFinding(openCheck, report, en, streakStream)
+                        Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(22.dp),
                         color = scheme.surface,
@@ -512,6 +515,7 @@ fun Historical2DTimelineScreen(
                                 selectedStreakStream = streakStream,
                                 onStreakStreamChange = { streakStream = it })
                         }
+                    }
                     }
                     Spacer(Modifier.height(20.dp))
                 } else {
