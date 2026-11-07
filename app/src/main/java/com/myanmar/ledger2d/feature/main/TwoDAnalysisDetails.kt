@@ -12,10 +12,26 @@ import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawSession
 
+internal fun twoDGroupLabel(name: String, en: Boolean): String = if (!en) name else when (name) {
+    "အပူး" -> "Doubles"
+    "ညီကို" -> "Sibling pairs"
+    "ပါဝါ" -> "Power"
+    "နက္ခတ်" -> "Astrology"
+    else -> name
+}
+
+internal fun twoDParityLabel(name: String, en: Boolean): String = if (!en) name else when (name) {
+    "စုံစုံ" -> "Even–Even"
+    "မမ" -> "Odd–Odd"
+    "စုံမ" -> "Even–Odd"
+    "မစုံ" -> "Odd–Even"
+    else -> name
+}
+
 @Composable
 internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boolean) {
     fun tr(mm: String, english: String) = if (en) english else mm
-    fun n(count: Int) = count.toString() + tr(" ကြိမ်", " draws")
+    fun n(count: Int) = count.toString() + tr(" ကြိမ်", " times")
     fun slot(s: DrawSession) = if (s == DrawSession.MORNING) tr("မနက်", "AM") else tr("ညနေ", "PM")
     fun match(m: TwoDMatch) = m.date.toString() + " · " + slot(m.session) + " · " + m.digit
     var dialogTitle by remember(id) { mutableStateOf<String?>(null) }
@@ -52,8 +68,12 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 AnalysisDetailLine("", a.tens.joinToString("  ") { "${it.digit}:${it.count}" })
                 AnalysisDetailNote(tr("ပိတ် (0–9)", "Ones position (0–9)"))
                 AnalysisDetailLine("", a.ones.joinToString("  ") { "${it.digit}:${it.count}" })
-                a.parity.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
-                a.groups.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
+                a.parity.forEach { (name, count) ->
+                    AnalysisDetailLine(twoDParityLabel(name, en), n(count))
+                }
+                a.groups.forEach { (name, count) ->
+                    AnalysisDetailLine(twoDGroupLabel(name, en), n(count))
+                }
             }
         }
         "03" -> {
@@ -65,13 +85,13 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
                 ))
             } else {
                 AnalysisDetailLine(tr("စစ်ထားသော စုံ/မ အစဉ်", "Parity sequence"),
-                    a.checkedPrefix.joinToString(" → "))
+                    a.checkedPrefix.joinToString(" → ") { twoDParityLabel(it, en) })
                 AnalysisDetailLine(tr("တူညီသောအပတ်", "Matching weeks"), n(a.matched.size))
                 if (a.matched.isEmpty()) AnalysisDetailNote(tr(
                     "တူညီသော History မတွေ့", "No verified historical match",
                 ))
                 a.nextParity.filterValues { it > 0 }.forEach { (name, count) ->
-                    AnalysisDetailLine(name, n(count))
+                    AnalysisDetailLine(twoDParityLabel(name, en), n(count))
                 }
                 a.matched.take(6).forEach { AnalysisDetailLine(tr("အပြီးထွက်", "Next result"), match(it)) }
                 if (a.matched.size > 6) TextButton(onClick = {
@@ -184,11 +204,11 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
             )) else {
                 AnalysisDetailLine(tr("ဒီအပတ် ရလဒ်", "This week's draws"), n(a.observedDraws))
                 a.groups.forEach { (name, count) ->
-                    AnalysisDetailLine(name, n(count))
+                    AnalysisDetailLine(twoDGroupLabel(name, en), n(count))
                     val occurrences = a.groupOccurrences[name].orEmpty()
                     if (occurrences.isNotEmpty()) {
                         TextButton(onClick = {
-                            show(name, occurrences.map(::match))
+                            show(twoDGroupLabel(name, en), occurrences.map(::match))
                         }) { Text(tr("ထွက်ခဲ့သောရက်များ", "View occurrence dates")) }
                     }
                 }
@@ -213,8 +233,12 @@ internal fun TwoDAnalysisDetails(id: String, report: TwoDAnalysisReport, en: Boo
             )
             AnalysisDetailNote(tr("တစ်လုံးဂဏန်း 0–9 အကြိမ်ရေ", "Single digit frequency"))
             AnalysisDetailLine("", a.singleDigitFrequency.joinToString("  ") { "${it.digit}:${it.count}" })
-            a.parity.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
-            a.groups.forEach { (name, count) -> AnalysisDetailLine(name, n(count)) }
+            a.parity.forEach { (name, count) ->
+                AnalysisDetailLine(twoDParityLabel(name, en), n(count))
+            }
+            a.groups.forEach { (name, count) ->
+                AnalysisDetailLine(twoDGroupLabel(name, en), n(count))
+            }
             AnalysisDetailLine(tr("ပြန်ကျ", "Exact repeats"),
                 a.repeatedNumbers.joinToString(" · ") { "${it.digit} (${it.count})" }
                     .ifEmpty { tr("မရှိ", "None") })

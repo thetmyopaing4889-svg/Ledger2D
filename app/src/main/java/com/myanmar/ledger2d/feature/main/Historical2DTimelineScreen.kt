@@ -291,9 +291,9 @@ fun Historical2DTimelineScreen(
                         (repeatsThisWeek.toString() + tr(" ကြိမ်", " events"))
                 } else if (activeGroups.isNotEmpty()) {
                     tr("ထွက်ပြီးသောအုပ်စုများ", "Observed special groups") to
-                        activeGroups.entries.joinToString(" · ") {
-                            it.key + " " + it.value
-                        }
+                        (activeGroups.entries.take(2).joinToString(" · ") {
+                            twoDGroupLabel(it.key, en) + " " + it.value
+                        } + if (activeGroups.size > 2) " +${activeGroups.size - 2}" else "")
                 } else {
                     tr("အထူးဂဏန်းအုပ်စု", "Special groups") to
                         tr("မတွေ့သေး", "No observed groups yet")
