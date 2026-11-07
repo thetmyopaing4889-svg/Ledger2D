@@ -257,7 +257,7 @@ For a user looking at **Mon morning**, inspect **historical Mon mornings**. For 
 
 ## A-03 — Strict chronological weekly even/odd-pattern matching
 
-**State:** Core order, minimum count, dynamic length, week boundary and no-match behavior confirmed. Holiday alignment and incomplete-history rules pending.  
+**State:** Core order, minimum count, dynamic length, weekly boundary, no-match behavior **and skipping genuinely verified closed dates** confirmed. Historical weekday/session alignment between weeks with different closure patterns and other incomplete-history rules remain pending.  
 **Scope:** Current Monday–Friday week's **confirmed chronological four-class sequence** BEFORE the target session, matched to historical within-week sequences, then inspect each match's **next result**.
 
 ### A-03.1 User's question
@@ -270,7 +270,7 @@ At the current target session, take already finished draws this week, convert ea
 2. **At least four confirmed draws must already exist** before the target session. Earlier than four, this check is not eligible.
 3. **Order is mandatory:** equal category totals in a different order are **NOT** a match.
 4. The observed sequence grows as new draws complete this week. It is **not fixed at four**; e.g., Wed AM=4 prior draws, Wed PM=5 prior draws, continuing through Fri PM=9 prior draws in an ordinary fully open week.
-5. If exchange/market closure prevents Monday or Tuesday draws, **wait until four real results have been collected** within the week. Do not infer four draws just because it is Wednesday.
+5. **CONFIRMED:** If a day is genuinely closed, **skip that date entirely** (no morning/evening observation, no missing-result warning and no artificial parity-class entry). The within-week sequence continues with subsequent real confirmed draws. **Wait until four actual results have been collected** before A-03 becomes eligible; do not infer four draws just because it is Wednesday.
 6. For matching historical weeks, inspect the **next actual result/class following the matching prefix**; show it only when that follow-up result is available and valid.
 7. If **no matching historic sequence**, user explicitly says **do not show this check's result**. Do not manufacture a fallback forecast.
 
@@ -320,9 +320,9 @@ Then, among **three matched weeks with known next draws**, the descriptive break
 
 If a matched historical week lacks a valid next draw, do not invent an outcome or count it as the opposite outcome.
 
-### A-03.6 Holiday and historical alignment — unresolved and important
+### A-03.6 Holiday and historical alignment — partly resolved; exact cross-history slot alignment still open
 
-The user confirmed: **a holiday does not reset the required four observations; the first eligible target moves later in the same week**.
+**User confirmed:** **Do not examine a verified closed day.** Exclude both of its sessions and keep the sequence of actual confirmed results within that same week. A closed date does not reset the required four observations; the first eligible target moves later in the week. A missing feed record without verified closure is **not** automatically skipped as if it were a true holiday.
 
 The user has **not** yet decided whether, for historical matches when calendars differ:
 - match **the ordered sequence of real draws only**, ignoring which weekday/session slot was closed, OR
@@ -745,18 +745,35 @@ When the user describes an exact method using any of these observations, **give 
 
 ---
 
+## Shared verified closed-day policy — USER CONFIRMED 2026-11-07
+
+**User instruction:** **"ပိတ်ရက်ဆို အဲ့ပိတ်ရက်ကို မစစ်ဘူး"** — if a date is an **actual verified closed/no-draw day**, **exclude that entire day from the analysis**. Neither morning nor evening on that date is an eligible draw occasion. A verified closure is **not** a missing data point, a zero result, an absence event, or an observed draw; it does not increase an AM, PM, or combined absence streak.
+
+**Practical examples (illustrative):**
+- Monday AM=12 and PM=35 → both eligible.
+- Tuesday **verified closure** → Tuesday excluded, contributes zero observations and **no "Result မတွေ့" warning for an expected draw**.
+- Wednesday AM=09 and PM=46 → both eligible and analyzed. A-03's real-observation count continues within the same week, so once at least four actual confirmed results exist the method can become eligible; the skipped closure does not become a fake pattern entry.
+
+**Critical distinction:** A date/session for which no result can be found **without proof of a closure** must be labeled **"Result မတွေ့"**, and any other confirmed results must still be analyzed. Do not equate absence of a feed record with an exchange holiday. Determine closure from trusted closure evidence where available; the existing app has a `closed_days` table, but its historical coverage and external market-closure completeness need inspection and must not be assumed.
+
+**Scope:** Apply this exclusion rule consistently to A-01 through A-08 while preserving each method's separate confirmed reference scope, weekly boundaries and chronology. Particularly for A-03, **skip verified closed dates, not unverified internal record gaps**. For A-08, **do not invent** a reference replacement/previous-trading-day mapping for a closed date; its specific Friday→Monday, adjacent reference and historical comparison alignment need separate precise rules.
+
+**Still open:** When historical weeks have different sets of verified closed dates, A-03 matching by **only the ordered real-result sequence** versus additionally demanding identical weekday/AM-PM slot identities was **not explicitly settled** by this closure-skip instruction. Keep Q-07's *remaining alignment question* open. Likewise keep A-08's previous-trading-day reference mapping across closures open. Do not silently settle these by assuming that skipping a date also grants slot-agnostic pattern matching.
+
+---
+
 ## Shared missing-result and partial-history policy — USER CONFIRMED 2026-11-07
 
 **User's exact business instruction:** **"Result မတွေ့ရင် မတွေ့ကြောင်းပြောမယ် တွေ့တဲ့ result အတွက်တော့ စစ်ပေးရမယ်"**.
 
 **CONFIRMED:** When a result is unavailable for an expected date/session, explicitly label that occasion **"Result မတွေ့" / "Result not found"**, while **still analyzing every other confirmed, available 2D result** that qualifies for the requested method. Do **not** exclude an entire week/date range, abort the analysis, or fabricate a result solely because one other historical occasion is missing. Include numbers of examined confirmed results and missing occasions when determinable.
 
-**Critical truthfulness distinction:** A missing/unrecorded result is **unknown**, not a verified instance in which digit `d` failed to appear, a group failed to occur, or a particular two-digit number was absent. The app may report **"not seen among available results"**, but cannot certify **"did not appear in the complete week"** unless completeness can be established. A known market holiday/no-draw must be separately distinguished where reliable closure information exists; otherwise record status is unknown, not necessarily a holiday.
+**Critical truthfulness distinction:** A missing/unrecorded result is **unknown**, not a verified instance in which digit `d` failed to appear, a group failed to occur, or a particular two-digit number was absent. The app may report **"not seen among available results"**, but cannot certify **"did not appear in the complete week"** unless completeness can be established. A **verified closed/no-draw day is completely excluded from analysis**, not counted as an expected draw or as a missing feed result. Otherwise, where closure is not verified, a missing record is **unknown**, not necessarily a holiday.
 
 **Method-specific guardrails:**
 - **A-01:** Always count/show known draws and which digits were observed. If some previous-week sessions are unknown, label any missing-digit conclusion as **provisional / not observed in available results**, not proven absent for the whole previous week. For its historical **first-return** companion ranking, an earlier unknown draw in the following week can prevent confirming that a later observed result was truly **first**: do not promote a merely first-*observed* candidate to a verified first-return event. Still report the known results with coverage status.
 - **A-02 / A-04:** Calculate digit-position, parity and special-group frequencies using all valid in-scope known results. Show denominator/coverage. Partial weeks or sparse same-weekday/session history are **analyzed**, not thrown away.
-- **A-03:** Available class observations are kept, and analysis starts only when the approved minimum of **four actual confirmed results** is reached. An unknown internal scheduled slot must **not** be silently skipped and represented as an uninterrupted exact chronological match. Preserve slot identity/gap status; report that exact matching is not verifiable for the affected segment if needed. How confirmed true closures align with historic patterns remains an independent open item.
+- **A-03:** **Verified closed dates are skipped entirely**; available class observations from eligible open days are kept, and analysis starts only when the approved minimum of **four actual confirmed results** is reached. An **unverified missing internal scheduled slot** must **not** be silently skipped and represented as an uninterrupted exact chronological match. Preserve slot identity/gap status; report that exact matching is not verifiable for the affected segment if needed. How confirmed true closures align with historic patterns remains an independent open item.
 - **A-05 / A-07:** Continue current-week observed-result progression/group tally using known results, explicitly flag missing slots. An unknown gap may prevent asserting that a digit/group is definitively unseen for the entire current week; do not invent intermediate "new/old" state or group events.
 - **A-06:** Count **confirmed relevant draw occasions**, never calendar days and never an unknown result as if it were a known nonappearance. Present observed-data absence count with an incomplete-coverage label when an unknown gap could change the ongoing streak; do not manufacture a longer verified streak.
 - **A-08:** Run each of the three searches using its exact specified date/AM-PM reference and target slots, when the required historical values are known. Unknown values for a candidate matching episode cannot be substituted or inferred, but other fully evidenced episodes remain eligible; show known sample and missing evidence separately.
@@ -788,14 +805,14 @@ When the user describes an exact method using any of these observations, **give 
 
 | ID | Topic | Needed clarification |
 |---|---|---|
-| Q-01 | A-01 holiday week | PARTLY RESOLVED: analyze known draws and mark missing results as unknown; proof of complete absence and true holiday/week completeness still open |
+| Q-01 | A-01 holiday week | PARTLY RESOLVED: verified closed dates are excluded; analyze known draws, mark missing records unknown; establishing historical closure/week completeness still open |
 | Q-02 | A-01 history | PARTLY RESOLVED: all available verified history default, optional week/month/custom; show/use known evidence; unknown before apparent first return is not verified first return; denominator and range boundaries pending |
 | Q-03 | A-02 horizon | RESOLVED: all available verified history by default, optional user one-week/one-month/custom dates |
 | Q-04 | A-02 digit tally | RESOLVED: count both positions; 55 contributes two occurrences of digit 5 |
 | Q-05 | A-02 minimum | Is 0 occurrence included when showing 'least'? |
 | Q-06 | A-02 groups | User-approved exact mapping of doubles/power/nakhat/siblings and overlap rules |
-| Q-07 | A-03 holidays | Must historical weekday/session slot positions match, or only actual result class order? |
-| Q-08 | A-03 missing records | PARTLY RESOLVED: analyze known results; identify gaps explicitly, do not compress unknown internal slots into verified exact chronological match; true closure alignment pending |
+| Q-07 | A-03 holidays | PARTLY RESOLVED: verified closed dates are skipped, their AM/PM slots excluded from sequence; whether historical matches also require identical weekday/session slot positions is still OPEN |
+| Q-08 | A-03 missing records | PARTLY RESOLVED: confirmed closures skipped; unverified gaps flagged, not compressed; history slot-alignment choice pending |
 | Q-09 | A-03 sequence location | Historic prefix anchored at first real weekly draw versus any contiguous intraweek substring |
 | Q-10 | A-03 history horizon | PARTLY RESOLVED: all available verified historical weeks by default, user-selectable one-week/one-month/custom range; qualifying next draw and boundary cases pending |
 | Q-11 | Design | Final feature grouping, default first-view layout, evidence/drill-down and true elevation system |
@@ -804,26 +821,26 @@ When the user describes an exact method using any of these observations, **give 
 | Q-14 | A-04 ကျန်ဂဏန်း | RESOLVED: 0–9 single digits absent from both positions of every confirmed draw in the completed previous week; not 00–99 pairs |
 | Q-15 | A-04 digit counts | PARTLY RESOLVED: 55 contributes two occurrences of digit 5; optional separate tens/ones display still undecided |
 | Q-16 | A-04 classifications | Exact class/group mapping, overlaps and ညီကို/ညီအကို synonym |
-| Q-17 | A-04 data completeness | RESOLVED base policy: analyze every available previous-week result with explicit missing-slot coverage; avoid claiming complete-week absence where gaps remain. Holiday verification separately open |
+| Q-17 | A-04 data completeness | RESOLVED base policy: exclude verified closed dates, analyze other known previous-week results, label missing open-day slots and unverified weeks |
 | Q-18 | A-04 presentation | Default groups and drill-down after all methods collected |
 | Q-19 | A-05 repeated digit within one draw | RESOLVED: first 11 = one new digit, remaining 234567890; optional wording for later already-seen doubles |
 | Q-20 | A-05 tens/ones order | New+old and old+new separate versus aggregated |
 | Q-21 | A-05 history scope | Current-week descriptive flow only or any user-approved history matching |
 | Q-22 | A-05 presentation | Remaining current-week digits REQUIRED; final layout for draw/day flow and remaining set pending |
-| Q-23 | A-05 completeness | PARTLY RESOLVED: continue analysis of known current-week results, flag missing slots; unknown gaps cannot be invented as new/old observations; confirmed closure mapping pending |
+| Q-23 | A-05 completeness | PARTLY RESOLVED: skip verified closed dates, continue with known weekly results, flag unknown open-day gaps; historic closure evidence still needs validation |
 | Q-24 | A-06 absence unit | RESOLVED: consecutive relevant completed result occasions, not calendar days; independent AM/PM/combined counters |
 | Q-25 | A-06 history horizon | PARTLY RESOLVED: all available verified history default, optional week/month/custom range; never-seen, truncated-streak boundaries pending |
 | Q-26 | A-06 target timing | Results eligible before target occasion, refresh behavior |
-| Q-27 | A-06 completeness | PARTLY RESOLVED: count confirmed observations only and label unknown slots, never treat unknown as an absent verified draw; verified streak duration through gaps/holidays pending |
+| Q-27 | A-06 completeness | PARTLY RESOLVED: skip verified closures with zero draw occasions; count confirmed observations only; missing open-day slots and unverifiable streak lengths remain flagged |
 | Q-28 | A-06 presentation | All ties/top N, last-seen date, duration details and drill-down |
 | Q-29 | A-06 meaning of longest | Current ongoing absence at the latest confirmed result is the user-described case; no unrequested all-time streak leaderboard |
 | Q-30 | A-07 category definitions | Verify အပူး, ညီကို, ပါဝါ, နက္ခတ် groups and overlaps |
 | Q-31 | A-07 occurrence status | Whether to show counts, involved results, dates/sessions alongside appeared/not-yet |
 | Q-32 | A-07 ပြန်ကျ multiplicity | RESOLVED: exact 2D repeat count per number = max(0, occurrences within current week − 1); first appearance excluded, 3 appearances → 2 repeats. Optional UI presentation later |
-| Q-33 | A-07 missing source data | RESOLVED base policy: count observed current-week groups, mark unknown results and say not observed among available draws rather than definitively absent |
+| Q-33 | A-07 missing source data | RESOLVED base policy: skip verified closed dates; count observed current-week groups, flag unknown results and do not claim unseen digits as complete-week fact |
 | Q-34 | A-08 three searches | RESOLVED: always match both references together AND first alone AND second alone; never fallback-only |
 | Q-35 | A-08 reference selection | RESOLVED core: AM = previous trading day's AM+PM; PM = previous trading day PM+today AM; Friday→Monday explicit |
-| Q-36 | A-08 holiday and closure | PARTLY RESOLVED: use all fully-evidenced matching episodes and mark unknown reference/target results, never substitute an absent slot; true closed-trading-day alignment still pending |
+| Q-36 | A-08 holiday and closure | PARTLY RESOLVED: skip verified closed dates; use fully-evidenced episodes only, flag unavailable reference/target slots; how to select preceding trading-day reference slots across closures still OPEN |
 | Q-37 | A-08 history sample | PARTLY RESOLVED: all available verified history default, optional week/month/custom range; incomplete/cross-boundary episodes, counts, ties and evidence pending |
 | Q-38 | A-08 evening method | RESOLVED: today PM uses preceding day's PM + current day's AM, with all three searches |
 | Q-39 | A-01 return partner frequency | RESOLVED OPTION A: first eligible confirmed 2D return result only in the following week; count one companion per historical missing-week episode |
@@ -903,6 +920,7 @@ Do not mistake the table for a user-approved implementation plan.
 | 2026-11-07 | A-04/A-07 ပြန်ကျ = number's second and each subsequent same-week exact 2D occurrence, never its first; 01 occurring three times → 2 repeat events | Explicit user confirmation; Q-13 and Q-32 counting resolved |
 | 2026-11-07 | History-based checks A-01/A-02/A-03/A-06/A-08 default to **all available verified historical data**; user can limit to **one week, one month or custom start/end dates** | Explicit confirmation by user; preserve fixed previous/current-week scopes of A-04/A-05/A-07 |
 | 2026-11-07 | If a result is not found, explicitly say "Result မတွေ့" but keep analyzing all other available confirmed results rather than dropping the whole week/range; unknown slots are not proven negative results or safely compressible ordered history | Explicitly confirmed by user; partial-history data-coverage policy established, true holiday alignment still open |
+| 2026-11-07 | Verified closed date is not analyzed at all: skip the whole date and both AM/PM slots; do not count it as a missing result, an absence draw, or an ordered A-03 class; next genuine completed draw continues the sequence | User explicitly approved skipping closed days. Q-07 historical weekday/session exact alignment and A-08 trading-day reference rules remain open |
 
 ---
 
