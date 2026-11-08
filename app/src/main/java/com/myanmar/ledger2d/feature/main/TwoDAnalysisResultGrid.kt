@@ -130,13 +130,15 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
         border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = .62f)),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp,
-                vertical = if (unavailable) 7.dp else 9.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp,
+                vertical = if (unavailable) 9.dp else 13.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 if (unavailable) {
                 val status = when {
-                    id == "03" && !report.a03.eligible -> "N/A"
-                    id == "03" -> "No match"
+                    id == "03" && !report.a03.eligible ->
+                        if (en) "Need history" else "မှတ်တမ်းမလုံလောက်"
+                    id == "03" ->
+                        if (en) "No match" else "ပုံစံတူမတွေ့"
                     id == "01" && !report.a01.previousWeekComplete -> "Unverified"
                     id == "01" && report.a04.observedDraws > 0 -> "None"
                     else -> "No data"
@@ -146,12 +148,12 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
                 } else null)
             } else when (id) {
                 "02" -> SameSlot(report, en)
-                "03" -> WeeklyPattern(report)
-                "06" -> Absence(report)
-                "08" -> PreviousResults(report)
+                "03" -> WeeklyPattern(report, en)
+                "06" -> Absence(report, en)
+                "08" -> PreviousResults(report, en)
                 "05" -> WeeklyDigits(report)
                 "07" -> Specials(report, en)
-                "04" -> PriorWeek(report)
+                "04" -> PriorWeek(report, en)
                 "01" -> MissingReturns(report)
             }
             }
@@ -168,18 +170,25 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
 @Composable
 private fun EmptyCompact(status: String, meaning: String? = null) {
     val c = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (meaning == null) Arrangement.Center else Arrangement.SpaceBetween,
-    ) {
-        if (meaning != null) {
+    if (meaning != null) {
+        // Ineligible is not the same as a zero result. This short two-line
+        // status retains the method's meaning without a large empty tile.
+        Column(Modifier.fillMaxWidth().heightIn(min = 65.dp)
+                .padding(horizontal = 6.dp, vertical = 5.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(meaning, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant)
+                fontWeight = FontWeight.SemiBold, color = c.onSurfaceVariant)
+            Text(status, style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+    } else {
+        Row(Modifier.fillMaxWidth().heightIn(min = 38.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center) {
             Text("—", style = MaterialTheme.typography.titleMedium,
                 color = c.onSurfaceVariant.copy(alpha = .45f))
+            Spacer(Modifier.width(7.dp))
             Text(status, style = MaterialTheme.typography.labelSmall,
                 color = c.onSurfaceVariant, maxLines = 1)
         }
@@ -188,13 +197,15 @@ private fun EmptyCompact(status: String, meaning: String? = null) {
 
 /** A single inset well only for the two genuinely dominant figures. */
 @Composable
-private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier) {
+private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier,
+    en: Boolean = false,
+) {
     val c = MaterialTheme.colorScheme
     Surface(modifier = modifier, shape = RoundedCornerShape(13.dp),
         color = c.secondary, shadowElevation = 3.dp,
         border = BorderStroke(1.dp, c.secondary.copy(alpha = .65f))) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = c.onSecondary.copy(alpha = .82f),
                 fontWeight = FontWeight.Medium, maxLines = 1)
@@ -220,8 +231,8 @@ private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier) {
             if (result.count != null) {
                 Surface(shape = RoundedCornerShape(8.dp),
                     color = c.onSecondary.copy(alpha = .16f)) {
-                    Text("×" + result.count,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    Text(result.count.toString() + if (en) " hits" else " ကြိမ်",
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold, color = c.onSecondary)
                 }
@@ -329,9 +340,13 @@ private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Mo
 @Composable
 private fun SameSlot(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a02
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Hero("2D", top(a.numbers), Modifier.weight(1f))
-        Hero("0–9", top(a.singles), Modifier.weight(1f))
+    Text(if (en) "MOST SEEN" else "အထွက်အများဆုံး",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Hero("2D", top(a.numbers), Modifier.weight(1f), en)
+        Hero("0–9", top(a.singles), Modifier.weight(1f), en)
     }
     DividerHairline()
     CompactRow("စုံ/မ", top(a.parity), Modifier.fillMaxWidth())
@@ -344,9 +359,9 @@ private fun SameSlot(report: TwoDAnalysisReport, en: Boolean) {
 }
 
 @Composable
-private fun WeeklyPattern(report: TwoDAnalysisReport) {
+private fun WeeklyPattern(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a03
-    Hero("စုံ/မ", top(a.nextParity))
+    Hero(if (en) "Parity" else "စုံ/မ", top(a.nextParity), en = en)
     CompactRow("Weeks", Leader(a.matched.size.toString()), Modifier.fillMaxWidth())
 }
 
@@ -426,10 +441,10 @@ private fun Specials(report: TwoDAnalysisReport, en: Boolean) {
 }
 
 @Composable
-private fun PriorWeek(report: TwoDAnalysisReport) {
+private fun PriorWeek(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a04
     Hero(if (a.complete) "TOP 0–9" else "SEEN TOP",
-        top(a.singleDigitFrequency))
+        top(a.singleDigitFrequency), en = en)
     DividerHairline()
     DigitStrip(if (a.complete) "MISSING" else "UNSEEN", a.remainingDigits)
 }
