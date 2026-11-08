@@ -53,8 +53,10 @@ internal object TwoDFixedDemoSamples {
 /**
  * The parent gives this grid ONLY the space remaining after app bar, date,
  * timeline tabs, history selector and bottom navigation.
- * 4 results: 2×2 equal cells; 2 results: 1×2 equal full-height cells.
- * No height depends on data availability and no scroll is attached here.
+ * 4 results: 2×2 equal cells using the available screen height.
+ * 2 results: equal SIDE-BY-SIDE cells with a data-density-derived
+ * height capped to the available screen, never unnecessarily full-height.
+ * The preview remains non-scrollable; the real Analysis path is untouched.
  */
 @Composable
 internal fun TwoDFixedDemoGrid(
@@ -94,7 +96,17 @@ internal fun TwoDFixedDemoGrid(
             }
         } else {
             val isWeek = group == "2"
-            Row(Modifier.fillMaxSize(),
+            // Small weekly datasets should not stretch two mostly empty
+            // cards all the way to the bottom navigation. Both cards get
+            // the SAME responsive height, based on the denser one's rows.
+            val resultRows = if (isWeek) TwoDFixedDemoSamples.special.size
+                else TwoDFixedDemoSamples.returns.size
+            val preferred = (
+                if (compact) 94 + resultRows * 35
+                else 104 + resultRows * 44
+            ).dp
+            val cardHeight = if (preferred < maxHeight) preferred else maxHeight
+            Row(Modifier.fillMaxWidth().height(cardHeight),
                 horizontalArrangement = Arrangement.spacedBy(gutter)) {
                 if (isWeek) {
                     PreviewTile(if (en) "This week" else "ယခုအပတ်",
@@ -227,6 +239,11 @@ private fun ColumnScope.MostSeenPreview(en: Boolean, compact: Boolean) {
  * always measured to its content. It can wrap to two lines on a small
  * phone instead of being cut at the bottom of a clipped fixed-height row.
  */
+/**
+ * A-06: ONE clean layer per result instead of a stacked heavy grey
+ * frame around the pair. Labels, number and count each have their own
+ * measured text line. This keeps the numeric hierarchy without clipping.
+ */
 @Composable
 private fun TinyNumberWell(
     title: String, number: PreviewNumber, primary: Boolean,
@@ -236,37 +253,40 @@ private fun TinyNumberWell(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(9.dp),
-        color = if (primary) c.secondaryContainer else c.tertiary.copy(alpha = .12f),
+        color = if (primary) c.secondaryContainer.copy(alpha = .73f)
+            else c.surface.copy(alpha = .96f),
         border = BorderStroke(
-            1.dp, if (primary) c.secondary.copy(alpha = .20f)
-                else c.tertiary.copy(alpha = .25f)
+            1.dp, if (primary) c.secondary.copy(alpha = .27f)
+                else c.outlineVariant.copy(alpha = .80f),
         ),
-        shadowElevation = if (primary) 2.dp else 1.dp,
+        shadowElevation = 0.dp,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Text(title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = c.onSurfaceVariant, maxLines = 1)
-                Spacer(Modifier.weight(1f))
-                Text(number.value,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = if (primary) c.secondary else c.onSurface,
-                    maxLines = 1)
-            }
+            Text(
+                title,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = c.onSurfaceVariant,
+                maxLines = 1,
+            )
+            Text(
+                number.value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (primary) c.secondary else c.onSurface,
+                maxLines = 1,
+            )
+            // Never make the large historical nonappearance count a hero.
+            // Let its unit wrap rather than painting outside the result box.
             Text(
                 number.count + (if (en) " draws" else " ကြိမ်"),
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+                color = c.onSurfaceVariant,
                 maxLines = 2,
+                softWrap = true,
             )
         }
     }
@@ -293,7 +313,7 @@ private fun ColumnScope.MissingPreview(en: Boolean, compact: Boolean) {
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1)
             TinyNumberWell("0–9", slot.digit, primary = true, en = en,
-                modifier = Modifier.weight(1.05f))
+                modifier = Modifier.weight(1.07f))
             TinyNumberWell("2D", slot.pair, primary = false, en = en,
                 modifier = Modifier.weight(1f))
         }
