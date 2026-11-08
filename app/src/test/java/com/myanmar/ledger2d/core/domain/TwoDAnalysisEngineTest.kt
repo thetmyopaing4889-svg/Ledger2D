@@ -40,6 +40,40 @@ class TwoDAnalysisEngineTest {
         assertEquals(98, a.unseenNumbers.size)
     }
 
+    @Test fun a02PairEvidenceRespectsWeekdaySessionRangeClosureAndTargetCutoff() {
+        val rows = listOf(
+            row("2026-10-07", am, "52"),
+            row("2026-10-14", am, "52"),
+            row("2026-10-21", am, "70"),
+            row("2026-10-28", am, "52"),
+            row("2026-10-28", pm, "52"), // wrong session
+            row("2026-10-27", am, "52"), // wrong weekday
+            row("2026-11-04", am, "52"), // target itself is not evidence
+            row("2026-11-11", am, "52"), // future result
+        )
+        val a = TwoDAnalysisEngine.calculate(rows, target("2026-11-04")).a02
+        assertEquals(4, a.samples)
+        assertEquals(3, a.numbers.single { it.digit == "52" }.count)
+        assertEquals(
+            listOf("2026-10-07", "2026-10-14", "2026-10-28"),
+            a.numberOccurrences.getValue("52").map { it.date.toString() },
+        )
+        assertTrue(a.numberOccurrences.getValue("52").all { it.session == am && it.digit == "52" })
+        assertTrue(a.numberOccurrences["99"].isNullOrEmpty())
+        assertEquals(a.samples, a.numberOccurrences.values.sumOf { it.size })
+
+        val restricted = TwoDAnalysisEngine.calculate(
+            rows, target("2026-11-04"),
+            verifiedClosedDays = setOf(LocalDate.parse("2026-10-14")),
+            historyRange = TwoDHistoryRange(
+                LocalDate.parse("2026-10-14"), LocalDate.parse("2026-11-04")),
+        ).a02
+        assertEquals(2, restricted.samples)
+        assertEquals(listOf("2026-10-28"),
+            restricted.numberOccurrences.getValue("52").map { it.date.toString() })
+        assertEquals(1, restricted.numberOccurrences.getValue("70").size)
+    }
+
     @Test fun a03RequiresSameMondayAnchoredWeekdaySessionParityAndExcludesClosedWeeks() {
         val current = listOf(
             row("2026-11-02", am, "22"),
