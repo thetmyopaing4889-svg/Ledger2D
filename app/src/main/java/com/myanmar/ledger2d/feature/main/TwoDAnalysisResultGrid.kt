@@ -151,6 +151,32 @@ private fun GridResult(
 }
 
 @Composable
+private fun GridFrequency(count: Int, en: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(count.toString(), style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface)
+        Text(if (en) "times" else "ကြိမ်",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** A 0–9 set must never be truncated just to fit the same font as one 2D pair. */
+@Composable
+private fun GridDigits(digits: Collection<Char>, noneLabel: String) {
+    Text(
+        digits.joinToString(" · ").ifEmpty { noneLabel },
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 4,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
 private fun GridSecondary(text: String) {
     Text(
         text,
@@ -259,13 +285,13 @@ private fun TwoDGridFinding(
                                 verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 GridEyebrow(tr("ဂဏန်းတွဲ", "2D pair"))
                                 GridResult(leaderLabel(a.numbers, en))
-                                GridSecondary(pairMax.toString() + tr(" ကြိမ်", " times"))
+                                GridFrequency(pairMax, en)
                             }
                             Column(Modifier.weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 GridEyebrow(tr("ဂဏန်း", "Digit"))
                                 GridResult(leaderLabel(a.singles, en))
-                                GridSecondary(digitMax.toString() + tr(" ကြိမ်", " times"))
+                                GridFrequency(digitMax, en)
                             }
                         }
                         GridSeparator()
@@ -329,14 +355,14 @@ private fun TwoDGridFinding(
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             GridResult(pair, modifier = Modifier.weight(1f))
-                            GridSecondary(pairGap.toString() + tr(" ကြိမ်", " draws"))
+                            GridFrequency(pairGap, en)
                         }
                         GridSeparator()
                         GridEyebrow(tr("မတွေ့သောဂဏန်း", "Longest unseen digit"))
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             GridResult(digit, modifier = Modifier.weight(1f))
-                            GridSecondary(digitGap.toString() + tr(" ကြိမ်", " draws"))
+                            GridFrequency(digitGap, en)
                         }
                         if (a.hasUnknownOpenSlots ||
                             a.fullNumbers.any { it.historyStartTruncated }) {
@@ -394,9 +420,7 @@ private fun TwoDGridFinding(
                             "No confirmed draw this week"))
                     } else {
                         GridEyebrow(tr("ဒီအပတ် မတွေ့သေးသောဂဏန်း", "Unseen digits this week"))
-                        GridResult(a.remainingDigits.joinToString(" · ").ifEmpty {
-                            tr("မကျန်", "None")
-                        })
+                        GridDigits(a.remainingDigits, tr("မကျန်", "None"))
                         GridSeparator()
                         val latest = a.transitions.last()
                         GridEyebrow(tr("နောက်ဆုံးထွက်သည့် အသစ်ဂဏန်း", "Latest new digits"))
@@ -454,9 +478,7 @@ private fun TwoDGridFinding(
                     } else {
                         GridEyebrow(if (a.complete) tr("ပျောက်ဂဏန်း", "Missing digits")
                             else tr("မှတ်တမ်းအရ မတွေ့သေး", "Unseen in available draws"))
-                        GridResult(a.remainingDigits.joinToString(" · ").ifEmpty {
-                            tr("မကျန်", "None")
-                        })
+                        GridDigits(a.remainingDigits, tr("မကျန်", "None"))
                         GridSeparator()
                         GridSubResult(tr("ဂဏန်းတွဲ ပြန်ကျ", "Exact repeats"),
                             a.repeatedNumbers.sumOf { it.count }.toString() +
@@ -478,7 +500,7 @@ private fun TwoDGridFinding(
                         if (returned.isEmpty()) {
                             GridSecondary(tr("ပြန်တွေ့တာ မရှိသေး", "None observed yet"))
                         } else {
-                            GridResult(returned.joinToString(" · ") { it.digit.toString() })
+                            GridDigits(returned.map { it.digit }, tr("မရှိ", "None"))
                         }
                         GridSeparator()
                         GridSubResult(
