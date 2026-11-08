@@ -1025,3 +1025,54 @@ The initial proposed concept also allowed exploring chosen **numbers, groups, ti
 
 ---
 
+---
+
+# Part X — Information-first 2D Analysis UI rules and experimental layout (2026-11-08)
+
+## X.1 Three user-approved design rules
+
+**Rule 1 — Information priority before layout.** Identify the purpose of the view and the smallest set of truly useful answers. Prioritize facts by what the user needs to know, then decide their placement; only after that choose cards, charts, grids and visual styling. Do not mistake implementation subchecks for equal-level headline information.
+
+**Rule 2 — Progressive disclosure.** Show the highest-priority results immediately. Important but secondary facts must be accessible on demand, without crowding the first view. Eliminate genuinely unnecessary content; do not delete valid evidence or calculations. Avoid deep nested disclosure and unnecessary taps.
+
+**Rule 3 — Smart space utilization.** Compact, legible and user-centered placement. Reduce wasted header height, giant cards, duplicate captions, empty paddings and pointless scrolling. Preserve enough spacing, Burmese/English legibility, tap targets and responsive behavior; compact does not mean tiny text.
+
+## X.2 A-02 clarification
+
+The A-02 method has five verified calculations but only **two top-level information families**:
+
+1. **ဂဏန်းတွဲ (00–99):** exact pair frequency; odd/even class frequencies; special 2D group frequencies.
+2. **ဂဏန်း (0–9):** combined single-digit frequency (both positions counted, e.g. 55 adds 5 twice); tens-only maximum; ones-only maximum.
+
+User approved trying a **side-by-side comparison of ဂဏန်းတွဲ and ဂဏန်း** for the top-level answers, rather than two tall, separated sections. The paired panels are comparable in information *purpose*, not directly comparable in raw count denominators. Pair counts are per draw; single-digit counts are per digit position. Preserve equal-maximum ties. Single-digit least observed (>0) is an important initial answer; least-observed 2D pairs and the full 00–99 browser are secondary details, not a replacement for that answer. Show verified sample size compactly as context.
+
+This layout is not authority to change the five A-02 calculations, validated domain group memberships, historical weekday/session matching, zero-vs-missing handling, or source precedence.
+
+## X.3 Screen hierarchy — implementation trial, not yet phone-accepted
+
+Retain the approved **three chronological groups** and fixed **4+2+2** assignment:
+
+- **လက်ရှိအကြိမ်:** A-02 / A-03 / A-06 / A-08.
+- **ယခုအပတ်အခြေအနေ:** A-05 / A-07.
+- **ပြီးခဲ့တဲ့အပတ်:** A-04 / A-01.
+
+**Main Analysis Overview** is an answer-first dashboard, not a method directory. Each group's closed/summary state shows a few actual verified facts from its own members (with missing/incomplete-data distinctions). Pressing a group enters a **focused group workspace**, where each assigned method displays a compact real-data preview; selecting the method opens the original full-evidence detail. This separates navigation from unnecessary content, limits initial scrolling, and preserves all eight engines. Research and Rules remain separate.
+
+Group-specific initial result ideas (subject to phone testing and further priority evaluation):
+
+- Current occasion: side-by-side A-02 pair and digit historical leaders; A-03/A-06/A-08 also retain their own result previews in the focused group.
+- Current week: remaining 0–9 digits (A-05) and exact repeated 2D count (A-07).
+- Previous week: recorded missing digits (A-04) and observed current-week returns (A-01).
+
+**Implementation on isolated experimental branch:** On 2026-11-08 changed `Historical2DTimelineScreen.kt` to show real group previews rather than a selected-group method directory; added focused group results, with existing detail drill-down. Updated `TwoDA02Dashboard.kt` to show the pair/digit comparison first and place full pair frequencies/class groups and 0–9 frequency grids behind separate on-demand disclosures. These are **experimental UI edits pending CI plus real-device user approval**. Neither merging to main nor final acceptance is implied. All previous source-of-truth method specifications still apply.
+
+## X.4 Acceptance checklist and limits
+
+- Open Analysis: see the three groups and their own *actual* useful outcomes, without first opening any directory.
+- Open a group: see the correct 4, 2 or 2 methods, each with a brief nonfabricated answer; select a method and return correctly.
+- A-02: pair/digit leaders side by side; least-observed *single digit* visible; fuller 00–99, parity, special groups, tens/ones and all-digit counts available when requested.
+- Preserve all ties, complete historical context and verified-data counts; explicitly distinguish missing results, insufficient eligibility and observed zero.
+- Review small-screen MM/EN typography, overflow, scrolling, tap sizes, focus/Back behavior and updates when target or range changes.
+- Check against all eight method unit tests and unrelated ledger functionality.
+- The existing A-02 count-based 00–99 browser does not yet show individual matching dates and sessions, although the A-02 specification requires historical supporting records. Track this as a remaining evidence-drilldown gap, not as a solved feature.
+- Do not merge to the baseline branch until the user accepts the real-phone appearance and behavior.
