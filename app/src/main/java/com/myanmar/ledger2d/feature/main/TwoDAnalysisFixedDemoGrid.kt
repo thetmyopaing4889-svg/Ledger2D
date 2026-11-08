@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,8 +55,8 @@ internal object TwoDFixedDemoSamples {
  * The parent gives this grid ONLY the space remaining after app bar, date,
  * timeline tabs, history selector and bottom navigation.
  * 4 results: 2×2 equal cells using the available screen height.
- * 2 results: equal SIDE-BY-SIDE cells with a data-density-derived
- * height capped to the available screen, never unnecessarily full-height.
+ * 2 results: equal SIDE-BY-SIDE cells measured from the taller one's
+ * actual content (including Burmese line height), never full-height.
  * The preview remains non-scrollable; the real Analysis path is untouched.
  */
 @Composable
@@ -96,18 +97,17 @@ internal fun TwoDFixedDemoGrid(
             }
         } else {
             val isWeek = group == "2"
-            // Small weekly datasets should not stretch two mostly empty
-            // cards all the way to the bottom navigation. Both cards get
-            // the SAME responsive height, based on the denser one's rows.
-            val resultRows = if (isWeek) TwoDFixedDemoSamples.special.size
-                else TwoDFixedDemoSamples.returns.size
-            val preferred = (
-                if (compact) 94 + resultRows * 35
-                else 104 + resultRows * 44
-            ).dp
-            val cardHeight = if (preferred < maxHeight) preferred else maxHeight
-            Row(Modifier.fillMaxWidth().height(cardHeight),
-                horizontalArrangement = Arrangement.spacedBy(gutter)) {
+            // Intrinsic measurement takes the TALLER card's actual
+            // Burmese content height. The shorter card stretches only to
+            // that common height. Avoid hard-coded row-count estimates:
+            // they clipped A-01's third row on the user's phone.
+            Row(
+                Modifier.fillMaxWidth()
+                    .heightIn(max = maxHeight)
+                    .height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(gutter),
+                verticalAlignment = Alignment.Top,
+            ) {
                 if (isWeek) {
                     PreviewTile(if (en) "This week" else "ယခုအပတ်",
                         Modifier.weight(1f).fillMaxHeight(), compact) {
@@ -140,20 +140,67 @@ private fun PreviewTile(
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier, shape = RoundedCornerShape(14.dp),
-        color = c.surface, shadowElevation = 5.dp, tonalElevation = 1.dp,
-        border = BorderStroke(1.dp, c.secondary.copy(alpha = .18f))) {
-        Column(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(c.surface,
-                    c.secondaryContainer.copy(alpha = .29f)))
-            ).padding(if (compact) 7.dp else 10.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 7.dp),
+    val shape = RoundedCornerShape(14.dp)
+    Surface(
+        modifier = modifier,
+        shape = shape,
+        color = c.surface,
+        shadowElevation = 7.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .15f)),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().background(
+                Brush.verticalGradient(
+                    listOf(
+                        c.surface,
+                        c.secondaryContainer.copy(alpha = .32f),
+                        c.secondaryContainer.copy(alpha = .53f),
+                    ),
+                ),
+                shape = shape,
+            ),
         ) {
-            Text(title, style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold, color = c.onSurface,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            body()
+            // A restrained specular rim is a glass-like highlight, not
+            // an expensive runtime blur or opaque inner grey frame.
+            Box(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                c.surface.copy(alpha = .16f),
+                                Color.White.copy(alpha = .80f),
+                                c.surface.copy(alpha = .16f),
+                            ),
+                        ),
+                    ),
+            )
+            Column(
+                Modifier.fillMaxWidth()
+                    .padding(if (compact) 9.dp else 12.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        Modifier.width(3.dp).height(17.dp)
+                            .background(c.secondary, RoundedCornerShape(3.dp)),
+                    )
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = c.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                body()
+            }
         }
     }
 }
