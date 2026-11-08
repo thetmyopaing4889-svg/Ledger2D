@@ -109,7 +109,7 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
         "05" -> report.a05.transitions.isEmpty()
         "07" -> report.a07.observedDraws == 0
         "04" -> report.a04.observedDraws == 0
-        "01" -> report.a04.observedDraws == 0 || report.a01.missingDigits.isEmpty()
+        "01" -> !report.a01.previousWeekComplete || report.a01.missingDigits.isEmpty()
         else -> true
     }
     Surface(
@@ -126,6 +126,7 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
                 val status = when {
                     id == "03" && !report.a03.eligible -> "N/A"
                     id == "03" -> "No match"
+                    id == "01" && !report.a01.previousWeekComplete -> "Unverified"
                     id == "01" && report.a04.observedDraws > 0 -> "None"
                     else -> "No data"
                 }
@@ -351,7 +352,8 @@ private fun Specials(report: TwoDAnalysisReport, en: Boolean) {
 @Composable
 private fun PriorWeek(report: TwoDAnalysisReport) {
     val a = report.a04
-    Hero("TOP 0–9", top(a.singleDigitFrequency))
+    Hero(if (a.complete) "TOP 0–9" else "SEEN TOP",
+        top(a.singleDigitFrequency))
     DividerHairline()
     DigitStrip(if (a.complete) "MISSING" else "UNSEEN", a.remainingDigits)
 }
