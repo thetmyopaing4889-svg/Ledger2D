@@ -9,8 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,7 +86,7 @@ internal fun TwoDAnalysisResultGrid(
     }
 }
 
-private data class TopFinding(val value: String, val count: Int?, val tied: Boolean = false)
+private data class TopFinding(val value: String, val count: Int?, val atLeast: Boolean = false)
 
 private fun topOf(values: List<TwoDCount>): TopFinding {
     val maximum = values.maxOfOrNull { it.count } ?: 0
@@ -107,8 +105,8 @@ private fun topOfWinners(winners: List<String>, count: Int): TopFinding =
     when (winners.size) {
         0 -> TopFinding("—", null)
         1 -> TopFinding(winners.single(), count)
-        2 -> TopFinding(winners.joinToString("·"), count, true)
-        else -> TopFinding(winners.size.toString() + " tied", count, true)
+        2 -> TopFinding(winners.joinToString("·"), count)
+        else -> TopFinding(winners.size.toString() + " tied", count)
     }
 
 private fun topAbsent(values: List<TwoDStreak>, incomplete: Boolean): TopFinding {
@@ -118,8 +116,7 @@ private fun topAbsent(values: List<TwoDStreak>, incomplete: Boolean): TopFinding
     val data = topOfWinners(winners.map { it.value }, maximum)
     // A '+' warns that gaps/history edges may understate actual absence,
     // without presenting a false exact measurement.
-    return if (incomplete || winners.any { it.historyStartTruncated })
-        data.copy(value = data.value, count = data.count) else data
+    return data.copy(atLeast = incomplete || winners.any { it.historyStartTruncated })
 }
 
 @Composable
@@ -277,7 +274,7 @@ private fun FindingRow(label: String, finding: TopFinding, suffix: String = "×"
                 fontWeight = FontWeight.ExtraBold, color = c.secondary,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (finding.count != null) {
-                CountCapsule(suffix + finding.count)
+                CountCapsule(suffix + finding.count + if (finding.atLeast) "+" else "")
             }
         }
     }
