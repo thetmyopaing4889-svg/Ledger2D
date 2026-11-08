@@ -95,6 +95,12 @@ private fun winners(values: List<String>, count: Int): Leader = when (values.siz
     2 -> Leader("2 tied", count, tiedValues = values)
     else -> Leader(values.size.toString() + " tied", count, tiedValues = values)
 }
+private fun hasTwoNumericTies(result: Leader): Boolean =
+    result.tiedValues.size == 2 &&
+        result.tiedValues.all { value ->
+            value.length <= 2 && value.all { char -> char.isDigit() }
+        }
+
 private fun absentTop(stream: List<TwoDStreak>, incomplete: Boolean): Leader {
     if (stream.isEmpty()) return Leader("—")
     val max = stream.maxOf { it.observedDrawsSince }
@@ -192,11 +198,25 @@ private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier) {
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = c.onSecondary.copy(alpha = .82f),
                 fontWeight = FontWeight.Medium, maxLines = 1)
-            Text(result.value,
-                style = if (result.value.length <= 3) MaterialTheme.typography.headlineMedium
-                    else MaterialTheme.typography.titleMedium,
-                color = c.onSecondary, fontWeight = FontWeight.ExtraBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (hasTwoNumericTies(result)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    result.tiedValues.forEach { number ->
+                        Surface(shape = RoundedCornerShape(7.dp),
+                            color = c.onSecondary.copy(alpha = .15f)) {
+                            Text(number, modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold, color = c.onSecondary,
+                                maxLines = 1)
+                        }
+                    }
+                }
+            } else {
+                Text(result.value,
+                    style = if (result.value.length <= 3) MaterialTheme.typography.headlineMedium
+                        else MaterialTheme.typography.titleMedium,
+                    color = c.onSecondary, fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             if (result.count != null) {
                 Surface(shape = RoundedCornerShape(8.dp),
                     color = c.onSecondary.copy(alpha = .16f)) {
@@ -229,9 +249,7 @@ private fun ResultChip(value: String, small: Boolean = false, accent: Boolean = 
 
 @Composable
 private fun RankedChips(result: Leader, accent: Boolean = false) {
-    val splitNumericPair = result.tiedValues.size == 2 &&
-        result.tiedValues.all { v -> v.length <= 2 && v.all { ch -> ch.isDigit() } }
-    if (splitNumericPair) {
+    if (hasTwoNumericTies(result)) {
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             result.tiedValues.forEach { ResultChip(it, small = true, accent = accent) }
         }
