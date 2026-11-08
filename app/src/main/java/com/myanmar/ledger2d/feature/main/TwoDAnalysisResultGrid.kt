@@ -232,16 +232,16 @@ private fun DividerHairline() {
 @Composable
 private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Modifier) {
     val c = MaterialTheme.colorScheme
-    Row(modifier.heightIn(min = 34.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = c.onSurfaceVariant, maxLines = 1)
-        Spacer(Modifier.weight(1f))
-        ResultChip(result.value)
-        if (result.count != null) {
-            Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold, color = c.onSurface, maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            ResultChip(result.value)
+            if (result.count != null) {
+                Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold, color = c.onSurface, maxLines = 1)
+            }
         }
     }
 }
@@ -278,7 +278,7 @@ private fun Absence(report: TwoDAnalysisReport) {
             val stream = report.a06[key]
             val result = if (stream == null || stream.observedDraws == 0) Leader("—")
                 else absentTop(stream.fullNumbers, stream.hasUnknownOpenSlots)
-            CompactRow(label, result, Modifier.fillMaxWidth(), "G ", 25)
+            CompactRow(label, result, Modifier.fillMaxWidth(), "Gap ", 25)
         }
 }
 
