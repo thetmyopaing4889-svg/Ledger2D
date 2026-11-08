@@ -1090,7 +1090,7 @@ private fun TwoDPrimaryFinding(
         "06" -> {
             val stream = report.a06.getValue(streakStream)
             val longest = stream.fullNumbers.firstOrNull()
-            Triple(tr("မထွက်တာကြာနေသော ဂဏန်းတွဲ", "Longest absent pair"),
+            Triple(tr("ပျောက်ဂဏန်းတွဲ", "Longest absent pair"),
                 if (stream.observedDraws == 0 || longest == null) noData
                 else longest.value + "  ·  " + longest.observedDrawsSince + tr(" ကြိမ်", " draws"),
                 (when (streakStream) {
@@ -1116,7 +1116,7 @@ private fun TwoDPrimaryFinding(
             if (report.a04.observedDraws == 0) noData
             else report.a04.remainingDigits.joinToString(" ").ifEmpty { none },
             tr("ရှိထားသော ထွက်ဂဏန်းပေါ်တွက်ထားသည်", "Based on available results"))
-        "01" -> Triple(tr("ဒီအပတ် ပျောက်ဂဏန်းပြန်ဆင်း", "Missing digits observed returning"),
+        "01" -> Triple(tr("ဒီအပတ် ပျောက်ဂဏန်းပြန်ပေါ်", "Missing digits observed returning"),
             if (report.a04.observedDraws == 0) noData
             else report.a01.results.count { it.thisWeekFirstSeen != null }.toString() +
                 tr(" လုံး", " digits"),
