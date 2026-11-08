@@ -1,6 +1,7 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -8,6 +9,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,20 +54,56 @@ internal fun TwoDAnalysisResultGrid(
     group: String, report: TwoDAnalysisReport, en: Boolean,
     onOpenDetail: (String) -> Unit,
 ) {
-    val checks = when (group) {
-        // Balance the bento columns: the six-category 02 is naturally tall;
-        // the 03 ineligible indicator is deliberately very short.
-        "1" -> listOf("02", "06", "03", "08")
-        "2" -> listOf("05", "07")
-        else -> listOf("04", "01")
-    }
-    Row(Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Top) {
-        (0..1).forEach { column ->
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                checks.filterIndexed { i, _ -> i % 2 == column }.forEach { id ->
-                    ResultTile(id, report, en) { onOpenDetail(id) }
+    // One coherent grid, not two independent masonry columns. Current
+    // draw: two aligned lead tiles, followed by two FULL-WIDTH rows.
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when (group) {
+            "1" -> {
+                val bothPopulated = report.a02.samples > 0 &&
+                    report.a06.values.any { it.observedDraws > 0 }
+                Row(
+                    Modifier.fillMaxWidth().then(
+                        if (bothPopulated) Modifier.height(IntrinsicSize.Max) else Modifier
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    ResultTile(
+                        "02", report, en,
+                        onClick = { onOpenDetail("02") },
+                        modifier = Modifier.weight(1f).then(
+                            if (bothPopulated) Modifier.fillMaxHeight() else Modifier
+                        ),
+                        expand = bothPopulated,
+                    )
+                    ResultTile(
+                        "06", report, en,
+                        onClick = { onOpenDetail("06") },
+                        modifier = Modifier.weight(1f).then(
+                            if (bothPopulated) Modifier.fillMaxHeight() else Modifier
+                        ),
+                        expand = bothPopulated,
+                    )
+                }
+                ResultTile("03", report, en,
+                    onClick = { onOpenDetail("03") }, modifier = Modifier.fillMaxWidth())
+                ResultTile("08", report, en,
+                    onClick = { onOpenDetail("08") }, modifier = Modifier.fillMaxWidth())
+            }
+            else -> {
+                val checks = if (group == "2") listOf("05", "07")
+                    else listOf("04", "01")
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    checks.forEach { id ->
+                        ResultTile(id, report, en,
+                            onClick = { onOpenDetail(id) },
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            expand = true)
+                    }
                 }
             }
         }
@@ -110,7 +148,14 @@ private fun absentTop(stream: List<TwoDStreak>, incomplete: Boolean): Leader {
 }
 
 @Composable
-private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onClick: () -> Unit) {
+private fun ResultTile(
+    id: String,
+    report: TwoDAnalysisReport,
+    en: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    expand: Boolean = false,
+) {
     val c = MaterialTheme.colorScheme
     val unavailable = when (id) {
         "02" -> report.a02.samples == 0
@@ -123,47 +168,96 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
         "01" -> !report.a01.previousWeekComplete || report.a01.missingDigits.isEmpty()
         else -> true
     }
+    val shape = RoundedCornerShape(16.dp)
     Surface(
-        modifier = Modifier.fillMaxWidth(), onClick = onClick,
-        shape = RoundedCornerShape(18.dp), color = c.surface,
-        shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = .62f)),
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+        shape = shape,
+        color = c.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 7.dp,
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .13f)),
     ) {
-        Box(Modifier.fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp,
-                vertical = if (unavailable) 9.dp else 13.dp),
-                verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Box(
+            Modifier.fillMaxWidth().then(
+                if (expand) Modifier.fillMaxHeight() else Modifier
+            ).background(
+                Brush.verticalGradient(
+                    listOf(c.surface.copy(alpha = .99f),
+                        c.secondaryContainer.copy(alpha = .32f))
+                ),
+                shape,
+            ),
+        ) {
+            Column(
+                Modifier.fillMaxWidth().then(
+                    if (expand) Modifier.fillMaxHeight() else Modifier
+                ).padding(horizontal = 12.dp, vertical = if (unavailable) 12.dp else 14.dp),
+                verticalArrangement = if (expand) Arrangement.SpaceBetween
+                    else Arrangement.spacedBy(11.dp),
+            ) {
+                TileHeading(id, en)
                 if (unavailable) {
-                val status = when {
-                    id == "03" && !report.a03.eligible ->
-                        if (en) "Need history" else "မှတ်တမ်းမလုံလောက်"
-                    id == "03" ->
-                        if (en) "No match" else "ပုံစံတူမတွေ့"
-                    id == "01" && !report.a01.previousWeekComplete -> "Unverified"
-                    id == "01" && report.a04.observedDraws > 0 -> "None"
-                    else -> "No data"
+                    val status = when {
+                        id == "03" && !report.a03.eligible ->
+                            if (en) "Need more history" else "မှတ်တမ်းမလုံလောက်"
+                        id == "03" ->
+                            if (en) "No matching pattern" else "ပုံစံတူမတွေ့"
+                        id == "01" && !report.a01.previousWeekComplete ->
+                            if (en) "Not verified" else "မစစ်ဆေးနိုင်သေး"
+                        id == "01" && report.a04.observedDraws > 0 ->
+                            if (en) "None missing" else "ပျောက်ဂဏန်းမရှိ"
+                        else -> if (en) "No data" else "မှတ်တမ်းမရှိ"
+                    }
+                    EmptyCompact(status)
+                } else {
+                    when (id) {
+                        "02" -> SameSlot(report, en)
+                        "03" -> WeeklyPattern(report, en)
+                        "06" -> Absence(report, en)
+                        "08" -> PreviousResults(report, en)
+                        "05" -> WeeklyDigits(report)
+                        "07" -> Specials(report, en)
+                        "04" -> PriorWeek(report, en)
+                        "01" -> MissingReturns(report)
+                    }
                 }
-                EmptyCompact(status, if (id == "03") {
-                    if (en) "Parity" else "စုံ/မ"
-                } else null)
-            } else when (id) {
-                "02" -> SameSlot(report, en)
-                "03" -> WeeklyPattern(report, en)
-                "06" -> Absence(report, en)
-                "08" -> PreviousResults(report, en)
-                "05" -> WeeklyDigits(report)
-                "07" -> Specials(report, en)
-                "04" -> PriorWeek(report, en)
-                "01" -> MissingReturns(report)
             }
-            }
-            // Overlay the detail affordance; it no longer makes every tile
-            // unnecessarily taller (especially the empty A-03 tile).
-            Icon(Icons.Default.ChevronRight, null,
+            Icon(
+                Icons.Default.ChevronRight, null,
                 modifier = Modifier.align(Alignment.TopEnd)
-                    .padding(top = 4.dp, end = 3.dp).size(11.dp),
-                tint = c.onSurfaceVariant.copy(alpha = .45f))
+                    .padding(top = 5.dp, end = 4.dp).size(12.dp),
+                tint = c.onSurfaceVariant.copy(alpha = .60f),
+            )
         }
+    }
+}
+
+@Composable
+private fun TileHeading(id: String, en: Boolean) {
+    val c = MaterialTheme.colorScheme
+    val label = when (id) {
+        "02" -> if (en) "Most seen" else "အထွက်အများဆုံး"
+        "06" -> if (en) "Missing digits / pairs" else "ပျောက်ဂဏန်း / ပျောက်ဂဏန်းတွဲ"
+        "03" -> if (en) "Parity pattern" else "စုံ/မ"
+        "08" -> if (en) "Previous-result comparison" else "ရှေ့ထွက်နှိုင်းယှဉ်"
+        "05" -> if (en) "This week" else "ယခုအပတ်"
+        "07" -> if (en) "Special groups" else "အထူးအုပ်စု"
+        "04" -> if (en) "Last week" else "ပြီးခဲ့တဲ့အပတ်"
+        else -> if (en) "Missing digit return" else "ပျောက်ဂဏန်းပြန်ပေါ်"
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(end = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(3.dp), color = c.secondary,
+            modifier = Modifier.width(4.dp).height(20.dp),
+        ) {}
+        Text(label, style = MaterialTheme.typography.labelMedium,
+            color = c.onSurface, fontWeight = FontWeight.Bold,
+            maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -319,10 +413,6 @@ private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Mo
 @Composable
 private fun SameSlot(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a02
-    Text(if (en) "MOST SEEN" else "အထွက်အများဆုံး",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Hero("2D", top(a.numbers), Modifier.weight(1f), en)
         Hero("0–9", top(a.singles), Modifier.weight(1f), en)
@@ -477,14 +567,6 @@ private fun AbsenceRow(
 
 @Composable
 private fun Absence(report: TwoDAnalysisReport, en: Boolean) {
-    val c = MaterialTheme.colorScheme
-    Text(
-        if (en) "Missing digit / pair" else "ပျောက်ဂဏန်း / ပျောက်ဂဏန်းတွဲ",
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Bold,
-        color = c.onSurface,
-        maxLines = 2,
-    )
     listOf(
         "AM" to "morning",
         "PM" to "evening",
