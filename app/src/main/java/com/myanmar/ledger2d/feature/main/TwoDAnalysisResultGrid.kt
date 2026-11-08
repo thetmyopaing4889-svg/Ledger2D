@@ -271,20 +271,26 @@ private fun RankedChips(result: Leader, accent: Boolean = false) {
 
 @Composable
 private fun AbsenceCountChip(result: Leader, en: Boolean) {
-    val count = result.count
     val c = MaterialTheme.colorScheme
-    Surface(shape = RoundedCornerShape(10.dp),
+    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
         color = c.tertiary.copy(alpha = .16f),
         border = BorderStroke(1.dp, c.tertiary.copy(alpha = .34f))) {
-        Text(
-            if (count == null) "—" else
-                count.toString() + (if (result.minOnly) "+" else "") +
+        // Stacking the Myanmar label ABOVE its count avoids squeezing
+        // a long string and a large number into a tiny half-width row.
+        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(if (en) "Unseen" else "မထွက်သေး",
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Text(
+                if (result.count == null) "—" else result.count.toString() +
+                    (if (result.minOnly) "+" else "") +
                     (if (en) " draws" else " ကြိမ်"),
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold, color = c.onSurface,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+                style = MaterialTheme.typography.titleMedium,
+                color = c.onSurface, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -380,15 +386,7 @@ private fun AbsenceRow(label: String, result: Leader, en: Boolean) {
                 color = c.onSurfaceVariant)
             RankedChips(result, accent = true)
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(if (en) "Unseen" else "မထွက်သေး",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
-                maxLines = 1)
-            Spacer(Modifier.weight(1f))
-            AbsenceCountChip(result, en)
-        }
+        AbsenceCountChip(result, en)
     }
 }
 
