@@ -133,7 +133,7 @@ fun Historical2DTimelineScreen(
     }
     val validTarget = DrawSchedule.isWorkingDate(date, closedDates)
     val report = remember(merged, target, closedDates, range, validTarget, lookback, customValid) {
-        if (validTarget && (lookback != "custom" || customValid))
+        if (validTarget)
             TwoDAnalysisEngine.calculate(merged.draws, target, closedDates, range)
         else null
     }
@@ -322,7 +322,7 @@ fun Historical2DTimelineScreen(
                         TwoDAnalysisGroupTag(
                             modifier = Modifier.weight(1f), text = section.title,
                             selected = openGroup == section.key,
-                            onClick = { openGroup = section.key },
+                            onClick = { openGroup = section.key; rangeMenu = false },
                         )
                     }
                 }
@@ -395,13 +395,14 @@ fun Historical2DTimelineScreen(
                 if (!validTarget) {
                     TwoDStatusMessage(tr("ရွေးထားသောနေ့မှာ 2D အကြိမ်ပိတ်ထားသည်။",
                         "No trading draw on the selected date."), true)
-                } else if (report == null) {
+                } else if (lookback == "custom" && !customValid && openGroup != "2") {
                     TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
                         "Check the selected date range"), true)
                 }
 
-                // The grid IS the analysis workspace. No directory screen.
-                if (report != null) {
+                // Fixed-week A-05/A-07 remain usable even if a hidden custom
+                // history range is invalid. Other groups require valid dates.
+                if (report != null && (openGroup == "2" || lookback != "custom" || customValid)) {
                     TwoDAnalysisResultGrid(
                         group = selectedSection.key, report = report, en = en,
                         onOpenDetail = { openCheck = it },
@@ -799,7 +800,8 @@ internal fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean)
                     if (!a.eligible) tr("စစ်ဆေးရန်မပြည့်", "Not eligible")
                     else a.matched.size.toString() + tr(" ပတ်", " weeks")),
                 fact(tr("နောက်အမျိုးအစား", "Following class"),
-                    if (!a.eligible || a.matched.isEmpty()) noData to ""
+                    if (!a.eligible) noData to ""
+                    else if (a.matched.isEmpty()) none to ""
                     else {
                         val top = a.nextParity.values.maxOrNull() ?: 0
                         val ties = a.nextParity.filterValues { it == top && top > 0 }.keys
