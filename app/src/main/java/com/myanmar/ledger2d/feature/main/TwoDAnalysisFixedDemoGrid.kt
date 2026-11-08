@@ -262,25 +262,33 @@ private fun TinyNumberWell(
         shadowElevation = 0.dp,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = c.onSurfaceVariant,
-                maxLines = 1,
-            )
-            Text(
-                number.value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (primary) c.secondary else c.onSurface,
-                maxLines = 1,
-            )
-            // Never make the large historical nonappearance count a hero.
-            // Let its unit wrap rather than painting outside the result box.
+            // Two-line compact hierarchy: label + primary number on
+            // the first line, count on the second. All three A-06 rows
+            // must fit one fixed quarter-screen card.
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = c.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    number.value,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (primary) c.secondary else c.onSurface,
+                    maxLines = 1,
+                )
+            }
             Text(
                 number.count + (if (en) " draws" else " ကြိမ်"),
                 style = MaterialTheme.typography.labelSmall,
