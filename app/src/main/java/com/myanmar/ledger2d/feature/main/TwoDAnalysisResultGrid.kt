@@ -16,437 +16,359 @@ import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.domain.TwoDAnalysisReport
 import com.myanmar.ledger2d.core.domain.TwoDCount
 import com.myanmar.ledger2d.core.domain.TwoDStreak
+import com.myanmar.ledger2d.core.domain.TwoDMissingDigitReturn
 
 /**
- * Home grid = visual summary, NEVER a compressed detail screen.
- * Each actual result is an inset object; no method title, sentence,
- * explanation, or old QuickFact preview is displayed in these tiles.
+ * Only the main Analysis dashboard. Method names, prose, histories and
+ * calculations belong to independent details; this is a compact result
+ * canvas with inset values and micro-labels, not six cards inside a card.
  */
 @Composable
 internal fun TwoDAnalysisGroupTag(
-    text: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
+    text: String, selected: Boolean, modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val c = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.defaultMinSize(minHeight = 48.dp),
-        shape = RoundedCornerShape(14.dp),
-        onClick = onClick,
+        shape = RoundedCornerShape(13.dp), onClick = onClick,
         color = if (selected) c.secondaryContainer else c.surface,
-        shadowElevation = if (selected) 3.dp else 1.dp,
-        border = BorderStroke(
-            1.dp, if (selected) c.secondary.copy(alpha = 0.55f)
-            else c.outlineVariant.copy(alpha = 0.55f),
-        ),
+        shadowElevation = if (selected) 2.dp else 0.dp,
+        border = BorderStroke(1.dp, if (selected) c.secondary.copy(alpha = .45f)
+            else c.outlineVariant.copy(alpha = .75f)),
     ) {
         Box(Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center) {
-            Text(
-                text,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            Text(text, style = MaterialTheme.typography.labelMedium,
                 color = if (selected) c.onSecondaryContainer else c.onSurfaceVariant,
-                textAlign = TextAlign.Center, maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
 @Composable
 internal fun TwoDAnalysisResultGrid(
-    group: String,
-    report: TwoDAnalysisReport,
-    en: Boolean,
+    group: String, report: TwoDAnalysisReport, en: Boolean,
     onOpenDetail: (String) -> Unit,
 ) {
     val checks = when (group) {
-        "1" -> listOf("02", "03", "06", "08")
+        // Balance the bento columns: the six-category 02 is naturally tall;
+        // the 03 ineligible indicator is deliberately very short.
+        "1" -> listOf("02", "06", "03", "08")
         "2" -> listOf("05", "07")
         else -> listOf("04", "01")
     }
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
+    Row(Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top) {
         (0..1).forEach { column ->
-            Column(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(9.dp),
-            ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 checks.filterIndexed { i, _ -> i % 2 == column }.forEach { id ->
-                    ResultTile(id = id, report = report, en = en,
-                        onClick = { onOpenDetail(id) })
+                    ResultTile(id, report, en) { onOpenDetail(id) }
                 }
             }
         }
     }
 }
 
-private data class TopFinding(val value: String, val count: Int?, val atLeast: Boolean = false)
+private data class Leader(val value: String, val count: Int? = null, val minOnly: Boolean = false)
 
-private fun topOf(values: List<TwoDCount>): TopFinding {
-    val maximum = values.maxOfOrNull { it.count } ?: 0
-    if (maximum <= 0) return TopFinding("—", null)
-    val winners = values.filter { it.count == maximum }.map { it.digit }
-    return topOfWinners(winners, maximum)
+private fun top(values: List<TwoDCount>): Leader {
+    val max = values.maxOfOrNull { it.count } ?: 0
+    return if (max == 0) Leader("—") else winners(
+        values.filter { it.count == max }.map { it.digit }, max)
 }
-
-private fun topOfMap(values: Map<String, Int>, label: (String) -> String): TopFinding {
-    val maximum = values.values.maxOrNull() ?: 0
-    if (maximum <= 0) return TopFinding("—", null)
-    return topOfWinners(values.filterValues { it == maximum }.keys.map(label), maximum)
+private fun top(values: Map<String, Int>, display: (String) -> String = { it }): Leader {
+    val max = values.values.maxOrNull() ?: 0
+    return if (max == 0) Leader("—") else winners(
+        values.filterValues { it == max }.keys.map(display), max)
 }
-
-private fun topOfWinners(winners: List<String>, count: Int): TopFinding =
-    when (winners.size) {
-        0 -> TopFinding("—", null)
-        1 -> TopFinding(winners.single(), count)
-        2 -> TopFinding(winners.joinToString("·"), count)
-        else -> TopFinding(winners.size.toString() + " tied", count)
-    }
-
-private fun topAbsent(values: List<TwoDStreak>, incomplete: Boolean): TopFinding {
-    val maximum = values.maxOfOrNull { it.observedDrawsSince } ?: 0
-    val winners = values.filter { it.observedDrawsSince == maximum }
-    if (winners.isEmpty()) return TopFinding("—", null)
-    val data = topOfWinners(winners.map { it.value }, maximum)
-    // A '+' warns that gaps/history edges may understate actual absence,
-    // without presenting a false exact measurement.
-    return data.copy(atLeast = incomplete || winners.any { it.historyStartTruncated })
+private fun winners(values: List<String>, count: Int): Leader = when (values.size) {
+    0 -> Leader("—")
+    1 -> Leader(values[0], count)
+    2 -> Leader(values.joinToString("·"), count)
+    else -> Leader(values.size.toString() + " tied", count)
+}
+private fun absentTop(stream: List<TwoDStreak>, incomplete: Boolean): Leader {
+    if (stream.isEmpty()) return Leader("—")
+    val max = stream.maxOf { it.observedDrawsSince }
+    val tied = stream.filter { it.observedDrawsSince == max }
+    return winners(tied.map { it.value }, max).copy(
+        minOnly = incomplete || tied.any { it.historyStartTruncated })
 }
 
 @Composable
-private fun ResultTile(
-    id: String,
-    report: TwoDAnalysisReport,
-    en: Boolean,
-    onClick: () -> Unit,
-) {
+private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onClick: () -> Unit) {
     val c = MaterialTheme.colorScheme
+    val unavailable = when (id) {
+        "02" -> report.a02.samples == 0
+        "03" -> !report.a03.eligible || report.a03.matched.isEmpty()
+        "06" -> report.a06.values.none { it.observedDraws > 0 }
+        "08" -> report.a08.firstReference == null || report.a08.secondReference == null
+        "05" -> report.a05.transitions.isEmpty()
+        "07" -> report.a07.observedDraws == 0
+        "04" -> report.a04.observedDraws == 0
+        "01" -> report.a04.observedDraws == 0 || report.a01.missingDigits.isEmpty()
+        else -> true
+    }
     Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(19.dp),
-        color = c.surface,
-        tonalElevation = 1.dp,
-        shadowElevation = 3.dp,
-        border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = 0.62f)),
+        modifier = Modifier.fillMaxWidth(), onClick = onClick,
+        shape = RoundedCornerShape(18.dp), color = c.surface,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = .62f)),
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(9.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            when (id) {
-                "02" -> SameSlotSummary(report, en)
-                "03" -> PatternSummary(report, en)
-                "06" -> MissingPairSummary(report, en)
-                "08" -> PriorMatchSummary(report, en)
-                "05" -> WeekFlowSummary(report, en)
-                "07" -> SpecialSummary(report, en)
-                "04" -> PreviousWeekSummary(report, en)
-                "01" -> MissingReturnSummary(report, en)
+        Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp,
+            vertical = if (unavailable) 7.dp else 9.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (unavailable) {
+                val status = when {
+                    id == "03" && !report.a03.eligible -> "N/A"
+                    id == "03" -> "No match"
+                    id == "01" && report.a04.observedDraws > 0 -> "None"
+                    else -> "No data"
+                }
+                EmptyCompact(status)
+            } else when (id) {
+                "02" -> SameSlot(report, en)
+                "03" -> WeeklyPattern(report)
+                "06" -> Absence(report)
+                "08" -> PreviousResults(report)
+                "05" -> WeeklyDigits(report)
+                "07" -> Specials(report, en)
+                "04" -> PriorWeek(report)
+                "01" -> MissingReturns(report)
             }
-            Row(
-                Modifier.fillMaxWidth().height(13.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.ChevronRight, null,
-                    modifier = Modifier.size(14.dp),
-                    tint = c.onSurfaceVariant.copy(alpha = 0.65f))
+            Icon(Icons.Default.ChevronRight, null,
+                modifier = Modifier.align(Alignment.End).size(12.dp),
+                tint = c.onSurfaceVariant.copy(alpha = .55f))
+        }
+    }
+}
+
+@Composable
+private fun EmptyCompact(status: String) {
+    val c = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth().heightIn(min = 32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center) {
+        Text("—", style = MaterialTheme.typography.titleLarge,
+            color = c.onSurfaceVariant.copy(alpha = .45f))
+        Spacer(Modifier.width(7.dp))
+        Text(status, style = MaterialTheme.typography.labelSmall,
+            color = c.onSurfaceVariant, maxLines = 1)
+    }
+}
+
+/** A single inset well only for the two genuinely dominant figures. */
+@Composable
+private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier) {
+    val c = MaterialTheme.colorScheme
+    Surface(modifier = modifier, shape = RoundedCornerShape(12.dp),
+        color = c.secondaryContainer.copy(alpha = .77f),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .13f))) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text(result.value,
+                style = if (result.value.length <= 3) MaterialTheme.typography.headlineMedium
+                    else MaterialTheme.typography.titleMedium,
+                color = c.secondary, fontWeight = FontWeight.ExtraBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (result.count != null) {
+                Text("×" + result.count, style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold, color = c.onSecondaryContainer)
             }
         }
     }
 }
 
-/**
- * A raised inset layer distinguishes results from all surrounding text.
- * Big values use theme secondary (deep wine in light theme) and count is
- * its own small, distinctly shaded capsule rather than inline prose.
- */
 @Composable
-private fun FindingPanel(
-    label: String,
-    finding: TopFinding,
-    modifier: Modifier = Modifier,
-    hero: Boolean = false,
-    suffix: String = "×",
-) {
+private fun ResultChip(value: String) {
     val c = MaterialTheme.colorScheme
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(if (hero) 14.dp else 12.dp),
-        color = if (hero) c.secondaryContainer.copy(alpha = 0.70f)
-            else c.surfaceVariant.copy(alpha = 0.72f),
-        shadowElevation = if (hero) 2.dp else 0.dp,
-        border = BorderStroke(1.dp, if (hero) c.secondary.copy(alpha = 0.15f)
-            else c.outlineVariant.copy(alpha = 0.38f)),
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(
-                horizontal = if (hero) 8.dp else 6.dp,
-                vertical = if (hero) 8.dp else 6.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = c.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                finding.value,
-                style = if (hero && finding.value.length <= 3)
-                    MaterialTheme.typography.headlineMedium
+    Surface(shape = RoundedCornerShape(8.dp),
+        color = c.secondaryContainer.copy(alpha = .70f)) {
+        Text(value, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            style = if (value.length > 4) MaterialTheme.typography.labelMedium
                 else MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (finding.value == "—") c.onSurfaceVariant.copy(alpha = 0.48f)
-                    else c.secondary,
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
-            if (finding.count != null) {
-                CountCapsule(suffix + finding.count.toString())
-            }
-        }
-    }
-}
-
-@Composable
-private fun CountCapsule(text: String) {
-    val c = MaterialTheme.colorScheme
-    Surface(color = c.surface.copy(alpha = 0.92f),
-        shape = RoundedCornerShape(9.dp)) {
-        Text(text,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = c.onSurface,
-            maxLines = 1)
+            color = if (value == "—") c.onSurfaceVariant else c.secondary,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
+/** A flat label / inset value / count, without a nested bordered card. */
 @Composable
-private fun EmptyFinding(status: String) {
+private fun CompactRow(label: String, result: Leader, modifier: Modifier = Modifier,
+    countPrefix: String = "×", labelWidth: Int = 0,
+) {
     val c = MaterialTheme.colorScheme
-    Surface(shape = RoundedCornerShape(14.dp),
-        color = c.surfaceVariant.copy(alpha = 0.48f)) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 68.dp)
-                .padding(horizontal = 10.dp, vertical = 9.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("—", style = MaterialTheme.typography.headlineMedium,
-                color = c.onSurfaceVariant.copy(alpha = 0.45f),
-                fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Text(status, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = c.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Row(modifier.heightIn(min = 30.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(label, modifier = if (labelWidth > 0) Modifier.width(labelWidth.dp)
+            else Modifier,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = c.onSurfaceVariant, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.weight(1f))
+        ResultChip(result.value)
+        if (result.count != null) {
+            Text(countPrefix + result.count + if (result.minOnly) "+" else "",
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onSurface, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
 
 @Composable
-private fun FindingRow(label: String, finding: TopFinding, suffix: String = "×") {
+private fun DividerHairline() {
+    HorizontalDivider(thickness = .5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .48f))
+}
+
+@Composable
+private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Modifier) {
     val c = MaterialTheme.colorScheme
-    Surface(
-        color = c.surfaceVariant.copy(alpha = 0.62f),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = 0.32f)),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold, color = c.onSurfaceVariant,
-                maxLines = 1)
-            Spacer(Modifier.weight(1f))
-            Text(finding.value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold, color = c.secondary,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (finding.count != null) {
-                CountCapsule(suffix + finding.count + if (finding.atLeast) "+" else "")
-            }
+    Row(modifier.heightIn(min = 34.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = c.onSurfaceVariant, maxLines = 1)
+        Spacer(Modifier.weight(1f))
+        ResultChip(result.value)
+        if (result.count != null) {
+            Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold, color = c.onSurface, maxLines = 1)
         }
     }
 }
 
 @Composable
-private fun DigitTokens(label: String, digits: Collection<Char>) {
+private fun SameSlot(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a02
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Hero("2D", top(a.numbers), Modifier.weight(1f))
+        Hero("0–9", top(a.singles), Modifier.weight(1f))
+    }
+    DividerHairline()
+    CompactRow("စုံ/မ", top(a.parity), Modifier.fillMaxWidth())
+    CompactRow("Group", top(a.groups) { twoDGroupLabel(it, en) }, Modifier.fillMaxWidth())
+    DividerHairline()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        ShortPosition(if (en) "10s" else "ထိပ်", top(a.tens), Modifier.weight(1f))
+        ShortPosition(if (en) "1s" else "ပိတ်", top(a.ones), Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun WeeklyPattern(report: TwoDAnalysisReport) {
+    val a = report.a03
+    Hero("စုံ/မ", top(a.nextParity))
+    CompactRow("Weeks", Leader(a.matched.size.toString()), Modifier.fillMaxWidth())
+}
+
+@Composable
+private fun Absence(report: TwoDAnalysisReport) {
+    listOf("AM" to "morning", "PM" to "evening", "ALL" to "combined")
+        .forEachIndexed { i, (label, key) ->
+            if (i > 0) DividerHairline()
+            val stream = report.a06[key]
+            val result = if (stream == null || stream.observedDraws == 0) Leader("—")
+                else absentTop(stream.fullNumbers, stream.hasUnknownOpenSlots)
+            CompactRow(label, result, Modifier.fillMaxWidth(), "G ", 25)
+        }
+}
+
+@Composable
+private fun PreviousResults(report: TwoDAnalysisReport) {
+    val a = report.a08
+    listOf("BOTH" to a.both.frequencies, "1st" to a.firstOnly.frequencies,
+        "2nd" to a.secondOnly.frequencies).forEachIndexed { i, (label, matches) ->
+        if (i > 0) DividerHairline()
+        CompactRow(label, top(matches), Modifier.fillMaxWidth(), "×", 34)
+    }
+}
+
+@Composable
+private fun DigitStrip(label: String, digits: Collection<Char>) {
     val c = MaterialTheme.colorScheme
-    Surface(color = c.surfaceVariant.copy(alpha = 0.65f),
-        shape = RoundedCornerShape(13.dp)) {
-        Column(Modifier.fillMaxWidth().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
-                maxLines = 1)
-            if (digits.isEmpty()) {
-                Text("0", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = c.secondary)
-            } else {
-                digits.toList().chunked(5).forEach { rowDigits ->
-                    Row(Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        rowDigits.forEach { digit ->
-                            Surface(Modifier.weight(1f),
-                                color = c.secondaryContainer,
-                                shape = RoundedCornerShape(8.dp)) {
-                                Box(Modifier.heightIn(min = 26.dp),
-                                    contentAlignment = Alignment.Center) {
-                                    Text(digit.toString(),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold, color = c.onSecondaryContainer)
-                                }
-                            }
-                        }
-                        repeat(5 - rowDigits.size) {
-                            Spacer(Modifier.weight(1f))
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = c.onSurfaceVariant, maxLines = 1)
+        if (digits.isEmpty()) {
+            ResultChip("0")
+        } else digits.toList().chunked(5).forEach { chunk ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                chunk.forEach { digit ->
+                    Surface(modifier = Modifier.weight(1f), color = c.secondaryContainer,
+                        shape = RoundedCornerShape(7.dp)) {
+                        Box(Modifier.defaultMinSize(minHeight = 26.dp),
+                            contentAlignment = Alignment.Center) {
+                            Text(digit.toString(),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold, color = c.onSecondaryContainer)
                         }
                     }
                 }
+                repeat(5 - chunk.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun SameSlotSummary(report: TwoDAnalysisReport, en: Boolean) {
-    val a = report.a02
-    if (a.samples == 0) { EmptyFinding("No data"); return }
-    val parity = topOfMap(a.parity) { it }
-    val groups = topOfMap(a.groups) { if (it == "ညီကို") "ညီအကို" else it }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        FindingPanel("2D", topOf(a.numbers), Modifier.weight(1f), hero = true)
-        FindingPanel("0–9", topOf(a.singles), Modifier.weight(1f), hero = true)
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        FindingPanel("စုံ/မ", parity, Modifier.weight(1f))
-        FindingPanel("Group", groups, Modifier.weight(1f))
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        FindingPanel(if (en) "Tens" else "ထိပ်", topOf(a.tens), Modifier.weight(1f))
-        FindingPanel(if (en) "Ones" else "ပိတ်", topOf(a.ones), Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun PatternSummary(report: TwoDAnalysisReport, en: Boolean) {
-    val a = report.a03
-    if (!a.eligible) { EmptyFinding("N/A"); return }
-    if (a.matched.isEmpty()) { EmptyFinding("No match"); return }
-    FindingPanel(if (en) "Next parity" else "စုံ/မ",
-        topOfMap(a.nextParity) { it }, hero = true)
-    FindingRow("Weeks", TopFinding(a.matched.size.toString(), null))
-}
-
-@Composable
-private fun MissingPairSummary(report: TwoDAnalysisReport, en: Boolean) {
-    // Independent AM, PM and combined streams; never reuse the target
-    // session stream as an answer for all three.
-    listOf(
-        "AM" to "morning", "PM" to "evening", "ALL" to "combined",
-    ).forEach { (label, key) ->
-        val a = report.a06[key]
-        val data = if (a == null || a.observedDraws == 0)
-            TopFinding("—", null)
-        else topAbsent(a.fullNumbers, a.hasUnknownOpenSlots)
-        FindingRow(label, data, suffix = "Gap ")
-    }
-}
-
-@Composable
-private fun PriorMatchSummary(report: TwoDAnalysisReport, en: Boolean) {
-    val a = report.a08
-    if (a.firstReference == null || a.secondReference == null) {
-        EmptyFinding("No data")
-        return
-    }
-    // Each of the three independent historical searches has its OWN next
-    // target 2D frequency distribution. Display the most observed follow-on.
-    listOf(
-        "BOTH" to a.both.frequencies,
-        "1st" to a.firstOnly.frequencies,
-        "2nd" to a.secondOnly.frequencies,
-    ).forEach { (label, values) ->
-        FindingRow(label, topOf(values))
-    }
-}
-
-@Composable
-private fun WeekFlowSummary(report: TwoDAnalysisReport, en: Boolean) {
+private fun WeeklyDigits(report: TwoDAnalysisReport) {
     val a = report.a05
-    if (a.transitions.isEmpty()) { EmptyFinding("No data"); return }
-    DigitTokens(if (a.completeThroughTarget) "LEFT" else "UNSEEN", a.remainingDigits)
-    val last = a.transitions.last()
-    if (last.classificationVerified) DigitTokens("NEW", last.newlySeenDigits)
+    DigitStrip(if (a.completeThroughTarget) "LEFT" else "UNSEEN", a.remainingDigits)
+    val latest = a.transitions.lastOrNull()
+    if (latest != null && latest.classificationVerified) {
+        DividerHairline()
+        DigitStrip("NEW", latest.newlySeenDigits)
+    }
 }
 
 @Composable
-private fun SpecialSummary(report: TwoDAnalysisReport, en: Boolean) {
+private fun Specials(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a07
-    if (a.observedDraws == 0) { EmptyFinding("No data"); return }
-    val named = listOf("အပူး", "ညီကို", "ပါဝါ", "နက္ခတ်")
-    named.chunked(2).forEach { pair ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            pair.forEach { key ->
-                FindingPanel(
-                    if (key == "ညီကို") "ညီအကို" else key,
-                    TopFinding((a.groups[key] ?: 0).toString(), null),
-                    Modifier.weight(1f),
-                )
-            }
-        }
+    listOf("အပူး", "ညီကို", "ပါဝါ", "နက္ခတ်").forEachIndexed { i, key ->
+        if (i > 0) DividerHairline()
+        CompactRow(twoDGroupLabel(key, en), Leader((a.groups[key] ?: 0).toString()),
+            Modifier.fillMaxWidth(), labelWidth = 0)
     }
-    FindingRow(if (en) "Repeat" else "ပြန်ကျ",
-        TopFinding(a.repeatedNumbers.sumOf { it.count }.toString(), null))
+    DividerHairline()
+    CompactRow(if (en) "Repeat" else "ပြန်ကျ",
+        Leader(a.repeatedNumbers.sumOf { it.count }.toString()), Modifier.fillMaxWidth())
 }
 
 @Composable
-private fun PreviousWeekSummary(report: TwoDAnalysisReport, en: Boolean) {
+private fun PriorWeek(report: TwoDAnalysisReport) {
     val a = report.a04
-    if (a.observedDraws == 0) { EmptyFinding("No data"); return }
-    FindingPanel("TOP 0–9", topOf(a.singleDigitFrequency), hero = true)
-    DigitTokens(if (a.complete) "MISSING" else "UNSEEN", a.remainingDigits)
+    Hero("TOP 0–9", top(a.singleDigitFrequency))
+    DividerHairline()
+    DigitStrip(if (a.complete) "MISSING" else "UNSEEN", a.remainingDigits)
 }
 
 @Composable
-private fun MissingReturnSummary(report: TwoDAnalysisReport, en: Boolean) {
+private fun MissingReturns(report: TwoDAnalysisReport) {
     val a = report.a01
-    if (report.a04.observedDraws == 0) { EmptyFinding("No data"); return }
-    if (a.missingDigits.isEmpty()) { EmptyFinding("None"); return }
-    // Compact first-two previews; each source missing digit retains its own
-    // independently counted FIRST historical return companion data.
-    val ordered = a.results.sortedWith(
-        compareByDescending<com.myanmar.ledger2d.core.domain.TwoDMissingDigitReturn> {
-            it.thisWeekFirstSeen != null
-        }.thenByDescending { it.historyFirstReturnEpisodes }.thenBy { it.digit }
+    val order = a.results.sortedWith(
+        compareByDescending<TwoDMissingDigitReturn> { it.thisWeekFirstSeen != null }
+            .thenByDescending { it.historyFirstReturnEpisodes }.thenBy { it.digit }
     )
-    Text("HIST", style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.Medium)
-    ordered.take(2).forEach { item ->
-        val highest = item.commonCompanions.maxOfOrNull { it.count } ?: 0
-        val partners = item.commonCompanions.filter { it.count == highest && highest > 0 }
-        val top = if (partners.isEmpty()) TopFinding("—", null)
-        else topOfWinners(partners.map { it.companion.toString() }, highest)
-        FindingRow(item.digit.toString() + " →", top)
+    order.take(2).forEachIndexed { i, item ->
+        if (i > 0) DividerHairline()
+        val max = item.commonCompanions.maxOfOrNull { it.count } ?: 0
+        val tied = item.commonCompanions.filter { max > 0 && it.count == max }
+        val result = if (tied.isEmpty()) Leader("—")
+            else winners(tied.map { it.companion.toString() }, max)
+        CompactRow(item.digit.toString() + " →", result, Modifier.fillMaxWidth())
     }
-    if (ordered.size > 2) {
-        val c = MaterialTheme.colorScheme
-        Text("+" + (ordered.size - 2),
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.labelSmall,
-            textAlign = TextAlign.End, color = c.onSurfaceVariant)
+    if (order.size > 2) {
+        Text("+" + (order.size - 2), modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
