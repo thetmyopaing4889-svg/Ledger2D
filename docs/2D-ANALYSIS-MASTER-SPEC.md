@@ -1237,3 +1237,18 @@ Retain the three top tabs and grouping 4–2–2 by method (no analytical reclas
 ### XIV.3 Verification gate
 
 Build/test the isolated `feature/2d-analysis-timeline-redesign` branch, preserve `main`, and verify both debug/release APK plus on-device UI. Automated build success cannot certify visual equality to the rendered reference; phone validation is pending.
+
+---
+
+## Part XV — Temporary fully populated 4–2–2 fixed-screen demo
+
+At the user's explicit request, **test the layout using invented, clearly labeled figures before applying it to production Analysis results**. Several real methods have insufficient verified historical data at the moment; a screenshot of these empty results cannot establish whether the grid will work when all checks are populated.
+
+- A separate `TwoDAnalysisFixedDemoGrid.kt` owns hard-coded, obviously fake sample values for all eight cards. It has no DB, history, API, or settlement dependencies and does not mutate user records.
+- `Historical2DTimelineScreen.kt` exposes a conspicuous `DEMO ON` / `DEMO` toggle in the app bar. **DEMO is on by default on this experimental branch only.** The banner states that the numbers are sample-only and the date/history filters do not apply. Switching off returns to the previous real-data rendering and detail navigation.
+- In the **demo only**, the app bar, date/AM-PM, three tabs, history controls and bottom navigation occupy their ordinary space. The remaining screen height is passed to the fixed grid by Compose `Modifier.weight(1f)`, with no main-page scrolling. 4-card group = identical 2×2 cells. Each 2-card group = equal-height, equal-width **side-by-side** cells (not stacked).
+- The preview includes populated A-02, A-03, A-06, A-08, A-05, A-07, A-04 and A-01, including ties and missing-digit/pair rankings. A-06 still highlights **missing 0–9 single digits before 00–99 pairs** with separate small counts for AM / PM / ALL.
+- These are intentionally **visual test fixtures, NOT computed or predictive results**. The demo cards do not navigate into production Details, avoiding a misleading mixture of fake preview with genuine evidence.
+- Evaluate the fixture at a normal phone width with Burmese and English labels, then stress-test oversized text and tie cases. Promote the fixed-layout rendering to real data **only after the user approves its on-device appearance**. Do not merge this experimental demo as permanent production behavior.
+
+Build/test branch-only; never touch the main ledger data model.
