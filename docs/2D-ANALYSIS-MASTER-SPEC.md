@@ -1117,3 +1117,21 @@ After the on-device screenshot showed that the previous 3 vertically stacked tim
 This first layout implementation is on the isolated `feature/2d-analysis-timeline-redesign` branch, with its main UI call replaced by `TwoDAnalysisResultGrid` in a new dedicated `TwoDAnalysisResultGrid.kt`. All A-01–A-08 domain outputs and existing deep-detail routes remain intact. Existing non-analysis ledger source modules are not part of this layout change.
 
 The user may request further visual revisions after testing. **Accept only after the new branch-head CI passes and the user checks the actual phone**, especially the 2-column fit, Burmese/English wrapping, missing-result compactness, and all tab/date/filter interactions. Earlier green CI builds do not prove later code passed.
+
+## XI.4 Second-pass visual and wording audit after user's on-device screenshot (2026-11-08)
+
+The three-tag 4/2/2 frame arrangement was accepted; the **result presentation was not**. The user's screenshot exposed oversized prose, weak number hierarchy, confusing shorthand, and recycled full-width previews in narrow grid tiles. The initial grid had one shared `twoDQuickFacts()` label/value/note renderer for most methods. That is explicitly **not an acceptable final method-specific design**.
+
+The isolated UI implementation now uses distinct per-method data renderings in `TwoDAnalysisResultGrid.kt`, consuming the existing immutable `TwoDAnalysisReport` directly:
+
+- **Information**: factual primary values lead. Small muted heading, strong key numbers, muted units and supporting caveats. Use the accent for meaningful observed values rather than feature labels or meaningless zeros.
+- **A-02**: two related information families, 00–99 top pair / 0–9 top digit, with counts clearly distinguished, plus least-observed positive digit and verified sample size. Multiple maximum ties are not silently reduced to one definitive winner; the detail page retains evidence.
+- **A-03**: distinguish an ineligible check from a completed search with no matching week; do not display an artificial zero for ineligible checks.
+- **A-06**: distinguish the historical number/digit from its observed-draw gap. Avoid presenting the unexplained symbol `≥` as an exact claim about calendar draws. Unknown slots/truncated history require a subtle *verified-records only* qualification, while full detail retains the metadata.
+- **A-08**: foreground the two actual preceding verified reference results; do not celebrate a large zero when no dual-reference historical match is verified. Show first/second match counts with explanatory labels and preserve unknown-follow-up warnings.
+- **A-05/A-04/A-01**: numeric digit sets use legible, wrap-capable type rather than oversized single-value fonts that truncate sets. Clearly distinguish missing, no observed return, and incomplete records.
+- **A-07**: display exact 2D repeat count plus the actual special-group distribution rather than using one generic headline metric.
+- Keep data-heavy details on the existing detail routes. Do not delete evidence, change sample denominators, or invent predictor probabilities.
+- Preserve the entire accepted frame structure and previously built domain engines; these changes are presentational.
+
+**Verification caveat:** Passing CI establishes compilation and existing automated tests, not actual on-device legibility. Review both MM/EN and small-display cases after installing the final build. Color contrast and the amount of visible text remain subject to user approval.
