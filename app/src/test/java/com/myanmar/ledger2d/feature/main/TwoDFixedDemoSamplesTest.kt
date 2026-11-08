@@ -15,7 +15,7 @@ class TwoDFixedDemoSamplesTest {
         rows.forEach { row ->
             assertEquals(1, row.digit.value.length)
             assertEquals(2, row.pair.value.length)
-            assertTrue(row.digit.count.toIntOrNull() != 0)
+            assertTrue((row.digit.count.removeSuffix("+").toIntOrNull() ?: 0) > 0)
             assertTrue(row.digit.count.endsWith("+"))
             assertTrue(row.pair.count.endsWith("+"))
         }
