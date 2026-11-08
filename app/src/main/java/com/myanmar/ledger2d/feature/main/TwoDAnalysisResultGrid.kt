@@ -65,13 +65,15 @@ internal fun TwoDAnalysisResultGrid(
         "2" -> listOf("05", "07")
         else -> listOf("04", "01")
     }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        checks.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { id ->
+    // Two independent columns keep the approved 4/2/2 arrangement without
+    // stretching a short finding to match a taller neighboring finding.
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top) {
+        (0..1).forEach { columnIndex ->
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                checks.filterIndexed { index, _ -> index % 2 == columnIndex }.forEach { id ->
                     TwoDGridFinding(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        modifier = Modifier.fillMaxWidth(),
                         id = id, report = report, en = en,
                         onClick = { onOpenDetail(id) },
                     )
