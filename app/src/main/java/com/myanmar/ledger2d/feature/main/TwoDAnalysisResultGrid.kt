@@ -269,31 +269,6 @@ private fun RankedChips(result: Leader, accent: Boolean = false) {
     }
 }
 
-@Composable
-private fun AbsenceCountChip(result: Leader, en: Boolean) {
-    val c = MaterialTheme.colorScheme
-    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
-        color = c.tertiary.copy(alpha = .16f),
-        border = BorderStroke(1.dp, c.tertiary.copy(alpha = .34f))) {
-        // Stacking the Myanmar label ABOVE its count avoids squeezing
-        // a long string and a large number into a tiny half-width row.
-        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(if (en) "Unseen" else "မထွက်သေး",
-                style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, fontWeight = FontWeight.Medium)
-            Text(
-                if (result.count == null) "—" else result.count.toString() +
-                    (if (result.minOnly) "+" else "") +
-                    (if (en) " draws" else " ကြိမ်"),
-                style = MaterialTheme.typography.titleMedium,
-                color = c.onSurface, fontWeight = FontWeight.Bold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
 /** A flat label / inset value / count, without a nested bordered card. */
 @Composable
 private fun CompactRow(label: String, result: Leader, modifier: Modifier = Modifier,
@@ -371,35 +346,152 @@ private fun WeeklyPattern(report: TwoDAnalysisReport, en: Boolean) {
     CompactRow("Weeks", Leader(a.matched.size.toString()), Modifier.fillMaxWidth())
 }
 
-/** A missing pair and its observed nonappearance are two different facts. */
+/**
+ * Main-grid A-06: the missing SINGLE DIGIT is the hero. The missing
+ * exact 2D pair is always shown next to it, never omitted. Each stream
+ * uses its own domain data; the small counts are secondary evidence.
+ */
 @Composable
-private fun AbsenceRow(label: String, result: Leader, en: Boolean) {
+private fun MissingNumberWell(
+    label: String,
+    result: Leader,
+    primary: Boolean,
+    en: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val c = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxWidth().padding(vertical = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold, color = c.onSurfaceVariant)
-            Spacer(Modifier.weight(1f))
-            Text("2D", style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant)
-            RankedChips(result, accent = true)
+    val shownValue = when {
+        result.tiedValues.size in 3..4 -> result.tiedValues.joinToString("·")
+        result.tiedValues.size > 4 ->
+            result.tiedValues.take(3).joinToString("·") +
+                " +" + (result.tiedValues.size - 3)
+        else -> result.value
+    }
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = if (primary) c.secondaryContainer else c.tertiary.copy(alpha = .10f),
+        border = BorderStroke(
+            1.dp, if (primary) c.secondary.copy(alpha = .24f)
+                else c.tertiary.copy(alpha = .30f),
+        ),
+        shadowElevation = if (primary) 2.dp else 0.dp,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(
+                label, style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            if (hasTwoNumericTies(result)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    result.tiedValues.forEach { number ->
+                        Text(
+                            number,
+                            style = if (primary) MaterialTheme.typography.titleLarge
+                                else MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (primary) c.secondary else c.onSurface,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    shownValue,
+                    style = when {
+                        shownValue.length > 5 -> MaterialTheme.typography.labelLarge
+                        primary -> MaterialTheme.typography.headlineMedium
+                        else -> MaterialTheme.typography.titleLarge
+                    },
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (shownValue == "—") c.onSurfaceVariant
+                        else if (primary) c.secondary else c.onSurface,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                if (result.count == null) "—" else
+                    result.count.toString() + (if (result.minOnly) "+" else "") +
+                        (if (en) " draws" else " ကြိမ်"),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = c.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
-        AbsenceCountChip(result, en)
+    }
+}
+
+@Composable
+private fun AbsenceRow(
+    label: String,
+    digit: Leader,
+    pair: Leader,
+    en: Boolean,
+) {
+    val c = MaterialTheme.colorScheme
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label, style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold, color = c.onSurface,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (en) "Not seen" else "မထွက်သေး",
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant,
+            )
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            MissingNumberWell(
+                if (en) "Digit" else "ဂဏန်း",
+                digit, primary = true, en = en, modifier = Modifier.weight(1.12f),
+            )
+            MissingNumberWell(
+                if (en) "2D Pair" else "2D တွဲ",
+                pair, primary = false, en = en, modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
 @Composable
 private fun Absence(report: TwoDAnalysisReport, en: Boolean) {
-    listOf("AM" to "morning", "PM" to "evening", "ALL" to "combined")
-        .forEachIndexed { i, (label, key) ->
-            if (i > 0) DividerHairline()
-            val stream = report.a06[key]
-            val result = if (stream == null || stream.observedDraws == 0) Leader("—")
-                else absentTop(stream.fullNumbers, stream.hasUnknownOpenSlots)
-            AbsenceRow(label, result, en)
-        }
+    val c = MaterialTheme.colorScheme
+    Text(
+        if (en) "Missing digit / pair" else "ပျောက်ဂဏန်း / ပျောက်ဂဏန်းတွဲ",
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = c.onSurface,
+        maxLines = 2,
+    )
+    listOf(
+        "AM" to "morning",
+        "PM" to "evening",
+        "ALL" to "combined",
+    ).forEachIndexed { index, (label, key) ->
+        if (index > 0) DividerHairline()
+        val stream = report.a06[key]
+        val digit = if (stream == null || stream.observedDraws == 0) Leader("—")
+            else absentTop(stream.singleDigits, stream.hasUnknownOpenSlots)
+        val pair = if (stream == null || stream.observedDraws == 0) Leader("—")
+            else absentTop(stream.fullNumbers, stream.hasUnknownOpenSlots)
+        AbsenceRow(label = label, digit = digit, pair = pair, en = en)
+    }
 }
 
 /** These reference numbers are what BOTH / 1st / 2nd actually compare. */
