@@ -144,7 +144,7 @@ private fun GridResult(
         modifier = modifier,
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
-        color = if (highlighted) scheme.primary else scheme.onSurface,
+        color = if (highlighted) scheme.secondary else scheme.onSurface,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
@@ -170,7 +170,7 @@ private fun GridDigits(digits: Collection<Char>, noneLabel: String) {
         digits.joinToString(" · ").ifEmpty { noneLabel },
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.secondary,
         maxLines = 4,
         overflow = TextOverflow.Ellipsis,
     )
@@ -205,7 +205,7 @@ private fun GridSubResult(label: String, value: String, emphasis: Boolean = fals
             value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = if (emphasis) MaterialTheme.colorScheme.primary
+            color = if (emphasis) MaterialTheme.colorScheme.secondary
                 else MaterialTheme.colorScheme.onSurface,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
