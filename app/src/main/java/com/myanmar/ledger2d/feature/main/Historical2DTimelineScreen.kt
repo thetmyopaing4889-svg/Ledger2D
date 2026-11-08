@@ -138,15 +138,12 @@ fun Historical2DTimelineScreen(
         else null
     }
     var openGroup by rememberSaveable { mutableStateOf("1") }
-    var focusedGroup by rememberSaveable { mutableStateOf(false) }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
     val overviewScroll = rememberScrollState()
-    BackHandler(enabled = openCheck.isNotEmpty() || focusedGroup) {
-        if (openCheck.isNotEmpty()) openCheck = "" else focusedGroup = false
-    }
+    BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
     var rulesOpen by remember { mutableStateOf(false) }
 
 
@@ -169,7 +166,7 @@ fun Historical2DTimelineScreen(
             ),
         ),
         TwoDSectionSpec(
-            key = "2", title = tr("၂။ ယခုအပတ်အခြေအနေ", "2. This week"),
+            key = "2", title = tr("ယခုအပတ်", "This week"),
             caption = tr("ဒီအပတ်အတွင်း စစ်ဆေးချက်များ", "This week's activity"),
             icon = Icons.Default.DateRange,
             methods = listOf(
@@ -180,7 +177,7 @@ fun Historical2DTimelineScreen(
             ),
         ),
         TwoDSectionSpec(
-            key = "3", title = tr("၃။ ပြီးခဲ့တဲ့အပတ်", "3. Previous week"),
+            key = "3", title = tr("ပြီးခဲ့တဲ့အပတ်", "Previous week"),
             caption = tr("ပြီးခဲ့တဲ့အပတ်ကို ပြန်လည်စစ်ဆေးရန်", "Review last week's records"),
             icon = Icons.Default.EventRepeat,
             methods = listOf(
@@ -205,24 +202,16 @@ fun Historical2DTimelineScreen(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(onClick = {
-                    when {
-                        openCheck.isNotEmpty() -> openCheck = ""
-                        focusedGroup -> focusedGroup = false
-                        else -> onBack()
-                    }
+                    if (openCheck.isNotEmpty()) openCheck = "" else onBack()
                 }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = tr("ပြန်ရန်", "Back"))
                 }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    Text(tr("CHERRY • ANALYSIS", "CHERRY • ANALYSIS"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.primary, fontWeight = FontWeight.Bold)
-                    Text(tr("2D စစ်ဆေးမှု", "2D Analysis"),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
-                }
+                Text(tr("2D စစ်ဆေးမှု", "2D Analysis"),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
                 if (openCheck.isEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -237,7 +226,7 @@ fun Historical2DTimelineScreen(
             }
         },
         bottomBar = {
-            if (openCheck.isEmpty() && !focusedGroup) {
+            if (openCheck.isEmpty()) {
                 Surface(
                     color = scheme.surface,
                     tonalElevation = 4.dp,
@@ -270,170 +259,139 @@ fun Historical2DTimelineScreen(
         },
     ) { inset ->
         if (openCheck.isEmpty()) {
-            if (focusedGroup) {
-                val selectedSection = sections.first { it.key == openGroup }
-                Column(
-                    Modifier.fillMaxSize().padding(inset).verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(selectedSection.title, style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold)
-                    val groupContext = when (openGroup) {
-                        "1" -> date.toString() + " · " +
-                            (if (target.session == DrawSession.MORNING)
-                                tr("မနက်အကြိမ်", "Morning") else tr("ညနေအကြိမ်", "Evening")) +
-                            " · " + lookbackLabel
-                        "2" -> tr("ရွေးထားသောအပတ်", "Selected week") + " · " +
-                            date.minusDays((date.dayOfWeek.value - 1).toLong()).toString()
-                        else -> tr("ပြီးခဲ့တဲ့အပတ်", "Previous week") + " · " +
-                            (report?.a04?.weekStart?.toString() ?: "—")
-                    }
-                    Text(groupContext, style = MaterialTheme.typography.labelMedium,
-                        color = scheme.onSurfaceVariant)
-                    if (report != null) {
-                        selectedSection.methods.forEach { method ->
-                            TwoDFocusedMethodCard(
-                                method = method,
-                                facts = twoDQuickFacts(method.key, report, en),
-                                onClick = { openCheck = method.key },
-                            )
-                        }
-                    } else {
-                        TwoDStatusMessage(tr("ဒီအကြိမ်အတွက် ရလဒ်မရှိပါ",
-                            "No verified analysis available for this draw"), false)
-                    }
-                }
-            } else {
+            val selectedSection = sections.first { it.key == openGroup }
             Column(
                 Modifier.fillMaxSize().padding(inset)
-                    .background(Brush.verticalGradient(listOf(
-                        scheme.primaryContainer.copy(alpha = 0.16f),
-                        scheme.background, scheme.background,
-                    )))
                     .verticalScroll(overviewScroll)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // A compact context toolbar, rather than a half-screen filter card.
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = scheme.surface,
-                    shadowElevation = 3.dp,
-                    tonalElevation = 1.dp,
-                ) {
-                    Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(
-                                onClick = { datePickerMode = "target" },
-                                modifier = Modifier.weight(1.05f).heightIn(min = 48.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp),
-                            ) {
-                                Icon(Icons.Default.CalendarMonth, null,
-                                    modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(5.dp))
-                                Text(date.toString(), maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.labelMedium)
-                            }
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(14.dp),
-                                color = scheme.surfaceVariant,
-                            ) {
-                                Row(Modifier.padding(3.dp)) {
-                                    listOf(
-                                        DrawSession.MORNING to tr("မနက်", "AM"),
-                                        DrawSession.EVENING to tr("ညနေ", "PM"),
-                                    ).forEach { (session, label) ->
-                                        val active = target.session == session
-                                        Surface(
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(11.dp),
-                                            color = if (active) scheme.primaryContainer else Color.Transparent,
-                                            shadowElevation = if (active) 3.dp else 0.dp,
-                                            onClick = {
-                                                userChosen = true
-                                                selectedSession = session.name
-                                            },
-                                        ) {
-                                            Box(Modifier.defaultMinSize(minHeight = 42.dp),
-                                                contentAlignment = Alignment.Center) {
-                                                Text(label,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                                    color = if (active) scheme.onPrimaryContainer
-                                                        else scheme.onSurfaceVariant,
-                                                    maxLines = 1)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Row(Modifier.fillMaxWidth().heightIn(min = 41.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.History, null,
-                                modifier = Modifier.size(17.dp),
-                                tint = scheme.onSurfaceVariant)
-                            Spacer(Modifier.width(7.dp))
-                            Text(tr("မှတ်တမ်းကာလ", "History period"),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = scheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f))
-                            Box {
-                                TextButton(onClick = { rangeMenu = true }) {
-                                    Text(lookbackLabel, maxLines = 1,
-                                        style = MaterialTheme.typography.labelLarge)
-                                    Icon(Icons.Default.KeyboardArrowDown, null,
-                                        modifier = Modifier.size(18.dp))
-                                }
-                                DropdownMenu(
-                                    expanded = rangeMenu,
-                                    onDismissRequest = { rangeMenu = false },
+                // Draw selection, not a tall decorative filter card.
+                Row(Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = { datePickerMode = "target" },
+                        modifier = Modifier.weight(1.05f).heightIn(min = 44.dp),
+                        contentPadding = PaddingValues(horizontal = 5.dp),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, null,
+                            modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(date.toString(), maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium)
+                    }
+                    Surface(modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = scheme.surfaceVariant) {
+                        Row(Modifier.padding(2.dp)) {
+                            listOf(
+                                DrawSession.MORNING to tr("မနက်", "AM"),
+                                DrawSession.EVENING to tr("ညနေ", "PM"),
+                            ).forEach { (session, label) ->
+                                val active = target.session == session
+                                Surface(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (active) scheme.primaryContainer else Color.Transparent,
+                                    shadowElevation = if (active) 2.dp else 0.dp,
+                                    onClick = {
+                                        userChosen = true
+                                        selectedSession = session.name
+                                    },
                                 ) {
-                                    listOf(
-                                        "all" to tr("ရှိသမျှမှတ်တမ်း", "All history"),
-                                        "week" to tr("၁ ပတ်", "1 week"),
-                                        "month" to tr("၁ လ", "1 month"),
-                                        "custom" to tr("စိတ်ကြိုက်ရက်စွဲ", "Custom dates"),
-                                    ).forEach { (key, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label) },
-                                            onClick = { lookback = key; rangeMenu = false },
-                                            leadingIcon = if (lookback == key) {
-                                                { Icon(Icons.Default.Check, null) }
-                                            } else null,
-                                        )
+                                    Box(Modifier.defaultMinSize(minHeight = 42.dp),
+                                        contentAlignment = Alignment.Center) {
+                                        Text(label,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                            maxLines = 1)
                                     }
                                 }
-                            }
-                        }
-                        if (lookback == "custom") {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = { datePickerMode = "start" },
-                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                                    contentPadding = PaddingValues(horizontal = 4.dp),
-                                ) { Text(customStart, style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1) }
-                                OutlinedButton(
-                                    onClick = { datePickerMode = "end" },
-                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                                    contentPadding = PaddingValues(horizontal = 4.dp),
-                                ) { Text(customEnd, style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1) }
-                            }
-                            if (!customValid) {
-                                Text(tr("ရက်စွဲအစဉ်ကို ပြန်စစ်ပါ", "Check date range"),
-                                    color = scheme.error, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
                 }
+
+                // Approved 3 tags in one row. Tapping changes the result grid in place.
+                Row(Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    sections.forEach { section ->
+                        TwoDAnalysisGroupTag(
+                            modifier = Modifier.weight(1f), text = section.title,
+                            selected = openGroup == section.key,
+                            onClick = { openGroup = section.key },
+                        )
+                    }
+                }
+
+                // Weekly status checks have fixed week scopes and do not use this filter.
+                if (openGroup != "2") {
+                    Row(Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.History, null,
+                            modifier = Modifier.size(15.dp),
+                            tint = scheme.onSurfaceVariant)
+                        Text(tr("နှိုင်းယှဉ်မှတ်တမ်း", "Historical comparison"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f))
+                        Box {
+                            TextButton(onClick = { rangeMenu = true },
+                                contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) {
+                                Text(lookbackLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Icon(Icons.Default.KeyboardArrowDown, null,
+                                    modifier = Modifier.size(17.dp))
+                            }
+                            DropdownMenu(expanded = rangeMenu,
+                                onDismissRequest = { rangeMenu = false }) {
+                                listOf(
+                                    "all" to tr("ရှိသမျှမှတ်တမ်း", "All history"),
+                                    "week" to tr("၁ ပတ်", "1 week"),
+                                    "month" to tr("၁ လ", "1 month"),
+                                    "custom" to tr("စိတ်ကြိုက်ရက်စွဲ", "Custom dates"),
+                                ).forEach { (key, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = { lookback = key; rangeMenu = false },
+                                        leadingIcon = if (lookback == key) {
+                                            { Icon(Icons.Default.Check, null) }
+                                        } else null,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (lookback == "custom") {
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            OutlinedButton(onClick = { datePickerMode = "start" },
+                                modifier = Modifier.weight(1f).heightIn(min = 42.dp),
+                                contentPadding = PaddingValues(horizontal = 5.dp)) {
+                                Text(customStart,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            OutlinedButton(onClick = { datePickerMode = "end" },
+                                modifier = Modifier.weight(1f).heightIn(min = 42.dp),
+                                contentPadding = PaddingValues(horizontal = 5.dp)) {
+                                Text(customEnd,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (!customValid) {
+                            TwoDStatusMessage(tr("ရက်စွဲအစဉ်ကို ပြန်စစ်ပါ",
+                                "Check date range"), true)
+                        }
+                    }
+                }
+
                 if (!validTarget) {
                     TwoDStatusMessage(tr("ရွေးထားသောနေ့မှာ 2D အကြိမ်ပိတ်ထားသည်။",
                         "No trading draw on the selected date."), true)
@@ -441,34 +399,25 @@ fun Historical2DTimelineScreen(
                     TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
                         "Check the selected date range"), true)
                 }
-                // Each group previews its own verified findings even before opening it.
-                // Avoid a method directory on the landing page.
-                sections.forEach { section ->
-                    val facts = if (report == null) emptyList()
-                        else twoDGroupQuickFacts(section.key, report, en)
-                    TwoDGroupOverviewCard(
-                        title = section.title,
-                        facts = facts,
-                        onClick = {
-                            if (report != null) {
-                                openGroup = section.key
-                                focusedGroup = true
-                            }
-                        },
-                        enabled = report != null,
+
+                // The grid IS the analysis workspace. No directory screen.
+                if (report != null) {
+                    TwoDAnalysisResultGrid(
+                        group = selectedSection.key, report = report, en = en,
+                        onOpenDetail = { openCheck = it },
                     )
+                    if (merged.draws.isEmpty()) {
+                        Text(tr("အတည်ပြုထားသော ထွက်ဂဏန်းမှတ်တမ်း မရှိသေးပါ။",
+                            "No verified historical draw records yet."),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant)
+                    }
                 }
-                if (merged.draws.isEmpty()) {
-                    TwoDStatusMessage(tr("ထွက်ဂဏန်းမှတ်တမ်း မတွေ့သေးပါ။",
-                        "No verified results found yet."), false)
-                    TextButton(onClick = onSettings) { Text(tr("ဆက်တင်", "Settings")) }
-                }
-                Text(tr("ရှိတဲ့ထွက်ဂဏန်းမှတ်တမ်းတွေအပေါ်မှာပဲ စစ်ဆေးထားပါတယ်။ နောက်အကြိမ်ထွက်ဂဏန်းကို အာမခံထားတာ မဟုတ်ပါ။",
-                    "Based on recorded results only; not a prediction or guarantee."),
+                Text(tr("ရှိသောမှတ်တမ်းကို စစ်ဆေးထားခြင်းသာဖြစ်ပြီး နောက်အကြိမ်ထွက်ဂဏန်းကို အာမမခံပါ။",
+                    "Based on recorded history; no next-result guarantee."),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-            }
+                Spacer(Modifier.height(4.dp))
             }
         } else {
             val method = currentMethod
@@ -808,9 +757,9 @@ private fun TwoDMethodDirectory(
 
 
 /** Only short, observed findings go in previews. Detailed evidence lives in the method view. */
-private data class TwoDQuickFact(val label: String, val value: String, val note: String = "")
+internal data class TwoDQuickFact(val label: String, val value: String, val note: String = "")
 
-private fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean): List<TwoDQuickFact> {
+internal fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean): List<TwoDQuickFact> {
     fun tr(mm: String, english: String) = if (en) english else mm
     val noData = tr("မှတ်တမ်းမရှိ", "No records")
     val none = tr("မရှိ", "None")
