@@ -25,7 +25,7 @@ class TwoDAnalysisTextTest {
             TwoDAnalysisText.title("02", false))
         assertEquals("ယခုအပတ်အတွက် ယခင် စုံ/မ ထွက်ရှိမှု",
             TwoDAnalysisText.title("03", false))
-        assertEquals("မထွက်တာကြာနေသော ဂဏန်းနှင့် ဂဏန်းတွဲများ",
+        assertEquals("ပျောက်ဂဏန်းနှင့် ပျောက်ဂဏန်းတွဲများ",
             TwoDAnalysisText.title("06", false))
         assertEquals("ယခင်ထွက်ဂဏန်းပေါ် အခြေခံ၍ လက်ရှိအကြိမ်အတွက် စစ်ဆေးခြင်း",
             TwoDAnalysisText.title("08", false))
@@ -37,6 +37,8 @@ class TwoDAnalysisTextTest {
             TwoDAnalysisText.title("04", false))
         assertEquals("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်းထွက်ရှိမှု",
             TwoDAnalysisText.title("01", false))
+        assertTrue(TwoDAnalysisText.subtitle("07", false).contains("ညီအကို"))
+        assertFalse(TwoDAnalysisText.subtitle("07", false).contains("ညီကို"))
         val missing = TwoDAnalysisText.subtitle("06", false)
         assertTrue(missing.contains("ပျောက်ဂဏန်း"))
         assertFalse(missing.contains("တစ်လုံးဂဏန်း"))
