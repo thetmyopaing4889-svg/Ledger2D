@@ -1078,3 +1078,42 @@ Group-specific initial result ideas (subject to phone testing and further priori
 - A-02's least-observed nonzero single digit is now displayed in group previews as a third compact fact; tied leaders can be opened in a full list without arbitrarily selecting one. The pair/digit comparison retains the two equal-priority panes.
 - Preservation check: compared against previously successful build #1016, changed files are limited to the analysis engine, the two analysis UI files, the analysis regression test and this specification. Unrelated ledger feature files remain unchanged in this set of commits. Passing CI and on-device acceptance are still independently required.
 - Do not merge to the baseline branch until the user accepts the real-phone appearance and behavior.
+
+---
+
+# Part XI — Approved three-tag, result-first 4–2–2 mobile grid (2026-11-08)
+
+## XI.1 User-authorized frame layout
+
+After the on-device screenshot showed that the previous 3 vertically stacked timeline cards overemphasized headings and wasted screen height, the user approved a different **frame structure** and explicitly authorized implementing a first version. This is not an approval of exact fonts, colors, or per-method content proportions yet.
+
+- **At the top:** a compact single-row selector of three **timeline tags**, in order: လက်ရှိအကြိမ်, ယခုအပတ်, ပြီးခဲ့တဲ့အပတ်.
+- **Immediately below:** the selected tag's **actual analysis results**, in an **adaptive-height two-column grid**, not another screen containing only method names.
+- **Tag 1:** A-02, A-03, A-06, A-08, as a 2×2 grid.
+- **Tag 2:** A-05 and A-07, as a 2×1 grid.
+- **Tag 3:** A-04 and A-01, as a 2×1 grid.
+- Pressing a tag swaps result frames **in place**. No intermediate group-selection screen. Each frame displays as much important verified information as can be read clearly in its available space. Full method evidence is available by tapping the frame when genuinely necessary.
+- Headings are quiet, short labels; actual result values lead visual hierarchy. Do not stretch no-data statuses into tall empty cards. Do not shrink Myanmar or English typography arbitrarily to force long strings into narrow cells.
+- Target date and morning/evening selectors remain accessible in a compact row; historical period filter is shown only for groups with history-dependent checks. Fixed-week A-04/A-05/A-07 calculations are unaffected by a historical lookback filter.
+- Keep Analysis / Research / Rules bottom navigation as before. The Research and Rules content is out of scope.
+
+## XI.2 Initial content priorities for each frame
+
+| Method | Direct result(s) in grid | Secondary/on-demand evidence |
+|---|---|---|
+| A-02 | Same-weekday/session top exact pair and top 0–9 digit side-by-side, both observed frequencies; least observed *nonzero* digit; matched sample count | All ties, per-pair date/session evidence, 00–99 list, parity/special-group distribution, tens/ones |
+| A-03 | Number of matching historical weeks and following parity class (including ties or no matches) | Historical matched weeks, chronological prefixes and evidence |
+| A-06 | Longest unobserved pair and single digit for target AM/PM stream; observed-draw gaps and lower-bound disclaimer | Separate AM/PM/combined streaks and underlying history |
+| A-08 | Number of historical occurrences matching both preceding results; comparisons matching one preceding result | First/second reference details, matching observations and historical evidence |
+| A-05 | Current-week unseen digits and latest verified newly observed digits, with incomplete-week flag | Per-draw new/old flows and evidence |
+| A-07 | Current-week exact 2D repeat count plus counts for named special groups, and incomplete-week flag | Each occurrence's date/session and exact repeated numbers |
+| A-04 | Previous-week missing digits and exact repeat count, labelled as incomplete if record coverage is partial | Complete frequency distributions and date/session evidence |
+| A-01 | Previously missing digits observed returning this week, and previous-week missing set as context; avoid presenting this as a new current-week-only method | Historical next-week return episodes and companion digits |
+
+**Rule enforcement:** group labels and tile headings must not dominate results; choose typography/spacing/layout to match information. Show a concise unavailable/insufficient state without false 0 claims. Preserve ties, verified-data cutoff, source precedence, closed-day rules, and the exact analysis methods from earlier parts of this specification. No predictive claims.
+
+## XI.3 Implementation status / verification gate
+
+This first layout implementation is on the isolated `feature/2d-analysis-timeline-redesign` branch, with its main UI call replaced by `TwoDAnalysisResultGrid` in a new dedicated `TwoDAnalysisResultGrid.kt`. All A-01–A-08 domain outputs and existing deep-detail routes remain intact. Existing non-analysis ledger source modules are not part of this layout change.
+
+The user may request further visual revisions after testing. **Accept only after the new branch-head CI passes and the user checks the actual phone**, especially the 2-column fit, Burmese/English wrapping, missing-result compactness, and all tab/date/filter interactions. Earlier green CI builds do not prove later code passed.
