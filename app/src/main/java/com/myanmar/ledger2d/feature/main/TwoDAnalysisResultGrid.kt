@@ -263,15 +263,16 @@ private fun GapChip(result: Leader) {
     val count = result.count ?: return
     val c = MaterialTheme.colorScheme
     Surface(shape = RoundedCornerShape(8.dp),
-        color = c.tertiaryContainer.copy(alpha = .90f)) {
+        color = c.tertiary.copy(alpha = .16f),
+        border = BorderStroke(1.dp, c.tertiary.copy(alpha = .30f))) {
         Row(Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("Gap", style = MaterialTheme.typography.labelSmall,
-                color = c.onTertiaryContainer.copy(alpha = .76f))
+                color = c.onSurfaceVariant)
             Text(count.toString() + if (result.minOnly) "+" else "",
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold, color = c.onTertiaryContainer)
+                fontWeight = FontWeight.Bold, color = c.onSurface)
         }
     }
 }
