@@ -1159,7 +1159,7 @@ The isolated UI implementation now uses distinct per-method data renderings in `
 |---|---|---|
 | A-02 | Top historical **2D pair, single digit, four-way parity category, named special group, tens position and ones position**, each with recorded frequency | Least-observed cases, full distributions, every tie and date/session evidence |
 | A-03 | Most common following **parity class** and its count among matching historical weeks, with tiny matched-week number | Exact sequences, compared weeks, next-result evidence and eligibility |
-| A-06 | Longest absent **2D pair** for independent **AM, PM, ALL** streams, each with observed draw gap; do not substitute target AM/PM for the other streams | Single-digit streaks, historical gaps and last-seen evidence |
+| A-06 | Longest-absent **0–9 single digit FIRST**, longest-absent **00–99 full 2D pair SECOND**, for each independent **AM, PM, ALL** stream. Both results remain visible with their own small observed-draw counts, including `+` for lower bounds. | Historical streak evidence, last seen, completeness and all ties |
 | A-08 | Top observed **next exact 2D result** for all **three independent** prior-reference checks: BOTH/1st/2nd, with count | Actual two references, all match lists, next outcomes, unknown data |
 | A-05 | This week's **unseen individual digits** and most recently seen **new** digits | Full chronological new/old transition trace |
 | A-07 | This week's **အပူး, ညီအကို, ပါဝါ, နက္ခတ်, ပြန်ကျ** occurrence counts | All actual results/dates, history and repeat lines |
@@ -1186,7 +1186,7 @@ This is an **experimental implementation**, not a final phone-approved design. V
 - Preserve the three timeline tags and **four checks / two checks / two checks**. The four current-draw tiles are now positioned to balance heights: left column A-02 then compact A-03, right column A-06 then A-08. All four checks remain tappable to the existing details.
 - The A-02 six-dimensional maximum-frequency data is **one card** containing only two tinted hero wells (2D pair and 0–9 digit) followed by two FLAT summary rows (top parity class and top named special group), followed by one tiny top-tens/top-ones row. No six nested rounded cards or long headings. Do not silently omit any of the six approved maxima.
 - When A-03 is ineligible or has no historical match, its entire summary tile collapses to one compact status row, not a tall blank canvas. Ineligible and verified no-match remain distinct.
-- A-06 remains three short rows, each with its independently computed AM/PM/ALL top missing **2D pair** and observed-draw gap. Unknown history/open result slots and never-seen starts are flagged as minimum-only counts.
+- A-06 shows three independent AM/PM/ALL blocks. In **each block**, prioritize the longest-absent **single digit (0–9)** with larger type and stronger rose visual layer, followed by the longest-absent **2D pair (00–99)** in a quieter secondary layer. Show **both** observed nonappearance counts in small subdued text; unknown-history/open-slot truncation uses `+` only as a lower-bound qualification. Neither result may be omitted or derived from the other.
 - A-08 remains three short separate rows BOTH/1st/2nd, using independently computed historical next-target 2D frequencies.
 - A-05/A-04 use small digit tokens with clear missing/unseen conditions. A-07 uses five flat counters; A-01 shows at most two first-return-companion previews.
 - One coherent tile surface, tiny consistent result chips, high-contrast deep-wine numeric glyphs, hairline separators, minimal supporting labels and no body explanations. Chevron hints must not consume a whole extra row.
@@ -1196,3 +1196,15 @@ This is an **experimental implementation**, not a final phone-approved design. V
 ## XIII.2 Acceptance gate
 
 The user has **not** approved the phone appearance of this revision yet. Check the latest branch-head CI, ensure both APK artifacts are produced, then review screenshot for spacing, contrasting number wells, no hidden ties and compact data-empty tiles. Rebuild the individual Detail Screens only after main-screen approval.
+
+
+## XIII.3 Final user clarification: missing digit always outranks missing pair
+
+The previous sample mockups omitted the missing **single digit** and visually overemphasized absence counts. The user explicitly corrected both mistakes and approved implementation of the latest sample style with this revised information hierarchy:
+
+1. **ပျောက်ဂဏန်း** (0–9) is the **primary**, largest, highest-contrast result.
+2. **ပျောက်ဂဏန်းတွဲ** (00–99) is the **secondary** result and remains visible beside it.
+3. Their individual `မထွက်သေး ... ကြိမ်` draw counts are **small supporting data**, never the hero.
+4. Repeat that hierarchy independently for **AM / PM / ALL**. Pull from `TwoDStreakStream.singleDigits` and `TwoDStreakStream.fullNumbers`; do not confuse 0–9 missing digits with a 00–99 missing pair. Never use the same stream data for three different streams.
+5. Preserve ties and `+` lower-bound markers for incomplete recorded history. Keep the main grid as summary-only and retain all historical evidence in Detail Screens.
+6. Latest user instruction authorizes **direct GitHub implementation**; do not generate further design sample images for this revision.
