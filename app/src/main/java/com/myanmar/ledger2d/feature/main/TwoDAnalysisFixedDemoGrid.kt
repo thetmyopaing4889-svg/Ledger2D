@@ -193,7 +193,7 @@ private fun PreviewLine(
 }
 
 @Composable
-private fun MostSeenPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.MostSeenPreview(en: Boolean, compact: Boolean) {
     Row(Modifier.fillMaxWidth().weight(1f),
         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         PreviewHero("2D", PreviewNumber("52", "6"),
@@ -238,7 +238,7 @@ private fun TinyNumberWell(
 }
 
 @Composable
-private fun MissingPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.MissingPreview(en: Boolean, compact: Boolean) {
     TwoDFixedDemoSamples.absent.forEachIndexed { index, slot ->
         if (index != 0) HorizontalDivider(thickness = .5.dp)
         Row(Modifier.fillMaxWidth().weight(1f),
@@ -277,7 +277,7 @@ private fun PreviewBadge(
 }
 
 @Composable
-private fun PatternPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.PatternPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     Text(if (en) "Most common next class" else "အများဆုံး ဆက်ထွက်",
         style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
@@ -289,7 +289,7 @@ private fun PatternPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun PreviousPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.PreviousPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     PreviewLine(if (en) "Prior" else "ရှေ့ထွက်", "51 · 05", compact)
     HorizontalDivider(thickness = .5.dp)
@@ -322,7 +322,7 @@ private fun TokenStrip(digits: List<String>) {
 }
 
 @Composable
-private fun WeeklyPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.WeeklyPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     Text(if (en) "Unseen digits (0–9)" else "ပျောက်ဂဏန်း (0–9)",
         style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
@@ -338,7 +338,7 @@ private fun WeeklyPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun SpecialsPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.SpecialsPreview(en: Boolean, compact: Boolean) {
     TwoDFixedDemoSamples.special.forEachIndexed { i, (label, value) ->
         if (i != 0) HorizontalDivider(thickness = .5.dp)
         Row(Modifier.fillMaxWidth().weight(1f),
@@ -357,7 +357,7 @@ private fun SpecialsPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun LastWeekPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.LastWeekPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     Text(if (en) "Most observed digit" else "အထွက်အများဆုံးဂဏန်း",
         style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
@@ -373,7 +373,7 @@ private fun LastWeekPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun ReturnPreview(en: Boolean, compact: Boolean) {
+private fun ColumnScope.ReturnPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     Text(if (en) "Missing → Companion" else "ပျောက် → တွဲထွက်",
         style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
