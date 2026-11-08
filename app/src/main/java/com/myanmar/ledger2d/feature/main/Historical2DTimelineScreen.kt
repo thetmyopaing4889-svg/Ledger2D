@@ -484,27 +484,21 @@ fun Historical2DTimelineScreen(
             ) {
                 if (method != null && report != null) {
                     if (openCheck == "02") {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = scheme.surface,
-                            shape = RoundedCornerShape(17.dp),
-                            shadowElevation = 2.dp,
-                            tonalElevation = 1.dp,
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
                         ) {
-                            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Text(method.title,
-                                    style = LedgerTypographyStandard.style(
-                                        LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
-                                    maxLines = 3)
-                                Text(date.toString() + " · " +
-                                    (if (target.session == DrawSession.MORNING)
-                                        tr("မနက်အကြိမ်", "Morning") else tr("ညနေအကြိမ်", "Evening")) +
-                                    " · " + lookbackLabel,
-                                    style = LedgerTypographyStandard.style(
-                                        LedgerTextRole.HELPER, if (en) "en" else "my"),
-                                    color = scheme.onSurfaceVariant)
-                            }
+                            Text(method.title,
+                                style = LedgerTypographyStandard.style(
+                                    LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(date.toString() + " · " +
+                                (if (target.session == DrawSession.MORNING)
+                                    tr("မနက်အကြိမ်", "Morning")
+                                 else tr("ညနေအကြိမ်", "Evening")) + " · " + lookbackLabel,
+                                style = LedgerTypographyStandard.style(
+                                    LedgerTextRole.HELPER, if (en) "en" else "my"),
+                                color = scheme.onSurfaceVariant)
                         }
                     } else {
                     Surface(
