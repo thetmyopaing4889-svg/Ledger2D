@@ -264,27 +264,35 @@ private fun TileHeading(id: String, en: Boolean) {
 @Composable
 private fun EmptyCompact(status: String, meaning: String? = null) {
     val c = MaterialTheme.colorScheme
-    if (meaning != null) {
-        // Ineligible is not the same as a zero result. This short two-line
-        // status retains the method's meaning without a large empty tile.
-        Column(Modifier.fillMaxWidth().heightIn(min = 65.dp)
-                .padding(horizontal = 6.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(meaning, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold, color = c.onSurfaceVariant)
-            Text(status, style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    } else {
-        Row(Modifier.fillMaxWidth().heightIn(min = 38.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = c.surfaceVariant.copy(alpha = .66f),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .11f)),
+        tonalElevation = 1.dp,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 54.dp)
+                .padding(horizontal = 11.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center) {
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Text("—", style = MaterialTheme.typography.titleMedium,
-                color = c.onSurfaceVariant.copy(alpha = .45f))
-            Spacer(Modifier.width(7.dp))
-            Text(status, style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, maxLines = 1)
+                color = c.onSurfaceVariant.copy(alpha = .65f))
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (meaning != null) {
+                    Text(meaning, style = MaterialTheme.typography.labelSmall,
+                        color = c.onSurfaceVariant)
+                }
+                Text(
+                    status,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = c.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -405,16 +413,31 @@ private fun DividerHairline() {
 }
 
 @Composable
-private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Modifier) {
+private fun ShortPosition(
+    label: String, result: Leader, modifier: Modifier = Modifier,
+) {
     val c = MaterialTheme.colorScheme
-    Row(modifier.heightIn(min = 28.dp), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = c.onSurfaceVariant, maxLines = 1)
-        ResultChip(result.value, small = true)
-        if (result.count != null) {
-            Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold, color = c.onSurface, maxLines = 1)
+    Column(
+        modifier.heightIn(min = 48.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            label, style = MaterialTheme.typography.labelSmall,
+            color = c.onSurfaceVariant, maxLines = 1,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            ResultChip(result.value, small = true)
+            if (result.count != null) {
+                Text(
+                    "×" + result.count,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium, color = c.onSurface,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
