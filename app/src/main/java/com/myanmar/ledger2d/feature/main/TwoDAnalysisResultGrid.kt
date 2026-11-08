@@ -389,14 +389,20 @@ private fun MissingNumberWell(
             if (hasTwoNumericTies(result)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                     result.tiedValues.forEach { number ->
-                        Text(
-                            number,
-                            style = if (primary) MaterialTheme.typography.titleLarge
-                                else MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = if (primary) c.secondary else c.onSurface,
-                            maxLines = 1,
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(7.dp),
+                            color = if (primary) c.surface.copy(alpha = .70f)
+                                else c.secondaryContainer,
+                        ) {
+                            Text(
+                                number,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (primary) c.secondary else c.onSurface,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
             } else {
