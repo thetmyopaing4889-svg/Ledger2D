@@ -103,8 +103,7 @@ private fun leaderLabel(items: List<TwoDCount>, en: Boolean): String {
         0 -> "—"
         1 -> leaders.first().digit
         2 -> leaders.joinToString(" · ") { it.digit }
-        else -> leaders.first().digit + " +" + (leaders.size - 1) +
-            if (en) " tied" else " တူ"
+        else -> leaders.size.toString() + if (en) " tied" else " မျိုးတူ"
     }
 }
 
@@ -115,8 +114,7 @@ private fun mostAbsent(items: List<TwoDStreak>, en: Boolean): Pair<String, Int> 
         0 -> "—"
         1 -> leaders.first().value
         2 -> leaders.joinToString(" · ") { it.value }
-        else -> leaders.first().value + " +" + (leaders.size - 1) +
-            if (en) " tied" else " တူ"
+        else -> leaders.size.toString() + if (en) " tied" else " မျိုးတူ"
     }
     return label to maximum
 }
