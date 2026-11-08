@@ -35,7 +35,7 @@ internal fun TwoDAnalysisGroupTag(
         modifier = modifier.defaultMinSize(minHeight = 48.dp),
         shape = RoundedCornerShape(13.dp), onClick = onClick,
         color = if (selected) c.secondaryContainer else c.surface,
-        shadowElevation = if (selected) 2.dp else 0.dp,
+        shadowElevation = if (selected) 5.dp else 2.dp,
         border = BorderStroke(1.dp, if (selected) c.secondary.copy(alpha = .45f)
             else c.outlineVariant.copy(alpha = .75f)),
     ) {
@@ -295,11 +295,20 @@ private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier,
     en: Boolean = false,
 ) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier, shape = RoundedCornerShape(13.dp),
-        color = c.secondary, shadowElevation = 3.dp,
-        border = BorderStroke(1.dp, c.secondary.copy(alpha = .65f))) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 13.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Surface(modifier = modifier.heightIn(min = 122.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = c.secondary, shadowElevation = 6.dp,
+        border = BorderStroke(1.dp, c.onSecondary.copy(alpha = .23f))) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(c.secondary.copy(alpha = .91f), c.secondary)
+                    )
+                )
+                .padding(horizontal = 11.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = c.onSecondary.copy(alpha = .82f),
                 fontWeight = FontWeight.Medium, maxLines = 1)
@@ -413,19 +422,46 @@ private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Mo
 @Composable
 private fun SameSlot(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a02
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val c = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Hero("2D", top(a.numbers), Modifier.weight(1f), en)
         Hero("0–9", top(a.singles), Modifier.weight(1f), en)
     }
-    DividerHairline()
-    CompactRow(if (en) "Parity" else "စုံ/မ",
-        top(a.parity), Modifier.fillMaxWidth())
-    CompactRow(if (en) "Group" else "အထူး",
-        top(a.groups) { twoDGroupLabel(it, en) }, Modifier.fillMaxWidth())
-    DividerHairline()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        ShortPosition(if (en) "10s" else "ထိပ်", top(a.tens), Modifier.weight(1f))
-        ShortPosition(if (en) "1s" else "ပိတ်", top(a.ones), Modifier.weight(1f))
+    Surface(
+        shape = RoundedCornerShape(11.dp),
+        color = c.surface.copy(alpha = .86f),
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            CompactRow(if (en) "Parity" else "စုံ/မ",
+                top(a.parity), Modifier.fillMaxWidth())
+            DividerHairline()
+            CompactRow(if (en) "Group" else "အထူး",
+                top(a.groups) { twoDGroupLabel(it, en) }, Modifier.fillMaxWidth())
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(11.dp),
+        color = c.surface.copy(alpha = .86f),
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            ShortPosition(if (en) "10s" else "ထိပ်",
+                top(a.tens), Modifier.weight(1f))
+            ShortPosition(if (en) "1s" else "ပိတ်",
+                top(a.ones), Modifier.weight(1f))
+        }
     }
 }
 
@@ -458,14 +494,14 @@ private fun MissingNumberWell(
         else -> result.value
     }
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.heightIn(min = 98.dp),
+        shape = RoundedCornerShape(11.dp),
         color = if (primary) c.secondaryContainer else c.tertiary.copy(alpha = .10f),
         border = BorderStroke(
             1.dp, if (primary) c.secondary.copy(alpha = .24f)
                 else c.tertiary.copy(alpha = .30f),
         ),
-        shadowElevation = if (primary) 2.dp else 0.dp,
+        shadowElevation = if (primary) 5.dp else 3.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 9.dp),
@@ -582,23 +618,39 @@ private fun Absence(report: TwoDAnalysisReport, en: Boolean) {
     }
 }
 
-/** These reference numbers are what BOTH / 1st / 2nd actually compare. */
+/** Full-width A-08 is a comparison dashboard rather than a tall thin list. */
 @Composable
-private fun ComparisonRow(label: String, result: Leader, en: Boolean) {
+private fun ComparisonPanel(
+    label: String,
+    result: Leader,
+    en: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val c = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxWidth().padding(vertical = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium, color = c.onSurfaceVariant)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Surface(
+        modifier = modifier.heightIn(min = 94.dp),
+        color = c.surface.copy(alpha = .93f),
+        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .15f)),
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                label, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold, color = c.onSurfaceVariant,
+                maxLines = 1,
+            )
             RankedChips(result, accent = true)
-            Spacer(Modifier.weight(1f))
-            if (result.count != null) {
-                Text(result.count.toString() + if (en) " hits" else " ကြိမ်",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold, color = c.onSurface, maxLines = 1)
-            }
+            Text(
+                if (result.count == null) "—" else
+                    result.count.toString() +
+                    (if (en) " hits" else " ကြိမ်"),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+            )
         }
     }
 }
@@ -607,23 +659,34 @@ private fun ComparisonRow(label: String, result: Leader, en: Boolean) {
 private fun PreviousResults(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a08
     val c = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(if (en) "Previous" else "ရှေ့ထွက်",
+    Row(
+        Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Text(
+            if (en) "Reference" else "ရှေ့ထွက်ဂဏန်း",
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold, color = c.onSurfaceVariant)
+            fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+        )
         Spacer(Modifier.weight(1f))
-        ResultChip(a.firstReference?.digit ?: "—", small = true, accent = true)
-        ResultChip(a.secondReference?.digit ?: "—", small = true, accent = true)
+        ResultChip(a.firstReference?.digit ?: "—", accent = true)
+        ResultChip(a.secondReference?.digit ?: "—", accent = true)
     }
     DividerHairline()
-    listOf(
-        (if (en) "Both" else "နှစ်ခု") to a.both.frequencies,
-        (if (en) "1st" else "ပထမ") to a.firstOnly.frequencies,
-        (if (en) "2nd" else "ဒုတိယ") to a.secondOnly.frequencies,
-    ).forEachIndexed { i, (label, matches) ->
-        if (i > 0) DividerHairline()
-        ComparisonRow(label, top(matches), en)
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        listOf(
+            (if (en) "Both" else "နှစ်ခု") to a.both.frequencies,
+            (if (en) "1st" else "ပထမ") to a.firstOnly.frequencies,
+            (if (en) "2nd" else "ဒုတိယ") to a.secondOnly.frequencies,
+        ).forEach { (label, frequencies) ->
+            ComparisonPanel(
+                label, top(frequencies), en, modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
