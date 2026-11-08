@@ -211,27 +211,55 @@ private fun PreviewHero(
     en: Boolean, compact: Boolean,
 ) {
     val c = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(10.dp)
     Surface(
-        modifier = modifier.height(if (compact) 85.dp else 110.dp),
-        shape = RoundedCornerShape(10.dp),
+        modifier = modifier.height(if (compact) 88.dp else 106.dp),
+        shape = shape,
         color = c.secondary,
-        shadowElevation = 3.dp,
-        border = BorderStroke(1.dp, c.onSecondary.copy(alpha = .18f)),
+        tonalElevation = 0.dp,
+        shadowElevation = 5.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .24f)),
     ) {
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    listOf(
+                        c.secondary.copy(alpha = .90f),
+                        c.secondary,
+                        c.secondary.copy(alpha = .97f),
+                    ),
+                ),
+                shape,
+            ),
         ) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = c.onSecondary.copy(alpha = .83f), maxLines = 1)
-            Text(number.value, style = if (compact)
-                MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold, color = c.onSecondary,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(number.count + if (en) " hits" else " ကြိမ်",
-                style = MaterialTheme.typography.labelSmall,
-                color = c.onSecondary, fontWeight = FontWeight.Medium,
-                maxLines = 1)
+            Box(
+                Modifier.fillMaxWidth().height(1.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color.Transparent,
+                                Color.White.copy(alpha = .46f),
+                                Color.Transparent),
+                        ),
+                    ),
+            )
+            Column(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 6.dp),
+            ) {
+                Text(label, style = MaterialTheme.typography.labelSmall,
+                    color = c.onSecondary.copy(alpha = .84f), maxLines = 1)
+                Text(number.value,
+                    style = if (compact) MaterialTheme.typography.titleLarge
+                        else MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold, color = c.onSecondary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(number.count + if (en) " hits" else " ကြိမ်",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = c.onSecondary.copy(alpha = .95f),
+                    fontWeight = FontWeight.Medium, maxLines = 1)
+            }
         }
     }
 }
@@ -383,21 +411,36 @@ private fun PreviewBadge(
     small: Boolean = false,
 ) {
     val c = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(9.dp)
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = shape,
         color = if (primary) c.secondary else c.secondaryContainer,
-        shadowElevation = if (primary) 3.dp else 0.dp,
+        shadowElevation = if (primary) 4.dp else 1.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(
+            1.dp,
+            if (primary) Color.White.copy(alpha = .19f)
+                else c.secondary.copy(alpha = .12f),
+        ),
     ) {
         Box(
-            Modifier.padding(
-                horizontal = if (small) 5.dp else 7.dp,
-                vertical = if (small) 3.dp else 5.dp,
+            Modifier.background(
+                Brush.verticalGradient(
+                    if (primary) listOf(c.secondary.copy(alpha = .94f), c.secondary)
+                    else listOf(c.surface.copy(alpha = .70f),
+                        c.secondaryContainer.copy(alpha = .75f)),
+                ),
+                shape,
+            ).padding(
+                horizontal = if (small) 6.dp else 8.dp,
+                vertical = if (small) 3.dp else 6.dp,
             ),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                value, style = if (small) MaterialTheme.typography.labelLarge
+                value,
+                style = if (small) MaterialTheme.typography.labelLarge
                     else MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = if (primary) c.onSecondary else c.secondary,
@@ -503,9 +546,9 @@ private fun ColumnScope.WeeklyPreview(en: Boolean, compact: Boolean) {
 private fun ColumnScope.SpecialsPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(10.dp), color = c.surface.copy(alpha = .84f),
+        shape = RoundedCornerShape(10.dp), color = c.surface.copy(alpha = .96f),
         border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
@@ -572,10 +615,10 @@ private fun ColumnScope.ReturnPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     PreviewSectionTitle(if (en) "Missing → Companion" else "ပျောက် → တွဲထွက်")
     Surface(
-        color = c.surface.copy(alpha = .84f),
+        color = c.surface.copy(alpha = .96f),
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 8.dp),
