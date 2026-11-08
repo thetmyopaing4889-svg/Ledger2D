@@ -270,21 +270,21 @@ private fun RankedChips(result: Leader, accent: Boolean = false) {
 }
 
 @Composable
-private fun GapChip(result: Leader) {
-    val count = result.count ?: return
+private fun AbsenceCountChip(result: Leader, en: Boolean) {
+    val count = result.count
     val c = MaterialTheme.colorScheme
-    Surface(shape = RoundedCornerShape(8.dp),
+    Surface(shape = RoundedCornerShape(10.dp),
         color = c.tertiary.copy(alpha = .16f),
-        border = BorderStroke(1.dp, c.tertiary.copy(alpha = .30f))) {
-        Row(Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("Gap", style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant)
-            Text(count.toString() + if (result.minOnly) "+" else "",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold, color = c.onSurface)
-        }
+        border = BorderStroke(1.dp, c.tertiary.copy(alpha = .34f))) {
+        Text(
+            if (count == null) "—" else
+                count.toString() + (if (result.minOnly) "+" else "") +
+                    (if (en) " draws" else " ကြိမ်"),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold, color = c.onSurface,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -292,7 +292,7 @@ private fun GapChip(result: Leader) {
 @Composable
 private fun CompactRow(label: String, result: Leader, modifier: Modifier = Modifier,
     countPrefix: String = "×", labelWidth: Int = 0,
-    accent: Boolean = false, showGapChip: Boolean = false,
+    accent: Boolean = false,
 ) {
     val c = MaterialTheme.colorScheme
     Row(modifier.heightIn(min = 30.dp),
@@ -306,9 +306,7 @@ private fun CompactRow(label: String, result: Leader, modifier: Modifier = Modif
             overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))
         RankedChips(result, accent = accent)
-        if (showGapChip) {
-            GapChip(result)
-        } else if (result.count != null) {
+        if (result.count != null) {
             Text(countPrefix + result.count + if (result.minOnly) "+" else "",
                 style = MaterialTheme.typography.labelSmall,
                 color = c.onSurface, fontWeight = FontWeight.Medium, maxLines = 1)
@@ -365,27 +363,87 @@ private fun WeeklyPattern(report: TwoDAnalysisReport, en: Boolean) {
     CompactRow("Weeks", Leader(a.matched.size.toString()), Modifier.fillMaxWidth())
 }
 
+/** A missing pair and its observed nonappearance are two different facts. */
 @Composable
-private fun Absence(report: TwoDAnalysisReport) {
+private fun AbsenceRow(label: String, result: Leader, en: Boolean) {
+    val c = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold, color = c.onSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+            Text("2D", style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant)
+            RankedChips(result, accent = true)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(if (en) "Unseen" else "မထွက်သေး",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+                maxLines = 1)
+            Spacer(Modifier.weight(1f))
+            AbsenceCountChip(result, en)
+        }
+    }
+}
+
+@Composable
+private fun Absence(report: TwoDAnalysisReport, en: Boolean) {
     listOf("AM" to "morning", "PM" to "evening", "ALL" to "combined")
         .forEachIndexed { i, (label, key) ->
             if (i > 0) DividerHairline()
             val stream = report.a06[key]
             val result = if (stream == null || stream.observedDraws == 0) Leader("—")
                 else absentTop(stream.fullNumbers, stream.hasUnknownOpenSlots)
-            CompactRow(label, result, Modifier.fillMaxWidth(), labelWidth = 25,
-                accent = true, showGapChip = true)
+            AbsenceRow(label, result, en)
         }
 }
 
+/** These reference numbers are what BOTH / 1st / 2nd actually compare. */
 @Composable
-private fun PreviousResults(report: TwoDAnalysisReport) {
+private fun ComparisonRow(label: String, result: Leader, en: Boolean) {
+    val c = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium, color = c.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            RankedChips(result, accent = true)
+            Spacer(Modifier.weight(1f))
+            if (result.count != null) {
+                Text(result.count.toString() + if (en) " hits" else " ကြိမ်",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold, color = c.onSurface, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviousResults(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a08
-    listOf("BOTH" to a.both.frequencies, "1st" to a.firstOnly.frequencies,
-        "2nd" to a.secondOnly.frequencies).forEachIndexed { i, (label, matches) ->
+    val c = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(if (en) "Previous" else "ရှေ့ထွက်",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold, color = c.onSurfaceVariant)
+        Spacer(Modifier.weight(1f))
+        ResultChip(a.firstReference?.digit ?: "—", small = true, accent = true)
+        ResultChip(a.secondReference?.digit ?: "—", small = true, accent = true)
+    }
+    DividerHairline()
+    listOf(
+        (if (en) "Both" else "နှစ်ခု") to a.both.frequencies,
+        (if (en) "1st" else "ပထမ") to a.firstOnly.frequencies,
+        (if (en) "2nd" else "ဒုတိယ") to a.secondOnly.frequencies,
+    ).forEachIndexed { i, (label, matches) ->
         if (i > 0) DividerHairline()
-        CompactRow(label, top(matches), Modifier.fillMaxWidth(), "×", 34,
-            accent = true)
+        ComparisonRow(label, top(matches), en)
     }
 }
 
