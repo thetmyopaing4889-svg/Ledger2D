@@ -72,7 +72,12 @@ internal fun TwoDAnalysisResultGrid(
     }
 }
 
-private data class Leader(val value: String, val count: Int? = null, val minOnly: Boolean = false)
+private data class Leader(
+    val value: String,
+    val count: Int? = null,
+    val minOnly: Boolean = false,
+    val tiedValues: List<String> = emptyList(),
+)
 
 private fun top(values: List<TwoDCount>): Leader {
     val max = values.maxOfOrNull { it.count } ?: 0
@@ -87,8 +92,8 @@ private fun top(values: Map<String, Int>, display: (String) -> String = { it }):
 private fun winners(values: List<String>, count: Int): Leader = when (values.size) {
     0 -> Leader("—")
     1 -> Leader(values[0], count)
-    2 -> Leader(values.joinToString("·"), count)
-    else -> Leader(values.size.toString() + " tied", count)
+    2 -> Leader("2 tied", count, tiedValues = values)
+    else -> Leader(values.size.toString() + " tied", count, tiedValues = values)
 }
 private fun absentTop(stream: List<TwoDStreak>, incomplete: Boolean): Leader {
     if (stream.isEmpty()) return Leader("—")
@@ -130,7 +135,9 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
                     id == "01" && report.a04.observedDraws > 0 -> "None"
                     else -> "No data"
                 }
-                EmptyCompact(status)
+                EmptyCompact(status, if (id == "03") {
+                    if (en) "Parity" else "စုံ/မ"
+                } else null)
             } else when (id) {
                 "02" -> SameSlot(report, en)
                 "03" -> WeeklyPattern(report)
@@ -153,16 +160,23 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
 }
 
 @Composable
-private fun EmptyCompact(status: String) {
+private fun EmptyCompact(status: String, meaning: String? = null) {
     val c = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().heightIn(min = 32.dp),
+    Row(Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center) {
-        Text("—", style = MaterialTheme.typography.titleLarge,
-            color = c.onSurfaceVariant.copy(alpha = .45f))
-        Spacer(Modifier.width(7.dp))
-        Text(status, style = MaterialTheme.typography.labelSmall,
-            color = c.onSurfaceVariant, maxLines = 1)
+        horizontalArrangement = if (meaning == null) Arrangement.Center else Arrangement.SpaceBetween,
+    ) {
+        if (meaning != null) {
+            Text(meaning, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("—", style = MaterialTheme.typography.titleMedium,
+                color = c.onSurfaceVariant.copy(alpha = .45f))
+            Text(status, style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant, maxLines = 1)
+        }
     }
 }
 
@@ -170,39 +184,77 @@ private fun EmptyCompact(status: String) {
 @Composable
 private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier, shape = RoundedCornerShape(12.dp),
-        color = c.secondaryContainer.copy(alpha = .77f),
-        border = BorderStroke(1.dp, c.secondary.copy(alpha = .13f))) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(13.dp),
+        color = c.secondary, shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .65f))) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, fontWeight = FontWeight.Medium, maxLines = 1)
+                color = c.onSecondary.copy(alpha = .82f),
+                fontWeight = FontWeight.Medium, maxLines = 1)
             Text(result.value,
                 style = if (result.value.length <= 3) MaterialTheme.typography.headlineMedium
                     else MaterialTheme.typography.titleMedium,
-                color = c.secondary, fontWeight = FontWeight.ExtraBold,
+                color = c.onSecondary, fontWeight = FontWeight.ExtraBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (result.count != null) {
-                Text("×" + result.count, style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold, color = c.onSecondaryContainer)
+                Surface(shape = RoundedCornerShape(8.dp),
+                    color = c.onSecondary.copy(alpha = .16f)) {
+                    Text("×" + result.count,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold, color = c.onSecondary)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ResultChip(value: String, small: Boolean = false) {
+private fun ResultChip(value: String, small: Boolean = false, accent: Boolean = false) {
     val c = MaterialTheme.colorScheme
     Surface(shape = RoundedCornerShape(8.dp),
-        color = c.secondaryContainer.copy(alpha = .70f)) {
+        color = if (accent) c.secondaryContainer else c.surfaceVariant.copy(alpha = .85f)) {
         Text(value, modifier = Modifier.padding(
             horizontal = if (small) 4.dp else 6.dp,
             vertical = if (small) 2.dp else 3.dp),
             style = if (small || value.length > 4) MaterialTheme.typography.labelMedium
-                else MaterialTheme.typography.titleMedium,
+                else MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = if (value == "—") c.onSurfaceVariant else c.secondary,
+            color = if (value == "—") c.onSurfaceVariant
+                else if (accent) c.secondary else c.onSurface,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun RankedChips(result: Leader, accent: Boolean = false) {
+    val splitNumericPair = result.tiedValues.size == 2 &&
+        result.tiedValues.all { v -> v.length <= 2 && v.all { ch -> ch.isDigit() } }
+    if (splitNumericPair) {
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            result.tiedValues.forEach { ResultChip(it, small = true, accent = accent) }
+        }
+    } else {
+        ResultChip(result.value, small = result.value.length > 4, accent = accent)
+    }
+}
+
+@Composable
+private fun GapChip(result: Leader) {
+    val count = result.count ?: return
+    val c = MaterialTheme.colorScheme
+    Surface(shape = RoundedCornerShape(8.dp),
+        color = c.tertiaryContainer.copy(alpha = .90f)) {
+        Row(Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("Gap", style = MaterialTheme.typography.labelSmall,
+                color = c.onTertiaryContainer.copy(alpha = .76f))
+            Text(count.toString() + if (result.minOnly) "+" else "",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold, color = c.onTertiaryContainer)
+        }
     }
 }
 
@@ -210,6 +262,7 @@ private fun ResultChip(value: String, small: Boolean = false) {
 @Composable
 private fun CompactRow(label: String, result: Leader, modifier: Modifier = Modifier,
     countPrefix: String = "×", labelWidth: Int = 0,
+    accent: Boolean = false, showGapChip: Boolean = false,
 ) {
     val c = MaterialTheme.colorScheme
     Row(modifier.heightIn(min = 30.dp),
@@ -222,11 +275,13 @@ private fun CompactRow(label: String, result: Leader, modifier: Modifier = Modif
             color = c.onSurfaceVariant, maxLines = 1,
             overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))
-        ResultChip(result.value)
-        if (result.count != null) {
+        RankedChips(result, accent = accent)
+        if (showGapChip) {
+            GapChip(result)
+        } else if (result.count != null) {
             Text(countPrefix + result.count + if (result.minOnly) "+" else "",
                 style = MaterialTheme.typography.labelSmall,
-                color = c.onSurface, fontWeight = FontWeight.Bold, maxLines = 1)
+                color = c.onSurface, fontWeight = FontWeight.Medium, maxLines = 1)
         }
     }
 }
@@ -284,7 +339,8 @@ private fun Absence(report: TwoDAnalysisReport) {
             val stream = report.a06[key]
             val result = if (stream == null || stream.observedDraws == 0) Leader("—")
                 else absentTop(stream.fullNumbers, stream.hasUnknownOpenSlots)
-            CompactRow(label, result, Modifier.fillMaxWidth(), "Gap ", 25)
+            CompactRow(label, result, Modifier.fillMaxWidth(), labelWidth = 25,
+                accent = true, showGapChip = true)
         }
 }
 
@@ -294,7 +350,8 @@ private fun PreviousResults(report: TwoDAnalysisReport) {
     listOf("BOTH" to a.both.frequencies, "1st" to a.firstOnly.frequencies,
         "2nd" to a.secondOnly.frequencies).forEachIndexed { i, (label, matches) ->
         if (i > 0) DividerHairline()
-        CompactRow(label, top(matches), Modifier.fillMaxWidth(), "×", 34)
+        CompactRow(label, top(matches), Modifier.fillMaxWidth(), "×", 34,
+            accent = true)
     }
 }
 
