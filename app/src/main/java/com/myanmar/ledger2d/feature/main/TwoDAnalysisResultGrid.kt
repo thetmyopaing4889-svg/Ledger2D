@@ -342,7 +342,7 @@ private fun SameSlotSummary(report: TwoDAnalysisReport, en: Boolean) {
 @Composable
 private fun PatternSummary(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a03
-    if (!a.eligible) { EmptyFinding("4+ draws"); return }
+    if (!a.eligible) { EmptyFinding("N/A"); return }
     if (a.matched.isEmpty()) { EmptyFinding("No match"); return }
     FindingPanel(if (en) "Next parity" else "စုံ/မ",
         topOfMap(a.nextParity) { it }, hero = true)
@@ -386,7 +386,7 @@ private fun PriorMatchSummary(report: TwoDAnalysisReport, en: Boolean) {
 private fun WeekFlowSummary(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a05
     if (a.transitions.isEmpty()) { EmptyFinding("No data"); return }
-    DigitTokens("LEFT", a.remainingDigits)
+    DigitTokens(if (a.completeThroughTarget) "LEFT" else "UNSEEN", a.remainingDigits)
     val last = a.transitions.last()
     if (last.classificationVerified) DigitTokens("NEW", last.newlySeenDigits)
 }
@@ -416,7 +416,7 @@ private fun PreviousWeekSummary(report: TwoDAnalysisReport, en: Boolean) {
     val a = report.a04
     if (a.observedDraws == 0) { EmptyFinding("No data"); return }
     FindingPanel("TOP 0–9", topOf(a.singleDigitFrequency), hero = true)
-    DigitTokens("MISSING", a.remainingDigits)
+    DigitTokens(if (a.complete) "MISSING" else "UNSEEN", a.remainingDigits)
 }
 
 @Composable
@@ -431,6 +431,9 @@ private fun MissingReturnSummary(report: TwoDAnalysisReport, en: Boolean) {
             it.thisWeekFirstSeen != null
         }.thenByDescending { it.historyFirstReturnEpisodes }.thenBy { it.digit }
     )
+    Text("HIST", style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Medium)
     ordered.take(2).forEach { item ->
         val highest = item.commonCompanions.maxOfOrNull { it.count } ?: 0
         val partners = item.commonCompanions.filter { it.count == highest && highest > 0 }
