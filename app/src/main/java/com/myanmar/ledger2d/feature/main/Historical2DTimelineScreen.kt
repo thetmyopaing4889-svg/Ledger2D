@@ -335,7 +335,7 @@ fun Historical2DTimelineScreen(
                         Icon(Icons.Default.History, null,
                             modifier = Modifier.size(15.dp),
                             tint = scheme.onSurfaceVariant)
-                        Text(tr("နှိုင်းယှဉ်မှတ်တမ်း", "Historical comparison"),
+                        Text("History",
                             style = MaterialTheme.typography.labelSmall,
                             color = scheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f))
@@ -407,15 +407,9 @@ fun Historical2DTimelineScreen(
                         group = selectedSection.key, report = report, en = en,
                         onOpenDetail = { openCheck = it },
                     )
-                    if (merged.draws.isEmpty()) {
-                        Text(tr("အတည်ပြုထားသော ထွက်ဂဏန်းမှတ်တမ်း မရှိသေးပါ။",
-                            "No verified historical draw records yet."),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onSurfaceVariant)
-                    }
                 }
-                Text(tr("ရှိသောမှတ်တမ်းကို စစ်ဆေးထားခြင်းသာဖြစ်ပြီး နောက်အကြိမ်ထွက်ဂဏန်းကို အာမမခံပါ။",
-                    "Based on recorded history; no next-result guarantee."),
+                Text(tr("မှတ်တမ်းအခြေခံ · ခန့်မှန်းချက်မဟုတ်",
+                    "Historical results · Not a forecast"),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
