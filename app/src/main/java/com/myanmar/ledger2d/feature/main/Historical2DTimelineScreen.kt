@@ -138,17 +138,20 @@ fun Historical2DTimelineScreen(
         else null
     }
     var openGroup by rememberSaveable { mutableStateOf("1") }
+    var focusedGroup by rememberSaveable { mutableStateOf(false) }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
     val overviewScroll = rememberScrollState()
-    BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
+    BackHandler(enabled = openCheck.isNotEmpty() || focusedGroup) {
+        if (openCheck.isNotEmpty()) openCheck = "" else focusedGroup = false
+    }
     var rulesOpen by remember { mutableStateOf(false) }
 
 
-    // The overview is for CHOOSING a check. Detailed outcomes are shown only
-    // on the next screen, so result data never competes with navigation.
+    // Group overview previews come from actual confirmed analysis data.
+    // Full evidence remains a separate, optional view.
     val sections = listOf(
         TwoDSectionSpec(
             key = "1", title = tr("၁။ ယခုထွက်မယ့်အကြိမ်", "1. Current draw"),
@@ -201,7 +204,13 @@ fun Historical2DTimelineScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                IconButton(onClick = { if (openCheck.isNotEmpty()) openCheck = "" else onBack() }) {
+                IconButton(onClick = {
+                    when {
+                        openCheck.isNotEmpty() -> openCheck = ""
+                        focusedGroup -> focusedGroup = false
+                        else -> onBack()
+                    }
+                }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = tr("ပြန်ရန်", "Back"))
                 }
@@ -228,7 +237,7 @@ fun Historical2DTimelineScreen(
             }
         },
         bottomBar = {
-            if (openCheck.isEmpty()) {
+            if (openCheck.isEmpty() && !focusedGroup) {
                 Surface(
                     color = scheme.surface,
                     tonalElevation = 4.dp,
@@ -261,7 +270,34 @@ fun Historical2DTimelineScreen(
         },
     ) { inset ->
         if (openCheck.isEmpty()) {
-            val selectedSection = sections.first { it.key == openGroup }
+            if (focusedGroup) {
+                val selectedSection = sections.first { it.key == openGroup }
+                Column(
+                    Modifier.fillMaxSize().padding(inset).verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(selectedSection.title, style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold)
+                    Text(date.toString() + " · " +
+                        (if (target.session == DrawSession.MORNING) tr("မနက်အကြိမ်", "Morning")
+                         else tr("ညနေအကြိမ်", "Evening")) + " · " + lookbackLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant)
+                    if (report != null) {
+                        selectedSection.methods.forEach { method ->
+                            TwoDFocusedMethodCard(
+                                method = method,
+                                facts = twoDQuickFacts(method.key, report, en),
+                                onClick = { openCheck = method.key },
+                            )
+                        }
+                    } else {
+                        TwoDStatusMessage(tr("ဒီအကြိမ်အတွက် ရလဒ်မရှိပါ",
+                            "No verified analysis available for this draw"), false)
+                    }
+                }
+            } else {
             Column(
                 Modifier.fillMaxSize().padding(inset)
                     .background(Brush.verticalGradient(listOf(
@@ -398,49 +434,23 @@ fun Historical2DTimelineScreen(
                     TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
                         "Check the selected date range"), true)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("စစ်ဆေးမှုများ", "Explore analysis"),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold)
-                        Text(tr("အုပ်စု ၃ ခု · စစ်ဆေးနည်း ၈ ခု", "3 groups · 8 checks"),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = scheme.onSurfaceVariant)
-                    }
-                    Surface(shape = RoundedCornerShape(10.dp),
-                        color = scheme.secondaryContainer) {
-                        Icon(Icons.Default.AutoAwesome, null,
-                            modifier = Modifier.padding(9.dp).size(20.dp),
-                            tint = scheme.onSecondaryContainer)
-                    }
-                }
-                // The selected group is an elevated, gradient bento tile.
-                TwoDBentoGroup(
-                    section = sections[0], selected = openGroup == "1",
-                    featured = true, onClick = { openGroup = "1" },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TwoDBentoGroup(
-                        section = sections[1], selected = openGroup == "2",
-                        featured = false, onClick = { openGroup = "2" },
-                        modifier = Modifier.weight(1f),
-                    )
-                    TwoDBentoGroup(
-                        section = sections[2], selected = openGroup == "3",
-                        featured = false, onClick = { openGroup = "3" },
-                        modifier = Modifier.weight(1f),
+                // Each group previews its own verified findings even before opening it.
+                // Avoid a method directory on the landing page.
+                sections.forEach { section ->
+                    val facts = if (report == null) emptyList()
+                        else twoDGroupQuickFacts(section.key, report, en)
+                    TwoDGroupOverviewCard(
+                        title = section.title,
+                        facts = facts,
+                        onClick = {
+                            if (report != null) {
+                                openGroup = section.key
+                                focusedGroup = true
+                            }
+                        },
+                        enabled = report != null,
                     )
                 }
-                // Selecting a group immediately changes this list; there are no
-                // nested expanders or result values mixed into the overview.
-                TwoDMethodDirectory(
-                    section = selectedSection,
-                    enabled = report != null,
-                    en = en,
-                    onMethod = { openCheck = it },
-                )
                 if (merged.draws.isEmpty()) {
                     TwoDStatusMessage(tr("ထွက်ဂဏန်းမှတ်တမ်း မတွေ့သေးပါ။",
                         "No verified results found yet."), false)
@@ -451,6 +461,7 @@ fun Historical2DTimelineScreen(
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
+            }
             }
         } else {
             val method = currentMethod
@@ -790,6 +801,231 @@ private fun TwoDMethodDirectory(
                     }
                 }
             }
+        }
+    }
+}
+
+
+/** Only short, observed findings go in previews. Detailed evidence lives in the method view. */
+private data class TwoDQuickFact(val label: String, val value: String, val note: String = "")
+
+private fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean): List<TwoDQuickFact> {
+    fun tr(mm: String, english: String) = if (en) english else mm
+    val noData = tr("မှတ်တမ်းမရှိ", "No records")
+    val none = tr("မရှိ", "None")
+    val times = tr(" ကြိမ်", " times")
+    fun leading(counts: List<TwoDCount>): Pair<String, String> {
+        val top = counts.maxOfOrNull { it.count } ?: 0
+        if (top <= 0) return noData to ""
+        val tied = counts.filter { it.count == top }
+        val display = if (tied.size <= 2) tied.joinToString(" · ") { it.digit }
+            else tied.size.toString() + tr(" မျိုးတူ", " tied")
+        return display to top.toString() + times + if (tied.size > 1) tr("စီ", " each") else ""
+    }
+    fun fact(label: String, pair: Pair<String, String>) = TwoDQuickFact(label, pair.first, pair.second)
+    fun numbers(values: Collection<Char>) = values.joinToString(" · ").ifEmpty { none }
+    return when (id) {
+        "02" -> listOf(
+            fact(tr("ဂဏန်းတွဲ 00–99", "2D pairs 00–99"),
+                if (report.a02.samples == 0) noData to "" else leading(report.a02.numbers)),
+            fact(tr("ဂဏန်း 0–9", "Digits 0–9"),
+                if (report.a02.samples == 0) noData to "" else leading(report.a02.singles)),
+        )
+        "03" -> {
+            val a = report.a03
+            listOf(
+                TwoDQuickFact(tr("ပုံစံတူအပတ်", "Matching weeks"),
+                    if (!a.eligible) tr("စစ်ဆေးရန်မပြည့်", "Not eligible")
+                    else a.matched.size.toString() + tr(" ပတ်", " weeks")),
+                fact(tr("နောက်အမျိုးအစား", "Following class"),
+                    if (!a.eligible || a.matched.isEmpty()) noData to ""
+                    else {
+                        val top = a.nextParity.values.maxOrNull() ?: 0
+                        val ties = a.nextParity.filterValues { it == top && top > 0 }.keys
+                        if (ties.isEmpty()) noData to ""
+                        else (ties.joinToString(" · ") { twoDParityLabel(it, en) }) to
+                            (top.toString() + times)
+                    }),
+            )
+        }
+        "06" -> {
+            val key = if (report.target.session == DrawSession.MORNING) "morning" else "evening"
+            val stream = report.a06[key]
+            fun longest(values: List<TwoDStreak>): Pair<String, String> {
+                if (stream == null || stream.observedDraws == 0 || values.isEmpty())
+                    return noData to ""
+                val longest = values.maxOf { it.observedDrawsSince }
+                val ties = values.filter { it.observedDrawsSince == longest }
+                val display = if (ties.size <= 2) ties.joinToString(" · ") { it.value }
+                    else ties.size.toString() + tr(" မျိုးတူ", " tied")
+                return display to (longest.toString() + tr(" အကြိမ် မတွေ့", " draws absent"))
+            }
+            listOf(
+                fact(tr("အကြာဆုံးမထွက်သောတွဲ", "Longest absent pair"),
+                    longest(stream?.fullNumbers.orEmpty())),
+                fact(tr("အကြာဆုံးမထွက်သောဂဏန်း", "Longest absent digit"),
+                    longest(stream?.singleDigits.orEmpty())),
+            )
+        }
+        "08" -> {
+            val a = report.a08
+            val ready = a.firstReference != null && a.secondReference != null
+            listOf(
+                TwoDQuickFact(tr("ရှေ့နှစ်ကြိမ်တူ", "Both prior results"),
+                    if (!ready) noData else a.both.matches.size.toString() + times),
+                TwoDQuickFact(tr("တစ်ကြိမ်ချင်းတူ", "Individual matches"),
+                    if (!ready) noData else
+                        a.firstOnly.matches.size.toString() + " / " + a.secondOnly.matches.size.toString(),
+                    tr("ရှေ့ ၁ / ရှေ့ ၂", "First / second")),
+            )
+        }
+        "05" -> {
+            val a = report.a05
+            val last = a.transitions.lastOrNull()
+            listOf(
+                TwoDQuickFact(tr("ယခုအပတ် ကျန်ဂဏန်း", "Unseen digits this week"),
+                    if (last == null) noData else numbers(a.remainingDigits),
+                    if (!a.completeThroughTarget) tr("ရှိသမျှမှတ်တမ်းအရ", "Available records only") else ""),
+                TwoDQuickFact(tr("နောက်ဆုံး အသစ်ဂဏန်း", "Latest new digits"),
+                    if (last == null) noData else if (!last.classificationVerified)
+                        tr("အတည်မပြုနိုင်", "Unverified")
+                    else numbers(last.newlySeenDigits)),
+            )
+        }
+        "07" -> {
+            val a = report.a07
+            listOf(
+                TwoDQuickFact(tr("ယခုအပတ် ပြန်ကျ", "Exact repeats this week"),
+                    if (a.observedDraws == 0) noData
+                    else a.repeatedNumbers.sumOf { it.count }.toString() + times),
+                fact(tr("အထူးအုပ်စု အများဆုံး", "Top special group"),
+                    if (a.observedDraws == 0) noData to "" else {
+                        val max = a.groups.values.maxOrNull() ?: 0
+                        if (max <= 0) none to ""
+                        else a.groups.filterValues { it == max }.keys
+                            .joinToString(" · ") { twoDGroupLabel(it, en) } to (max.toString() + times)
+                    }),
+            )
+        }
+        "04" -> {
+            val a = report.a04
+            val label = if (a.complete) tr("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း", "Missing digits last week")
+                else tr("မှတ်တမ်းအရ မတွေ့သောဂဏန်း", "Digits not in available draws")
+            listOf(
+                TwoDQuickFact(label, if (a.observedDraws == 0) noData else numbers(a.remainingDigits)),
+                TwoDQuickFact(tr("ပြီးခဲ့တဲ့အပတ် ပြန်ကျ", "Last week's repeats"),
+                    if (a.observedDraws == 0) noData
+                    else a.repeatedNumbers.sumOf { it.count }.toString() + times),
+            )
+        }
+        "01" -> {
+            val a = report.a01
+            val observed = a.results.count { it.thisWeekFirstSeen != null }
+            val single = a.results.singleOrNull()
+            val companion = single?.commonCompanions.orEmpty()
+            val highest = companion.maxOfOrNull { it.count } ?: 0
+            val partners = companion.filter { it.count == highest && highest > 0 }
+            listOf(
+                TwoDQuickFact(
+                    if (a.previousWeekComplete) tr("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း", "Last week's missing digits")
+                    else tr("မှတ်တမ်းအရ မတွေ့သောဂဏန်း", "Unseen in available draws"),
+                    if (report.a04.observedDraws == 0) noData else numbers(a.missingDigits)),
+                TwoDQuickFact(tr("ဒီအပတ် ပြန်တွေ့", "Observed returns this week"),
+                    if (report.a04.observedDraws == 0) noData
+                    else observed.toString() + tr(" လုံး", " digits"),
+                    if (single != null && partners.isNotEmpty())
+                        tr("သမိုင်းတွဲဖက်", "Historic companion") + ": " +
+                            single.digit.toString() + "→" +
+                            partners.joinToString(" · ") { it.companion.toString() }
+                    else ""),
+            )
+        }
+        else -> emptyList()
+    }
+}
+
+private fun twoDGroupQuickFacts(
+    key: String, report: TwoDAnalysisReport, en: Boolean,
+): List<TwoDQuickFact> = when (key) {
+    "1" -> twoDQuickFacts("02", report, en)
+    "2" -> listOf(twoDQuickFacts("05", report, en)[0],
+                   twoDQuickFacts("07", report, en)[0])
+    else -> listOf(twoDQuickFacts("04", report, en)[0],
+                   twoDQuickFacts("01", report, en)[1])
+}
+
+@Composable
+private fun TwoDQuickFactsRow(facts: List<TwoDQuickFact>) {
+    val scheme = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        facts.take(2).forEach { fact ->
+            Column(
+                Modifier.weight(1f)
+                    .background(scheme.surfaceVariant.copy(alpha = 0.58f),
+                        RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(fact.label, style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis)
+                Text(fact.value, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis)
+                if (fact.note.isNotEmpty()) {
+                    Text(fact.note, style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TwoDGroupOverviewCard(
+    title: String, facts: List<TwoDQuickFact>, enabled: Boolean, onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick, enabled = enabled,
+        shape = RoundedCornerShape(17.dp),
+        color = scheme.surface, tonalElevation = 1.dp, shadowElevation = 3.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.ChevronRight, null, tint = scheme.primary)
+            }
+            if (facts.isEmpty()) {
+                Text("—", color = scheme.onSurfaceVariant)
+            } else {
+                TwoDQuickFactsRow(facts)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TwoDFocusedMethodCard(
+    method: TwoDMethodSpec, facts: List<TwoDQuickFact>, onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick, modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp), color = scheme.surface,
+        tonalElevation = 1.dp, shadowElevation = 2.dp,
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(method.title, modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.ChevronRight, null, tint = scheme.primary)
+            }
+            if (facts.isNotEmpty()) TwoDQuickFactsRow(facts)
         }
     }
 }
