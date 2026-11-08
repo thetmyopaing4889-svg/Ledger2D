@@ -118,10 +118,11 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
         shadowElevation = 2.dp,
         border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = .62f)),
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp,
-            vertical = if (unavailable) 7.dp else 9.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            if (unavailable) {
+        Box(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 9.dp,
+                vertical = if (unavailable) 7.dp else 9.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                if (unavailable) {
                 val status = when {
                     id == "03" && !report.a03.eligible -> "N/A"
                     id == "03" -> "No match"
@@ -139,9 +140,13 @@ private fun ResultTile(id: String, report: TwoDAnalysisReport, en: Boolean, onCl
                 "04" -> PriorWeek(report)
                 "01" -> MissingReturns(report)
             }
+            }
+            // Overlay the detail affordance; it no longer makes every tile
+            // unnecessarily taller (especially the empty A-03 tile).
             Icon(Icons.Default.ChevronRight, null,
-                modifier = Modifier.align(Alignment.End).size(12.dp),
-                tint = c.onSurfaceVariant.copy(alpha = .55f))
+                modifier = Modifier.align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 3.dp).size(11.dp),
+                tint = c.onSurfaceVariant.copy(alpha = .45f))
         }
     }
 }
@@ -185,12 +190,14 @@ private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ResultChip(value: String) {
+private fun ResultChip(value: String, small: Boolean = false) {
     val c = MaterialTheme.colorScheme
     Surface(shape = RoundedCornerShape(8.dp),
         color = c.secondaryContainer.copy(alpha = .70f)) {
-        Text(value, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-            style = if (value.length > 4) MaterialTheme.typography.labelMedium
+        Text(value, modifier = Modifier.padding(
+            horizontal = if (small) 4.dp else 6.dp,
+            vertical = if (small) 2.dp else 3.dp),
+            style = if (small || value.length > 4) MaterialTheme.typography.labelMedium
                 else MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = if (value == "—") c.onSurfaceVariant else c.secondary,
@@ -232,16 +239,14 @@ private fun DividerHairline() {
 @Composable
 private fun ShortPosition(label: String, result: Leader, modifier: Modifier = Modifier) {
     val c = MaterialTheme.colorScheme
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Row(modifier.heightIn(min = 28.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = c.onSurfaceVariant, maxLines = 1)
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            ResultChip(result.value)
-            if (result.count != null) {
-                Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold, color = c.onSurface, maxLines = 1)
-            }
+        ResultChip(result.value, small = true)
+        if (result.count != null) {
+            Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold, color = c.onSurface, maxLines = 1)
         }
     }
 }
