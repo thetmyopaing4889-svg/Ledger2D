@@ -79,18 +79,15 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
 
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(tr("နေ့တူ၊ အကြိမ်တူ အတိတ်ရလဒ်", "Same weekday & draw history"),
-                style = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, lang),
-                modifier = Modifier.weight(1f))
+            Text(tr("စစ်ထားသောအကြိမ် ", "Verified draws: ") + data.samples,
+                style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
+                color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
             IconButton(onClick = { explanationOpen = true }) {
                 Icon(Icons.Default.Info, contentDescription =
                     tr("စစ်ဆေးချက်ရှင်းလင်းချက်", "About this check"),
                     tint = scheme.primary)
             }
         }
-        Text(tr("စစ်ထားသောအကြိမ် ", "Verified draws: ") + data.samples,
-            style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
-            color = scheme.onSurfaceVariant)
         if (data.samples == 0) {
             A02Panel {
                 Text(tr("နေ့တူ အကြိမ်တူ ထွက်ဂဏန်းမှတ်တမ်း မရှိသေးပါ။",
