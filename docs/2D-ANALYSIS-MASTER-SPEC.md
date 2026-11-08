@@ -1258,3 +1258,13 @@ Build/test branch-only; never touch the main ledger data model.
 - The A-06 preview had a **dark, muddy grey 2D-pair inset frame**, over-layered borders, and counts cramped into tiny wells. Keep the **missing single digit primary**, **2D pair secondary**, but use one pale well per value, no nested grey frame, and content-measured labels/numbers/counts. Counts must remain readable without being the visual focal point.
 - The user rejected stretching A-05/A-07 and A-04/A-01 cards down to the bottom navigation when there are few results. **Each two-card pair stays side-by-side and matched in height, but takes only the height justified by the denser card.** Extra viewport space below can remain blank; do not push the data rows apart to fill it.
 - **Do not modify the 2×2 full-remaining-height rule for the current-draw four-card demo.** The demo is still non-persistent; its values are fabricated and the real data path is unchanged.
+
+## XV.2 Inner sizing and premium surface acceptance (user-requested)
+
+The three Build #1079 phone screenshots showed **A-01's final row clipped**, and both two-card tabs still required a more balanced, premium visual style. The user explicitly authorized BOTH layout corrections and 3D/glass polish, while **retaining the demo-only fixtures**.
+
+- **A-04/A-01 and A-05/A-07:** use the *actual intrinsic rendered content height* of the denser card to size the single side-by-side row; equal width and height, aligned top edges, but never forced down to the bottom navigation. This replaces fragile estimates based on a fixed number of rows. Keep the available viewport as an upper bound.
+- **Current four-card group:** keep the existing full-remaining-screen 2×2 structure and the priority of actual numbers, not counts. Its equal quarter-screen cells need a full-height shared frosted surface.
+- **Premium depth without heavy grey framing:** a consistent glass-*like* ivory-to-blush gradient on outer cards, restrained reflective one-pixel highlight and hairline wine border, soft shadow; wine-toned raised hero panels use gentle beveled gradient and highlight; secondary values use quiet translucent inset panes with significantly weaker elevation. Do not add real-time blur/shaders or heavy nesting that harms text contrast/performance.
+- **A-06:** the missing 0–9 digit stays larger and visually primary; missing 00–99 pair stays next to it, and both own counts are small. Preserve full count labels across MM/EN without clipping or overflowing the fixed 2×2 cards.
+- Confirm on the handset in all three tabs (MM and EN) before accepting the sample as the basis for production real-data integration. Automated compile/test is not visual certification. The demo remains artificial and never persists to data storage.
