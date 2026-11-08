@@ -1173,3 +1173,26 @@ The isolated UI implementation now uses distinct per-method data renderings in `
 New UI lives in `TwoDAnalysisResultGrid.kt`; selected main-screen microcopy improvements in `Historical2DTimelineScreen.kt`. A single source of truth for user-visible method wording is `TwoDAnalysisText.kt`. The temporarily retained old Detail Screen uses `TwoDAnalysisDetails.kt`, with wording only corrected; it is due for its **own separate, user-reviewed rebuild AFTER Main Screen approval**. The underlying `TwoDAnalysisEngine.kt` and unrelated Ledger modules are not changed by this visual work.
 
 This is an **experimental implementation**, not a final phone-approved design. Verify CI on the current head, install APK, check Myanmar/English and screen widths, and have the user evaluate density, legibility, colors, inset result isolation and all tab states before starting Detail rebuild.
+
+
+---
+
+# Part XIII — On-phone Bento density correction (2026-11-08, after screenshot)
+
+**The screenshot of build 1049 was NOT accepted.** The user reported A-02 as a giant six-card stack, A-03 as an oversized empty tile, mismatched column heights, mixed numbers and labels, and insufficient premium hierarchy. Do not reintroduce that nested-card layout.
+
+## XIII.1 Replacement home-grid layout
+
+- Preserve the three timeline tags and **four checks / two checks / two checks**. The four current-draw tiles are now positioned to balance heights: left column A-02 then compact A-03, right column A-06 then A-08. All four checks remain tappable to the existing details.
+- The A-02 six-dimensional maximum-frequency data is **one card** containing only two tinted hero wells (2D pair and 0–9 digit) followed by two FLAT summary rows (top parity class and top named special group), followed by one tiny top-tens/top-ones row. No six nested rounded cards or long headings. Do not silently omit any of the six approved maxima.
+- When A-03 is ineligible or has no historical match, its entire summary tile collapses to one compact status row, not a tall blank canvas. Ineligible and verified no-match remain distinct.
+- A-06 remains three short rows, each with its independently computed AM/PM/ALL top missing **2D pair** and observed-draw gap. Unknown history/open result slots and never-seen starts are flagged as minimum-only counts.
+- A-08 remains three short separate rows BOTH/1st/2nd, using independently computed historical next-target 2D frequencies.
+- A-05/A-04 use small digit tokens with clear missing/unseen conditions. A-07 uses five flat counters; A-01 shows at most two first-return-companion previews.
+- One coherent tile surface, tiny consistent result chips, high-contrast deep-wine numeric glyphs, hairline separators, minimal supporting labels and no body explanations. Chevron hints must not consume a whole extra row.
+- For A-01, do not present a historical missing-digit return ranking as fully verified when the prior week is incomplete. Users can inspect incomplete evidence in the detail view instead. Likewise indicate A-04's observed-only rankings for incomplete weeks.
+- This correction changes ONLY presentation selection, reading order and wording in the Analysis home grid. It does NOT change the A-01–A-08 engine, dates, historical lookback, filters, holiday handling or ledger features.
+
+## XIII.2 Acceptance gate
+
+The user has **not** approved the phone appearance of this revision yet. Check the latest branch-head CI, ensure both APK artifacts are produced, then review screenshot for spacing, contrasting number wells, no hidden ties and compact data-empty tiles. Rebuild the individual Detail Screens only after main-screen approval.
