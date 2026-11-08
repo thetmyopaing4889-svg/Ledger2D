@@ -154,7 +154,7 @@ fun Historical2DTimelineScreen(
     // Full evidence remains a separate, optional view.
     val sections = listOf(
         TwoDSectionSpec(
-            key = "1", title = tr("၁။ ယခုထွက်မယ့်အကြိမ်", "1. Current draw"),
+            key = "1", title = tr("လက်ရှိအကြိမ်", "Current draw"),
             caption = tr("လက်ရှိအကြိမ်အတွက် စစ်ဆေးချက်များ", "Checks for the selected draw"),
             icon = Icons.Default.Troubleshoot,
             methods = listOf(
@@ -279,10 +279,17 @@ fun Historical2DTimelineScreen(
                 ) {
                     Text(selectedSection.title, style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold)
-                    Text(date.toString() + " · " +
-                        (if (target.session == DrawSession.MORNING) tr("မနက်အကြိမ်", "Morning")
-                         else tr("ညနေအကြိမ်", "Evening")) + " · " + lookbackLabel,
-                        style = MaterialTheme.typography.labelMedium,
+                    val groupContext = when (openGroup) {
+                        "1" -> date.toString() + " · " +
+                            (if (target.session == DrawSession.MORNING)
+                                tr("မနက်အကြိမ်", "Morning") else tr("ညနေအကြိမ်", "Evening")) +
+                            " · " + lookbackLabel
+                        "2" -> tr("ရွေးထားသောအပတ်", "Selected week") + " · " +
+                            date.minusDays((date.dayOfWeek.value - 1).toLong()).toString()
+                        else -> tr("ပြီးခဲ့တဲ့အပတ်", "Previous week") + " · " +
+                            (report?.a04?.weekStart?.toString() ?: "—")
+                    }
+                    Text(groupContext, style = MaterialTheme.typography.labelMedium,
                         color = scheme.onSurfaceVariant)
                     if (report != null) {
                         selectedSection.methods.forEach { method ->
@@ -858,7 +865,9 @@ private fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean):
                 val ties = values.filter { it.observedDrawsSince == longest }
                 val display = if (ties.size <= 2) ties.joinToString(" · ") { it.value }
                     else ties.size.toString() + tr(" မျိုးတူ", " tied")
-                return display to (longest.toString() + tr(" အကြိမ် မတွေ့", " draws absent"))
+                val lowerBound = ties.any { it.historyStartTruncated } || stream.hasUnknownOpenSlots
+                return display to ((if (lowerBound) "≥" else "") + longest.toString() +
+                    tr(" အကြိမ် မတွေ့", " draws absent"))
             }
             listOf(
                 fact(tr("အကြာဆုံးမထွက်သောတွဲ", "Longest absent pair"),
@@ -947,7 +956,13 @@ private fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean):
 private fun twoDGroupQuickFacts(
     key: String, report: TwoDAnalysisReport, en: Boolean,
 ): List<TwoDQuickFact> = when (key) {
-    "1" -> twoDQuickFacts("02", report, en)
+    "1" -> when {
+        report.a02.samples > 0 -> twoDQuickFacts("02", report, en)
+        report.a03.eligible && report.a03.matched.isNotEmpty() -> twoDQuickFacts("03", report, en)
+        report.a08.both.matches.isNotEmpty() -> twoDQuickFacts("08", report, en)
+        report.a06.values.any { it.observedDraws > 0 } -> twoDQuickFacts("06", report, en)
+        else -> twoDQuickFacts("02", report, en)
+    }
     "2" -> listOf(twoDQuickFacts("05", report, en)[0],
                    twoDQuickFacts("07", report, en)[0])
     else -> listOf(twoDQuickFacts("04", report, en)[0],
