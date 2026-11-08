@@ -27,6 +27,8 @@ data class TwoDSameSlot(
     val parity: Map<String, Int>,
     val groups: Map<String, Int>,
     val unseenNumbers: List<String>,
+    /** Verified same-weekday/same-session historical evidence for each exact 2D pair. */
+    val numberOccurrences: Map<String, List<TwoDMatch>> = emptyMap(),
 )
 
 data class TwoDPattern(
@@ -241,6 +243,11 @@ object TwoDAnalysisEngine {
             parity = parityCounts(digits),
             groups = TwoDigitGroups.counts(digits),
             unseenNumbers = numberCounts(digits, includeZero = true).filter { it.count == 0 }.map { it.digit },
+            numberOccurrences = candidates.groupBy { it.digit }.mapValues { (_, occurrences) ->
+                occurrences.sortedWith(chronological).map { row ->
+                    TwoDMatch(row.date, row.session, row.digit)
+                }
+            },
         )
     }
 
