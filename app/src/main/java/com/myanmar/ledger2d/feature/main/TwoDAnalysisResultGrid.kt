@@ -377,34 +377,44 @@ private fun TwoDGridFinding(
                         GridSecondary(tr("ရှေ့အကြိမ် ၂ ခု မပြည့်သေး",
                             "Two earlier verified results needed"))
                     } else {
-                        GridEyebrow(tr("ရှေ့ရလဒ်", "Prior results"))
                         Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Text(a.firstReference.digit,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold, color = scheme.onSurface)
-                            Text("·", style = MaterialTheme.typography.bodySmall,
-                                color = scheme.onSurfaceVariant)
-                            Text(a.secondReference.digit,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold, color = scheme.onSurface)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                tr("ရှေ့ရလဒ် ၁", "Previous 1") to a.firstReference.digit,
+                                tr("ရှေ့ရလဒ် ၂", "Previous 2") to a.secondReference.digit,
+                            ).forEach { (label, digit) ->
+                                Column(Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    GridEyebrow(label)
+                                    Text(digit, style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold, color = scheme.onSurface)
+                                }
+                            }
                         }
                         GridSeparator()
                         val count = a.both.matches.size
                         if (count == 0) {
-                            GridSecondary(tr("နှစ်ခုလုံးတူသည့် မှတ်တမ်းမတွေ့",
+                            GridSecondary(tr("နှစ်ခုလုံးတူသော မှတ်တမ်းမတွေ့",
                                 "No verified match for both"))
                         } else {
                             GridSubResult(tr("နှစ်ခုလုံးတူ", "Both matched"),
                                 count.toString() + tr(" ကြိမ်", " times"), emphasis = true)
                         }
-                        GridSubResult(
-                            tr("တစ်ခုချင်းတူ", "Single matches"),
-                            a.firstOnly.matches.size.toString() + " / " +
-                                a.secondOnly.matches.size.toString(),
-                        )
-                        GridEyebrow(tr("ရှေ့ ၁ / ရှေ့ ၂", "First / second"))
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                tr("ရှေ့ ၁ တူ", "First matched") to a.firstOnly.matches.size,
+                                tr("ရှေ့ ၂ တူ", "Second matched") to a.secondOnly.matches.size,
+                            ).forEach { (label, countOne) ->
+                                Column(Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    GridEyebrow(label)
+                                    Text(countOne.toString(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
+                                }
+                            }
+                        }
                         if (a.both.missingTargetCount > 0) {
                             GridEyebrow(tr("နောက်ရလဒ်မရှိသေးသည့် မှတ်တမ်း " +
                                 a.both.missingTargetCount, "Missing follow-up results: " +
@@ -503,10 +513,8 @@ private fun TwoDGridFinding(
                             GridDigits(returned.map { it.digit }, tr("မရှိ", "None"))
                         }
                         GridSeparator()
-                        GridSubResult(
-                            tr("အရင်အပတ် မတွေ့", "Unseen last week"),
-                            a.missingDigits.joinToString(" · ").ifEmpty { tr("မရှိ", "None") },
-                        )
+                        GridEyebrow(tr("အရင်အပတ် မတွေ့သောဂဏန်း", "Unseen last week"))
+                        GridDigits(a.missingDigits, tr("မရှိ", "None"))
                         if (!a.previousWeekComplete ||
                             returned.any { !it.firstSeenVerified }) {
                             GridEyebrow(tr("မှတ်တမ်းအချို့ မပြည့်", "Some records incomplete"))
