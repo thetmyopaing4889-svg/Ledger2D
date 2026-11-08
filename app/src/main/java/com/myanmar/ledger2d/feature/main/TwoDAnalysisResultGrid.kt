@@ -291,8 +291,9 @@ private fun DigitTokens(label: String, digits: Collection<Char>) {
                 fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
                 maxLines = 1)
             if (digits.isEmpty()) {
-                Text("—", style = MaterialTheme.typography.titleMedium,
-                    color = c.onSurfaceVariant.copy(alpha = 0.50f))
+                Text("0", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = c.secondary)
             } else {
                 digits.toList().chunked(5).forEach { rowDigits ->
                     Row(Modifier.fillMaxWidth(),
