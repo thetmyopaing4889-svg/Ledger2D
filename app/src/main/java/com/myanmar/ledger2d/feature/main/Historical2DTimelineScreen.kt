@@ -831,6 +831,17 @@ private fun twoDQuickFacts(id: String, report: TwoDAnalysisReport, en: Boolean):
                 if (report.a02.samples == 0) noData to "" else leading(report.a02.numbers)),
             fact(tr("ဂဏန်း 0–9", "Digits 0–9"),
                 if (report.a02.samples == 0) noData to "" else leading(report.a02.singles)),
+            fact(tr("ဂဏန်း အနည်းဆုံး (ပေါ်ဖူး)", "Least observed digit (>0)"),
+                if (report.a02.samples == 0) noData to ""
+                else {
+                    val least = report.a02.singles.filter { it.count > 0 }.minOfOrNull { it.count }
+                    if (least == null) noData to "" else {
+                        val tied = report.a02.singles.filter { it.count == least }
+                        (if (tied.size <= 2) tied.joinToString(" · ") { it.digit }
+                         else tied.size.toString() + tr(" မျိုးတူ", " tied")) to
+                            (least.toString() + times + if (tied.size > 1) tr("စီ", " each") else "")
+                    }
+                }),
         )
         "03" -> {
             val a = report.a03
@@ -966,26 +977,46 @@ private fun twoDGroupQuickFacts(
 @Composable
 private fun TwoDQuickFactsRow(facts: List<TwoDQuickFact>) {
     val scheme = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        facts.take(2).forEach { fact ->
-            Column(
-                Modifier.weight(1f)
-                    .background(scheme.surfaceVariant.copy(alpha = 0.58f),
-                        RoundedCornerShape(12.dp))
-                    .padding(horizontal = 10.dp, vertical = 9.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Text(fact.label, style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis)
-                Text(fact.value, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis)
-                if (fact.note.isNotEmpty()) {
-                    Text(fact.note, style = MaterialTheme.typography.labelSmall,
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            facts.take(2).forEach { fact ->
+                Column(
+                    Modifier.weight(1f)
+                        .background(scheme.surfaceVariant.copy(alpha = 0.58f),
+                            RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 9.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(fact.label, style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant, maxLines = 2,
                         overflow = TextOverflow.Ellipsis)
+                    Text(fact.value, style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
+                    if (fact.note.isNotEmpty()) {
+                        Text(fact.note, style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant, maxLines = 2,
+                            overflow = TextOverflow.Ellipsis)
+                    }
                 }
+            }
+        }
+        facts.drop(2).forEach { fact ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .background(scheme.surfaceVariant.copy(alpha = 0.58f),
+                        RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(fact.label, modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant, maxLines = 2)
+                Text(fact.value + if (fact.note.isNotBlank()) " · " + fact.note else "",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis)
             }
         }
     }
