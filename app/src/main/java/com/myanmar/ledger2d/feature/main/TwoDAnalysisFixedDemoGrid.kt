@@ -338,11 +338,21 @@ private fun TinyNumberWell(
             1.dp, if (primary) c.secondary.copy(alpha = .27f)
                 else c.outlineVariant.copy(alpha = .80f),
         ),
-        shadowElevation = 0.dp,
+        shadowElevation = if (primary) 2.dp else 1.dp,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            Modifier.fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        if (primary) listOf(
+                            c.surface.copy(alpha = .36f), c.secondaryContainer,
+                        ) else listOf(
+                            c.surface, c.secondaryContainer.copy(alpha = .17f),
+                        ),
+                    ),
+                )
+                .padding(horizontal = 6.dp, vertical = 5.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             // Two-line compact hierarchy: label + primary number on
             // the first line, count on the second. All three A-06 rows
@@ -362,7 +372,8 @@ private fun TinyNumberWell(
                 Spacer(Modifier.weight(1f))
                 Text(
                     number.value,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = if (primary) MaterialTheme.typography.titleLarge
+                        else MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = if (primary) c.secondary else c.onSurface,
                     maxLines = 1,
