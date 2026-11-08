@@ -138,6 +138,9 @@ fun Historical2DTimelineScreen(
         else null
     }
     var openGroup by rememberSaveable { mutableStateOf("1") }
+    // Isolated layout experiment. ON by default only in this feature branch,
+    // clearly marked as artificial and reversible via the DEMO switch.
+    var demoPreview by rememberSaveable { mutableStateOf(true) }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
@@ -214,6 +217,24 @@ fun Historical2DTimelineScreen(
                     overflow = TextOverflow.Ellipsis)
                 if (openCheck.isEmpty()) {
                     Surface(
+                        onClick = { demoPreview = !demoPreview },
+                        shape = RoundedCornerShape(9.dp),
+                        color = if (demoPreview) scheme.secondaryContainer
+                            else scheme.surfaceVariant,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, scheme.secondary.copy(alpha =
+                                if (demoPreview) .48f else .15f)),
+                    ) {
+                        Text(
+                            if (demoPreview) "DEMO ON" else "DEMO",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (demoPreview) scheme.secondary
+                                else scheme.onSurfaceVariant,
+                        )
+                    }
+                    Surface(
                         shape = RoundedCornerShape(14.dp),
                         color = scheme.primaryContainer.copy(alpha = 0.75f),
                     ) {
@@ -262,7 +283,8 @@ fun Historical2DTimelineScreen(
             val selectedSection = sections.first { it.key == openGroup }
             Column(
                 Modifier.fillMaxSize().padding(inset)
-                    .verticalScroll(overviewScroll)
+                    .then(if (demoPreview) Modifier
+                        else Modifier.verticalScroll(overviewScroll))
                     .padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -392,27 +414,65 @@ fun Historical2DTimelineScreen(
                     }
                 }
 
-                if (!validTarget) {
-                    TwoDStatusMessage(tr("ရွေးထားသောနေ့မှာ 2D အကြိမ်ပိတ်ထားသည်။",
-                        "No trading draw on the selected date."), true)
-                } else if (lookback == "custom" && !customValid && openGroup != "2") {
-                    TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
-                        "Check the selected date range"), true)
-                }
-
-                // Fixed-week A-05/A-07 remain usable even if a hidden custom
-                // history range is invalid. Other groups require valid dates.
-                if (report != null && (openGroup == "2" || lookback != "custom" || customValid)) {
-                    TwoDAnalysisResultGrid(
-                        group = selectedSection.key, report = report, en = en,
-                        onOpenDetail = { openCheck = it },
+                if (demoPreview) {
+                    // Visual PREVIEW only: no reading from live report and
+                    // no writes to Room, history, or user ledger tables.
+                    Surface(
+                        color = scheme.tertiary.copy(alpha = .15f),
+                        shape = RoundedCornerShape(9.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, scheme.tertiary.copy(alpha = .27f)),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .padding(horizontal = 9.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Icon(Icons.Default.Science, null,
+                                modifier = Modifier.size(14.dp),
+                                tint = scheme.onSurfaceVariant)
+                            Text(
+                                tr("DEMO · စမ်းသပ်ဒေတာသာ · Filter မသက်ဆိုင်",
+                                    "DEMO · Sample data only · Filters ignored"),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = scheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    // Weight is the ACTUAL leftover height after the header,
+                    // date, tabs, history selector and bottom nav.
+                    TwoDFixedDemoGrid(
+                        group = selectedSection.key,
+                        en = en,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                     )
+                } else {
+                    if (!validTarget) {
+                        TwoDStatusMessage(tr("ရွေးထားသောနေ့မှာ 2D အကြိမ်ပိတ်ထားသည်။",
+                            "No trading draw on the selected date."), true)
+                    } else if (lookback == "custom" && !customValid && openGroup != "2") {
+                        TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
+                            "Check the selected date range"), true)
+                    }
+    
+                    // Fixed-week A-05/A-07 remain usable even if a hidden custom
+                    // history range is invalid. Other groups require valid dates.
+                    if (report != null && (openGroup == "2" || lookback != "custom" || customValid)) {
+                        TwoDAnalysisResultGrid(
+                            group = selectedSection.key, report = report, en = en,
+                            onOpenDetail = { openCheck = it },
+                        )
+                    }
+                    Text(tr("မှတ်တမ်းအခြေခံ · ခန့်မှန်းချက်မဟုတ်",
+                        "Historical results · Not a forecast"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant)
+                    Spacer(Modifier.height(4.dp))
                 }
-                Text(tr("မှတ်တမ်းအခြေခံ · ခန့်မှန်းချက်မဟုတ်",
-                    "Historical results · Not a forecast"),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
             }
         } else {
             val method = currentMethod
