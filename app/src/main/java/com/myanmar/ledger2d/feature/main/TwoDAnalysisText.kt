@@ -38,10 +38,10 @@ internal object TwoDAnalysisText {
             "Compares this week's recorded even/odd sequence with historical matching patterns.",
         ),
         "06" to Copy(
-            "မထွက်တာကြာနေသော ဂဏန်းနှင့် ဂဏန်းတွဲများ",
+            "ပျောက်ဂဏန်းနှင့် ပျောက်ဂဏန်းတွဲများ",
             "Long-absent digits and pairs",
             "ပျောက်ဂဏန်းနှင့် ပျောက်ဂဏန်းတွဲ အကြိမ်ရေ", "Digit and pair absence streaks",
-            "ယခု အကြိမ်အထိ မထွက်တာကြာနေသော ဂဏန်းတွဲများအား မနက်အလိုက်၊ညနေအလိုက်၊မနက်ညနေအလိုက် စစ်ဆေးထားခြင်းဖြစ်ပါသည်",
+            "ပျောက်ဂဏန်းတွဲနှင့် ပျောက်ဂဏန်းများကို မနက်၊ ညနေ၊ နှစ်ကြိမ်ပေါင်း သီးခြားစစ်ဆေးထားခြင်းဖြစ်ပါသည်။",
             "Shows recorded absence streaks for morning, evening and combined results.",
         ),
         "08" to Copy(
@@ -61,7 +61,7 @@ internal object TwoDAnalysisText {
         "07" to Copy(
             "အထူးဂဏန်းအုပ်စုများ",
             "Special number groups",
-            "အပူး၊ ညီကို၊ ပါဝါ၊ နက္ခတ်", "Doubles, siblings, power, astrology",
+            "အပူး၊ ညီအကို၊ ပါဝါ၊ နက္ခတ်", "Doubles, siblings, power, astrology",
             "ဒီအပတ် ထွက်ရှိခဲ့သော အထူးဂဏန်းအုပ်စုများကို စစ်ဆေးထားခြင်း ဖြစ်ပါသည်။",
             "Shows recorded appearances of special number groups.",
         ),
