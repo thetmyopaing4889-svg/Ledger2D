@@ -182,8 +182,8 @@ private fun PreviewTile(
             Column(
                 Modifier.fillMaxWidth()
                     .then(if (stretch) Modifier.fillMaxHeight() else Modifier)
-                    .padding(if (compact) 9.dp else 12.dp),
-                verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp),
+                    .padding(if (compact) 8.dp else 12.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 10.dp),
             ) {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -326,7 +326,7 @@ private fun ColumnScope.MostSeenPreview(en: Boolean, compact: Boolean) {
 @Composable
 private fun TinyNumberWell(
     title: String, number: PreviewNumber, primary: Boolean,
-    en: Boolean, modifier: Modifier,
+    en: Boolean, modifier: Modifier, compact: Boolean,
 ) {
     val c = MaterialTheme.colorScheme
     Surface(
@@ -351,8 +351,8 @@ private fun TinyNumberWell(
                         ),
                     ),
                 )
-                .padding(horizontal = 6.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                .padding(horizontal = 6.dp, vertical = if (compact) 3.dp else 5.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 1.dp else 3.dp),
         ) {
             // Two-line compact hierarchy: label + primary number on
             // the first line, count on the second. All three A-06 rows
@@ -411,9 +411,9 @@ private fun ColumnScope.MissingPreview(en: Boolean, compact: Boolean) {
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1)
             TinyNumberWell("0–9", slot.digit, primary = true, en = en,
-                modifier = Modifier.weight(1.07f))
+                modifier = Modifier.weight(1.07f), compact = compact)
             TinyNumberWell("2D", slot.pair, primary = false, en = en,
-                modifier = Modifier.weight(1f))
+                modifier = Modifier.weight(1f), compact = compact)
         }
     }
 }
