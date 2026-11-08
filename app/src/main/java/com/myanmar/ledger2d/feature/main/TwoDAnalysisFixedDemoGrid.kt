@@ -74,23 +74,23 @@ internal fun TwoDFixedDemoGrid(
                 Row(Modifier.fillMaxWidth().weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(gutter)) {
                     PreviewTile(if (en) "Most seen" else "အထွက်အများဆုံး",
-                        Modifier.weight(1f).fillMaxHeight(), compact) {
+                        Modifier.weight(1f).fillMaxHeight(), compact, stretch = true) {
                         MostSeenPreview(en, compact)
                     }
                     PreviewTile(if (en) "Missing digit / pair"
                         else "ပျောက်ဂဏန်း / တွဲ",
-                        Modifier.weight(1f).fillMaxHeight(), compact) {
+                        Modifier.weight(1f).fillMaxHeight(), compact, stretch = true) {
                         MissingPreview(en, compact)
                     }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(gutter)) {
                     PreviewTile(if (en) "Parity pattern" else "စုံ/မ ပုံစံ",
-                        Modifier.weight(1f).fillMaxHeight(), compact) {
+                        Modifier.weight(1f).fillMaxHeight(), compact, stretch = true) {
                         PatternPreview(en, compact)
                     }
                     PreviewTile(if (en) "Previous comparison" else "ရှေ့ထွက်နှိုင်းယှဉ်",
-                        Modifier.weight(1f).fillMaxHeight(), compact) {
+                        Modifier.weight(1f).fillMaxHeight(), compact, stretch = true) {
                         PreviousPreview(en, compact)
                     }
                 }
@@ -137,6 +137,7 @@ private fun PreviewTile(
     title: String,
     modifier: Modifier,
     compact: Boolean,
+    stretch: Boolean = false,
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val c = MaterialTheme.colorScheme
@@ -150,7 +151,9 @@ private fun PreviewTile(
         border = BorderStroke(1.dp, c.secondary.copy(alpha = .15f)),
     ) {
         Box(
-            Modifier.fillMaxWidth().background(
+            Modifier.fillMaxWidth()
+                .then(if (stretch) Modifier.fillMaxHeight() else Modifier)
+                .background(
                 Brush.verticalGradient(
                     listOf(
                         c.surface,
@@ -178,6 +181,7 @@ private fun PreviewTile(
             )
             Column(
                 Modifier.fillMaxWidth()
+                    .then(if (stretch) Modifier.fillMaxHeight() else Modifier)
                     .padding(if (compact) 9.dp else 12.dp),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp),
             ) {
