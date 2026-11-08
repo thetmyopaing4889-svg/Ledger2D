@@ -1208,3 +1208,32 @@ The previous sample mockups omitted the missing **single digit** and visually ov
 4. Repeat that hierarchy independently for **AM / PM / ALL**. Pull from `TwoDStreakStream.singleDigits` and `TwoDStreakStream.fullNumbers`; do not confuse 0–9 missing digits with a 00–99 missing pair. Never use the same stream data for three different streams.
 5. Preserve ties and `+` lower-bound markers for incomplete recorded history. Keep the main grid as summary-only and retain all historical evidence in Detail Screens.
 6. Latest user instruction authorizes **direct GitHub implementation**; do not generate further design sample images for this revision.
+
+---
+
+## Part XIV — Aligned and layered main dashboard (2026-11-08, approved implementation direction)
+
+The user preferred **the second rendered visual design sample**, specifically its raised/3D-depth cards, but rejected the **independently stacked left/right column layout** as misaligned. The newest instruction was to implement the layout directly in the Android app, not to generate another image.
+
+### XIV.1 Fixed structural plan
+
+Retain the three top tabs and grouping 4–2–2 by method (no analytical reclassification). The **current-occasion** group has FOUR independently tappable analyses arranged in coherent aligned rows:
+
+1. First row: **A-02 left and A-06 right**, with a shared maximum intrinsic row height for their populated cases. Never place A-03 directly below A-02 while placing A-08 independently below A-06 as an unaligned masonry column.
+2. Second row: **A-03 full-width**, using a short, meaningful state when not eligible or no comparable recorded pattern exists. Do not fill its tile with explanation prose.
+3. Third row: **A-08 full-width**, with its two reference 2D numbers displayed and its independent **Both/First/Second** frequency leaders in three adjacent mini panels. No fabricated matches.
+4. Group 2 remains A-05/A-07; group 3 remains A-04/A-01. Equal-height row alignment applies to both one-row groups.
+
+### XIV.2 Visual system
+
+- Raised/glass-*like* card surfaces: shared corner radius, lightly tinted top-to-bottom gradient, subtle rim border, consistent outer elevation. Do not add blur/shader effects indiscriminately or sacrifice contrast.
+- Hero number panels are deeper wine with stronger, but consistent depth. Supporting rows use quieter ivory/elevated surfaces and finer borders. Use the brand design system rather than a rainbow palette.
+- Alignment is **structural**, not merely similar individual card sizes: match top card edges, shared row boundaries, common internal gutter and padding. Full-width rows resolve the unequal masonry columns.
+- A-02 retains six historical **maximum-frequency** categories: pair, single digit, parity class, special group, tens and ones. Hero pair/digit; supporting categories less dominant. Avoid clipping Myanmar text and force-feeding counts into single horizontal lines.
+- A-06 retains **missing single digit as top priority**, missing 2D pair as secondary for *each* AM, PM, ALL stream; their separate observed-draw counts stay small. Never replace any of the six answers with a derived or unrelated statistic; preserve incomplete-history `+`.
+- The short method-context labels shown in the chosen design sample are **allowed on main cards** for immediate comprehension; these are not a license to restore multi-line explanations or full detail content.
+- Old Detail Screens continue to work and retain history/interaction functionality; do not redesign them before the main-screen phone review.
+
+### XIV.3 Verification gate
+
+Build/test the isolated `feature/2d-analysis-timeline-redesign` branch, preserve `main`, and verify both debug/release APK plus on-device UI. Automated build success cannot certify visual equality to the rendered reference; phone validation is pending.
