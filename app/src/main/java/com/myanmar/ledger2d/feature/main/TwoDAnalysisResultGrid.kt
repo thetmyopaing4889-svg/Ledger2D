@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -16,12 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.domain.TwoDAnalysisReport
 import com.myanmar.ledger2d.core.domain.TwoDCount
 import com.myanmar.ledger2d.core.domain.TwoDStreak
-import com.myanmar.ledger2d.core.model.DrawSession
 
 /**
- * Each grid tile owns its information hierarchy. No reuse of the old generic
- * label/value/note method previews: they were readable in full-width cards
- * but cannot communicate a result clearly in a narrow two-column grid.
+ * Home grid = visual summary, NEVER a compressed detail screen.
+ * Each actual result is an inset object; no method title, sentence,
+ * explanation, or old QuickFact preview is displayed in these tiles.
  */
 @Composable
 internal fun TwoDAnalysisGroupTag(
@@ -30,27 +31,26 @@ internal fun TwoDAnalysisGroupTag(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
+    val c = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.defaultMinSize(minHeight = 48.dp),
-        shape = RoundedCornerShape(11.dp),
+        shape = RoundedCornerShape(14.dp),
         onClick = onClick,
-        color = if (selected) scheme.primaryContainer else scheme.surfaceVariant.copy(alpha = 0.55f),
+        color = if (selected) c.secondaryContainer else c.surface,
+        shadowElevation = if (selected) 3.dp else 1.dp,
         border = BorderStroke(
-            1.dp,
-            if (selected) scheme.primary.copy(alpha = 0.45f)
-            else scheme.outlineVariant.copy(alpha = 0.50f),
+            1.dp, if (selected) c.secondary.copy(alpha = 0.55f)
+            else c.outlineVariant.copy(alpha = 0.55f),
         ),
     ) {
-        Box(Modifier.padding(horizontal = 4.dp, vertical = 7.dp),
+        Box(Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center) {
             Text(
                 text,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
+                color = if (selected) c.onSecondaryContainer else c.onSurfaceVariant,
+                textAlign = TextAlign.Center, maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -69,457 +69,383 @@ internal fun TwoDAnalysisResultGrid(
         "2" -> listOf("05", "07")
         else -> listOf("04", "01")
     }
-    // Independent heights preserve space in each column while retaining
-    // the user's approved 2x2 and 2x1 reading order.
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
         verticalAlignment = Alignment.Top,
     ) {
         (0..1).forEach { column ->
             Column(
                 Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
-                checks.filterIndexed { index, _ -> index % 2 == column }.forEach { id ->
-                    TwoDGridFinding(
-                        modifier = Modifier.fillMaxWidth(),
-                        id = id,
-                        report = report,
-                        en = en,
-                        onClick = { onOpenDetail(id) },
-                    )
+                checks.filterIndexed { i, _ -> i % 2 == column }.forEach { id ->
+                    ResultTile(id = id, report = report, en = en,
+                        onClick = { onOpenDetail(id) })
                 }
             }
         }
     }
 }
 
-private fun leaderLabel(items: List<TwoDCount>, en: Boolean): String {
-    val max = items.maxOfOrNull { it.count } ?: 0
-    if (max == 0) return "—"
-    val leaders = items.filter { it.count == max }
-    return when (leaders.size) {
-        0 -> "—"
-        1 -> leaders.first().digit
-        2 -> leaders.joinToString(" · ") { it.digit }
-        else -> leaders.size.toString() + if (en) " tied" else " မျိုးတူ"
+private data class TopFinding(val value: String, val count: Int?, val tied: Boolean = false)
+
+private fun topOf(values: List<TwoDCount>): TopFinding {
+    val maximum = values.maxOfOrNull { it.count } ?: 0
+    if (maximum <= 0) return TopFinding("—", null)
+    val winners = values.filter { it.count == maximum }.map { it.digit }
+    return topOfWinners(winners, maximum)
+}
+
+private fun topOfMap(values: Map<String, Int>, label: (String) -> String): TopFinding {
+    val maximum = values.values.maxOrNull() ?: 0
+    if (maximum <= 0) return TopFinding("—", null)
+    return topOfWinners(values.filterValues { it == maximum }.keys.map(label), maximum)
+}
+
+private fun topOfWinners(winners: List<String>, count: Int): TopFinding =
+    when (winners.size) {
+        0 -> TopFinding("—", null)
+        1 -> TopFinding(winners.single(), count)
+        2 -> TopFinding(winners.joinToString("·"), count, true)
+        else -> TopFinding(winners.size.toString() + " tied", count, true)
     }
-}
 
-private fun mostAbsent(items: List<TwoDStreak>, en: Boolean): Pair<String, Int> {
-    val maximum = items.maxOfOrNull { it.observedDrawsSince } ?: 0
-    val leaders = items.filter { it.observedDrawsSince == maximum }
-    val label = when (leaders.size) {
-        0 -> "—"
-        1 -> leaders.first().value
-        2 -> leaders.joinToString(" · ") { it.value }
-        else -> leaders.size.toString() + if (en) " tied" else " မျိုးတူ"
-    }
-    return label to maximum
-}
-
-@Composable
-private fun GridEyebrow(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-    )
+private fun topAbsent(values: List<TwoDStreak>, incomplete: Boolean): TopFinding {
+    val maximum = values.maxOfOrNull { it.observedDrawsSince } ?: 0
+    val winners = values.filter { it.observedDrawsSince == maximum }
+    if (winners.isEmpty()) return TopFinding("—", null)
+    val data = topOfWinners(winners.map { it.value }, maximum)
+    // A '+' warns that gaps/history edges may understate actual absence,
+    // without presenting a false exact measurement.
+    return if (incomplete || winners.any { it.historyStartTruncated })
+        data.copy(value = data.value, count = data.count) else data
 }
 
 @Composable
-private fun GridResult(
-    value: String,
-    modifier: Modifier = Modifier,
-    highlighted: Boolean = true,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Text(
-        value,
-        modifier = modifier,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        color = if (highlighted) scheme.secondary else scheme.onSurface,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
-
-@Composable
-private fun GridFrequency(count: Int, en: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(count.toString(), style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface)
-        Text(if (en) "times" else "ကြိမ်",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** A 0–9 set must never be truncated just to fit the same font as one 2D pair. */
-@Composable
-private fun GridDigits(digits: Collection<Char>, noneLabel: String) {
-    Text(
-        digits.joinToString(" · ").ifEmpty { noneLabel },
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.secondary,
-        maxLines = 4,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
-
-@Composable
-private fun GridSecondary(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 3,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
-
-@Composable
-private fun GridSubResult(label: String, value: String, emphasis: Boolean = false) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Text(
-            label,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = if (emphasis) MaterialTheme.colorScheme.secondary
-                else MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun GridSeparator() {
-    HorizontalDivider(
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-        thickness = 0.7.dp,
-    )
-}
-
-@Composable
-private fun TwoDGridFinding(
-    modifier: Modifier,
+private fun ResultTile(
     id: String,
     report: TwoDAnalysisReport,
     en: Boolean,
     onClick: () -> Unit,
 ) {
-    fun tr(mm: String, english: String) = if (en) english else mm
-    val scheme = MaterialTheme.colorScheme
-    val title = when (id) {
-        "02" -> tr("နေ့တူ၊ အကြိမ်တူ", "Same draw history")
-        "03" -> tr("အပတ်ပုံစံတူ", "Weekly pattern")
-        "06" -> tr("မတွေ့တာကြာ", "Longest unseen")
-        "08" -> tr("ရှေ့အကြိမ် နှိုင်းယှဉ်", "Previous-draw match")
-        "05" -> tr("ဒီအပတ် ဂဏန်းအခြေအနေ", "This week's digits")
-        "07" -> tr("အထူးအုပ်စု / ပြန်ကျ", "Specials & repeats")
-        "04" -> tr("ပြီးခဲ့တဲ့အပတ်", "Previous week")
-        else -> tr("ပျောက်ဂဏန်း ပြန်ပေါ်", "Missing-digit returns")
-    }
+    val c = MaterialTheme.colorScheme
     Surface(
-        modifier = modifier,
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        color = scheme.surface,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(19.dp),
+        color = c.surface,
         tonalElevation = 1.dp,
-        shadowElevation = 1.dp,
-        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = 0.62f)),
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
+            Modifier.fillMaxWidth().padding(9.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    title,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = scheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Icon(Icons.Default.ChevronRight, null,
-                    tint = scheme.onSurfaceVariant.copy(alpha = 0.68f),
-                    modifier = Modifier.size(16.dp))
-            }
-
             when (id) {
-                "02" -> {
-                    val a = report.a02
-                    if (a.samples == 0) {
-                        GridSecondary(tr("နေ့တူ၊ အကြိမ်တူ မှတ်တမ်းမရှိသေး",
-                            "No earlier results for this weekday and draw"))
-                    } else {
-                        val pairMax = a.numbers.maxOfOrNull { it.count } ?: 0
-                        val digitMax = a.singles.maxOfOrNull { it.count } ?: 0
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Column(Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                GridEyebrow(tr("ဂဏန်းတွဲ", "2D pair"))
-                                GridResult(leaderLabel(a.numbers, en))
-                                GridFrequency(pairMax, en)
-                            }
-                            Column(Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                GridEyebrow(tr("ဂဏန်း", "Digit"))
-                                GridResult(leaderLabel(a.singles, en))
-                                GridFrequency(digitMax, en)
-                            }
-                        }
-                        GridSeparator()
-                        val low = a.singles.filter { it.count > 0 }.minOfOrNull { it.count }
-                        val lowDigits = if (low == null) emptyList()
-                            else a.singles.filter { it.count == low }
-                        GridSubResult(
-                            tr("ပေါ်ဖူးအနည်းဆုံး", "Least seen digit"),
-                            (if (lowDigits.size <= 2) lowDigits.joinToString(" · ") { it.digit }
-                             else lowDigits.first().digit + " +" + (lowDigits.size - 1)) +
-                                (if (low != null) " · " + low + tr(" ကြိမ်", "x") else ""),
-                        )
-                        GridEyebrow(tr("နှိုင်းယှဉ်မှတ်တမ်း ", "Verified draws: ") + a.samples)
-                    }
-                }
+                "02" -> SameSlotSummary(report, en)
+                "03" -> PatternSummary(report, en)
+                "06" -> MissingPairSummary(report, en)
+                "08" -> PriorMatchSummary(report, en)
+                "05" -> WeekFlowSummary(report, en)
+                "07" -> SpecialSummary(report, en)
+                "04" -> PreviousWeekSummary(report, en)
+                "01" -> MissingReturnSummary(report, en)
+            }
+            Row(
+                Modifier.fillMaxWidth().height(13.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.ChevronRight, null,
+                    modifier = Modifier.size(14.dp),
+                    tint = c.onSurfaceVariant.copy(alpha = 0.65f))
+            }
+        }
+    }
+}
 
-                "03" -> {
-                    val a = report.a03
-                    when {
-                        !a.eligible -> {
-                            GridSecondary(tr("ဒီအကြိမ်ကို စစ်ဆေးမရသေး",
-                                "Unable to check this draw yet"))
-                            GridEyebrow(tr("ရှေ့ထွက်ဂဏန်း/ပိတ်ရက် မှတ်တမ်းစစ်ရန်",
-                                "Earlier results or closed dates need checking"))
-                        }
-                        a.matched.isEmpty() -> {
-                            GridSecondary(tr("ပုံစံတူအပတ် မတွေ့သေး",
-                                "No matching historical week"))
-                            GridEyebrow(tr("ရှိသမျှ အတည်ပြုမှတ်တမ်းအရ", "In verified history only"))
-                        }
-                        else -> {
-                            GridEyebrow(tr("တူညီသောအပတ်", "Matching weeks"))
-                            GridResult(a.matched.size.toString())
-                            GridSeparator()
-                            val maximum = a.nextParity.values.maxOrNull() ?: 0
-                            val classes = a.nextParity.filterValues { it == maximum && maximum > 0 }
-                                .keys.joinToString(" · ") { twoDParityLabel(it, en) }
-                            GridEyebrow(tr("နောက်ဆက်လာသည့်အမျိုးအစား",
-                                "Following parity class"))
-                            Text(classes.ifBlank { "—" },
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = scheme.onSurface,
-                                maxLines = 3, overflow = TextOverflow.Ellipsis)
-                            GridEyebrow(maximum.toString() + tr(" ကြိမ်တွေ့", " historical hits"))
-                        }
-                    }
-                }
+/**
+ * A raised inset layer distinguishes results from all surrounding text.
+ * Big values use theme secondary (deep wine in light theme) and count is
+ * its own small, distinctly shaded capsule rather than inline prose.
+ */
+@Composable
+private fun FindingPanel(
+    label: String,
+    finding: TopFinding,
+    modifier: Modifier = Modifier,
+    hero: Boolean = false,
+    suffix: String = "×",
+) {
+    val c = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(if (hero) 14.dp else 12.dp),
+        color = if (hero) c.secondaryContainer.copy(alpha = 0.70f)
+            else c.surfaceVariant.copy(alpha = 0.72f),
+        shadowElevation = if (hero) 2.dp else 0.dp,
+        border = BorderStroke(1.dp, if (hero) c.secondary.copy(alpha = 0.15f)
+            else c.outlineVariant.copy(alpha = 0.38f)),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(
+                horizontal = if (hero) 8.dp else 6.dp,
+                vertical = if (hero) 8.dp else 6.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = c.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                finding.value,
+                style = if (hero && finding.value.length <= 3)
+                    MaterialTheme.typography.headlineMedium
+                else MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (finding.value == "—") c.onSurfaceVariant.copy(alpha = 0.48f)
+                    else c.secondary,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+            if (finding.count != null) {
+                CountCapsule(suffix + finding.count.toString())
+            }
+        }
+    }
+}
 
-                "06" -> {
-                    val key = if (report.target.session == DrawSession.MORNING)
-                        "morning" else "evening"
-                    val a = report.a06[key]
-                    if (a == null || a.observedDraws == 0) {
-                        GridSecondary(tr("စစ်ဆေးရန် မှတ်တမ်းမရှိသေး",
-                            "No verified draws for this stream"))
-                    } else {
-                        val (pair, pairGap) = mostAbsent(a.fullNumbers, en)
-                        val (digit, digitGap) = mostAbsent(a.singleDigits, en)
-                        GridEyebrow(tr("မှတ်တမ်းတွင် မတွေ့သောဂဏန်းတွဲ", "Longest unseen 2D pair"))
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            GridResult(pair, modifier = Modifier.weight(1f))
-                            GridFrequency(pairGap, en)
-                        }
-                        GridSeparator()
-                        GridEyebrow(tr("မတွေ့သောဂဏန်း", "Longest unseen digit"))
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            GridResult(digit, modifier = Modifier.weight(1f))
-                            GridFrequency(digitGap, en)
-                        }
-                        if (a.hasUnknownOpenSlots ||
-                            a.fullNumbers.any { it.historyStartTruncated }) {
-                            GridEyebrow(tr("အတည်ပြုမှတ်တမ်းအရသာ", "Verified records only"))
-                        }
-                    }
-                }
+@Composable
+private fun CountCapsule(text: String) {
+    val c = MaterialTheme.colorScheme
+    Surface(color = c.surface.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(9.dp)) {
+        Text(text,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = c.onSurface,
+            maxLines = 1)
+    }
+}
 
-                "08" -> {
-                    val a = report.a08
-                    if (a.firstReference == null || a.secondReference == null) {
-                        GridSecondary(tr("ရှေ့အကြိမ် ၂ ခု မပြည့်သေး",
-                            "Two earlier verified results needed"))
-                    } else {
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(
-                                tr("ရှေ့ရလဒ် ၁", "Previous 1") to a.firstReference.digit,
-                                tr("ရှေ့ရလဒ် ၂", "Previous 2") to a.secondReference.digit,
-                            ).forEach { (label, digit) ->
-                                Column(Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    GridEyebrow(label)
-                                    Text(digit, style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold, color = scheme.onSurface)
+@Composable
+private fun EmptyFinding(status: String) {
+    val c = MaterialTheme.colorScheme
+    Surface(shape = RoundedCornerShape(14.dp),
+        color = c.surfaceVariant.copy(alpha = 0.48f)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 68.dp)
+                .padding(horizontal = 10.dp, vertical = 9.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("—", style = MaterialTheme.typography.headlineMedium,
+                color = c.onSurfaceVariant.copy(alpha = 0.45f),
+                fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text(status, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = c.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun FindingRow(label: String, finding: TopFinding, suffix: String = "×") {
+    val c = MaterialTheme.colorScheme
+    Surface(
+        color = c.surfaceVariant.copy(alpha = 0.62f),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = 0.32f)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(label, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold, color = c.onSurfaceVariant,
+                maxLines = 1)
+            Spacer(Modifier.weight(1f))
+            Text(finding.value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold, color = c.secondary,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (finding.count != null) {
+                CountCapsule(suffix + finding.count)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DigitTokens(label: String, digits: Collection<Char>) {
+    val c = MaterialTheme.colorScheme
+    Surface(color = c.surfaceVariant.copy(alpha = 0.65f),
+        shape = RoundedCornerShape(13.dp)) {
+        Column(Modifier.fillMaxWidth().padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+                maxLines = 1)
+            if (digits.isEmpty()) {
+                Text("—", style = MaterialTheme.typography.titleMedium,
+                    color = c.onSurfaceVariant.copy(alpha = 0.50f))
+            } else {
+                digits.toList().chunked(5).forEach { rowDigits ->
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        rowDigits.forEach { digit ->
+                            Surface(Modifier.weight(1f),
+                                color = c.secondaryContainer,
+                                shape = RoundedCornerShape(8.dp)) {
+                                Box(Modifier.heightIn(min = 26.dp),
+                                    contentAlignment = Alignment.Center) {
+                                    Text(digit.toString(),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold, color = c.onSecondaryContainer)
                                 }
                             }
                         }
-                        GridSeparator()
-                        val count = a.both.matches.size
-                        if (count == 0) {
-                            GridSecondary(tr("နှစ်ခုလုံးတူသော မှတ်တမ်းမတွေ့",
-                                "No verified match for both"))
-                        } else {
-                            GridSubResult(tr("နှစ်ခုလုံးတူ", "Both matched"),
-                                count.toString() + tr(" ကြိမ်", " times"), emphasis = true)
-                        }
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(
-                                tr("ရှေ့ ၁ တူ", "First matched") to a.firstOnly.matches.size,
-                                tr("ရှေ့ ၂ တူ", "Second matched") to a.secondOnly.matches.size,
-                            ).forEach { (label, countOne) ->
-                                Column(Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    GridEyebrow(label)
-                                    Text(countOne.toString(),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
-                                }
-                            }
-                        }
-                        if (a.both.missingTargetCount > 0) {
-                            GridEyebrow(tr("နောက်ရလဒ်မရှိသေးသည့် မှတ်တမ်း " +
-                                a.both.missingTargetCount, "Missing follow-up results: " +
-                                a.both.missingTargetCount))
-                        }
-                    }
-                }
-
-                "05" -> {
-                    val a = report.a05
-                    if (a.transitions.isEmpty()) {
-                        GridSecondary(tr("ဒီအပတ် ထွက်ဂဏန်း မရှိသေး",
-                            "No confirmed draw this week"))
-                    } else {
-                        GridEyebrow(tr("ဒီအပတ် မတွေ့သေးသောဂဏန်း", "Unseen digits this week"))
-                        GridDigits(a.remainingDigits, tr("မကျန်", "None"))
-                        GridSeparator()
-                        val latest = a.transitions.last()
-                        GridEyebrow(tr("နောက်ဆုံးထွက်သည့် အသစ်ဂဏန်း", "Latest new digits"))
-                        Text(if (!latest.classificationVerified)
-                            tr("အတည်မပြုနိုင်သေး", "Unverified")
-                            else latest.newlySeenDigits.joinToString(" · ").ifEmpty {
-                                tr("မရှိ", "None")
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold, color = scheme.onSurface,
-                            maxLines = 3)
-                        if (!a.completeThroughTarget) {
-                            GridEyebrow(tr("အချို့အကြိမ် မှတ်တမ်းမရှိ", "Partial weekly history"))
-                        }
-                    }
-                }
-
-                "07" -> {
-                    val a = report.a07
-                    if (a.observedDraws == 0) {
-                        GridSecondary(tr("ဒီအပတ် ထွက်ဂဏန်း မရှိသေး",
-                            "No confirmed draw this week"))
-                    } else {
-                        GridEyebrow(tr("ဂဏန်းတွဲ ပြန်ကျ", "Exact 2D repeats"))
-                        GridResult(a.repeatedNumbers.sumOf { it.count }.toString())
-                        GridSeparator()
-                        a.groups.entries.chunked(2).forEach { row ->
-                            Row(Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                row.forEach { (name, count) ->
-                                    Column(Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        GridEyebrow(twoDGroupLabel(name, en))
-                                        Text(count.toString(),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (count > 0) scheme.onSurface
-                                                else scheme.onSurfaceVariant)
-                                    }
-                                }
-                                if (row.size == 1) Spacer(Modifier.weight(1f))
-                            }
-                        }
-                        if (!a.completeThroughTarget) {
-                            GridEyebrow(tr("အချို့အကြိမ် မှတ်တမ်းမရှိ", "Partial weekly history"))
-                        }
-                    }
-                }
-
-                "04" -> {
-                    val a = report.a04
-                    if (a.observedDraws == 0) {
-                        GridSecondary(tr("အရင်အပတ် မှတ်တမ်းမရှိသေး",
-                            "No verified draws last week"))
-                    } else {
-                        GridEyebrow(if (a.complete) tr("ပျောက်ဂဏန်း", "Missing digits")
-                            else tr("မှတ်တမ်းအရ မတွေ့သေး", "Unseen in available draws"))
-                        GridDigits(a.remainingDigits, tr("မကျန်", "None"))
-                        GridSeparator()
-                        GridSubResult(tr("ဂဏန်းတွဲ ပြန်ကျ", "Exact repeats"),
-                            a.repeatedNumbers.sumOf { it.count }.toString() +
-                                tr(" ကြိမ်", " times"))
-                        if (!a.complete) {
-                            GridEyebrow(tr("အပတ်မှတ်တမ်း မပြည့်", "Partial week"))
-                        }
-                    }
-                }
-
-                "01" -> {
-                    val a = report.a01
-                    if (report.a04.observedDraws == 0) {
-                        GridSecondary(tr("အရင်အပတ် မှတ်တမ်းမရှိသေး",
-                            "Previous week has no verified draws"))
-                    } else {
-                        val returned = a.results.filter { it.thisWeekFirstSeen != null }
-                        GridEyebrow(tr("ဒီအပတ် ပြန်တွေ့သောဂဏန်း", "Digits returned this week"))
-                        if (returned.isEmpty()) {
-                            GridSecondary(tr("ပြန်တွေ့တာ မရှိသေး", "None observed yet"))
-                        } else {
-                            GridDigits(returned.map { it.digit }, tr("မရှိ", "None"))
-                        }
-                        GridSeparator()
-                        GridEyebrow(tr("အရင်အပတ် မတွေ့သောဂဏန်း", "Unseen last week"))
-                        GridDigits(a.missingDigits, tr("မရှိ", "None"))
-                        if (!a.previousWeekComplete ||
-                            returned.any { !it.firstSeenVerified }) {
-                            GridEyebrow(tr("မှတ်တမ်းအချို့ မပြည့်", "Some records incomplete"))
+                        repeat(5 - rowDigits.size) {
+                            Spacer(Modifier.weight(1f))
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SameSlotSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a02
+    if (a.samples == 0) { EmptyFinding("No data"); return }
+    val parity = topOfMap(a.parity) { it }
+    val groups = topOfMap(a.groups) { if (it == "ညီကို") "ညီအကို" else it }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FindingPanel("2D", topOf(a.numbers), Modifier.weight(1f), hero = true)
+        FindingPanel("0–9", topOf(a.singles), Modifier.weight(1f), hero = true)
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FindingPanel("စုံ/မ", parity, Modifier.weight(1f))
+        FindingPanel("Group", groups, Modifier.weight(1f))
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FindingPanel(if (en) "Tens" else "ထိပ်", topOf(a.tens), Modifier.weight(1f))
+        FindingPanel(if (en) "Ones" else "ပိတ်", topOf(a.ones), Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun PatternSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a03
+    if (!a.eligible) { EmptyFinding("4+ draws"); return }
+    if (a.matched.isEmpty()) { EmptyFinding("No match"); return }
+    FindingPanel(if (en) "Next parity" else "စုံ/မ",
+        topOfMap(a.nextParity) { it }, hero = true)
+    FindingRow("Weeks", TopFinding(a.matched.size.toString(), null))
+}
+
+@Composable
+private fun MissingPairSummary(report: TwoDAnalysisReport, en: Boolean) {
+    // Independent AM, PM and combined streams; never reuse the target
+    // session stream as an answer for all three.
+    listOf(
+        "AM" to "morning", "PM" to "evening", "ALL" to "combined",
+    ).forEach { (label, key) ->
+        val a = report.a06[key]
+        val data = if (a == null || a.observedDraws == 0)
+            TopFinding("—", null)
+        else topAbsent(a.fullNumbers, a.hasUnknownOpenSlots)
+        FindingRow(label, data, suffix = "Gap ")
+    }
+}
+
+@Composable
+private fun PriorMatchSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a08
+    if (a.firstReference == null || a.secondReference == null) {
+        EmptyFinding("No data")
+        return
+    }
+    // Each of the three independent historical searches has its OWN next
+    // target 2D frequency distribution. Display the most observed follow-on.
+    listOf(
+        "BOTH" to a.both.frequencies,
+        "1st" to a.firstOnly.frequencies,
+        "2nd" to a.secondOnly.frequencies,
+    ).forEach { (label, values) ->
+        FindingRow(label, topOf(values))
+    }
+}
+
+@Composable
+private fun WeekFlowSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a05
+    if (a.transitions.isEmpty()) { EmptyFinding("No data"); return }
+    DigitTokens("LEFT", a.remainingDigits)
+    val last = a.transitions.last()
+    if (last.classificationVerified) DigitTokens("NEW", last.newlySeenDigits)
+}
+
+@Composable
+private fun SpecialSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a07
+    if (a.observedDraws == 0) { EmptyFinding("No data"); return }
+    val named = listOf("အပူး", "ညီကို", "ပါဝါ", "နက္ခတ်")
+    named.chunked(2).forEach { pair ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            pair.forEach { key ->
+                FindingPanel(
+                    if (key == "ညီကို") "ညီအကို" else key,
+                    TopFinding((a.groups[key] ?: 0).toString(), null),
+                    Modifier.weight(1f),
+                )
+            }
+        }
+    }
+    FindingRow(if (en) "Repeat" else "ပြန်ကျ",
+        TopFinding(a.repeatedNumbers.sumOf { it.count }.toString(), null))
+}
+
+@Composable
+private fun PreviousWeekSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a04
+    if (a.observedDraws == 0) { EmptyFinding("No data"); return }
+    FindingPanel("TOP 0–9", topOf(a.singleDigitFrequency), hero = true)
+    DigitTokens("MISSING", a.remainingDigits)
+}
+
+@Composable
+private fun MissingReturnSummary(report: TwoDAnalysisReport, en: Boolean) {
+    val a = report.a01
+    if (report.a04.observedDraws == 0) { EmptyFinding("No data"); return }
+    if (a.missingDigits.isEmpty()) { EmptyFinding("None"); return }
+    // Compact first-two previews; each source missing digit retains its own
+    // independently counted FIRST historical return companion data.
+    val ordered = a.results.sortedWith(
+        compareByDescending<com.myanmar.ledger2d.core.domain.TwoDMissingDigitReturn> {
+            it.thisWeekFirstSeen != null
+        }.thenByDescending { it.historyFirstReturnEpisodes }.thenBy { it.digit }
+    )
+    ordered.take(2).forEach { item ->
+        val highest = item.commonCompanions.maxOfOrNull { it.count } ?: 0
+        val partners = item.commonCompanions.filter { it.count == highest && highest > 0 }
+        val top = if (partners.isEmpty()) TopFinding("—", null)
+        else topOfWinners(partners.map { it.companion.toString() }, highest)
+        FindingRow(item.digit.toString() + " →", top)
+    }
+    if (ordered.size > 2) {
+        val c = MaterialTheme.colorScheme
+        Text("+" + (ordered.size - 2),
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.End, color = c.onSurfaceVariant)
     }
 }
