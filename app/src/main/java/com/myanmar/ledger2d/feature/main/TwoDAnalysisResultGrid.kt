@@ -297,7 +297,7 @@ private fun TwoDGridFinding(
                         val lowDigits = if (low == null) emptyList()
                             else a.singles.filter { it.count == low }
                         GridSubResult(
-                            tr("အနည်းဆုံး", "Least digit"),
+                            tr("ပေါ်ဖူးအနည်းဆုံး", "Least seen digit"),
                             (if (lowDigits.size <= 2) lowDigits.joinToString(" · ") { it.digit }
                              else lowDigits.first().digit + " +" + (lowDigits.size - 1)) +
                                 (if (low != null) " · " + low + tr(" ကြိမ်", "x") else ""),
@@ -310,15 +310,15 @@ private fun TwoDGridFinding(
                     val a = report.a03
                     when {
                         !a.eligible -> {
-                            GridSecondary(tr("စစ်ဆေးရန် အချက်အလက်မပြည့်သေး",
-                                "Not enough verified draws to compare"))
-                            GridEyebrow(tr("အပတ်ပုံစံတူရန် ရှေ့အကြိမ်/ရက် မှတ်တမ်းလိုသည်",
-                                "Needs aligned earlier draws and open dates"))
+                            GridSecondary(tr("ဒီအကြိမ်ကို စစ်ဆေးမရသေး",
+                                "Unable to check this draw yet"))
+                            GridEyebrow(tr("ရှေ့ထွက်ဂဏန်း/ပိတ်ရက် မှတ်တမ်းစစ်ရန်",
+                                "Earlier results or closed dates need checking"))
                         }
                         a.matched.isEmpty() -> {
                             GridSecondary(tr("ပုံစံတူအပတ် မတွေ့သေး",
                                 "No matching historical week"))
-                            GridEyebrow(tr("စစ်ဆေးချက် ပြည့်စုံ", "Check completed"))
+                            GridEyebrow(tr("ရှိသမျှ အတည်ပြုမှတ်တမ်းအရ", "In verified history only"))
                         }
                         else -> {
                             GridEyebrow(tr("တူညီသောအပတ်", "Matching weeks"))
