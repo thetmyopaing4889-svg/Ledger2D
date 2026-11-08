@@ -63,7 +63,7 @@ internal fun TwoDFixedDemoGrid(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val compact = maxHeight < 370.dp || maxWidth < 310.dp
+        val compact = group == "1" || maxHeight < 390.dp || maxWidth < 310.dp
         val gutter = if (compact) 6.dp else 9.dp
         if (group == "1") {
             Column(Modifier.fillMaxSize(),
@@ -152,24 +152,27 @@ private fun PreviewHero(
     en: Boolean, compact: Boolean,
 ) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier, shape = RoundedCornerShape(10.dp),
-        color = c.secondary, shadowElevation = 3.dp,
-        border = BorderStroke(1.dp, c.onSecondary.copy(alpha = .17f))) {
+    Surface(
+        modifier = modifier.height(if (compact) 85.dp else 110.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = c.secondary,
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, c.onSecondary.copy(alpha = .18f)),
+    ) {
         Column(
-            Modifier.fillMaxSize().padding(if (compact) 6.dp else 8.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = c.onSecondary.copy(alpha = .83f), maxLines = 1)
             Text(number.value, style = if (compact)
-                MaterialTheme.typography.titleLarge
-                else MaterialTheme.typography.headlineMedium,
+                MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold, color = c.onSecondary,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(number.count + (if (en) " hits" else " ကြိမ်"),
+            Text(number.count + if (en) " hits" else " ကြိမ်",
                 style = MaterialTheme.typography.labelSmall,
                 color = c.onSecondary, fontWeight = FontWeight.Medium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                maxLines = 1)
         }
     }
 }
@@ -179,9 +182,11 @@ private fun PreviewLine(
     label: String, value: String, compact: Boolean,
 ) {
     val c = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().heightIn(min = if (compact) 20.dp else 23.dp),
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = if (compact) 22.dp else 30.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = c.onSurfaceVariant, maxLines = 1,
             overflow = TextOverflow.Ellipsis)
@@ -192,14 +197,21 @@ private fun PreviewLine(
     }
 }
 
+/**
+ * A-02: the 2D and 0–9 results are the heroes. Its three other
+ * supporting lines are kept directly underneath instead of spreading
+ * to the bottom of an equal-sized 2x2 outer cell.
+ */
 @Composable
 private fun ColumnScope.MostSeenPreview(en: Boolean, compact: Boolean) {
-    Row(Modifier.fillMaxWidth().weight(1f),
-        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         PreviewHero("2D", PreviewNumber("52", "6"),
-            Modifier.weight(1f).fillMaxHeight(), en, compact)
+            Modifier.weight(1f), en, compact)
         PreviewHero("0–9", PreviewNumber("1", "41"),
-            Modifier.weight(1f).fillMaxHeight(), en, compact)
+            Modifier.weight(1f), en, compact)
     }
     HorizontalDivider(thickness = .5.dp)
     PreviewLine(if (en) "Parity" else "စုံ/မ",
@@ -210,68 +222,112 @@ private fun ColumnScope.MostSeenPreview(en: Boolean, compact: Boolean) {
         "4 ×21 · 2 ×22", compact)
 }
 
+/**
+ * Unlike the previous three-line / height-weighted well, the count is
+ * always measured to its content. It can wrap to two lines on a small
+ * phone instead of being cut at the bottom of a clipped fixed-height row.
+ */
 @Composable
 private fun TinyNumberWell(
     title: String, number: PreviewNumber, primary: Boolean,
     en: Boolean, modifier: Modifier,
 ) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(9.dp),
         color = if (primary) c.secondaryContainer else c.tertiary.copy(alpha = .12f),
-        border = BorderStroke(1.dp, if (primary) c.secondary.copy(alpha = .18f)
-            else c.tertiary.copy(alpha = .22f))) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 3.dp),
-            verticalArrangement = Arrangement.SpaceBetween) {
-            Text(title, style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, maxLines = 1)
-            Text(number.value, style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (primary) c.secondary else c.onSurface,
-                maxLines = 1)
-            Text(number.count + (if (en) " draws" else " ကြိမ်"),
+        border = BorderStroke(
+            1.dp, if (primary) c.secondary.copy(alpha = .20f)
+                else c.tertiary.copy(alpha = .25f)
+        ),
+        shadowElevation = if (primary) 2.dp else 1.dp,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = c.onSurfaceVariant, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+                Text(number.value,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (primary) c.secondary else c.onSurface,
+                    maxLines = 1)
+            }
+            Text(
+                number.count + (if (en) " draws" else " ကြိမ်"),
                 style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, maxLines = 1,
-                overflow = TextOverflow.Ellipsis)
+                fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+                maxLines = 2,
+            )
         }
     }
 }
 
+/**
+ * A-06: exactly three compact content-measured AM / PM / ALL rows.
+ * Do not weight each section to the outer card's height: that led to
+ * 11+ / 423+ etc being clipped in the on-device screenshot.
+ */
 @Composable
 private fun ColumnScope.MissingPreview(en: Boolean, compact: Boolean) {
     TwoDFixedDemoSamples.absent.forEachIndexed { index, slot ->
         if (index != 0) HorizontalDivider(thickness = .5.dp)
-        Row(Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Text(slot.session, modifier = Modifier.width(if (compact) 21.dp else 25.dp),
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(slot.session,
+                modifier = Modifier.width(if (compact) 23.dp else 26.dp),
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            TinyNumberWell(if (en) "Digit" else "ဂဏန်း",
-                slot.digit, primary = true, en = en,
-                modifier = Modifier.weight(1.05f).fillMaxHeight())
-            TinyNumberWell(if (en) "Pair" else "2D တွဲ",
-                slot.pair, primary = false, en = en,
-                modifier = Modifier.weight(1f).fillMaxHeight())
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1)
+            TinyNumberWell("0–9", slot.digit, primary = true, en = en,
+                modifier = Modifier.weight(1.05f))
+            TinyNumberWell("2D", slot.pair, primary = false, en = en,
+                modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
 private fun PreviewBadge(
-    value: String, modifier: Modifier = Modifier,
+    value: String,
+    modifier: Modifier = Modifier,
     primary: Boolean = false,
+    small: Boolean = false,
 ) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier, shape = RoundedCornerShape(8.dp),
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
         color = if (primary) c.secondary else c.secondaryContainer,
-        shadowElevation = if (primary) 3.dp else 0.dp) {
-        Box(Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-            contentAlignment = Alignment.Center) {
-            Text(value, style = MaterialTheme.typography.titleSmall,
+        shadowElevation = if (primary) 3.dp else 0.dp,
+    ) {
+        Box(
+            Modifier.padding(
+                horizontal = if (small) 5.dp else 7.dp,
+                vertical = if (small) 3.dp else 5.dp,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                value, style = if (small) MaterialTheme.typography.labelLarge
+                    else MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = if (primary) c.onSecondary else c.secondary,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -281,11 +337,25 @@ private fun ColumnScope.PatternPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     Text(if (en) "Most common next class" else "အများဆုံး ဆက်ထွက်",
         style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
-    Spacer(Modifier.weight(1f))
-    PreviewBadge(if (en) "Odd–Even" else "မစုံ", primary = true)
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = c.secondaryContainer.copy(alpha = .52f),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .15f)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(if (en) "Class" else "စုံ/မ",
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+            PreviewBadge(if (en) "Odd–Even" else "မစုံ", primary = true)
+        }
+    }
     PreviewLine(if (en) "Frequency" else "အကြိမ်ရေ", "6", compact)
     PreviewLine(if (en) "Matching weeks" else "ပုံစံတူအပတ်", "8", compact)
-    Spacer(Modifier.weight(1f))
 }
 
 @Composable
@@ -294,27 +364,41 @@ private fun ColumnScope.PreviousPreview(en: Boolean, compact: Boolean) {
     PreviewLine(if (en) "Prior" else "ရှေ့ထွက်", "51 · 05", compact)
     HorizontalDivider(thickness = .5.dp)
     TwoDFixedDemoSamples.previous.forEachIndexed { index, (label, result) ->
-        Row(Modifier.fillMaxWidth().weight(1f),
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = if (compact) 29.dp else 38.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(if (en) label else when (index) {
-                0 -> "နှစ်ခု"; 1 -> "ပထမ"; else -> "ဒုတိယ"
-            }, style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, modifier = Modifier.width(33.dp), maxLines = 1)
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                if (en) label else when (index) {
+                    0 -> "နှစ်ခု"; 1 -> "ပထမ"; else -> "ဒုတိယ"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant,
+                modifier = Modifier.width(if (compact) 31.dp else 39.dp),
+                maxLines = 1,
+            )
             Spacer(Modifier.weight(1f))
-            Text(result.value, style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold, color = c.secondary,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("×" + result.count, style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, maxLines = 1)
+            result.value.split("·").forEach { number ->
+                PreviewBadge(number, small = true)
+            }
+            Text(
+                "×" + result.count,
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onSurfaceVariant, maxLines = 1,
+            )
         }
+        if (index < TwoDFixedDemoSamples.previous.lastIndex)
+            HorizontalDivider(thickness = .5.dp)
     }
 }
 
 @Composable
 private fun TokenStrip(digits: List<String>) {
-    Row(Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         digits.forEach { digit ->
             PreviewBadge(digit, Modifier.weight(1f))
         }
@@ -322,36 +406,57 @@ private fun TokenStrip(digits: List<String>) {
 }
 
 @Composable
+private fun PreviewSectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable
 private fun ColumnScope.WeeklyPreview(en: Boolean, compact: Boolean) {
-    val c = MaterialTheme.colorScheme
-    Text(if (en) "Unseen digits (0–9)" else "ပျောက်ဂဏန်း (0–9)",
-        style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
-    Spacer(Modifier.weight(1f))
+    PreviewSectionTitle(if (en) "Unseen digits (0–9)" else "ပျောက်ဂဏန်း (0–9)")
     TokenStrip(TwoDFixedDemoSamples.missingDigits)
-    Spacer(Modifier.weight(1f))
+    Spacer(Modifier.height(if (compact) 6.dp else 14.dp))
     HorizontalDivider(thickness = .5.dp)
-    Text(if (en) "New this week" else "ဒီအပတ် အသစ်ထွက်",
-        style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
+    PreviewSectionTitle(if (en) "New this week" else "ဒီအပတ် အသစ်ထွက်")
     TokenStrip(TwoDFixedDemoSamples.firstSeen)
-    Spacer(Modifier.weight(1f))
+    Spacer(Modifier.height(if (compact) 6.dp else 14.dp))
     PreviewLine(if (en) "Recorded" else "မှတ်တမ်း", "7/8", compact)
 }
 
 @Composable
 private fun ColumnScope.SpecialsPreview(en: Boolean, compact: Boolean) {
-    TwoDFixedDemoSamples.special.forEachIndexed { i, (label, value) ->
-        if (i != 0) HorizontalDivider(thickness = .5.dp)
-        Row(Modifier.fillMaxWidth().weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(if (en) when (label) {
-                "အပူး" -> "Double"; "ညီအကို" -> "Sibling";
-                "ပါဝါ" -> "Power"; "နက္ခတ်" -> "Star"; else -> "Repeat"
-            } else label, modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            PreviewBadge(value)
+    val c = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(10.dp), color = c.surface.copy(alpha = .84f),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 9.dp),
+        ) {
+            TwoDFixedDemoSamples.special.forEachIndexed { i, (label, value) ->
+                if (i != 0) HorizontalDivider(thickness = .5.dp)
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = if (compact) 27.dp else 37.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        if (en) when (label) {
+                            "အပူး" -> "Double"; "ညီအကို" -> "Sibling"
+                            "ပါဝါ" -> "Power"; "နက္ခတ်" -> "Star"
+                            else -> "Repeat"
+                        } else label,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = c.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                    PreviewBadge(value)
+                }
+            }
         }
     }
 }
@@ -359,39 +464,65 @@ private fun ColumnScope.SpecialsPreview(en: Boolean, compact: Boolean) {
 @Composable
 private fun ColumnScope.LastWeekPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
-    Text(if (en) "Most observed digit" else "အထွက်အများဆုံးဂဏန်း",
-        style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
-    Spacer(Modifier.weight(1f))
-    PreviewBadge("8", Modifier.fillMaxWidth(), primary = true)
-    PreviewLine(if (en) "Seen" else "ထွက်ရှိမှု", "7 ကြိမ်", compact)
-    Spacer(Modifier.weight(1f))
+    PreviewSectionTitle(if (en) "Most observed digit" else "အထွက်အများဆုံးဂဏန်း")
+    Surface(
+        color = c.secondaryContainer.copy(alpha = .43f),
+        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .16f)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PreviewBadge("8", primary = true)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(if (en) "Frequency" else "အကြိမ်ရေ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = c.onSurfaceVariant)
+                Text("7" + if (en) " times" else " ကြိမ်",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold, color = c.onSurface)
+            }
+        }
+    }
+    Spacer(Modifier.height(if (compact) 6.dp else 13.dp))
     HorizontalDivider(thickness = .5.dp)
-    Text(if (en) "Missing last week" else "ပြီးခဲ့တဲ့အပတ် ပျောက်",
-        style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
+    PreviewSectionTitle(if (en) "Missing last week" else "ပြီးခဲ့တဲ့အပတ် ပျောက်")
     TokenStrip(TwoDFixedDemoSamples.lastWeekMissing)
-    Spacer(Modifier.weight(1f))
 }
 
 @Composable
 private fun ColumnScope.ReturnPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
-    Text(if (en) "Missing → Companion" else "ပျောက် → တွဲထွက်",
-        style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
-    Spacer(Modifier.weight(1f))
-    TwoDFixedDemoSamples.returns.forEachIndexed { i, (missing, companion) ->
-        if (i != 0) HorizontalDivider(thickness = .5.dp)
-        Row(Modifier.fillMaxWidth().weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            PreviewBadge(missing)
-            Text("→", style = MaterialTheme.typography.titleMedium,
-                color = c.onSurfaceVariant)
-            PreviewBadge(companion.value, primary = true)
-            Spacer(Modifier.weight(1f))
-            Text(companion.count + (if (en) " hits" else " ကြိမ်"),
-                style = MaterialTheme.typography.labelSmall,
-                color = c.onSurfaceVariant, maxLines = 1)
+    PreviewSectionTitle(if (en) "Missing → Companion" else "ပျောက် → တွဲထွက်")
+    Surface(
+        color = c.surface.copy(alpha = .84f),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 9.dp),
+        ) {
+            TwoDFixedDemoSamples.returns.forEachIndexed { i, (missing, companion) ->
+                if (i != 0) HorizontalDivider(thickness = .5.dp)
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = if (compact) 37.dp else 49.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    PreviewBadge(missing, small = true)
+                    Text("→", style = MaterialTheme.typography.labelLarge,
+                        color = c.onSurfaceVariant)
+                    PreviewBadge(companion.value, primary = true, small = true)
+                    Spacer(Modifier.weight(1f))
+                    Text(companion.count + if (en) " hits" else " ကြိမ်",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = c.onSurfaceVariant, maxLines = 1)
+                }
+            }
         }
     }
-    Spacer(Modifier.weight(1f))
 }
