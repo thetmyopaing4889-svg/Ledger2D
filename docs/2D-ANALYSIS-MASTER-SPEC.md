@@ -1135,3 +1135,41 @@ The isolated UI implementation now uses distinct per-method data renderings in `
 - Preserve the entire accepted frame structure and previously built domain engines; these changes are presentational.
 
 **Verification caveat:** Passing CI establishes compilation and existing automated tests, not actual on-device legibility. Review both MM/EN and small-display cases after installing the final build. Color contrast and the amount of visible text remain subject to user approval.
+
+---
+
+# Part XII — Latest user-approved Analysis-main-first rebuild contract (2026-11-08)
+
+**This section supersedes Part XI's per-tile content and per-tile titles.** The previous 1038 on-phone screenshot was rejected because results looked like prose and empty findings filled tiles with words. The accepted structural frame remains 3 inline tags + 4/2/2 two-column grid. The user approved rebuilding **only the Analysis Main Screen first** and reviewing it on their phone before separately rebuilding each of the eight Detail Screens from scratch. Existing detail UI is temporarily retained as a working route, not accepted as the final design; preserve the original domain methods, history evidence and interactions until their full replacements exist.
+
+## XII.1 Visual design requirements
+
+- **NO method headings inside individual grid tiles.** Do not render titles like "နေ့တူ၊ အကြိမ်တူ" or "မထွက်တာကြာ".
+- **NO explanatory sentences inside tiles.** The grid is a summary, not a compressed Detail Screen.
+- Only the **shortest essential micro-labels**; English is allowed as the **fixed** grid label if it is shorter/clearer in a constrained tile, while Detail Screens remain properly localized.
+- Result numbers/pairs must be **distinct physical UI objects**: raised/inset capsules or panels with contrasting deep-wine numbers, separate smaller count capsules, subtle depth and clear internal grouping. Avoid plain text + prose blending. No gratuitous 3D effects.
+- No data / ineligible / no match must appear as a quiet minimal state (dash plus at most a tiny state label); do not invent a result, a large false zero or a paragraph.
+- Hero ranking favors **highest observed frequencies**, NEVER least-observed results on the overview. An explicit absence method (A-06) is an exception because longest ongoing absence is its core purpose.
+- Ties must not be hidden by arbitrarily selecting one winner; preserve full ties in subsequent Detail Screen rebuild.
+- Main screen and detail views keep live data, date/AM/PM, historical range, holiday rules and no-lookahead cutoff.
+
+## XII.2 Current main-grid selection (user-led)
+
+| Method | Selected compact main-grid result | Deferred to detail |
+|---|---|---|
+| A-02 | Top historical **2D pair, single digit, four-way parity category, named special group, tens position and ones position**, each with recorded frequency | Least-observed cases, full distributions, every tie and date/session evidence |
+| A-03 | Most common following **parity class** and its count among matching historical weeks, with tiny matched-week number | Exact sequences, compared weeks, next-result evidence and eligibility |
+| A-06 | Longest absent **2D pair** for independent **AM, PM, ALL** streams, each with observed draw gap; do not substitute target AM/PM for the other streams | Single-digit streaks, historical gaps and last-seen evidence |
+| A-08 | Top observed **next exact 2D result** for all **three independent** prior-reference checks: BOTH/1st/2nd, with count | Actual two references, all match lists, next outcomes, unknown data |
+| A-05 | This week's **unseen individual digits** and most recently seen **new** digits | Full chronological new/old transition trace |
+| A-07 | This week's **အပူး, ညီအကို, ပါဝါ, နက္ခတ်, ပြန်ကျ** occurrence counts | All actual results/dates, history and repeat lines |
+| A-04 | Previous week's **most observed single digit** and unseen individual digits | Parity/group/frequency/repeat detail |
+| A-01 | Missing digits and **most observed companion** when they historically first returned the following week; preview up to two rows | All missing digits, current return status, historical episodes, ties and evidence |
+
+**Vocabulary standardization**: use **ပျောက်ဂဏန်းတွဲ** for the complete missing 2D pair and **ပျောက်ဂဏန်း** for one missing digit, never revert to long "မထွက်တာကြာနေသော ဂဏန်းတွဲ" headers. Render **ညီအကို** (not "ညီကို") in the UI; keep the underlying verified domain key unchanged. Long method names are only for Detail Screens / definitions, never grid titles.
+
+## XII.3 Scope and acceptance
+
+New UI lives in `TwoDAnalysisResultGrid.kt`; selected main-screen microcopy improvements in `Historical2DTimelineScreen.kt`. A single source of truth for user-visible method wording is `TwoDAnalysisText.kt`. The temporarily retained old Detail Screen uses `TwoDAnalysisDetails.kt`, with wording only corrected; it is due for its **own separate, user-reviewed rebuild AFTER Main Screen approval**. The underlying `TwoDAnalysisEngine.kt` and unrelated Ledger modules are not changed by this visual work.
+
+This is an **experimental implementation**, not a final phone-approved design. Verify CI on the current head, install APK, check Myanmar/English and screen widths, and have the user evaluate density, legibility, colors, inset result isolation and all tab states before starting Detail rebuild.
