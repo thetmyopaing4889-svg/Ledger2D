@@ -1246,9 +1246,15 @@ At the user's explicit request, **test the layout using invented, clearly labele
 
 - A separate `TwoDAnalysisFixedDemoGrid.kt` owns hard-coded, obviously fake sample values for all eight cards. It has no DB, history, API, or settlement dependencies and does not mutate user records.
 - `Historical2DTimelineScreen.kt` exposes a conspicuous `DEMO ON` / `DEMO` toggle in the app bar. **DEMO is on by default on this experimental branch only.** The banner states that the numbers are sample-only and the date/history filters do not apply. Switching off returns to the previous real-data rendering and detail navigation.
-- In the **demo only**, the app bar, date/AM-PM, three tabs, history controls and bottom navigation occupy their ordinary space. The remaining screen height is passed to the fixed grid by Compose `Modifier.weight(1f)`, with no main-page scrolling. 4-card group = identical 2×2 cells. Each 2-card group = equal-height, equal-width **side-by-side** cells (not stacked).
+- In the **demo only**, the app bar, date/AM-PM, three tabs, history controls and bottom navigation occupy their ordinary space. The remaining screen height is passed to the grid by Compose `Modifier.weight(1f)`, with no main-page scrolling. **Four-card group** = identical screen-filling 2×2 cells. **Two-card groups** = side-by-side, equal-width and equal-height cells, but **do not stretch their short result content down to the bottom navigation**; use a balanced, content-density-based height capped by the available viewport.
 - The preview includes populated A-02, A-03, A-06, A-08, A-05, A-07, A-04 and A-01, including ties and missing-digit/pair rankings. A-06 still highlights **missing 0–9 single digits before 00–99 pairs** with separate small counts for AM / PM / ALL.
 - These are intentionally **visual test fixtures, NOT computed or predictive results**. The demo cards do not navigate into production Details, avoiding a misleading mixture of fake preview with genuine evidence.
 - Evaluate the fixture at a normal phone width with Burmese and English labels, then stress-test oversized text and tie cases. Promote the fixed-layout rendering to real data **only after the user approves its on-device appearance**. Do not merge this experimental demo as permanent production behavior.
 
 Build/test branch-only; never touch the main ledger data model.
+
+## XV.1 Screenshot feedback correction — 2026-11-08
+
+- The A-06 preview had a **dark, muddy grey 2D-pair inset frame**, over-layered borders, and counts cramped into tiny wells. Keep the **missing single digit primary**, **2D pair secondary**, but use one pale well per value, no nested grey frame, and content-measured labels/numbers/counts. Counts must remain readable without being the visual focal point.
+- The user rejected stretching A-05/A-07 and A-04/A-01 cards down to the bottom navigation when there are few results. **Each two-card pair stays side-by-side and matched in height, but takes only the height justified by the denser card.** Extra viewport space below can remain blank; do not push the data rows apart to fill it.
+- **Do not modify the 2×2 full-remaining-height rule for the current-draw four-card demo.** The demo is still non-persistent; its values are fabricated and the real data path is unchanged.
