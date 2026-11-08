@@ -295,7 +295,7 @@ private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier,
     en: Boolean = false,
 ) {
     val c = MaterialTheme.colorScheme
-    Surface(modifier = modifier.heightIn(min = 122.dp),
+    Surface(modifier = modifier.heightIn(min = 138.dp),
         shape = RoundedCornerShape(12.dp),
         color = c.secondary, shadowElevation = 6.dp,
         border = BorderStroke(1.dp, c.onSecondary.copy(alpha = .23f))) {
@@ -335,8 +335,8 @@ private fun Hero(label: String, result: Leader, modifier: Modifier = Modifier,
                 Surface(shape = RoundedCornerShape(8.dp),
                     color = c.onSecondary.copy(alpha = .16f)) {
                     Text(result.count.toString() + if (en) " hits" else " ကြိမ်",
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold, color = c.onSecondary)
                 }
             }
@@ -545,15 +545,28 @@ private fun MissingNumberWell(
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                if (result.count == null) "—" else
-                    result.count.toString() + (if (result.minOnly) "+" else "") +
-                        (if (en) " draws" else " ကြိမ်"),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = c.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            // Keep count clearly subordinate and NEVER truncate a
+            // three-digit streak inside a half-column well.
+            if (result.count == null) {
+                Text("—", style = MaterialTheme.typography.labelSmall,
+                    color = c.onSurfaceVariant)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Text(
+                        result.count.toString() +
+                            (if (result.minOnly) "+" else ""),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium, color = c.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                    Text(
+                        if (en) "draws" else "ကြိမ်",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Normal, color = c.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
