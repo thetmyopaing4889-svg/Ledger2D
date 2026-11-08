@@ -12,7 +12,9 @@ import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawSession
 
-internal fun twoDGroupLabel(name: String, en: Boolean): String = if (!en) name else when (name) {
+internal fun twoDGroupLabel(name: String, en: Boolean): String = if (!en) {
+    if (name == "ညီကို") "ညီအကို" else name
+} else when (name) {
     "အပူး" -> "Doubles"
     "ညီကို" -> "Sibling pairs"
     "ပါဝါ" -> "Power"
@@ -139,7 +141,7 @@ internal fun TwoDAnalysisDetails(
                             else it.lastSeen?.let { previous -> " · " + match(previous) }.orEmpty())
                 }
                 TextButton(onClick = {
-                    show(tr("ပျောက်ဂဏန်းနှင့် ဂဏန်းတွဲများ", "Missing digits and pairs"),
+                    show(tr("ပျောက်ဂဏန်းနှင့် ပျောက်ဂဏန်းတွဲများ", "Missing digits and pairs"),
                         listOf(tr("ပျောက်ဂဏန်းများ (0–9)", "Single digits (0–9)")) +
                             a.singleDigits.map {
                                 it.value + " · " + n(it.observedDrawsSince) +
