@@ -347,8 +347,10 @@ private fun SameSlot(report: TwoDAnalysisReport, en: Boolean) {
         Hero("0–9", top(a.singles), Modifier.weight(1f), en)
     }
     DividerHairline()
-    CompactRow("စုံ/မ", top(a.parity), Modifier.fillMaxWidth())
-    CompactRow("Group", top(a.groups) { twoDGroupLabel(it, en) }, Modifier.fillMaxWidth())
+    CompactRow(if (en) "Parity" else "စုံ/မ",
+        top(a.parity), Modifier.fillMaxWidth())
+    CompactRow(if (en) "Group" else "အထူး",
+        top(a.groups) { twoDGroupLabel(it, en) }, Modifier.fillMaxWidth())
     DividerHairline()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         ShortPosition(if (en) "10s" else "ထိပ်", top(a.tens), Modifier.weight(1f))
