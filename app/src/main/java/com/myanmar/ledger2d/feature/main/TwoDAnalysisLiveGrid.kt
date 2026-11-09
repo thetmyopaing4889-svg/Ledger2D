@@ -36,6 +36,14 @@ internal object TwoDLiveSummary {
             values.size == 2 -> values.joinToString("·")
             else -> values.size.toString() + if (en) " tied" else " မျိုးတူ"
         }
+
+        // A-01 must expose actual tied digits in the grid, not merely
+        // "3 မျိုးတူ". Keep the fixed dashboard readable at phone widths.
+        fun visibleDigits(limit: Int = 3): List<String> =
+            values.distinct().sorted().take(limit)
+
+        fun hiddenDigitCount(limit: Int = 3): Int =
+            (values.distinct().size - limit).coerceAtLeast(0)
     }
 
     fun peak(data: List<TwoDCount>): Peak {
@@ -542,24 +550,56 @@ private fun ColumnScope.RealReturns(
                 val peak = TwoDLiveSummary.Peak(
                     item.commonCompanions.filter { max > 0 && it.count == max }
                         .map { it.companion.toString() }, max)
-                Row(Modifier.fillMaxWidth()
-                        .heightIn(min = if (compact) 37.dp else 49.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    PreviewBadge(item.digit.toString(), small = true)
-                    Text("→", style = MaterialTheme.typography.labelLarge,
-                        color = c.onSurfaceVariant)
-                    if (peak.present)
-                        PreviewBadge(peak.display(en), primary = true, small = true)
-                    else Text(TwoDLiveSummary.unavailable(en),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = c.onSurfaceVariant, maxLines = 2,
-                        modifier = Modifier.weight(1f))
-                    Spacer(Modifier.weight(1f))
-                    if (peak.present) Text(
-                        peak.count.toString() + if (en) " hits" else " ကြိမ်",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = c.onSurfaceVariant, maxLines = 1)
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = if (compact) 2.dp else 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    // First line is context + occurrence count; next line
+                    // shows real companion digits, including tied winners.
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        PreviewBadge(item.digit.toString(), small = true)
+                        Text("→", style = MaterialTheme.typography.labelLarge,
+                            color = c.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        if (peak.present) Text(
+                            peak.count.toString() +
+                                (if (en) " hits" else " ကြိမ်"),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = c.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                    if (peak.present) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            peak.visibleDigits().forEach { digit ->
+                                PreviewBadge(digit, primary = true, small = true)
+                            }
+                            if (peak.hiddenDigitCount() > 0) {
+                                Text(
+                                    "+" + peak.hiddenDigitCount(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = c.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            TwoDLiveSummary.unavailable(en),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.onSurfaceVariant,
+                            maxLines = 2,
+                        )
+                    }
                 }
             }
         }
