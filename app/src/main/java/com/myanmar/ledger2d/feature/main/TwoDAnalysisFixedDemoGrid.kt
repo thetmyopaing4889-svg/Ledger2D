@@ -370,14 +370,31 @@ private fun TinyNumberWell(
                     maxLines = 1,
                 )
                 Spacer(Modifier.weight(1f))
-                Text(
-                    number.value,
-                    style = if (primary) MaterialTheme.typography.titleLarge
-                        else MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = if (primary) c.secondary else c.onSurface,
-                    maxLines = 1,
-                )
+                if (primary) {
+                    Surface(
+                        color = c.secondary,
+                        shape = RoundedCornerShape(7.dp),
+                        shadowElevation = 2.dp,
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .18f)),
+                    ) {
+                        Text(
+                            number.value,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = c.onSecondary,
+                            maxLines = 1,
+                        )
+                    }
+                } else {
+                    Text(
+                        number.value,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = c.onSurface,
+                        maxLines = 1,
+                    )
+                }
             }
             Text(
                 number.count + (if (en) " draws" else " ကြိမ်"),
@@ -527,13 +544,13 @@ private fun ColumnScope.PreviousPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun TokenStrip(digits: List<String>) {
+private fun TokenStrip(digits: List<String>, featured: Boolean = false) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         digits.forEach { digit ->
-            PreviewBadge(digit, Modifier.weight(1f))
+            PreviewBadge(digit, Modifier.weight(1f), primary = featured)
         }
     }
 }
@@ -548,7 +565,7 @@ private fun PreviewSectionTitle(text: String) {
 @Composable
 private fun ColumnScope.WeeklyPreview(en: Boolean, compact: Boolean) {
     PreviewSectionTitle(if (en) "Unseen digits (0–9)" else "ပျောက်ဂဏန်း (0–9)")
-    TokenStrip(TwoDFixedDemoSamples.missingDigits)
+    TokenStrip(TwoDFixedDemoSamples.missingDigits, featured = true)
     Spacer(Modifier.height(if (compact) 6.dp else 14.dp))
     HorizontalDivider(thickness = .5.dp)
     PreviewSectionTitle(if (en) "New this week" else "ဒီအပတ် အသစ်ထွက်")
@@ -560,6 +577,7 @@ private fun ColumnScope.WeeklyPreview(en: Boolean, compact: Boolean) {
 @Composable
 private fun ColumnScope.SpecialsPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
+    val leadingCount = TwoDFixedDemoSamples.special.maxOf { it.second.toIntOrNull() ?: 0 }
     Surface(
         shape = RoundedCornerShape(10.dp), color = c.surface.copy(alpha = .96f),
         border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
@@ -587,7 +605,10 @@ private fun ColumnScope.SpecialsPreview(en: Boolean, compact: Boolean) {
                         color = c.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
-                    PreviewBadge(value)
+                    PreviewBadge(
+                        value,
+                        primary = (value.toIntOrNull() ?: 0) == leadingCount,
+                    )
                 }
             }
         }
@@ -599,23 +620,56 @@ private fun ColumnScope.LastWeekPreview(en: Boolean, compact: Boolean) {
     val c = MaterialTheme.colorScheme
     PreviewSectionTitle(if (en) "Most observed digit" else "အထွက်အများဆုံးဂဏန်း")
     Surface(
-        color = c.secondaryContainer.copy(alpha = .43f),
-        shape = RoundedCornerShape(11.dp),
-        border = BorderStroke(1.dp, c.secondary.copy(alpha = .16f)),
+        color = c.secondaryContainer.copy(alpha = .48f),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .18f)),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(10.dp),
+            Modifier.fillMaxWidth().padding(9.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            PreviewBadge("8", primary = true)
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(if (en) "Frequency" else "အကြိမ်ရေ",
+            Surface(
+                modifier = Modifier.width(59.dp).height(71.dp),
+                color = c.secondary,
+                shape = RoundedCornerShape(10.dp),
+                shadowElevation = 4.dp,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .20f)),
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            listOf(c.secondary.copy(alpha = .93f), c.secondary),
+                        ),
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "8",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = c.onSecondary,
+                    )
+                }
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    if (en) "Seen" else "ထွက်ရှိမှု",
                     style = MaterialTheme.typography.labelSmall,
-                    color = c.onSurfaceVariant)
-                Text("7" + if (en) " times" else " ကြိမ်",
+                    color = c.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Text(
+                    "7" + if (en) " times" else " ကြိမ်",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold, color = c.onSurface)
+                    fontWeight = FontWeight.Bold,
+                    color = c.onSurface,
+                    maxLines = 1,
+                )
             }
         }
     }
