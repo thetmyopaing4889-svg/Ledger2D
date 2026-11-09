@@ -49,9 +49,21 @@ internal object TwoDDetailSelection {
         listOf("morning", "evening", "combined").filter {
             (data[it]?.observedDraws ?: 0) > 0
         }
+    /** Fixed selector order regardless of outcome availability: ALL, first, second. */
     fun conditions(data: TwoDPreviousResults): List<Pair<String, TwoDConditional>> =
         listOf("both" to data.both, "first" to data.firstOnly,
-            "second" to data.secondOnly).filter { it.second.matches.isNotEmpty() }
+            "second" to data.secondOnly)
+
+    /** A-05 primary answer: the positional new/old pattern, not the raw 2D pair. */
+    fun flowPattern(item: TwoDTransition, en: Boolean): String? {
+        if (!item.classificationVerified) return null
+        fun status(isNew: Boolean) = if (isNew) {
+            if (en) "New" else "အသစ်"
+        } else {
+            if (en) "Old" else "အဟောင်း"
+        }
+        return status(item.newTens) + " + " + status(item.newOnes)
+    }
     fun longest(data: List<TwoDStreak>): List<TwoDStreak> {
         val max = data.maxOfOrNull { it.observedDrawsSince } ?: 0
         return data.filter { it.observedDrawsSince == max }.sortedBy { it.value }
@@ -254,6 +266,34 @@ private fun DTimelineLine(
     HorizontalDivider(color = c.outlineVariant.copy(alpha = .23f))
 }
 
+
+@Composable
+private fun DFlowStatus(
+    label: String, digit: Char, isNew: Boolean, en: Boolean, modifier: Modifier = Modifier,
+) {
+    val c = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = if (isNew) c.primaryContainer else c.tertiaryContainer,
+        border = BorderStroke(1.dp,
+            if (isNew) c.primary.copy(alpha = .42f)
+            else c.tertiary.copy(alpha = .36f)),
+        shadowElevation = 3.dp,
+        tonalElevation = 1.dp,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 7.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            DT(label, en, LedgerTextRole.CARD_TITLE,
+                color = if (isNew) c.onPrimaryContainer else c.onTertiaryContainer)
+            DT(digit.toString(), en, LedgerTextRole.TABLE,
+                color = if (isNew) c.onPrimaryContainer.copy(alpha = .80f)
+                else c.onTertiaryContainer.copy(alpha = .80f))
+        }
+    }
+}
+
 @Composable
 internal fun TwoDAnalysisDetails(
     id: String, report: TwoDAnalysisReport, en: Boolean,
@@ -429,7 +469,13 @@ internal fun TwoDAnalysisDetails(
                         else -> a.secondReference?.digit.orEmpty()
                     }
                     TwoDCategoryTabs(
-                        options = parts.map { it.first to referenceNumbers(it.first) },
+                        options = parts.map { (key, _) ->
+                            key to if (key == "both") "ALL" else referenceNumbers(key)
+                                .ifBlank {
+                                    if (key == "first") tx(en, "ပထမ", "First")
+                                    else tx(en, "ဒုတိယ", "Second")
+                                }
+                        },
                         selected = active.first, en = en, onSelect = { chosen = it },
                     )
                     val (key, result) = active
@@ -439,33 +485,39 @@ internal fun TwoDAnalysisDetails(
                         "first" -> tx(en, "ပထမတစ်ခု", "First reference")
                         else -> tx(en, "ဒုတိယတစ်ခု", "Second reference")
                     }
-                    val top = TwoDDetailSelection.leaders(result.frequencies)
-                    DP(label + " · " + refs, en) {
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (top.isNotEmpty()) TwoDResultFrame(
-                                tx(en, "အများဆုံး ဆက်ထွက်", "Top following 2D"),
-                                top.take(3).joinToString(" · ") { it.digit },
-                                count(en, top.first().count), en, Modifier.weight(1f))
-                            TwoDResultFrame(tx(en, "တွေ့ရှိသောမှတ်တမ်း", "Matching records"),
-                                result.matches.size.toString(),
-                                tx(en, "သမိုင်းမှတ်တမ်း", "Historical outcomes"),
-                                en, Modifier.weight(1f))
-                        }
-                        DT(tx(en, "ဆက်ထွက်ခဲ့သော ဂဏန်းတွဲများ",
-                            "Following 2D results"), en, LedgerTextRole.CARD_TITLE)
-                        result.frequencies.forEach { item ->
-                            DNumberLine(item.digit, count(en, item.count), en) {
-                                show(refs + " → " + item.digit,
-                                    result.referenceChains.filter {
-                                        it.following.digit == item.digit
-                                    }.map { chainText(en, it) })
+                    if (result.matches.isEmpty()) {
+                        // Keep the ALL/first/second option visible, but do not fabricate
+                        // historical outcomes for an unmatched condition.
+                        DE(en)
+                    } else {
+                        val top = TwoDDetailSelection.leaders(result.frequencies)
+                        DP(label + " · " + refs, en) {
+                            Row(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (top.isNotEmpty()) TwoDResultFrame(
+                                    tx(en, "အများဆုံး ဆက်ထွက်", "Top following 2D"),
+                                    top.take(3).joinToString(" · ") { it.digit },
+                                    count(en, top.first().count), en, Modifier.weight(1f))
+                                TwoDResultFrame(tx(en, "တွေ့ရှိသောမှတ်တမ်း", "Matching records"),
+                                    result.matches.size.toString(),
+                                    tx(en, "သမိုင်းမှတ်တမ်း", "Historical outcomes"),
+                                    en, Modifier.weight(1f))
                             }
-                        }
-                        DB(tx(en, "History အားလုံး ကြည့်ရန်",
-                            "View full source-to-result history"), en) {
-                            show(label + " · " + refs,
-                                result.referenceChains.map { chainText(en, it) })
+                            DT(tx(en, "ဆက်ထွက်ခဲ့သော ဂဏန်းတွဲများ",
+                                "Following 2D results"), en, LedgerTextRole.CARD_TITLE)
+                            result.frequencies.forEach { item ->
+                                DNumberLine(item.digit, count(en, item.count), en) {
+                                    show(refs + " → " + item.digit,
+                                        result.referenceChains.filter {
+                                            it.following.digit == item.digit
+                                        }.map { chainText(en, it) })
+                                }
+                            }
+                            DB(tx(en, "History အားလုံး ကြည့်ရန်",
+                                "View full source-to-result history"), en) {
+                                show(label + " · " + refs,
+                                    result.referenceChains.map { chainText(en, it) })
+                            }
                         }
                     }
                 }
@@ -475,6 +527,7 @@ internal fun TwoDAnalysisDetails(
             val a = report.a05
             if (a.transitions.isEmpty()) DE(en)
             else {
+                // The screenshot-approved frame remains unchanged: remaining digits first.
                 DP(tx(en, "ယခုအပတ် ကျန်ဂဏန်း (0–9)", "Unseen digits this week"), en) {
                     val unseen = a.remainingDigits.joinToString(" ")
                     if (unseen.isNotBlank()) TwoDNumberFocus(unseen, en,
@@ -484,21 +537,42 @@ internal fun TwoDAnalysisDetails(
                 val remainingRows = TwoDDetailSelection.remainingAfter(a.transitions)
                 DP(tx(en, "အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု", "New / old digit flow"), en) {
                     a.transitions.forEachIndexed { index, item ->
-                        val newly = item.newlySeenDigits.sorted().joinToString(" ")
-                        val older = (item.result.digit.toSet() - item.newlySeenDigits)
-                            .sorted().joinToString(" ")
-                        val parts = if (item.classificationVerified) listOfNotNull(
-                            newly.takeIf { it.isNotBlank() }?.let {
-                                tx(en, "အသစ်", "New") + ": " + it
-                            },
-                            older.takeIf { it.isNotBlank() }?.let {
-                                tx(en, "အဟောင်း", "Old") + ": " + it
-                            },
-                        ) else emptyList()
-                        DTimelineLine(
-                            item.result.date.toString() + " · " +
-                                slot(en, item.result.session),
-                            item.result.digit, parts.joinToString(" · "), en)
+                        // Original result/date are context, NEVER the visual hero.
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            DT(item.result.date.toString() + " · " +
+                                slot(en, item.result.session), en, LedgerTextRole.HELPER,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            DT(tx(en, "Result", "Result") + ": " + item.result.digit,
+                                en, LedgerTextRole.TABLE,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (item.classificationVerified) {
+                            // The most prominent part of each row is its NEW/OLD pattern.
+                            DT(requireNotNull(TwoDDetailSelection.flowPattern(item, en)),
+                                en, LedgerTextRole.CARD_TITLE)
+                            Row(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                DFlowStatus(tx(en, "အသစ်", "New").takeIf { item.newTens }
+                                        ?: tx(en, "အဟောင်း", "Old"),
+                                    item.result.digit[0], item.newTens, en,
+                                    Modifier.weight(1f))
+                                DT("+", en, LedgerTextRole.CARD_TITLE,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                DFlowStatus(tx(en, "အသစ်", "New").takeIf { item.newOnes }
+                                        ?: tx(en, "အဟောင်း", "Old"),
+                                    item.result.digit[1], item.newOnes, en,
+                                    Modifier.weight(1f))
+                            }
+                        } else {
+                            // Missing earlier draws cannot be classified as verified new/old.
+                            DT(tx(en, "အသစ်/အဟောင်း အတည်မပြုနိုင်သေးပါ",
+                                "New/old pattern not yet verified"),
+                                en, LedgerTextRole.BODY,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         DT(tx(en, "ကျန်ဂဏန်း", "Remaining") + ": " +
                             remainingRows[index].ifBlank { tx(en, "မရှိ", "None") },
                             en, LedgerTextRole.TABLE,

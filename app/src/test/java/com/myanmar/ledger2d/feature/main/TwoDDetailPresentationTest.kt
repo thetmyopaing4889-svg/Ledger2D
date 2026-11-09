@@ -27,7 +27,11 @@ class TwoDDetailPresentationTest {
         val found = TwoDConditional("89", listOf(row), listOf(TwoDCount("35", 1)), 0)
         val missing = TwoDConditional(null, emptyList(), emptyList(), 0)
         val report = TwoDPreviousResults(null, row, missing, missing, found)
-        assertEquals(listOf("second"), TwoDDetailSelection.conditions(report).map { it.first })
+        assertEquals(listOf("both", "first", "second"),
+            TwoDDetailSelection.conditions(report).map { it.first })
+        assertTrue(TwoDDetailSelection.conditions(report)[0].second.matches.isEmpty())
+        assertTrue(TwoDDetailSelection.conditions(report)[1].second.matches.isEmpty())
+        assertEquals(1, TwoDDetailSelection.conditions(report)[2].second.matches.size)
     }
 
     @Test fun longestStreakTiesRemainVisible() {
@@ -71,5 +75,32 @@ class TwoDDetailPresentationTest {
             listOf(draw), "5", "ones").size)
         assertTrue(TwoDDetailSelection.positionEvidence(
             listOf(draw), "1", "ones").isEmpty())
+    }
+
+    @Test fun allTagMustBeFirstEvenWhenNoHistoricResultWasRecorded() {
+        val absent = TwoDConditional(null, emptyList(), emptyList(), 0)
+        val first = TwoDMatch(LocalDate.parse("2026-11-09"), DrawSession.MORNING, "67")
+        val second = TwoDMatch(LocalDate.parse("2026-11-09"), DrawSession.EVENING, "74")
+        val a = TwoDPreviousResults(first, second, absent, absent, absent)
+        assertEquals(listOf("both", "first", "second"),
+            TwoDDetailSelection.conditions(a).map { it.first })
+        assertTrue(TwoDDetailSelection.conditions(a).all { it.second.matches.isEmpty() })
+    }
+
+    @Test fun flowPriorityUsesActualPositionalNewOldStatusNotJustResult() {
+        fun row(pair: String, tensNew: Boolean, onesNew: Boolean, verified: Boolean) =
+            TwoDTransition(
+                TwoDMatch(LocalDate.parse("2026-11-09"), DrawSession.MORNING, pair),
+                tensNew, onesNew, emptySet(), verified)
+        assertEquals("အသစ် + အသစ်",
+            TwoDDetailSelection.flowPattern(row("67", true, true, true), false))
+        assertEquals("အဟောင်း + အသစ်",
+            TwoDDetailSelection.flowPattern(row("74", false, true, true), false))
+        assertEquals("New + Old",
+            TwoDDetailSelection.flowPattern(row("74", true, false, true), true))
+        assertEquals("အသစ် + အသစ်",
+            TwoDDetailSelection.flowPattern(row("11", true, true, true), false))
+        assertEquals(null,
+            TwoDDetailSelection.flowPattern(row("74", false, true, false), false))
     }
 }
