@@ -324,8 +324,11 @@ fun Historical2DTimelineScreen(
                                     color = if (active) scheme.primaryContainer else Color.Transparent,
                                     shadowElevation = if (active) 2.dp else 0.dp,
                                     onClick = {
-                                        userChosen = true
+                                        // Snapshot the *visible* default date before switching
+                                        // to an explicit user selection.
+                                        selectedDate = date.toString()
                                         selectedSession = session.name
+                                        userChosen = true
                                     },
                                 ) {
                                     Box(Modifier.defaultMinSize(minHeight = 42.dp),
@@ -579,7 +582,7 @@ fun Historical2DTimelineScreen(
         val current = when (mode) {
             "start" -> customStart
             "end" -> customEnd
-            else -> selectedDate
+            else -> date.toString()
         }
         val initialMillis = remember(mode, current) {
             runCatching { LocalDate.parse(current).atStartOfDay(ZoneOffset.UTC)
