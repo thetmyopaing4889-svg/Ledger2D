@@ -1285,3 +1285,18 @@ The user approved the 4–2–2 visual layout and explicitly authorized connecti
 - Add unit regression tests for exact unavailable wording, maximum-frequency ties, missing-digit and missing-pair streak rankings. CI plus a real phone screenshot are required before calling final.
 
 This supersedes earlier demo-default guidance in Part XV. Do not migrate or modify the financial ledger, live-feed job, commission, or transaction rules as part of this phase.
+
+---
+
+## Part XVII — Live results screenshot corrections (2026-11-09)
+
+Approved main-screen 4–2–2 design is retained, but the first handset screenshots with real historical data revealed content-placement errors. Apply these rules without changing the historical computation engine, DB, source priority, Demo fixtures or detail-screen logic.
+
+1. **A-01 equal-frequency companions:** The card must display the **actual top companion digits** as distinct raised chips, not just e.g. `3 မျိုးတူ`. Show up to three sorted, distinct leading digits with the common verified frequency on the row above. If additional digits tie, show `+N` for the hidden count; opening the Detail screen provides the full list. No invented winner, no loss of data in the engine.
+2. **A-04 previous week:** The most observed 0–9 digit and its occurrence count must be **visually grouped in one inset result plate**. Do not leave a stray text-only “အကြိမ်ရေ” beside an already-counted hero. If tied, show other tied leaders in secondary text and preserve the same count.
+3. **A-03 empty state:** Retain the exact unavailable message `အချက်အလက် မရရှိနိုင်သေးပါ` when evidence is insufficient, centered within the existing equally-sized current-draw card. A verified absence of matching patterns remains a different state (`တူညီသောမှတ်တမ်း မတွေ့ပါ`).
+4. **A-08 partial evidence:** Present verified conditional results normally. **Combine multiple unavailable subconditions** in one quiet status panel listing their conditions and the exact unavailable message **once**; no repeat of the full sentence for each condition. Keep both historical 2D reference digits.
+5. **History label:** In Burmese UI show **`မှတ်တမ်း`**, English remains **`History`**.
+6. Preserve the approved user terminology `ပျောက်ဂဏန်း`, `ပျောက်ဂဏန်းတွဲ`, `ညီအကို`, and the localized morning/evening terminology. Keep primary digits more visually important than counts.
+7. Only the real-result renderer, History label and directly related regression tests may change. The established layout, 3D/glass style, Demo mode, analytics engine and historical snapshots remain intact. Validate through CI plus handset screenshots.
+
