@@ -1324,3 +1324,11 @@ This section **supersedes conflicting earlier UI display requirements** in Parts
 
 **Implementation boundary:** UI selection rules and corresponding regression tests only. Do not alter financial ledger, database, historical ingestion precedence, live timing, or unconfirmed future-result forecasting; do not rebuild the currently accepted main layout. Detail-screen visual redesign remains Phase 2.
 
+---
+
+## Part XIX — Eight analysis detail screens: implementation (2026-11-09)
+
+All eight details follow **Information First / Progressive Disclosure / Smart Space Utilization**. The user's edited check titles/subtitles remain centralized in \`TwoDAnalysisText\`; the locale-specific **LedgerTypographyStandard** is required, using English Sans Serif and Burmese Noto Sans Myanmar UI with existing role-based sizes and line heights. Preserve \`မနက်အကြိမ် / ညနေအကြိမ်\`, \`ပျောက်ဂဏန်း\`, \`ပျောက်ဂဏန်းတွဲ\`, \`ညီအကို\`, and \`တူညီသောမှတ်တမ်း မတွေ့ပါ\`.
+
+A-02 keeps the existing rich frequency dashboard; A-01, A-03, A-04, A-05, A-06, A-07 and A-08 get compact, result-first and evidence-on-demand detail views. Main 4–2–2 screen and its card routing are unchanged; the old duplicate primary finding and oversized non-A02 header are replaced by one compact approved-title header and the actual result-first detail panels. Existing formula engine, read-only history, closed dates, selected ranges and independent A-08 searches are untouched. Partial-data UI shows only available independent outcomes; no missing-subresult placeholders, false zero or \`+\` for unknown absence draws. Unit tests cover leader ties, independent streams and one-reference A-08.
+

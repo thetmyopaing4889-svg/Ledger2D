@@ -500,78 +500,30 @@ fun Historical2DTimelineScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 if (method != null && report != null) {
-                    if (openCheck == "02") {
-                        Column(
-                            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                        ) {
-                            Text(method.title,
-                                style = LedgerTypographyStandard.style(
-                                    LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(date.toString() + " · " +
-                                (if (target.session == DrawSession.MORNING)
-                                    tr("မနက်အကြိမ်", "Morning")
-                                 else tr("ညနေအကြိမ်", "Evening")) + " · " + lookbackLabel,
-                                style = LedgerTypographyStandard.style(
-                                    LedgerTextRole.HELPER, if (en) "en" else "my"),
-                                color = scheme.onSurfaceVariant)
-                        }
-                    } else {
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = scheme.surface,
-                        shadowElevation = 8.dp,
-                        tonalElevation = 3.dp,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(Modifier.fillMaxWidth().background(
-                            Brush.horizontalGradient(listOf(
-                                scheme.primaryContainer.copy(alpha = 0.8f),
-                                scheme.surface,
-                            )))
-                            .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Text(tr("စစ်ဆေးနည်း", "Analysis check") + " " + method.key,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = scheme.primary)
-                            Text(method.title, style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold)
-                            Text(method.subtitle, style = MaterialTheme.typography.bodyMedium,
-                                color = scheme.onSurfaceVariant)
-                            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.4f))
-                            Text(date.toString() + "  ·  " +
-                                (if (target.session == DrawSession.MORNING) tr("မနက်အကြိမ်", "Morning")
-                                 else tr("ညနေအကြိမ်", "Evening")) +
-                                "  ·  " + lookbackLabel,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = scheme.onSurfaceVariant)
-                        }
-                    }
+
+                    // User-edited titles and the existing language-aware typography contract.
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(method.title, style = LedgerTypographyStandard.style(
+                            LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
+                            maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(date.toString() + " · " +
+                            (if (target.session == DrawSession.MORNING)
+                                tr("မနက်အကြိမ်", "Morning")
+                            else tr("ညနေအကြိမ်", "Evening")) +
+                            (if (openCheck in listOf("04", "05", "07")) ""
+                             else " · " + lookbackLabel),
+                            style = LedgerTypographyStandard.style(
+                                LedgerTextRole.HELPER, if (en) "en" else "my"),
+                            color = scheme.onSurfaceVariant)
                     }
                     if (openCheck == "02") {
                         TwoDA02Dashboard(report.a02, en)
+
                     } else {
-                        TwoDPrimaryFinding(openCheck, report, en, streakStream)
-                        Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(22.dp),
-                        color = scheme.surface,
-                        tonalElevation = 1.dp,
-                        shadowElevation = 3.dp,
-                    ) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(tr("အသေးစိတ်မှတ်တမ်း", "Detailed records"),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold)
-                            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
-                            TwoDAnalysisDetails(openCheck, report, en,
-                                selectedStreakStream = streakStream,
-                                onStreakStreamChange = { streakStream = it })
-                        }
-                    }
+                        TwoDAnalysisDetails(openCheck, report, en,
+                            selectedStreakStream = streakStream,
+                            onStreakStreamChange = { streakStream = it })
                     }
                     Spacer(Modifier.height(20.dp))
                 } else {
