@@ -354,7 +354,7 @@ fun Historical2DTimelineScreen(
                         Icon(Icons.Default.History, null,
                             modifier = Modifier.size(15.dp),
                             tint = scheme.onSurfaceVariant)
-                        Text("History",
+                        Text(tr("မှတ်တမ်း", "History"),
                             style = MaterialTheme.typography.labelSmall,
                             color = scheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f))
