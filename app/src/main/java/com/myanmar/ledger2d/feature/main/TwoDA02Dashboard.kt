@@ -55,6 +55,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
     var selectedDigitHistory by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedDigitPosition by rememberSaveable { mutableStateOf("both") }
     var selectedGroupHistory by rememberSaveable { mutableStateOf<String?>(null) }
+    var topPairChoiceOpen by rememberSaveable { mutableStateOf(false) }
+    var topDigitChoiceOpen by rememberSaveable { mutableStateOf(false) }
 
     val maxPairs = TwoDDetailSelection.leaders(data.numbers)
     val maxDigits = TwoDDetailSelection.leaders(data.singles)
@@ -89,18 +91,12 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     tr("အထွက်အများဆုံး ဂဏန်းတွဲ", "Top 2D pairs"),
                     condensed(maxPairs), maxPairCount.toString() + tr(" ကြိမ်စီ", " times each"),
                     en, Modifier.weight(1f),
-                    onClick = {
-                        initialPair = maxPairs.first().digit
-                        missingOnly = false; browserOpen = true
-                    })
+                    onClick = { topPairChoiceOpen = true })
                 if (maxDigits.isNotEmpty()) TwoDResultFrame(
                     tr("အထွက်အများဆုံးဂဏန်း", "Top digits"),
                     condensed(maxDigits), maxDigitCount.toString() + tr(" ကြိမ်စီ", " times each"),
                     en, Modifier.weight(1f),
-                    onClick = {
-                        selectedDigitPosition = "both"
-                        selectedDigitHistory = maxDigits.first().digit
-                    })
+                    onClick = { topDigitChoiceOpen = true })
             }
 
             // Explicitly means the least frequent among digits that appeared, NOT missing digits.
@@ -242,6 +238,71 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
             }
         }
     }
+
+
+    if (topPairChoiceOpen) AlertDialog(
+        onDismissRequest = { topPairChoiceOpen = false },
+        title = { Text(tr("အထွက်အများဆုံး ဂဏန်းတွဲများ", "Top 2D pair results"),
+            style = LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE, lang)) },
+        text = {
+            Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                maxPairs.forEach { item ->
+                    Surface(onClick = {
+                        topPairChoiceOpen = false
+                        initialPair = item.digit; missingOnly = false; browserOpen = true
+                    }, shape = RoundedCornerShape(10.dp),
+                        color = scheme.surfaceVariant.copy(alpha = .55f)) {
+                        Row(Modifier.fillMaxWidth().padding(9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            TwoDListNumberBadge(item.digit, en)
+                            Spacer(Modifier.weight(1f))
+                            Text(item.count.toString() + tr(" ကြိမ်", " times"),
+                                style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang))
+                            Icon(Icons.Default.ChevronRight, null,
+                                tint = scheme.primary, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { topPairChoiceOpen = false }) {
+            Text(tr("ပိတ်မည်", "Close"))
+        } },
+    )
+    if (topDigitChoiceOpen) AlertDialog(
+        onDismissRequest = { topDigitChoiceOpen = false },
+        title = { Text(tr("အထွက်အများဆုံး ဂဏန်းများ", "Top digit results"),
+            style = LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE, lang)) },
+        text = {
+            Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                maxDigits.forEach { item ->
+                    Surface(onClick = {
+                        topDigitChoiceOpen = false
+                        selectedDigitPosition = "both"
+                        selectedDigitHistory = item.digit
+                    }, shape = RoundedCornerShape(10.dp),
+                        color = scheme.surfaceVariant.copy(alpha = .55f)) {
+                        Row(Modifier.fillMaxWidth().padding(9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            TwoDListNumberBadge(item.digit, en)
+                            Spacer(Modifier.weight(1f))
+                            Text(item.count.toString() + tr(" ကြိမ်", " times"),
+                                style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang))
+                            Icon(Icons.Default.ChevronRight, null,
+                                tint = scheme.primary, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { topDigitChoiceOpen = false }) {
+            Text(tr("ပိတ်မည်", "Close"))
+        } },
+    )
 
     if (explanationOpen) AlertDialog(
         onDismissRequest = { explanationOpen = false },
