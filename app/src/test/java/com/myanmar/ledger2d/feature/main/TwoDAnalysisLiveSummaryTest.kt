@@ -1,6 +1,12 @@
 package com.myanmar.ledger2d.feature.main
 
 import com.myanmar.ledger2d.core.domain.TwoDCount
+import com.myanmar.ledger2d.core.domain.TwoDConditional
+import com.myanmar.ledger2d.core.domain.TwoDMatch
+import com.myanmar.ledger2d.core.domain.TwoDPreviousResults
+import com.myanmar.ledger2d.core.domain.TwoDStreakStream
+import com.myanmar.ledger2d.core.model.DrawSession
+import java.time.LocalDate
 import com.myanmar.ledger2d.core.domain.TwoDStreak
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -61,5 +67,24 @@ class TwoDAnalysisLiveSummaryTest {
         assertEquals("34", pair.top.display(en = false))
         assertEquals(423, pair.top.count)
         assertTrue(pair.lowerBound)
+    }
+
+    @Test fun missingStreamsRenderOnlyThoseWithObservedDraws() {
+        val rows = listOf(TwoDStreak("3", 2, null, false))
+        val pm = TwoDStreakStream(2, true, rows, rows)
+        val empty = TwoDStreakStream(0, false, emptyList(), emptyList())
+        val streams = mapOf("morning" to empty, "evening" to pm, "combined" to pm)
+        assertEquals(listOf("evening", "combined"), TwoDLiveSummary.observedStreams(streams))
+        assertTrue(TwoDLiveSummary.observedStreams(mapOf("morning" to empty)).isEmpty())
+    }
+
+    @Test fun conditionalResultsStayVisibleIfOnlyOneReferenceCanBeChecked() {
+        val known = TwoDMatch(LocalDate.parse("2026-10-27"), DrawSession.MORNING, "35")
+        val hit = TwoDConditional("89", listOf(known), listOf(TwoDCount("35", 1)), 0)
+        val empty = TwoDConditional(null, emptyList(), emptyList(), 0)
+        val report = TwoDPreviousResults(null, known, empty, empty, hit)
+        assertEquals(listOf("second"), TwoDLiveSummary.observedConditions(report))
+        assertTrue(TwoDLiveSummary.observedConditions(
+            TwoDPreviousResults(null, null, empty, empty, empty)).isEmpty())
     }
 }

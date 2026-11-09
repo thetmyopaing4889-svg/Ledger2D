@@ -1300,3 +1300,27 @@ Approved main-screen 4–2–2 design is retained, but the first handset screens
 6. Preserve the approved user terminology `ပျောက်ဂဏန်း`, `ပျောက်ဂဏန်းတွဲ`, `ညီအကို`, and the localized morning/evening terminology. Keep primary digits more visually important than counts.
 7. Only the real-result renderer, History label and directly related regression tests may change. The established layout, 3D/glass style, Demo mode, analytics engine and historical snapshots remain intact. Validate through CI plus handset screenshots.
 
+---
+
+## Part XVIII — Formula audit and available-data-only display rule (user confirmed 2026-11-09)
+
+This section **supersedes conflicting earlier UI display requirements** in Parts XVI and XVII. The approved main 4–2–2 grid and existing analysis formulas remain unchanged unless the user separately confirms a formula change.
+
+**Global display principle (A-01 through A-08, main cards and details):**
+- Display every genuinely available, qualifying result. If only some subresults/AM-PM streams/reference searches have data, show **those subresults only**; omit unavailable rows, sections and explanations about missing subresults.
+- Use the exact `အချက်အလက် မရရှိနိုင်သေးပါ` / `Information not yet available` text **only when the entire method card has no usable finding to display**. Do not repeatedly show it for missing subconditions while other values are present.
+- Actual observed numeric zero can be displayed when it has a defined, verified interpretation. Unknown data must not be fabricated as zero. Do not use `-` or a `+` suffix to suggest missing records are additional observed absences.
+- Keep provenance and incomplete-data metadata in engine outputs; omit decorative missing-record warnings in the compact analysis answer. Observed counts remain counts of actual stored results, not hypothetical absent draws.
+
+**A-01 reaffirmation (user corrected assistant during 2026-11-09 audit):** A historical/source week does not require ten stored results. Use all present confirmed records to identify digits not seen in that recorded week and the first **observed** return result in the following week for the one-companion-per-episode ranking, even if earlier slots in that week have no record. Do not reject an available result merely because the source week is incomplete. Treat these as observed-history facts, not a guarantee that a missing source entry contains no digit. Older strict first-return-evidence language in Parts II/III/V is superseded to this extent; **do not change the A-01 formula to force complete weeks**.
+
+**A-03 reaffirmation:** Only slot-aligned confirmed class sequences match. When a historical week has the matching prefix but no recorded next result, omit that history from the displayed next-outcome matches. Do not add a missing-next-result counter or message. Existing A-03 matching formula is acceptable.
+
+**A-04/A-01:** Missing 0–9 digits obtained from available previous-week results remain usable when that week is incomplete. The display may accurately label them `unseen in recorded results`, without hiding valid digits behind an unavailable status.
+
+**A-06:** AM, PM, and combined are independent. Display whichever streams have observed results; omit empty streams. Observed absence counts exclude unknown slots. Do not append a `+` symbol to imply that unknown slots extend a verified absence streak.
+
+**A-08:** The first-reference-only and second-reference-only searches can produce usable historical results even if the other current reference is absent. Never hide those valid checks behind a two-reference requirement. Display any available condition results, omit conditions with no observed outcomes, and use whole-card unavailable only when neither references nor observed outcomes can be shown.
+
+**Implementation boundary:** UI selection rules and corresponding regression tests only. Do not alter financial ledger, database, historical ingestion precedence, live timing, or unconfirmed future-result forecasting; do not rebuild the currently accepted main layout. Detail-screen visual redesign remains Phase 2.
+

@@ -71,6 +71,17 @@ internal object TwoDLiveSummary {
 
     fun streamAvailable(stream: TwoDStreakStream?): Boolean =
         stream != null && stream.observedDraws > 0
+
+    /** Hide missing substreams; the full card owns its one empty state. */
+    fun observedStreams(streams: Map<String, TwoDStreakStream>): List<String> =
+        listOf("morning", "evening", "combined").filter { streamAvailable(streams[it]) }
+
+    /** Each A-08 reference search remains independent, even with one source missing. */
+    fun observedConditions(report: com.myanmar.ledger2d.core.domain.TwoDPreviousResults): List<String> =
+        listOf("both" to report.both, "first" to report.firstOnly,
+            "second" to report.secondOnly)
+            .filter { (_, check) -> check.matches.isNotEmpty() }
+            .map { it.first }
 }
 
 @Composable
@@ -210,10 +221,7 @@ private fun ColumnScope.CenterCardStatus(
 
 @Composable
 private fun LiveMiniValue(value: String, count: Int?, en: Boolean, featured: Boolean = false) {
-    if (value.isBlank()) {
-        LiveUnavailable(en)
-        return
-    }
+    if (value.isBlank()) return
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         PreviewBadge(value, primary = featured, small = true)
@@ -229,10 +237,7 @@ private fun LiveMiniValue(value: String, count: Int?, en: Boolean, featured: Boo
 @Composable
 private fun LiveCountRow(label: String, peak: TwoDLiveSummary.Peak, en: Boolean,
     compact: Boolean) {
-    if (!peak.present) {
-        PreviewSectionTitle(label)
-        LiveUnavailable(en)
-    } else PreviewLine(label,
+    if (peak.present) PreviewLine(label,
         peak.display(en) + " ×" + peak.count, compact)
 }
 
@@ -252,11 +257,9 @@ private fun ColumnScope.RealMostSeen(
         if (pair.present) PreviewHero("2D",
             PreviewNumber(pair.display(en), pair.count.toString()),
             Modifier.weight(1f), en, compact)
-        else Box(Modifier.weight(1f)) { LiveUnavailable(en) }
         if (digit.present) PreviewHero("0–9",
             PreviewNumber(digit.display(en), digit.count.toString()),
             Modifier.weight(1f), en, compact)
-        else Box(Modifier.weight(1f)) { LiveUnavailable(en) }
     }
     HorizontalDivider(thickness = .5.dp)
     LiveCountRow(if (en) "Parity" else "စုံ/မ",
@@ -313,52 +316,44 @@ private fun ColumnScope.RealParity(
 private fun ColumnScope.RealMissing(
     r: TwoDAnalysisReport, en: Boolean, compact: Boolean,
 ) {
-    listOf("AM" to "morning", "PM" to "evening", "ALL" to "combined")
-        .forEachIndexed { i, (label, key) ->
-            if (i != 0) HorizontalDivider(thickness = .5.dp)
-            val stream = r.a06[key]
-            if (!TwoDLiveSummary.streamAvailable(stream)) {
-                Row(Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface)
-                    Box(Modifier.weight(1f)) { LiveUnavailable(en) }
-                }
-            } else {
-                val data = requireNotNull(stream)
-                val digit = TwoDLiveSummary.missing(
-                    data.singleDigits, data.hasUnknownOpenSlots)
-                val pair = TwoDLiveSummary.missing(
-                    data.fullNumbers, data.hasUnknownOpenSlots)
-                Row(Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(label, modifier = Modifier.width(if (compact) 23.dp else 26.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface)
-                    if (digit.top.values.isNotEmpty()) {
-                        TinyNumberWell("0–9",
-                            PreviewNumber(digit.top.display(en),
-                                digit.top.count.toString() +
-                                if (digit.lowerBound) "+" else ""),
-                            primary = true, en = en,
-                            modifier = Modifier.weight(1.07f), compact = compact)
-                    } else Box(Modifier.weight(1.07f)) { LiveUnavailable(en) }
-                    if (pair.top.values.isNotEmpty()) {
-                        TinyNumberWell("2D",
-                            PreviewNumber(pair.top.display(en),
-                                pair.top.count.toString() +
-                                if (pair.lowerBound) "+" else ""),
-                            primary = false, en = en,
-                            modifier = Modifier.weight(1f), compact = compact)
-                    } else Box(Modifier.weight(1f)) { LiveUnavailable(en) }
-                }
+    val available = TwoDLiveSummary.observedStreams(r.a06)
+    if (available.isEmpty()) {
+        CenterCardStatus(TwoDLiveSummary.unavailable(en))
+        return
+    }
+    available.forEachIndexed { i, key ->
+        if (i != 0) HorizontalDivider(thickness = .5.dp)
+        val label = when (key) {
+            "morning" -> "AM"
+            "evening" -> "PM"
+            else -> "ALL"
+        }
+        val data = requireNotNull(r.a06[key])
+        val digit = TwoDLiveSummary.missing(
+            data.singleDigits, data.hasUnknownOpenSlots)
+        val pair = TwoDLiveSummary.missing(
+            data.fullNumbers, data.hasUnknownOpenSlots)
+        Row(Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, modifier = Modifier.width(if (compact) 23.dp else 26.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface)
+            if (digit.top.values.isNotEmpty()) {
+                TinyNumberWell("0–9",
+                    PreviewNumber(digit.top.display(en), digit.top.count.toString()),
+                    primary = true, en = en,
+                    modifier = Modifier.weight(1.07f), compact = compact)
+            }
+            if (pair.top.values.isNotEmpty()) {
+                TinyNumberWell("2D",
+                    PreviewNumber(pair.top.display(en), pair.top.count.toString()),
+                    primary = false, en = en,
+                    modifier = Modifier.weight(1f), compact = compact)
             }
         }
+    }
 }
 
 @Composable
@@ -366,28 +361,28 @@ private fun ColumnScope.RealPrevious(
     r: TwoDAnalysisReport, en: Boolean, compact: Boolean,
 ) {
     val a = r.a08
-    if (a.firstReference == null || a.secondReference == null) {
+    val sources = listOfNotNull(
+        a.firstReference?.let { "1: " + it.digit },
+        a.secondReference?.let { "2: " + it.digit },
+    )
+    val categories = listOf(
+        Triple("both", if (en) "Both" else "နှစ်ခု", a.both),
+        Triple("first", if (en) "First" else "ပထမ", a.firstOnly),
+        Triple("second", if (en) "Second" else "ဒုတိယ", a.secondOnly),
+    ).filter { it.first in TwoDLiveSummary.observedConditions(a) }
+        .map { (_, label, check) -> label to TwoDLiveSummary.peak(check.frequencies) }
+        .filter { it.second.present }
+
+    if (sources.isEmpty() && categories.isEmpty()) {
         CenterCardStatus(TwoDLiveSummary.unavailable(en))
         return
     }
-    PreviewLine(if (en) "Prior" else "ရှေ့ထွက်",
-        a.firstReference.digit + " · " + a.secondReference.digit, compact)
-    HorizontalDivider(thickness = .5.dp)
-
-    val categories = listOf(
-        (if (en) "Both" else "နှစ်ခု") to a.both,
-        (if (en) "First" else "ပထမ") to a.firstOnly,
-        (if (en) "Second" else "ဒုတိယ") to a.secondOnly,
-    ).map { (label, check) ->
-        label to TwoDLiveSummary.peak(check.frequencies)
+    if (sources.isNotEmpty()) {
+        PreviewLine(if (en) "Prior" else "ရှေ့ထွက်",
+            sources.joinToString(" · "), compact)
+        if (categories.isNotEmpty()) HorizontalDivider(thickness = .5.dp)
     }
-    val available = categories.filter { it.second.present }
-    val unavailable = categories.filterNot { it.second.present }
-
-    // Give the one verified leader its own result, and put ALL the
-    // unavailable conditions into ONE quiet status area rather than
-    // repeating the same long Burmese sentence two or three times.
-    available.forEachIndexed { i, (label, peak) ->
+    categories.forEachIndexed { i, (label, peak) ->
         if (i != 0) HorizontalDivider(thickness = .5.dp)
         Row(
             Modifier.fillMaxWidth().heightIn(min = if (compact) 34.dp else 42.dp),
@@ -399,7 +394,6 @@ private fun ColumnScope.RealPrevious(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1)
             Spacer(Modifier.weight(1f))
-            // Two leaders such as 02·46 should remain numbers (not prose).
             peak.visibleDigits(limit = 2).forEach {
                 PreviewBadge(it, small = true)
             }
@@ -408,36 +402,11 @@ private fun ColumnScope.RealPrevious(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(
-                "×" + peak.count,
+            Text("×" + peak.count,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-    }
-    if (unavailable.isNotEmpty()) {
-        if (available.isNotEmpty()) HorizontalDivider(thickness = .5.dp)
-        Surface(
-            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .27f),
-            shape = RoundedCornerShape(10.dp),
-            border = BorderStroke(
-                1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = .10f)),
-        ) {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 9.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Text(unavailable.joinToString(" / ") { it.first },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium)
-                Text(TwoDLiveSummary.unavailable(en),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2)
-            }
+                maxLines = 1)
         }
     }
 }
@@ -607,16 +576,22 @@ private fun ColumnScope.RealLastWeek(
                 }
             }
         }
-    } else LiveUnavailable(en)
-    Spacer(Modifier.height(if (compact) 6.dp else 13.dp))
-    HorizontalDivider(thickness = .5.dp)
-    PreviewSectionTitle(if (en) "Missing last week" else "ပြီးခဲ့တဲ့အပတ် ပျောက်")
-    if (!a.complete) LiveUnavailable(en)
-    else if (a.remainingDigits.isNotEmpty())
-        LiveDigitTokens(a.remainingDigits.map { it.toString() })
-    else Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (a.remainingDigits.isNotEmpty() || a.complete) {
+        Spacer(Modifier.height(if (compact) 6.dp else 13.dp))
+        HorizontalDivider(thickness = .5.dp)
+        PreviewSectionTitle(
+            if (a.complete) {
+                if (en) "Missing last week" else "ပြီးခဲ့တဲ့အပတ် ပျောက်"
+            } else {
+                if (en) "Unseen in recorded draws" else "မှတ်တမ်းအရ ပျောက်ဂဏန်း"
+            })
+        if (a.remainingDigits.isNotEmpty())
+            LiveDigitTokens(a.remainingDigits.map { it.toString() })
+        else Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
 
 @Composable
@@ -624,20 +599,17 @@ private fun ColumnScope.RealReturns(
     r: TwoDAnalysisReport, en: Boolean, compact: Boolean,
 ) {
     val a = r.a01
-    if (!a.previousWeekComplete) {
-        LiveUnavailable(en)
-        return
-    }
-    // A verified complete previous week with no missing digits is
-    // a known empty set, NOT unavailable data.
     if (a.missingDigits.isEmpty()) {
-        Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (a.previousWeekComplete) {
+            Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else LiveUnavailable(en)
         return
     }
-    val items = a.results.filter { it.historyFirstReturnEpisodes > 0 }
-        .sortedWith(
+    // Recorded missing digits are usable even if other slots were unavailable.
+    // Missing historical companion data must not hide current-week evidence.
+    val items = a.results.sortedWith(
             compareByDescending<TwoDMissingDigitReturn> {
                 it.thisWeekFirstSeen != null
             }.thenByDescending { it.historyFirstReturnEpisodes }
@@ -647,7 +619,15 @@ private fun ColumnScope.RealReturns(
         LiveUnavailable(en)
         return
     }
-    PreviewSectionTitle(if (en) "Missing → Companion" else "ပျောက် → တွဲထွက်")
+    val hasCompanions = items.any { it.commonCompanions.isNotEmpty() }
+    PreviewSectionTitle(
+        if (!a.previousWeekComplete) {
+            if (en) "Unseen in recorded draws" else "မှတ်တမ်းအရ ပျောက်ဂဏန်း"
+        } else if (hasCompanions) {
+            if (en) "Missing → Companion" else "ပျောက် → တွဲထွက်"
+        } else {
+            if (en) "Missing digits" else "ပျောက်ဂဏန်း"
+        })
     val c = MaterialTheme.colorScheme
     Surface(color = c.surface.copy(alpha = .96f),
         shape = RoundedCornerShape(10.dp),
@@ -673,8 +653,10 @@ private fun ColumnScope.RealReturns(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         PreviewBadge(item.digit.toString(), small = true)
-                        Text("→", style = MaterialTheme.typography.labelLarge,
-                            color = c.onSurfaceVariant)
+                        if (peak.present || item.thisWeekFirstSeen != null) {
+                            Text("→", style = MaterialTheme.typography.labelLarge,
+                                color = c.onSurfaceVariant)
+                        }
                         Spacer(Modifier.weight(1f))
                         if (peak.present) Text(
                             peak.count.toString() +
@@ -684,6 +666,9 @@ private fun ColumnScope.RealReturns(
                             color = c.onSurfaceVariant,
                             maxLines = 1,
                         )
+                        else if (item.thisWeekFirstSeen != null) {
+                            PreviewBadge(item.thisWeekFirstSeen.digit, primary = true, small = true)
+                        }
                     }
                     if (peak.present) {
                         Row(
@@ -703,13 +688,6 @@ private fun ColumnScope.RealReturns(
                                 )
                             }
                         }
-                    } else {
-                        Text(
-                            TwoDLiveSummary.unavailable(en),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = c.onSurfaceVariant,
-                            maxLines = 2,
-                        )
                     }
                 }
             }

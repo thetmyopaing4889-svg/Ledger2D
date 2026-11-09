@@ -127,10 +127,6 @@ internal fun TwoDAnalysisDetails(
             }
             val a = report.a06.getValue(stream)
             AnalysisDetailLine(tr("စစ်ထားသော ထွက်ဂဏန်းအကြိမ်", "Observed draws"), n(a.observedDraws))
-            if (a.hasUnknownOpenSlots) AnalysisDetailNote(tr(
-                "ကြားထဲမှာ ထွက်ဂဏန်းမှတ်တမ်း မရှိတဲ့အကြိမ်တွေ ရှိပါတယ်။ ပျောက်နေတဲ့အကြိမ်ရေကို ရှိတဲ့မှတ်တမ်းအရပဲ တွက်ထားပါတယ်။",
-                "Unknown open draw slots exist. Streak counts may be incomplete.",
-            ))
             if (a.observedDraws == 0) AnalysisDetailNote(tr("ထွက်ဂဏန်းမတွေ့", "No verified results"))
             else {
                 AnalysisDetailNote(tr("ပျောက်ဂဏန်းတွဲများ", "Two-digit numbers (00–99)"))
@@ -164,35 +160,31 @@ internal fun TwoDAnalysisDetails(
         }
         "08" -> {
             val a = report.a08
-            AnalysisDetailLine(tr("ရှေ့အကြိမ်ထွက်ဂဏန်း (၁)", "Previous result 1"),
-                a.firstReference?.let(::match) ?: tr("ထွက်ဂဏန်းမတွေ့", "Not found"))
-            AnalysisDetailLine(tr("ရှေ့အကြိမ်ထွက်ဂဏန်း (၂)", "Previous result 2"),
-                a.secondReference?.let(::match) ?: tr("ထွက်ဂဏန်းမတွေ့", "Not found"))
+            a.firstReference?.let {
+                AnalysisDetailLine(tr("ရှေ့အကြိမ်ထွက်ဂဏန်း (၁)", "Previous result 1"), match(it))
+            }
+            a.secondReference?.let {
+                AnalysisDetailLine(tr("ရှေ့အကြိမ်ထွက်ဂဏန်း (၂)", "Previous result 2"), match(it))
+            }
             val parts = listOf(
                 tr("နှစ်ခုတွဲ တိုက်စစ်", "Both references") to a.both,
                 tr("ပထမတစ်ခု တိုက်စစ်", "First only") to a.firstOnly,
                 tr("ဒုတိယတစ်ခု တိုက်စစ်", "Second only") to a.secondOnly,
             )
-            parts.forEach { (title, result) ->
+            parts.filter { (_, result) -> result.matches.isNotEmpty() }.forEach { (title, result) ->
                 HorizontalDivider()
-                AnalysisDetailLine(title,
-                    if (result.sourceDigit == null) tr("ထွက်ဂဏန်းမတွေ့", "Reference missing")
-                    else n(result.matches.size))
-                if (result.missingTargetCount > 0)
-                    AnalysisDetailLine(
-                        tr("နောက်တစ်ကြိမ်ထွက်ဂဏန်း မှတ်တမ်းမတွေ့ပါ", "Source matched, next result missing"),
-                        n(result.missingTargetCount),
-                    )
-                if (result.sourceDigit != null && result.matches.isEmpty() &&
-                    result.missingTargetCount == 0) {
-                    AnalysisDetailNote(tr("အတည်ပြုတူညီမှု မတွေ့", "No verified matches"))
-                }
+                AnalysisDetailLine(title, n(result.matches.size))
                 result.frequencies.take(8).forEach {
                     AnalysisDetailLine(it.digit, n(it.count))
                 }
-                if (result.matches.isNotEmpty()) TextButton(onClick = {
+                TextButton(onClick = {
                     show(title, result.matches.map(::match))
                 }) { Text(tr("တူညီသောရက်များ ကြည့်ရန်", "View matched dates")) }
+            }
+            if (a.firstReference == null && a.secondReference == null &&
+                parts.all { (_, result) -> result.matches.isEmpty() }) {
+                AnalysisDetailNote(tr("အချက်အလက် မရရှိနိုင်သေးပါ",
+                    "Information not yet available"))
             }
         }
         "05" -> {
@@ -260,10 +252,6 @@ internal fun TwoDAnalysisDetails(
                 "ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းမှတ်တမ်း မရှိသေးပါ။ ပျောက်ဂဏန်းကို စစ်ဆေးဖို့ အချက်အလက်မရှိပါ။",
                 "No verified draw last week; cannot establish missing digits.",
             ))
-            if (!a.complete && a.observedDraws > 0) AnalysisDetailNote(tr(
-                "ပြီးခဲ့တဲ့အပတ်မှာ ထွက်ဂဏန်းမှတ်တမ်း မရှိတဲ့အကြိမ်တွေ ရှိပါတယ်။ ပျောက်ဂဏန်းကို ရှိတဲ့မှတ်တမ်းတွေပေါ်မှာပဲ တွက်ထားပါတယ်။",
-                "Some draw results are missing; absent digits are calculated from available records.",
-            ))
             AnalysisDetailLine(
                 if (a.complete) tr("ပျောက်ဂဏန်း", "Absent digits")
                     else tr("ပျောက်ဂဏန်း", "Unseen in available records"),
@@ -284,10 +272,6 @@ internal fun TwoDAnalysisDetails(
         }
         "01" -> {
             val a = report.a01
-            if (!a.previousWeekComplete) AnalysisDetailNote(tr(
-                "ပြီးခဲ့တဲ့အပတ် ထွက်ဂဏန်းမှတ်တမ်း မပြည့်ပါ။ ပျောက်ဂဏန်းစာရင်းကို ရှိတဲ့မှတ်တမ်းပေါ်မှာပဲ တွက်ထားပါတယ်။",
-                "Last week's records are incomplete; absent digits are based on available draws.",
-            ))
             AnalysisDetailLine(
                 if (a.previousWeekComplete) tr("ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း", "Last week's missing digits")
                     else tr("ရှိသောမှတ်တမ်းအရ ပျောက်ဂဏန်း", "Unseen in available records"),
@@ -299,18 +283,12 @@ internal fun TwoDAnalysisDetails(
                     if (item.firstSeenVerified) tr("ပျောက်ဂဏန်းပြန်ဆင်း", "Verified first return this week")
                     else tr("ဒီအပတ် ပြန်ဆင်းခဲ့သောဂဏန်းတွဲ", "Observed result this week"),
                     item.thisWeekFirstSeen?.let(::match) ?: tr("မတွေ့သေး", "Not seen yet"))
-                if (item.thisWeekFirstSeen != null && !item.firstSeenVerified)
-                    AnalysisDetailNote(tr("ဒီအပတ် ရှေ့အကြိမ်အချို့ရဲ့ ထွက်ဂဏန်းမှတ်တမ်း မရှိလို့ ပထမဆုံးပြန်ဆင်းတာ ဟုတ်မဟုတ် မသိနိုင်ပါ။",
-                        "Earlier slots missing: first return cannot be verified."))
                 AnalysisDetailLine(tr("ယခင်က ဂဏန်းပျောက်ခဲ့သောအပတ်", "Historical missing weeks"),
                     item.historicalMissingWeeks.toString() + tr(" ပတ်", " weeks"))
                 AnalysisDetailLine(tr("နောက်အပတ် မှတ်တမ်းအရ ပြန်ဆင်းခဲ့", "Observed in following week"),
                     item.historyFirstReturnEpisodes.toString() + tr(" ပတ်", " weeks"))
                 AnalysisDetailLine(tr("နောက်အပတ် မှတ်တမ်းအရ မဆင်းခဲ့", "Not observed in following week"),
                     item.historicalNoReturnWeeks.toString() + tr(" ပတ်", " weeks"))
-                if (item.historicalUnknownNextWeeks > 0)
-                    AnalysisDetailLine(tr("နောက်အပတ် ထွက်ဂဏန်းမှတ်တမ်း မရှိ", "No following-week records"),
-                        item.historicalUnknownNextWeeks.toString() + tr(" ပတ်", " weeks"))
                 AnalysisDetailLine(tr("ပြန်ဆင်းချိန် အများဆုံးတွဲခဲ့သောဂဏန်း", "Most common companion"),
                     item.commonCompanions.joinToString(" · ") {
                         "${it.companion} (${it.count})"
