@@ -30,6 +30,20 @@ class TwoDAnalysisLiveSummaryTest {
                 .display(en = false))
     }
 
+    @Test fun tiedCompanionsExposeActualDigitsAndBoundOverflow() {
+        val peak = TwoDLiveSummary.Peak(listOf("8", "3", "5"), 4)
+        assertEquals("3 မျိုးတူ", peak.display(en = false))
+        assertEquals(listOf("3", "5", "8"), peak.visibleDigits())
+        assertEquals(0, peak.hiddenDigitCount())
+
+        val all = TwoDLiveSummary.Peak(
+            (0..9).map { it.toString() }, 6)
+        assertEquals(listOf("0", "1", "2"), all.visibleDigits())
+        assertEquals(7, all.hiddenDigitCount())
+        assertEquals(listOf("0", "1"), all.visibleDigits(limit = 2))
+        assertEquals(8, all.hiddenDigitCount(limit = 2))
+    }
+
     @Test fun missingSingleDigitAndFullPairRankSeparately() {
         val digit = TwoDLiveSummary.missing(
             listOf(
