@@ -243,8 +243,17 @@ private fun ColumnScope.RealParity(
     r: TwoDAnalysisReport, en: Boolean, compact: Boolean,
 ) {
     val a = r.a03
-    if (!a.eligible || a.matched.isEmpty()) {
+    if (!a.eligible) {
         LiveUnavailable(en)
+        return
+    }
+    if (a.matched.isEmpty()) {
+        Text(
+            if (en) "No verified matching pattern" else "တူညီသောမှတ်တမ်း မတွေ့ပါ",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+        )
         return
     }
     PreviewSectionTitle(if (en) "Most common next class" else "အများဆုံး ဆက်ထွက်")
@@ -498,6 +507,14 @@ private fun ColumnScope.RealReturns(
     val a = r.a01
     if (!a.previousWeekComplete) {
         LiveUnavailable(en)
+        return
+    }
+    // A verified complete previous week with no missing digits is
+    // a known empty set, NOT unavailable data.
+    if (a.missingDigits.isEmpty()) {
+        Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
     val items = a.results.filter { it.historyFirstReturnEpisodes > 0 }
