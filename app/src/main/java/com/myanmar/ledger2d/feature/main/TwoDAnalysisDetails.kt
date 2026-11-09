@@ -262,42 +262,46 @@ internal fun TwoDAnalysisDetails(
             val a = report.a03
             if (!a.eligible) DE(en)
             else {
-                if (a.matched.isNotEmpty()) {
-                    val max = a.nextParity.values.maxOrNull() ?: 0
-                    DH(tx(en, "အများဆုံး ဆက်ထွက်", "Most observed following parity"),
-                        a.nextParity.filterValues { it == max }.keys.joinToString(" · ") {
-                            twoDParityLabel(it, en)
-                        }, en, count(en, max))
-                }
-                DP(tx(en, "ယခုအပတ် စုံ/မ အစဉ်", "This week's parity sequence"), en) {
+                DP(tx(en, "ယခုအပတ် စုံ/မ အစဉ်", "This week's parity timeline"), en) {
                     a.currentPreceding.forEach { row ->
-                        DL(evidence(en, row),
-                            twoDParityLabel(TwoDigitGroups.parity(row.digit), en), en)
+                        DTimelineLine(
+                            row.date.toString() + " · " + slot(en, row.session),
+                            row.digit, twoDParityLabel(TwoDigitGroups.parity(row.digit), en), en)
                     }
                 }
                 if (a.matched.isEmpty()) DE(en,
                     tx(en, "တူညီသောမှတ်တမ်း မတွေ့ပါ", "No verified historical match"))
                 else {
-                    DGroups(tx(en, "နောက်ထွက် စုံ/မ", "Following parity"),
-                        a.nextParity.filterValues { it > 0 }, en, parity = true)
-                    DP(tx(en, "ပုံစံတူ အပတ်များ", "Matching historical weeks"), en) {
-                        a.matchingWeeks.take(5).forEach { week ->
-                            DL(week.weekStart.toString(),
-                                week.following.digit + " · " +
-                                    twoDParityLabel(TwoDigitGroups.parity(week.following.digit), en),
+                    val max = a.nextParity.values.maxOrNull() ?: 0
+                    DP(tx(en, "နောက်အကြိမ် ထွက်ရှိမှု", "Following draw outcomes"), en) {
+                        if (max > 0) TwoDNumberFocus(
+                            a.nextParity.filterValues { it == max }.keys.joinToString(" · ") {
+                                twoDParityLabel(it, en)
+                            }, en, Modifier.fillMaxWidth())
+                        DL(tx(en, "အများဆုံး ဆက်ထွက်", "Most observed"),
+                            count(en, max), en)
+                        DGroups(tx(en, "စုံ/မ အကြိမ်ရေ", "Parity counts"),
+                            a.nextParity.filterValues { it > 0 }, en, parity = true)
+                    }
+                    DP(tx(en, "ပုံစံတူ အပတ်များ", "Matching weeks"), en) {
+                        a.matchingWeeks.forEach { week ->
+                            DT(tx(en, "အပတ်စတင်", "Week starting") +
+                                " " + week.weekStart, en, LedgerTextRole.HELPER)
+                            DTimelineLine(
+                                week.following.date.toString() + " · " +
+                                    slot(en, week.following.session),
+                                week.following.digit,
+                                twoDParityLabel(TwoDigitGroups.parity(week.following.digit), en),
                                 en)
-                        }
-                        DB(tx(en, "ပုံစံတူအပတ်များကို ယှဉ်ကြည့်ရန်",
-                            "Compare complete weekly patterns"), en) {
-                            show(tx(en, "ပုံစံတူအပတ်များ", "Matching patterns"),
-                                a.matchingWeeks.flatMap { week ->
-                                    listOf(tx(en, "အပတ်စတင်", "Week of") + " " + week.weekStart) +
+                            DB(tx(en, "Pattern အသေးစိတ်", "View matched pattern"), en) {
+                                show(week.weekStart.toString() + " · " +
+                                    tx(en, "ပုံစံတူအပတ်", "Matched week"),
                                     week.preceding.map {
                                         evidence(en, it) + " · " +
                                             twoDParityLabel(TwoDigitGroups.parity(it.digit), en)
                                     } + listOf(tx(en, "နောက်ထွက် → ", "Following → ") +
-                                        evidence(en, week.following))
-                                })
+                                        evidence(en, week.following)))
+                            }
                         }
                     }
                 }
@@ -450,31 +454,36 @@ internal fun TwoDAnalysisDetails(
             val a = report.a05
             if (a.transitions.isEmpty()) DE(en)
             else {
-                DH(tx(en, "ကျန်ဂဏန်း (0–9)", "Unseen digits (0–9)"),
-                    a.remainingDigits.joinToString(" ").ifEmpty {
-                        tx(en, "ပျောက်ဂဏန်းမရှိ", "No missing digits")
-                    }, en)
+                DP(tx(en, "ယခုအပတ် ကျန်ဂဏန်း (0–9)", "Unseen digits this week"), en) {
+                    val unseen = a.remainingDigits.joinToString(" ")
+                    if (unseen.isNotBlank()) TwoDNumberFocus(unseen, en,
+                        Modifier.fillMaxWidth(), compact = true)
+                    else DT(tx(en, "ပျောက်ဂဏန်းမရှိ", "No unseen digits"), en)
+                }
                 val remainingRows = TwoDDetailSelection.remainingAfter(a.transitions)
-                DP(tx(en, "အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု",
-                    "New / old digit flow"), en) {
+                DP(tx(en, "အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု", "New / old digit flow"), en) {
                     a.transitions.forEachIndexed { index, item ->
                         val newly = item.newlySeenDigits.sorted().joinToString(" ")
                         val older = (item.result.digit.toSet() - item.newlySeenDigits)
                             .sorted().joinToString(" ")
-                        val words = listOf(
-                            if (newly.isNotBlank()) tx(en, "အသစ်", "New") + ": " + newly else "",
-                            if (older.isNotBlank()) tx(en, "အဟောင်း", "Old") + ": " + older else "",
-                        ).filter { it.isNotEmpty() }.joinToString(" · ")
-                        DT(evidence(en, item.result), en, LedgerTextRole.HELPER)
-                        DT(words, en, LedgerTextRole.BODY)
+                        val parts = if (item.classificationVerified) listOfNotNull(
+                            newly.takeIf { it.isNotBlank() }?.let {
+                                tx(en, "အသစ်", "New") + ": " + it
+                            },
+                            older.takeIf { it.isNotBlank() }?.let {
+                                tx(en, "အဟောင်း", "Old") + ": " + it
+                            },
+                        ) else emptyList()
+                        DTimelineLine(
+                            item.result.date.toString() + " · " +
+                                slot(en, item.result.session),
+                            item.result.digit, parts.joinToString(" · "), en)
                         DT(tx(en, "ကျန်ဂဏန်း", "Remaining") + ": " +
-                            remainingRows[index].ifEmpty {
-                                tx(en, "မရှိ", "None")
-                            } + (if (!item.classificationVerified)
-                                " · " + tx(en, "ရရှိသောမှတ်တမ်းအရ", "Available records only")
-                                else ""), en, LedgerTextRole.TABLE,
+                            remainingRows[index].ifBlank { tx(en, "မရှိ", "None") },
+                            en, LedgerTextRole.TABLE,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        HorizontalDivider()
+                        HorizontalDivider(color =
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = .23f))
                     }
                 }
             }
@@ -615,29 +624,71 @@ internal fun TwoDAnalysisDetails(
                 DE(en, if (report.a04.observedDraws > 0)
                     tx(en, "ပျောက်ဂဏန်းမရှိ", "No unseen digits") else null)
             } else {
-                DH(tx(en, "ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း",
-                    "Last week's unseen digits"), a.missingDigits.joinToString(" "), en)
-                a.results.filter { item ->
-                    item.thisWeekFirstSeen != null || item.commonCompanions.isNotEmpty() ||
-                        item.historicalEpisodes.isNotEmpty()
-                }.forEach { item ->
-                    DP(tx(en, "ပျောက်ဂဏန်း", "Missing digit") + " " + item.digit, en) {
-                        if (item.commonCompanions.isNotEmpty())
-                            DL(tx(en, "အများဆုံးတွဲထွက်", "Most common companion"),
-                                item.commonCompanions.joinToString(" · ") {
-                                    it.companion.toString() + " ×" + it.count
-                                }, en)
+                var selected by remember(report.target, a.missingDigits) {
+                    mutableStateOf(a.missingDigits.first())
+                }
+                DP(tx(en, "ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်းများ",
+                    "Previous week's unseen digits"), en) {
+                    a.missingDigits.chunked(5).forEach { digitRow ->
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            digitRow.forEach { digit ->
+                                Surface(
+                                    onClick = { selected = digit },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (selected == digit)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .54f),
+                                    shadowElevation = if (selected == digit) 3.dp else 0.dp,
+                                ) {
+                                    Box(Modifier.padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center) {
+                                        DT(digit.toString(), en, LedgerTextRole.CARD_TITLE,
+                                            color = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                            }
+                            repeat(5 - digitRow.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+                val item = a.results.firstOrNull { it.digit == selected }
+                if (item != null) {
+                    DP(tx(en, "ပျောက်ဂဏန်း", "Missing digit") + " " + selected, en) {
+                        if (item.commonCompanions.isNotEmpty()) {
+                            DT(tx(en, "ပြန်ဆင်းချိန် အများဆုံးတွဲထွက်",
+                                "Most frequent return companions"),
+                                en, LedgerTextRole.CARD_TITLE)
+                            val top = item.commonCompanions.take(2)
+                            Row(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                                top.forEach { companion ->
+                                    TwoDResultFrame(
+                                        tx(en, "တွဲထွက်ဂဏန်း", "Companion digit"),
+                                        companion.companion.toString(),
+                                        count(en, companion.count), en, Modifier.weight(1f))
+                                }
+                                if (top.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                            item.commonCompanions.drop(2).forEach {
+                                DNumberLine(it.companion.toString(), count(en, it.count), en)
+                            }
+                        }
                         item.thisWeekFirstSeen?.let {
-                            DL(tx(en, "ဒီအပတ် ပြန်ဆင်း", "Observed return this week"),
-                                evidence(en, it), en)
+                            DT(tx(en, "ဒီအပတ် ပြန်ဆင်းမှု", "This week's observed return"),
+                                en, LedgerTextRole.CARD_TITLE)
+                            DTimelineLine(it.date.toString() + " · " + slot(en, it.session),
+                                it.digit, tx(en, "ပြန်ဆင်းခဲ့သောဂဏန်းတွဲ",
+                                    "Observed return pair"), en)
                         }
                         if (item.historyFirstReturnEpisodes > 0)
                             DL(tx(en, "ယခင် ပြန်ဆင်းခဲ့သောအပတ်", "Historical return weeks"),
                                 item.historyFirstReturnEpisodes.toString(), en)
                         if (item.historicalEpisodes.isNotEmpty())
                             DB(tx(en, "ပျောက်ခဲ့သောအပတ်နှင့် ပြန်ဆင်းမှု",
-                                "Missing-week to return history"), en) {
-                                show(item.digit.toString() + " · " +
+                                "Missing-week to return evidence"), en) {
+                                show(selected.toString() + " · " +
                                     tx(en, "ပြန်ဆင်းမှု", "Return history"),
                                     item.historicalEpisodes.map { episode ->
                                         tx(en, "ပျောက်ခဲ့သောအပတ်", "Missing week") +
