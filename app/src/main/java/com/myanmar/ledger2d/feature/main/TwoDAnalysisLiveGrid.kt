@@ -223,7 +223,9 @@ private fun ColumnScope.RealMostSeen(
     }
     HorizontalDivider(thickness = .5.dp)
     LiveCountRow(if (en) "Parity" else "စုံ/မ",
-        TwoDLiveSummary.peak(a.parity), en, compact)
+        TwoDLiveSummary.peak(a.parity.mapKeys {
+            twoDParityLabel(it.key, en)
+        }), en, compact)
     val groups = a.groups.mapKeys { twoDGroupLabel(it.key, en) }
     LiveCountRow(if (en) "Group" else "အထူး",
         TwoDLiveSummary.peak(groups), en, compact)
@@ -246,7 +248,9 @@ private fun ColumnScope.RealParity(
         return
     }
     PreviewSectionTitle(if (en) "Most common next class" else "အများဆုံး ဆက်ထွက်")
-    val p = TwoDLiveSummary.peak(a.nextParity)
+    val p = TwoDLiveSummary.peak(a.nextParity.mapKeys {
+        twoDParityLabel(it.key, en)
+    })
     if (p.present) {
         Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .48f),
             border = BorderStroke(1.dp,
@@ -351,6 +355,22 @@ private fun ColumnScope.RealPrevious(
 }
 
 @Composable
+private fun LiveDigitTokens(digits: List<String>, featured: Boolean = false) {
+    // A real week can contain up to ten distinct 0–9 digits. Unlike the
+    // four-value DEMO fixture, they must wrap without squeezing to 10 columns.
+    digits.chunked(4).forEach { chunk ->
+        Row(Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            chunk.forEach { d ->
+                PreviewBadge(d, modifier = Modifier.weight(1f),
+                    primary = featured)
+            }
+            repeat(4 - chunk.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+}
+
+@Composable
 private fun ColumnScope.RealWeekly(
     r: TwoDAnalysisReport, en: Boolean, compact: Boolean,
 ) {
@@ -361,7 +381,7 @@ private fun ColumnScope.RealWeekly(
     }
     PreviewSectionTitle(if (en) "Unseen digits (0–9)" else "ပျောက်ဂဏန်း (0–9)")
     if (a.remainingDigits.isNotEmpty()) {
-        TokenStrip(a.remainingDigits.map { it.toString() }, featured = true)
+        LiveDigitTokens(a.remainingDigits.map { it.toString() }, featured = true)
     } else {
         Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
             style = MaterialTheme.typography.labelSmall,
@@ -377,7 +397,7 @@ private fun ColumnScope.RealWeekly(
         Text(if (en) "None in last draw" else "နောက်ဆုံးအကြိမ် အသစ်မရှိ",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-    } else TokenStrip(latest.newlySeenDigits.map { it.toString() }.sorted())
+    } else LiveDigitTokens(latest.newlySeenDigits.map { it.toString() }.sorted())
     Spacer(Modifier.height(if (compact) 6.dp else 14.dp))
     PreviewLine(if (en) "Recorded" else "မှတ်တမ်း",
         a.transitions.size.toString() + if (a.completeThroughTarget) "" else "+", compact)
@@ -465,7 +485,7 @@ private fun ColumnScope.RealLastWeek(
     PreviewSectionTitle(if (en) "Missing last week" else "ပြီးခဲ့တဲ့အပတ် ပျောက်")
     if (!a.complete) LiveUnavailable(en)
     else if (a.remainingDigits.isNotEmpty())
-        TokenStrip(a.remainingDigits.map { it.toString() })
+        LiveDigitTokens(a.remainingDigits.map { it.toString() })
     else Text(if (en) "No missing digits" else "ပျောက်ဂဏန်းမရှိ",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
