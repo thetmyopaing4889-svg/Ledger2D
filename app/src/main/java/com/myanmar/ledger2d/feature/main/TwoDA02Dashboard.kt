@@ -48,6 +48,7 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
     val lang = if (en) "en" else "my"
     val scheme = MaterialTheme.colorScheme
     var position by rememberSaveable { mutableStateOf("both") }
+    var category by rememberSaveable { mutableStateOf("pairs") }
     var browserOpen by rememberSaveable { mutableStateOf(false) }
     var missingOnly by rememberSaveable { mutableStateOf(false) }
     var initialPair by rememberSaveable { mutableStateOf<String?>(null) }
@@ -99,21 +100,21 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     onClick = { topDigitChoiceOpen = true })
             }
 
-            // Explicitly means the least frequent among digits that appeared, NOT missing digits.
-            if (leastDigits.isNotEmpty()) A02Panel {
-                Text(tr("ထွက်ဖူးသောဂဏန်းများထဲမှ အနည်းဆုံး", "Least frequent of observed digits"),
-                    style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
-                    color = scheme.onSurfaceVariant)
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TwoDNumberFocus(leastDigits.joinToString(" · ") { it.digit },
-                        en, modifier = Modifier.weight(1f), compact = true)
-                    Text(leastDigit.toString() + tr(" ကြိမ်စီ", " times each"),
-                        style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
-                        color = scheme.onSurface)
-                }
-            }
 
+            // Fixed highlights above; a single chosen full detail section below.
+            TwoDCategoryTabs(
+                options = listOf(
+                    "pairs" to tr("ဂဏန်းတွဲ", "Pairs"),
+                    "digits" to tr("ဂဏန်း", "Digits"),
+                    "special" to tr("အထူး", "Special"),
+                    "parity" to tr("စုံ/မ", "Parity"),
+                ),
+                selected = category,
+                en = en,
+                onSelect = { category = it },
+            )
+            when (category) {
+                "pairs" -> {
             // Detail is visible on first entry; history and the 00-99 browser are optional actions.
             A02Panel {
                 A02PanelTitle(tr("ဂဏန်းတွဲများ (00–99)", "2D pairs (00–99)"), "", en)
@@ -151,7 +152,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                         style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, lang))
                 }
             }
-
+                }
+                "digits" -> {
             A02Panel {
                 A02PanelTitle(tr("ဂဏန်းများ (0–9)", "Digits (0–9)"), "", en)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -200,7 +202,41 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
                     color = scheme.onSurfaceVariant)
             }
-
+            // Explicitly means the least frequent among digits that appeared, NOT missing digits.
+            if (leastDigits.isNotEmpty()) A02Panel {
+                Text(tr("ထွက်ဖူးသောဂဏန်းများထဲမှ အနည်းဆုံး", "Least frequent of observed digits"),
+                    style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
+                    color = scheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TwoDNumberFocus(leastDigits.joinToString(" · ") { it.digit },
+                        en, modifier = Modifier.weight(1f), compact = true)
+                    Text(leastDigit.toString() + tr(" ကြိမ်စီ", " times each"),
+                        style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
+                        color = scheme.onSurface)
+                }
+            }
+                }
+                "special" -> {
+            A02Panel {
+                A02PanelTitle(tr("အထူးဂဏန်းအုပ်စုများ", "Special groups"), "", en)
+                data.groups.forEach { (key, amount) ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(twoDGroupLabel(key, en),
+                            style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
+                            modifier = Modifier.weight(1f))
+                        Text(amount.toString() + tr(" ကြိမ်", " times"),
+                            style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang))
+                        if (amount > 0) TextButton(onClick = {
+                            selectedGroupHistory = "group:" + key
+                        }) { Text(tr("မှတ်တမ်း", "History"),
+                            style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, lang)) }
+                    }
+                    HorizontalDivider(color = scheme.outlineVariant.copy(alpha = .25f))
+                }
+            }
+                }
+                "parity" -> {
             // Categories never belong inside the pair list.
             A02Panel {
                 A02PanelTitle(tr("စုံ/မ ထွက်ရှိမှု", "Parity counts"), "", en)
@@ -220,23 +256,9 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     HorizontalDivider(color = scheme.outlineVariant.copy(alpha = .25f))
                 }
             }
-            A02Panel {
-                A02PanelTitle(tr("အထူးဂဏန်းအုပ်စုများ", "Special groups"), "", en)
-                data.groups.forEach { (key, amount) ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(twoDGroupLabel(key, en),
-                            style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
-                            modifier = Modifier.weight(1f))
-                        Text(amount.toString() + tr(" ကြိမ်", " times"),
-                            style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang))
-                        if (amount > 0) TextButton(onClick = {
-                            selectedGroupHistory = "group:" + key
-                        }) { Text(tr("မှတ်တမ်း", "History"),
-                            style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, lang)) }
-                    }
-                    HorizontalDivider(color = scheme.outlineVariant.copy(alpha = .25f))
                 }
             }
+
         }
     }
 
