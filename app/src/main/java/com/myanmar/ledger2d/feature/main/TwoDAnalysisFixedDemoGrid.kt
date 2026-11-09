@@ -2,6 +2,7 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -133,17 +134,20 @@ internal fun TwoDFixedDemoGrid(
 }
 
 @Composable
-private fun PreviewTile(
+internal fun PreviewTile(
     title: String,
     modifier: Modifier,
     compact: Boolean,
     stretch: Boolean = false,
+    onOpenDetail: (() -> Unit)? = null,
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val c = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(14.dp)
     Surface(
-        modifier = modifier,
+        modifier = modifier.then(
+            if (onOpenDetail == null) Modifier else Modifier.clickable { onOpenDetail() }
+        ),
         shape = shape,
         color = c.surface,
         shadowElevation = 7.dp,
@@ -210,7 +214,7 @@ private fun PreviewTile(
 }
 
 @Composable
-private fun PreviewHero(
+internal fun PreviewHero(
     label: String, number: PreviewNumber, modifier: Modifier,
     en: Boolean, compact: Boolean,
 ) {
@@ -269,7 +273,7 @@ private fun PreviewHero(
 }
 
 @Composable
-private fun PreviewLine(
+internal fun PreviewLine(
     label: String, value: String, compact: Boolean,
 ) {
     val c = MaterialTheme.colorScheme
@@ -324,7 +328,7 @@ private fun ColumnScope.MostSeenPreview(en: Boolean, compact: Boolean) {
  * measured text line. This keeps the numeric hierarchy without clipping.
  */
 @Composable
-private fun TinyNumberWell(
+internal fun TinyNumberWell(
     title: String, number: PreviewNumber, primary: Boolean,
     en: Boolean, modifier: Modifier, compact: Boolean,
 ) {
@@ -436,7 +440,7 @@ private fun ColumnScope.MissingPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun PreviewBadge(
+internal fun PreviewBadge(
     value: String,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
@@ -544,7 +548,7 @@ private fun ColumnScope.PreviousPreview(en: Boolean, compact: Boolean) {
 }
 
 @Composable
-private fun TokenStrip(digits: List<String>, featured: Boolean = false) {
+internal fun TokenStrip(digits: List<String>, featured: Boolean = false) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -556,7 +560,7 @@ private fun TokenStrip(digits: List<String>, featured: Boolean = false) {
 }
 
 @Composable
-private fun PreviewSectionTitle(text: String) {
+internal fun PreviewSectionTitle(text: String) {
     Text(text, style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
