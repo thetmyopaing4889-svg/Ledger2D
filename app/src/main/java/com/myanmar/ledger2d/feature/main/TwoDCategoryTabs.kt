@@ -41,7 +41,7 @@ internal fun TwoDCategoryTabs(
             val active = key == selected
             Surface(
                 onClick = { onSelect(key) },
-                modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                modifier = Modifier.weight(1f).height(64.dp),
                 shape = RoundedCornerShape(14.dp),
                 color = if (active) colors.primaryContainer
                     else colors.surfaceVariant.copy(alpha = .48f),
@@ -57,7 +57,7 @@ internal fun TwoDCategoryTabs(
                     Modifier.fillMaxWidth()
                         .padding(horizontal = if (options.size >= 5) 1.dp else 3.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         label,
@@ -70,6 +70,7 @@ internal fun TwoDCategoryTabs(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(Modifier.height(5.dp))
                     Box(
                         Modifier.width(if (active) 23.dp else 8.dp).height(3.dp)
                             .background(

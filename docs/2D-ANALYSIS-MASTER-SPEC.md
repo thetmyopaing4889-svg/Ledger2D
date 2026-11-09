@@ -1358,3 +1358,19 @@ The user explicitly accepted A-06's AM/PM/ALL selector + compact scope summary +
 
 **A-02 explicit correction:** separate 2D pair frequency, 0–9 digit frequency, even/odd parity, and special number-group sections. Never bury parity/special groups inside 2D pair details. The digit Frequency table has combined/tens/ones selectors; tapping a digit must filter historical evidence to that chosen positional mode, with a double such as 55 contributing two combined digit appearances, one tens appearance, one ones appearance. Replace ambiguous \`ဂဏန်း အထွက်အနည်းဆုံး (ပေါ်ဖူး)\` with \`ထွက်ဖူးသောဂဏန်းများထဲမှ အနည်းဆုံး\` meaning the least frequent **among digits recorded at least once**, distinct from never-seen digits.
 
+---
+
+## Part XXII — Approved single-row category tabs and stable first render (2026-11-09)
+
+The user clarified A-06 is a **frame and information-space reference**, not just card aesthetics. Keep the most important result(s) in fixed highlighted primary cards above a strongly discoverable, selectable category strip. Only the chosen category's complete relevant detail is shown underneath. This prevents repeated large panels and unnecessary scrolling without losing history evidence. Selected category has a distinct contrast fill, stroke, low shadow and underline. Number of categories determines number of equal-width cells **in a single row**: three categories = three cells, four = four, five = five. Never split 4 into 2×2 or 5 into two rows. Text can take two lines within its own cell where the approved font needs space. Keep the user's Burmese wording and English translation.
+
+- A-02: fixed top pair/digit frequency highlight cards, four tabs **ဂဏန်းတွဲ / ဂဏန်း / အထူး / စုံ/မ**. Pair results only in pair tab, 0–9 with nested ပေါင်း/ထိပ်/ပိတ် plus least-seen-among-observed in digits tab, special groups and parity each isolated. Ties in top heroes remain selectable and evidence retains exact position counts.
+- A-04: fixed previous-week period and top digit/unseen digit cards, four tabs **ဂဏန်း / စုံ/မ / အထူး / ပြန်ကျ**. Historical evidence available within each chosen category, including first/duplicate occurrence rows.
+- A-07: fixed top observed special group result, five **အပူး / ညီအကို / ပါဝါ / နက္ခတ် / ပြန်ကျ** tabs in one row. Only the selected group's measured count, actual numbers and full historical source results appear beneath.
+- A-08: fixed preceding source results (with their original date and session), up to three tabs for observed matching historical conditions, labeled by the real source digits (e.g. 05+67 / 05 / 67). Do not show absent condition placeholders. Chosen condition shows all its actual resulting 2D numbers, counts and navigable source→following historical evidence.
+- A-01: previous week's unseen-digit choice retained; fixed selected digit's strongest observed companion when available; available companion/observed return/history categories as one-row tabs. Unknown outcomes remain absent.
+- A-06: preserve the existing approved AM/PM/ALL selector, scope summary and two result cards; do not impose a redundant category tab.
+- A-03 and A-05: chronological timeline remains primary, no artificial category stripping.
+- Initial 2D Analysis navigation: distinguish **unemitted** Room streams (null) from truly **empty observed** streams (empty list). Delay full analysis grid rendering until every required data source emits its initial snapshot; during this brief phase use a small progress indicator in the existing frame, never an incorrect empty grid. Default target date/session is derived immediately; do not asynchronously reset it after the first composable frame. Later database emissions still update the result normally.
+
+The entire 4–2–2 overview, the eight approved formulas, the user-provided method titles, font standard, and live-result source precedence are unchanged.
