@@ -56,6 +56,15 @@ internal object TwoDDetailSelection {
         val max = data.maxOfOrNull { it.observedDrawsSince } ?: 0
         return data.filter { it.observedDrawsSince == max }.sortedBy { it.value }
     }
+
+    /** Stable per-row remaining digits; no mutable state is captured by a composable lambda. */
+    fun remainingAfter(transitions: List<TwoDTransition>): List<String> {
+        val seen = mutableSetOf<Char>()
+        return transitions.map { row ->
+            seen.addAll(row.result.digit.toList())
+            ('0'..'9').filterNot { it in seen }.joinToString(" ")
+        }
+    }
 }
 private fun tx(en: Boolean, mm: String, eng: String) = if (en) eng else mm
 private fun count(en: Boolean, amount: Int) = amount.toString() + tx(en, " ကြိမ်", " times")
@@ -414,11 +423,10 @@ internal fun TwoDAnalysisDetails(
                     a.remainingDigits.joinToString(" ").ifEmpty {
                         tx(en, "ပျောက်ဂဏန်းမရှိ", "No missing digits")
                     }, en)
-                val seen = mutableSetOf<Char>()
+                val remainingRows = TwoDDetailSelection.remainingAfter(a.transitions)
                 DP(tx(en, "အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု",
                     "New / old digit flow"), en) {
-                    a.transitions.forEach { item ->
-                        seen.addAll(item.result.digit.toList())
+                    a.transitions.forEachIndexed { index, item ->
                         val newly = item.newlySeenDigits.sorted().joinToString(" ")
                         val older = (item.result.digit.toSet() - item.newlySeenDigits)
                             .sorted().joinToString(" ")
@@ -429,7 +437,7 @@ internal fun TwoDAnalysisDetails(
                         DT(evidence(en, item.result), en, LedgerTextRole.HELPER)
                         DT(words, en, LedgerTextRole.BODY)
                         DT(tx(en, "ကျန်ဂဏန်း", "Remaining") + ": " +
-                            ('0'..'9').filterNot { it in seen }.joinToString(" ").ifEmpty {
+                            remainingRows[index].ifEmpty {
                                 tx(en, "မရှိ", "None")
                             } + (if (!item.classificationVerified)
                                 " · " + tx(en, "ရရှိသောမှတ်တမ်းအရ", "Available records only")

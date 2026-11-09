@@ -41,4 +41,21 @@ class TwoDDetailPresentationTest {
             TwoDAnalysisText.title("06", false))
         assertEquals("ညီအကို", twoDGroupLabel("ညီကို", false))
     }
+
+    @Test fun perDrawUnseenListStaysStableAcrossRecompositions() {
+        val first = com.myanmar.ledger2d.core.domain.TwoDTransition(
+            com.myanmar.ledger2d.core.domain.TwoDMatch(
+                LocalDate.parse("2026-11-02"), DrawSession.MORNING, "12"),
+            true, true, setOf('1','2'), true)
+        val second = com.myanmar.ledger2d.core.domain.TwoDTransition(
+            com.myanmar.ledger2d.core.domain.TwoDMatch(
+                LocalDate.parse("2026-11-02"), DrawSession.EVENING, "33"),
+            true, true, setOf('3'), true)
+        val list = listOf(first,second)
+        val firstRender = TwoDDetailSelection.remainingAfter(list)
+        assertEquals(firstRender, TwoDDetailSelection.remainingAfter(list))
+        assertTrue('3' in firstRender[0])
+        assertTrue('3' !in firstRender[1])
+        assertEquals(8, firstRender[0].split(" ").size)
+    }
 }
