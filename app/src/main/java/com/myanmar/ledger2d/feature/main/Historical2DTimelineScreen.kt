@@ -507,12 +507,21 @@ fun Historical2DTimelineScreen(
                         Text(method.title, style = LedgerTypographyStandard.style(
                             LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
                             maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        Text(date.toString() + " · " +
-                            (if (target.session == DrawSession.MORNING)
-                                tr("မနက်အကြိမ်", "Morning")
-                            else tr("ညနေအကြိမ်", "Evening")) +
-                            (if (openCheck in listOf("04", "05", "07")) ""
-                             else " · " + lookbackLabel),
+                        val currentMonday = date.minusDays((date.dayOfWeek.value - 1).toLong())
+                        val shownPeriod = when (openCheck) {
+                            "04", "01" -> {
+                                val previousMonday = currentMonday.minusWeeks(1)
+                                previousMonday.toString() + " – " + previousMonday.plusDays(4)
+                            }
+                            "05", "07" -> currentMonday.toString() + " – " + date
+                            else -> date.toString() + " · " +
+                                (if (target.session == DrawSession.MORNING)
+                                    tr("မနက်အကြိမ်", "Morning")
+                                 else tr("ညနေအကြိမ်", "Evening"))
+                        }
+                        Text(shownPeriod +
+                            (if (openCheck in listOf("02", "03", "06", "08", "01"))
+                                " · " + lookbackLabel else ""),
                             style = LedgerTypographyStandard.style(
                                 LedgerTextRole.HELPER, if (en) "en" else "my"),
                             color = scheme.onSurfaceVariant)

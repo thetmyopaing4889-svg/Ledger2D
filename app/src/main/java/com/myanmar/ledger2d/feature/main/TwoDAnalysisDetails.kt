@@ -176,6 +176,40 @@ private fun DGroups(title: String, data: Map<String, Int>, en: Boolean,
     }
 }
 
+
+@Composable
+private fun DCompactHighlight(
+    title: String, value: String, foot: String, en: Boolean, modifier: Modifier = Modifier,
+) {
+    val c = MaterialTheme.colorScheme
+    Surface(modifier, shape = RoundedCornerShape(17.dp), color = c.primaryContainer,
+        shadowElevation = 5.dp, tonalElevation = 2.dp) {
+        Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(
+            c.primaryContainer, c.secondaryContainer.copy(alpha = .8f))))
+            .padding(horizontal = 11.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            DT(title, en, LedgerTextRole.HELPER, color = c.onPrimaryContainer, maxLines = 2)
+            DT(value, en, LedgerTextRole.MONEY, color = c.onPrimaryContainer, maxLines = 3)
+            DT(foot, en, LedgerTextRole.TABLE,
+                color = c.onPrimaryContainer.copy(alpha = .82f), maxLines = 2)
+        }
+    }
+}
+
+/** Each row in a history dialog names the source reference and the actual next result. */
+private fun chainText(en: Boolean, row: TwoDReferenceChain): String {
+    val references = listOfNotNull(
+        row.precedingFirst?.let {
+            tx(en, "ပထမ", "First") + " " + evidence(en, it)
+        },
+        row.precedingSecond?.let {
+            tx(en, "ဒုတိယ", "Second") + " " + evidence(en, it)
+        },
+    )
+    return references.joinToString("\n") + "\n" +
+        tx(en, "ဆက်ထွက် → ", "Following → ") + evidence(en, row.following)
+}
+
 @Composable
 internal fun TwoDAnalysisDetails(
     id: String, report: TwoDAnalysisReport, en: Boolean,
@@ -190,88 +224,125 @@ internal fun TwoDAnalysisDetails(
             rows = evidenceRows
         }
     }
+
     when (id) {
         "03" -> {
             val a = report.a03
             if (!a.eligible) DE(en)
-            else if (a.matched.isEmpty()) DE(en,
-                tx(en, "တူညီသောမှတ်တမ်း မတွေ့ပါ", "No verified historical match"))
             else {
-                val most = a.nextParity.values.maxOrNull() ?: 0
-                DH(tx(en, "အများဆုံး ဆက်ထွက်", "Most observed next class"),
-                    a.nextParity.filterValues { it == most }.keys.joinToString(" · ") {
-                        twoDParityLabel(it, en)
-                    }, en, count(en, most))
-                DP(tx(en, "ယခုအပတ် စုံ/မ အစဉ်", "This week's parity sequence"), en) {
-                    DT(a.checkedPrefix.joinToString(" → ") { twoDParityLabel(it, en) }, en)
+                if (a.matched.isNotEmpty()) {
+                    val max = a.nextParity.values.maxOrNull() ?: 0
+                    DH(tx(en, "အများဆုံး ဆက်ထွက်", "Most observed following parity"),
+                        a.nextParity.filterValues { it == max }.keys.joinToString(" · ") {
+                            twoDParityLabel(it, en)
+                        }, en, count(en, max))
                 }
-                DGroups(tx(en, "နောက်ထွက် စုံ/မ", "Following parity counts"),
-                    a.nextParity.filterValues { it > 0 }, en, parity = true)
-                DP(tx(en, "တူညီသောမှတ်တမ်း", "Matching records"), en) {
-                    DL(tx(en, "တူညီသောအပတ်", "Matching weeks"),
-                        count(en, a.matched.size), en)
-                    a.matched.take(5).forEach {
-                        DL(tx(en, "အပြီးထွက်", "Next result"), evidence(en, it), en)
+                DP(tx(en, "ယခုအပတ် စုံ/မ အစဉ်", "This week's parity sequence"), en) {
+                    a.currentPreceding.forEach { row ->
+                        DL(evidence(en, row),
+                            twoDParityLabel(TwoDigitGroups.parity(row.digit), en), en)
                     }
-                    if (a.matched.size > 5) DB(tx(en, "အားလုံးကြည့်ရန်", "View all"), en) {
-                        show(tx(en, "တူညီသောမှတ်တမ်း", "Matching records"),
-                            a.matched.map { evidence(en, it) })
+                }
+                if (a.matched.isEmpty()) DE(en,
+                    tx(en, "တူညီသောမှတ်တမ်း မတွေ့ပါ", "No verified historical match"))
+                else {
+                    DGroups(tx(en, "နောက်ထွက် စုံ/မ", "Following parity"),
+                        a.nextParity.filterValues { it > 0 }, en, parity = true)
+                    DP(tx(en, "ပုံစံတူ အပတ်များ", "Matching historical weeks"), en) {
+                        a.matchingWeeks.take(5).forEach { week ->
+                            DL(week.weekStart.toString(),
+                                week.following.digit + " · " +
+                                    twoDParityLabel(TwoDigitGroups.parity(week.following.digit), en),
+                                en)
+                        }
+                        DB(tx(en, "ပုံစံတူအပတ်များကို ယှဉ်ကြည့်ရန်",
+                            "Compare complete weekly patterns"), en) {
+                            show(tx(en, "ပုံစံတူအပတ်များ", "Matching patterns"),
+                                a.matchingWeeks.flatMap { week ->
+                                    listOf(tx(en, "အပတ်စတင်", "Week of") + " " + week.weekStart) +
+                                    week.preceding.map {
+                                        evidence(en, it) + " · " +
+                                            twoDParityLabel(TwoDigitGroups.parity(it.digit), en)
+                                    } + listOf(tx(en, "နောက်ထွက် → ", "Following → ") +
+                                        evidence(en, week.following))
+                                })
+                        }
                     }
                 }
             }
         }
         "06" -> {
-            val streams = TwoDDetailSelection.streams(report.a06)
-            if (streams.isEmpty()) DE(en)
+            val available = TwoDDetailSelection.streams(report.a06)
+            if (available.isEmpty()) DE(en)
             else {
                 var local by remember(report.target) {
                     mutableStateOf(if (report.target.session == DrawSession.MORNING)
                         "morning" else "evening")
                 }
-                val selected = selectedStreakStream ?: local
-                val stream = if (selected in streams) selected else streams.first()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    streams.forEach { key ->
-                        val label = when (key) {
-                            "morning" -> tx(en, "မနက်အကြိမ်", "Morning")
-                            "evening" -> tx(en, "ညနေအကြိမ်", "Evening")
-                            else -> tx(en, "နှစ်ကြိမ်ပေါင်း", "Combined")
-                        }
-                        FilterChip(selected = stream == key,
+                val chosen = selectedStreakStream ?: local
+                val stream = if (chosen in available) chosen else available.first()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    available.forEach { key ->
+                        FilterChip(modifier = Modifier.weight(1f),
+                            selected = stream == key,
                             onClick = {
                                 if (onStreakStreamChange == null) local = key
                                 else onStreakStreamChange(key)
-                            }, label = { DT(label, en, LedgerTextRole.HELPER) })
+                            }, label = { DT(when (key) {
+                                "morning" -> "AM"
+                                "evening" -> "PM"
+                                else -> "ALL"
+                            }, en, LedgerTextRole.BUTTON) })
                     }
                 }
                 val a = requireNotNull(report.a06[stream])
                 val single = TwoDDetailSelection.longest(a.singleDigits)
                 val pairs = TwoDDetailSelection.longest(a.fullNumbers)
-                fun topDisplay(values: List<TwoDStreak>): String =
-                    values.take(4).joinToString(" · ") { it.value } +
-                        if (values.size > 4)
-                            " (" + values.size + tx(en, " မျိုးတူ", " tied") + ")"
-                        else ""
-                if (single.isNotEmpty()) DH(tx(en, "ပျောက်ဂဏန်း (0–9)", "Missing digits (0–9)"),
-                    topDisplay(single), en, count(en, single.first().observedDrawsSince))
-                if (pairs.isNotEmpty()) DH(tx(en, "ပျောက်ဂဏန်းတွဲ (00–99)", "Missing pairs (00–99)"),
-                    topDisplay(pairs), en, count(en, pairs.first().observedDrawsSince))
-                DP(tx(en, "ပျောက်ဂဏန်းများ", "Single-digit absence"), en) {
-                    a.singleDigits.forEach {
-                        DL(it.value, count(en, it.observedDrawsSince) +
-                            (it.lastSeen?.let { seen -> " · " + evidence(en, seen) } ?: ""), en)
+                DP(when (stream) {
+                    "morning" -> tx(en, "မနက်အကြိမ်", "Morning")
+                    "evening" -> tx(en, "ညနေအကြိမ်", "Evening")
+                    else -> tx(en, "မနက်/ညနေ ပေါင်း", "Combined AM/PM")
+                }, en) {
+                    DL(tx(en, "မှတ်တမ်းရှိသောအကြိမ်", "Recorded draws"),
+                        count(en, a.observedDraws), en)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (single.isNotEmpty()) DCompactHighlight(
+                        tx(en, "ပျောက်ဂဏန်း", "Missing digit"), single.first().value,
+                        count(en, single.first().observedDrawsSince) +
+                            if (single.size > 1) " · " + single.size + tx(en, " မျိုးတူ", " tied") else "",
+                        en, Modifier.weight(1f))
+                    if (pairs.isNotEmpty()) DCompactHighlight(
+                        tx(en, "ပျောက်ဂဏန်းတွဲ", "Missing pair"), pairs.first().value,
+                        count(en, pairs.first().observedDrawsSince) +
+                            if (pairs.size > 1) " · " + pairs.size + tx(en, " မျိုးတူ", " tied") else "",
+                        en, Modifier.weight(1f))
+                }
+                DP(tx(en, "ပျောက်ဂဏန်းများ (0–9)", "Digits (0–9)"), en) {
+                    a.singleDigits.take(5).forEach {
+                        DL(it.value, count(en, it.observedDrawsSince), en)
+                    }
+                    DB(tx(en, "ဂဏန်းအားလုံးနှင့် နောက်ဆုံးထွက်ရက်",
+                        "All digits and last seen dates"), en) {
+                        show(tx(en, "ပျောက်ဂဏန်းများ", "Digit absence"),
+                            a.singleDigits.map { item ->
+                                item.value + " · " + count(en, item.observedDrawsSince) + "\n" +
+                                    (item.lastSeen?.let { evidence(en, it) } ?: tx(en,
+                                        "ရွေးထားသောမှတ်တမ်းတွင် မတွေ့", "Unseen in selected records"))
+                            })
                     }
                 }
-                DP(tx(en, "ပျောက်ဂဏန်းတွဲများ", "Two-digit absence"), en) {
-                    a.fullNumbers.take(8).forEach {
-                        DL(it.value, count(en, it.observedDrawsSince) +
-                            (it.lastSeen?.let { seen -> " · " + evidence(en, seen) } ?: ""), en)
+                DP(tx(en, "ပျောက်ဂဏန်းတွဲများ (00–99)", "Pairs (00–99)"), en) {
+                    a.fullNumbers.take(5).forEach {
+                        DL(it.value, count(en, it.observedDrawsSince), en)
                     }
-                    DB(tx(en, "ဂဏန်းတွဲအားလုံး ကြည့်ရန်", "View all pairs"), en) {
-                        show(tx(en, "ပျောက်ဂဏန်းတွဲများ", "Two-digit absence"),
-                            a.fullNumbers.map {
-                                it.value + " · " + count(en, it.observedDrawsSince) +
-                                    (it.lastSeen?.let { seen -> " · " + evidence(en, seen) } ?: "")
+                    DB(tx(en, "ဂဏန်းတွဲအားလုံးနှင့် နောက်ဆုံးထွက်ရက်",
+                        "All pairs and last seen dates"), en) {
+                        show(tx(en, "ပျောက်ဂဏန်းတွဲများ", "Pair absence"),
+                            a.fullNumbers.map { item ->
+                                item.value + " · " + count(en, item.observedDrawsSince) + "\n" +
+                                    (item.lastSeen?.let { evidence(en, it) } ?: tx(en,
+                                        "ရွေးထားသောမှတ်တမ်းတွင် မတွေ့", "Unseen in selected records"))
                             })
                     }
                 }
@@ -279,39 +350,56 @@ internal fun TwoDAnalysisDetails(
         }
         "08" -> {
             val a = report.a08
-            val matches = TwoDDetailSelection.conditions(a)
-            if (a.firstReference == null && a.secondReference == null && matches.isEmpty()) DE(en)
+            val parts = TwoDDetailSelection.conditions(a)
+            if (a.firstReference == null && a.secondReference == null && parts.isEmpty()) DE(en)
             else {
-                if (a.firstReference != null || a.secondReference != null)
-                    DP(tx(en, "ရှေ့ထွက်ဂဏန်းများ", "Previous results"), en) {
-                        a.firstReference?.let {
-                            DL(tx(en, "ပထမ", "First"), evidence(en, it), en)
-                        }
-                        a.secondReference?.let {
-                            DL(tx(en, "ဒုတိယ", "Second"), evidence(en, it), en)
-                        }
+                DP(tx(en, "ရှေ့ထွက်ဂဏန်းများ", "Previous results"), en) {
+                    a.firstReference?.let {
+                        DL(tx(en, "ပထမ", "First"), evidence(en, it), en)
                     }
-                matches.forEach { (key, result) ->
+                    a.secondReference?.let {
+                        DL(tx(en, "ဒုတိယ", "Second"), evidence(en, it), en)
+                    }
+                }
+                parts.forEach { (key, result) ->
+                    val refDigits = when (key) {
+                        "both" -> listOfNotNull(
+                            a.firstReference?.digit, a.secondReference?.digit).joinToString(" + ")
+                        "first" -> a.firstReference?.digit.orEmpty()
+                        else -> a.secondReference?.digit.orEmpty()
+                    }
                     val label = when (key) {
-                        "both" -> tx(en, "နှစ်ခုတွဲ တိုက်စစ်", "Both references")
-                        "first" -> tx(en, "ပထမတစ်ခု တိုက်စစ်", "First reference")
-                        else -> tx(en, "ဒုတိယတစ်ခု တိုက်စစ်", "Second reference")
-                    }
+                        "both" -> tx(en, "နှစ်ခုတွဲ", "Both references")
+                        "first" -> tx(en, "ပထမတစ်ခု", "First reference")
+                        else -> tx(en, "ဒုတိယတစ်ခု", "Second reference")
+                    } + " · " + refDigits
                     val top = TwoDDetailSelection.leaders(result.frequencies)
                     if (top.isNotEmpty()) {
                         DH(label, top.take(4).joinToString(" · ") { it.digit } +
                             (if (top.size > 4) " (" + top.size +
                                 tx(en, " မျိုးတူ", " tied") + ")" else ""),
-                            en, count(en, top.first().count))
+                            en, count(en, top.first().count) + " · " +
+                                result.matches.size + tx(en, " မှတ်တမ်း", " records"))
                         DP(tx(en, "ဆက်ထွက်ခဲ့သော ဂဏန်းတွဲများ",
-                            "Observed following pairs"), en) {
-                            DL(tx(en, "တူညီသောမှတ်တမ်း", "Matching records"),
-                                count(en, result.matches.size), en)
-                            result.frequencies.take(6).forEach {
-                                DL(it.digit, count(en, it.count), en)
+                            "Following 2D results"), en) {
+                            result.frequencies.forEach { item ->
+                                Row(Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    DT(item.digit, en, LedgerTextRole.CARD_TITLE,
+                                        Modifier.weight(1f))
+                                    DT(count(en, item.count), en, LedgerTextRole.TABLE)
+                                    DB(tx(en, "မှတ်တမ်း", "History"), en) {
+                                        show(label + " · " + item.digit,
+                                            result.referenceChains.filter {
+                                                it.following.digit == item.digit
+                                            }.map { chainText(en, it) })
+                                    }
+                                }
+                                HorizontalDivider()
                             }
-                            DB(tx(en, "ထွက်ခဲ့သောရက်များ", "View occurrence dates"), en) {
-                                show(label, result.matches.map { evidence(en, it) })
+                            DB(tx(en, "History အားလုံး ကြည့်ရန်",
+                                "View complete source-to-result history"), en) {
+                                show(label, result.referenceChains.map { chainText(en, it) })
                             }
                         }
                     }
@@ -322,28 +410,32 @@ internal fun TwoDAnalysisDetails(
             val a = report.a05
             if (a.transitions.isEmpty()) DE(en)
             else {
-                fun flow(it: TwoDTransition): String =
-                    if (it.result.digit[0] == it.result.digit[1]) {
-                        it.result.digit[0].toString() + " " +
-                            if (it.newlySeenDigits.isNotEmpty()) tx(en, "အသစ်", "New")
-                            else tx(en, "အဟောင်း", "Old")
-                    } else {
-                        tx(en, if (it.newTens) "အသစ်" else "အဟောင်း",
-                            if (it.newTens) "New" else "Old") + " + " +
-                        tx(en, if (it.newOnes) "အသစ်" else "အဟောင်း",
-                            if (it.newOnes) "New" else "Old")
-                    }
                 DH(tx(en, "ကျန်ဂဏန်း (0–9)", "Unseen digits (0–9)"),
                     a.remainingDigits.joinToString(" ").ifEmpty {
                         tx(en, "ပျောက်ဂဏန်းမရှိ", "No missing digits")
                     }, en)
-                DP(tx(en, "နောက်ဆုံးအကြိမ်", "Latest draw"), en) {
-                    DL(evidence(en, a.transitions.last().result),
-                        flow(a.transitions.last()), en)
-                }
-                DP(tx(en, "အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု", "New / old digit flow"), en) {
-                    a.transitions.forEach {
-                        DL(evidence(en, it.result), flow(it), en)
+                val seen = mutableSetOf<Char>()
+                DP(tx(en, "အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု",
+                    "New / old digit flow"), en) {
+                    a.transitions.forEach { item ->
+                        seen.addAll(item.result.digit.toList())
+                        val newly = item.newlySeenDigits.sorted().joinToString(" ")
+                        val older = (item.result.digit.toSet() - item.newlySeenDigits)
+                            .sorted().joinToString(" ")
+                        val words = listOf(
+                            if (newly.isNotBlank()) tx(en, "အသစ်", "New") + ": " + newly else "",
+                            if (older.isNotBlank()) tx(en, "အဟောင်း", "Old") + ": " + older else "",
+                        ).filter { it.isNotEmpty() }.joinToString(" · ")
+                        DT(evidence(en, item.result), en, LedgerTextRole.HELPER)
+                        DT(words, en, LedgerTextRole.BODY)
+                        DT(tx(en, "ကျန်ဂဏန်း", "Remaining") + ": " +
+                            ('0'..'9').filterNot { it in seen }.joinToString(" ").ifEmpty {
+                                tx(en, "မရှိ", "None")
+                            } + (if (!item.classificationVerified)
+                                " · " + tx(en, "ရရှိသောမှတ်တမ်းအရ", "Available records only")
+                                else ""), en, LedgerTextRole.TABLE,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        HorizontalDivider()
                     }
                 }
             }
@@ -352,16 +444,41 @@ internal fun TwoDAnalysisDetails(
             val a = report.a07
             if (a.observedDraws == 0) DE(en)
             else {
-                DH(tx(en, "ဒီအပတ် ထွက်ဂဏန်း", "This week's draws"),
-                    count(en, a.observedDraws), en)
-                DGroups(tx(en, "အထူးအုပ်စုများ", "Special groups"),
-                    a.groups + ("ပြန်ကျ" to a.repeatedNumbers.sumOf { it.count }), en,
-                    open = { key ->
-                        val history = if (key == "ပြန်ကျ")
-                            a.repeatedNumbers.map { it.digit + " · " + count(en, it.count) }
-                        else a.groupOccurrences[key].orEmpty().map { evidence(en, it) }
-                        show(twoDGroupLabel(key, en), history)
-                    })
+                val counts = a.groups.toList() +
+                    listOf("ပြန်ကျ" to a.repeatedNumbers.sumOf { it.count })
+                val max = counts.maxOfOrNull { it.second } ?: 0
+                if (max > 0) DH(tx(en, "အများဆုံး အထူးအုပ်စု", "Most observed special group"),
+                    counts.filter { it.second == max }.joinToString(" · ") {
+                        twoDGroupLabel(it.first, en)
+                    }, en, count(en, max))
+                DP(tx(en, "အထူးဂဏန်းအုပ်စုများ", "Special groups"), en) {
+                    counts.forEach { (key, amount) ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            DT(twoDGroupLabel(key, en), en, LedgerTextRole.BODY,
+                                Modifier.weight(1f))
+                            DT(count(en, amount), en, LedgerTextRole.TABLE)
+                            if (amount > 0) DB(tx(en, "ထွက်ခဲ့သောရက်များ", "Dates"), en) {
+                                show(twoDGroupLabel(key, en),
+                                    if (key == "ပြန်ကျ")
+                                        a.repeatedOccurrences.flatMap { (number, draws) ->
+                                            draws.mapIndexed { index, row ->
+                                                number + " · " + evidence(en, row) + " · " +
+                                                    (if (index == 0) tx(en, "ပထမထွက်", "First")
+                                                    else tx(en, "ထပ်ထွက်", "Repeated"))
+                                            }
+                                        }
+                                    else a.groupOccurrences[key].orEmpty().map {
+                                        evidence(en, it)
+                                    })
+                            }
+                        }
+                        HorizontalDivider()
+                    }
+                }
+                if (a.repeatedNumbers.isNotEmpty())
+                    DP(tx(en, "ပြန်ကျဂဏန်းတွဲများ", "Repeated pairs"), en) {
+                        a.repeatedNumbers.forEach { DL(it.digit, count(en, it.count), en) }
+                    }
             }
         }
         "04" -> {
@@ -369,55 +486,100 @@ internal fun TwoDAnalysisDetails(
             if (a.observedDraws == 0) DE(en)
             else {
                 val top = TwoDDetailSelection.leaders(a.singleDigitFrequency)
-                if (top.isNotEmpty()) DH(tx(en, "အထွက်အများဆုံးဂဏန်း",
-                    "Most observed digit"), top.joinToString(" · ") { it.digit },
-                    en, count(en, top.first().count))
-                DP(tx(en, "ပြီးခဲ့တဲ့အပတ်", "Previous week"), en) {
-                    DL(tx(en, "အပတ်စတင်ရက်", "Week started"), a.weekStart.toString(), en)
-                    DL(tx(en, "ထွက်ဂဏန်းမှတ်တမ်း", "Recorded draws"),
-                        count(en, a.observedDraws), en)
-                    DL(tx(en, "ပျောက်ဂဏန်း", "Unseen digits"),
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (top.isNotEmpty()) DCompactHighlight(
+                        tx(en, "အထွက်အများဆုံး", "Most observed"),
+                        top.joinToString(" ") { it.digit }, count(en, top.first().count),
+                        en, Modifier.weight(1f))
+                    DCompactHighlight(tx(en, "ပျောက်ဂဏန်း", "Unseen digits"),
                         a.remainingDigits.joinToString(" ").ifEmpty {
-                            tx(en, "ပျောက်ဂဏန်းမရှိ", "No missing digits")
-                        }, en)
+                            tx(en, "မရှိ", "None")
+                        }, count(en, a.observedDraws) + tx(en, " စစ်ထား", " checked"),
+                        en, Modifier.weight(1f))
+                }
+                DP(tx(en, "ပြီးခဲ့တဲ့အပတ်", "Previous week"), en) {
+                    DT(a.weekStart.toString() + " – " +
+                        a.weekStart.plusDays(4).toString(), en, LedgerTextRole.HELPER)
                 }
                 DFrequency(tx(en, "ဂဏန်း 0–9 အကြိမ်ရေ", "Digit frequency (0–9)"),
                     a.singleDigitFrequency, en)
-                DGroups(tx(en, "စုံ/မ ထွက်ရှိမှု", "Parity counts"), a.parity, en, parity = true)
-                DGroups(tx(en, "အထူးအုပ်စုများ", "Special groups"), a.groups, en)
-                if (a.repeatedNumbers.isNotEmpty()) DP(tx(en, "ပြန်ကျ", "Exact repeats"), en) {
-                    a.repeatedNumbers.forEach { DL(it.digit, count(en, it.count), en) }
+                DP(tx(en, "ဂဏန်းတစ်လုံးချင်း History", "Digit evidence"), en) {
+                    a.singleDigitFrequency.filter { it.count > 0 }.forEach { item ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            DT(item.digit, en, LedgerTextRole.BODY, Modifier.weight(1f))
+                            DT(count(en, item.count), en, LedgerTextRole.TABLE)
+                            DB(tx(en, "ကြည့်ရန်", "View"), en) {
+                                show(item.digit + " · History",
+                                    a.recordedResults.filter { item.digit[0] in it.digit }
+                                        .map { evidence(en, it) + " · " + item.digit + " ×" +
+                                            it.digit.count { d -> d == item.digit[0] } })
+                            }
+                        }
+                    }
                 }
+                DGroups(tx(en, "စုံ/မ ထွက်ရှိမှု", "Parity counts"),
+                    a.parity, en, parity = true, open = { key ->
+                        show(twoDParityLabel(key, en), a.recordedResults.filter {
+                            TwoDigitGroups.parity(it.digit) == key
+                        }.map { evidence(en, it) })
+                    })
+                DGroups(tx(en, "အထူးဂဏန်းအုပ်စုများ", "Special groups"),
+                    a.groups, en, open = { key ->
+                        show(twoDGroupLabel(key, en), a.recordedResults.filter {
+                            it.digit in TwoDigitGroups.named[key].orEmpty()
+                        }.map { evidence(en, it) })
+                    })
+                if (a.repeatedNumbers.isNotEmpty())
+                    DP(tx(en, "ပြန်ကျ", "Exact repeats"), en) {
+                        a.repeatedNumbers.forEach {
+                            DL(it.digit, count(en, it.count), en)
+                        }
+                        DB(tx(en, "ထွက်ခဲ့သောရက်များ", "View repeated dates"), en) {
+                            show(tx(en, "ပြန်ကျ", "Repeated pairs"),
+                                a.recordedResults.filter { row ->
+                                    a.repeatedNumbers.any { it.digit == row.digit }
+                                }.map { evidence(en, it) })
+                        }
+                    }
             }
         }
         "01" -> {
             val a = report.a01
             if (a.missingDigits.isEmpty()) {
-                if (a.previousWeekComplete) DE(en,
-                    tx(en, "ပျောက်ဂဏန်းမရှိ", "No missing digits")) else DE(en)
+                DE(en, if (report.a04.observedDraws > 0)
+                    tx(en, "ပျောက်ဂဏန်းမရှိ", "No unseen digits") else null)
             } else {
-                DH(tx(en, "ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း", "Previous week's missing digits"),
-                    a.missingDigits.joinToString(" "), en)
-                a.results.forEach { item ->
+                DH(tx(en, "ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း",
+                    "Last week's unseen digits"), a.missingDigits.joinToString(" "), en)
+                a.results.filter { item ->
+                    item.thisWeekFirstSeen != null || item.commonCompanions.isNotEmpty() ||
+                        item.historicalEpisodes.isNotEmpty()
+                }.forEach { item ->
                     DP(tx(en, "ပျောက်ဂဏန်း", "Missing digit") + " " + item.digit, en) {
+                        if (item.commonCompanions.isNotEmpty())
+                            DL(tx(en, "အများဆုံးတွဲထွက်", "Most common companion"),
+                                item.commonCompanions.joinToString(" · ") {
+                                    it.companion.toString() + " ×" + it.count
+                                }, en)
                         item.thisWeekFirstSeen?.let {
-                            DL(tx(en, "ဒီအပတ် ပြန်ဆင်းခဲ့သောဂဏန်းတွဲ",
-                                "Observed return this week"), evidence(en, it), en)
+                            DL(tx(en, "ဒီအပတ် ပြန်ဆင်း", "Observed return this week"),
+                                evidence(en, it), en)
                         }
-                        if (item.historicalMissingWeeks > 0) DL(
-                            tx(en, "ယခင်က ဂဏန်းပျောက်ခဲ့သောအပတ်", "Historical missing weeks"),
-                            item.historicalMissingWeeks.toString() + tx(en, " ပတ်", " weeks"), en)
-                        if (item.commonCompanions.isNotEmpty()) DL(
-                            tx(en, "ပြန်ဆင်းချိန် အများဆုံးတွဲခဲ့သောဂဏန်း", "Most common companion"),
-                            item.commonCompanions.joinToString(" · ") {
-                                it.companion.toString() + " (" + it.count + ")"
-                            }, en)
-                        if (item.historicalFirstReturns.isNotEmpty()) DB(
-                            tx(en, "ယခင်ပြန်ဆင်းခဲ့သောရက်များ", "View return dates"), en) {
-                            show(item.digit.toString() + " · " +
-                                tx(en, "ယခင်ပြန်ဆင်းခဲ့သောမှတ်တမ်း", "Observed return history"),
-                                item.historicalFirstReturns.map { evidence(en, it) })
-                        }
+                        if (item.historyFirstReturnEpisodes > 0)
+                            DL(tx(en, "ယခင် ပြန်ဆင်းခဲ့သောအပတ်", "Historical return weeks"),
+                                item.historyFirstReturnEpisodes.toString(), en)
+                        if (item.historicalEpisodes.isNotEmpty())
+                            DB(tx(en, "ပျောက်ခဲ့သောအပတ်နှင့် ပြန်ဆင်းမှု",
+                                "Missing-week to return history"), en) {
+                                show(item.digit.toString() + " · " +
+                                    tx(en, "ပြန်ဆင်းမှု", "Return history"),
+                                    item.historicalEpisodes.map { episode ->
+                                        tx(en, "ပျောက်ခဲ့သောအပတ်", "Missing week") +
+                                            " · " + episode.missingWeekStart + "\n" +
+                                        tx(en, "နောက်အပတ် ပြန်ဆင်း → ", "Following-week return → ") +
+                                            evidence(en, episode.followingWeekFirstReturn)
+                                    })
+                            }
                     }
                 }
             }
