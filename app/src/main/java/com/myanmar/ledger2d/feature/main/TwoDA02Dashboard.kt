@@ -548,9 +548,7 @@ private fun A02NumberBrowser(
                     Row(Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(number, style = MaterialTheme.typography.headlineSmall,
-                            color = scheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold)
+                        TwoDNumberFocus(number, en, compact = true)
                         Text((counts[number]?.count ?: 0).toString() +
                             tr(" ကြိမ် ထွက်ခဲ့သည်", " recorded draws"),
                             style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
@@ -637,8 +635,8 @@ private fun A02NumberBrowser(
                                     .padding(horizontal = 3.dp, vertical = 7.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    Text(pair, style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
+                                    Text(pair, style = LedgerTypographyStandard.style(
+                                            LedgerTextRole.CARD_TITLE, lang),
                                         color = scheme.onSurface)
                                     Text(count.toString(),
                                         style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang),
