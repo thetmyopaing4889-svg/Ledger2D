@@ -479,21 +479,61 @@ private fun ColumnScope.RealLastWeek(
     PreviewSectionTitle(if (en) "Most observed digit" else "အထွက်အများဆုံးဂဏန်း")
     val p = TwoDLiveSummary.peak(a.singleDigitFrequency)
     if (p.present) {
-        Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .48f),
+        val c = MaterialTheme.colorScheme
+        // Both the winning digit and its count belong to the SAME result
+        // plate; the old disconnected "အကြိမ်ရေ" label was misleading.
+        Surface(
+            color = c.secondaryContainer.copy(alpha = .48f),
             shape = RoundedCornerShape(12.dp),
             shadowElevation = 2.dp,
-            border = BorderStroke(1.dp,
-                MaterialTheme.colorScheme.secondary.copy(alpha = .18f))) {
-            Row(Modifier.fillMaxWidth().padding(9.dp),
+            border = BorderStroke(1.dp, c.secondary.copy(alpha = .18f)),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(9.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                PreviewHero("0–9",
-                    PreviewNumber(p.display(en), p.count.toString()),
-                    Modifier.width(66.dp), en, compact = false)
-                Text(if (en) "Observed" else "အကြိမ်ရေ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Surface(
+                    modifier = Modifier.width(65.dp).height(82.dp),
+                    color = c.secondary,
+                    shape = RoundedCornerShape(10.dp),
+                    shadowElevation = 4.dp,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = .20f)),
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().padding(7.dp),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("0–9", style = MaterialTheme.typography.labelSmall,
+                            color = c.onSecondary.copy(alpha = .88f))
+                        Text(p.values.first(),
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = c.onSecondary)
+                    }
+                }
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(if (en) "Seen" else "ထွက်ရှိမှု",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = c.onSurfaceVariant)
+                    Text(p.count.toString() + (if (en) " times" else " ကြိမ်"),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = c.secondary,
+                        maxLines = 1)
+                    if (p.values.size > 1) {
+                        Text(
+                            (if (en) "Tied: " else "တူညီ: ") +
+                                p.values.drop(1).take(2).joinToString("·") +
+                                (if (p.values.size > 3) " +" + (p.values.size - 3) else ""),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.onSurfaceVariant,
+                            maxLines = 2)
+                    }
+                }
             }
         }
     } else LiveUnavailable(en)
