@@ -378,11 +378,11 @@ object TwoDAnalysisEngine {
                 TwoDMatch(it.date, it.session, it.digit)
             }
         }
-        val repeats = draws.groupBy { it.digit }.filterValues { it.size > 1 }
+        val repeatHistory = draws.groupBy { it.digit }.filterValues { it.size > 1 }
             .mapValues { (_, items) -> items.map { TwoDMatch(it.date, it.session, it.digit) } }
         return TwoDWeekSpecial(
             draws.size, complete, TwoDigitGroups.counts(values), occurrences,
-            repeats(values), repeats,
+            repeats(values), repeatHistory,
         )
     }
 

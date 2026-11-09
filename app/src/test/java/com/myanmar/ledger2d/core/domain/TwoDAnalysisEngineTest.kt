@@ -457,8 +457,8 @@ class TwoDAnalysisEngineTest {
 
     @Test fun conditionalEvidenceIncludesExactHistoricPrecedingResult() {
         val rows = listOf(
-            row("2026-10-26", pm, "05"), row("2026-10-27", am, "67"),
-            row("2026-10-27", pm, "41"), row("2026-11-06", pm, "05"),
+            row("2026-10-30", pm, "05"), row("2026-11-02", am, "67"),
+            row("2026-11-02", pm, "41"), row("2026-11-06", pm, "05"),
             row("2026-11-09", am, "67"),
         )
         val report = TwoDAnalysisEngine.calculate(rows,target("2026-11-09",pm))
