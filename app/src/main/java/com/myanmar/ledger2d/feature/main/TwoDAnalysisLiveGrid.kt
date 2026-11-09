@@ -179,6 +179,35 @@ private fun LiveUnavailable(en: Boolean) {
     }
 }
 
+/**
+ * Center a single short state in an otherwise equal-sized quarter-screen
+ * card; do not fill the blank area with explanations or extra fake numbers.
+ */
+@Composable
+private fun ColumnScope.CenterCardStatus(
+    message: String,
+) {
+    val c = MaterialTheme.colorScheme
+    Spacer(Modifier.weight(1f))
+    Surface(
+        color = c.secondaryContainer.copy(alpha = .28f),
+        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(1.dp, c.secondary.copy(alpha = .12f)),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(message,
+                style = MaterialTheme.typography.labelMedium,
+                color = c.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                maxLines = 3)
+        }
+    }
+    Spacer(Modifier.weight(1f))
+}
+
 @Composable
 private fun LiveMiniValue(value: String, count: Int?, en: Boolean, featured: Boolean = false) {
     if (value.isBlank()) {
@@ -252,15 +281,12 @@ private fun ColumnScope.RealParity(
 ) {
     val a = r.a03
     if (!a.eligible) {
-        LiveUnavailable(en)
+        CenterCardStatus(TwoDLiveSummary.unavailable(en))
         return
     }
     if (a.matched.isEmpty()) {
-        Text(
-            if (en) "No verified matching pattern" else "တူညီသောမှတ်တမ်း မတွေ့ပါ",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
+        CenterCardStatus(
+            if (en) "No verified matching pattern" else "တူညီသောမှတ်တမ်း မတွေ့ပါ"
         )
         return
     }
@@ -341,32 +367,77 @@ private fun ColumnScope.RealPrevious(
 ) {
     val a = r.a08
     if (a.firstReference == null || a.secondReference == null) {
-        LiveUnavailable(en)
+        CenterCardStatus(TwoDLiveSummary.unavailable(en))
         return
     }
     PreviewLine(if (en) "Prior" else "ရှေ့ထွက်",
         a.firstReference.digit + " · " + a.secondReference.digit, compact)
     HorizontalDivider(thickness = .5.dp)
-    listOf(
+
+    val categories = listOf(
         (if (en) "Both" else "နှစ်ခု") to a.both,
         (if (en) "First" else "ပထမ") to a.firstOnly,
         (if (en) "Second" else "ဒုတိယ") to a.secondOnly,
-    ).forEachIndexed { i, (label, check) ->
-        if (i > 0) HorizontalDivider(thickness = .5.dp)
-        val p = TwoDLiveSummary.peak(check.frequencies)
-        Row(Modifier.fillMaxWidth().heightIn(min = if (compact) 29.dp else 38.dp),
+    ).map { (label, check) ->
+        label to TwoDLiveSummary.peak(check.frequencies)
+    }
+    val available = categories.filter { it.second.present }
+    val unavailable = categories.filterNot { it.second.present }
+
+    // Give the one verified leader its own result, and put ALL the
+    // unavailable conditions into ONE quiet status area rather than
+    // repeating the same long Burmese sentence two or three times.
+    available.forEachIndexed { i, (label, peak) ->
+        if (i != 0) HorizontalDivider(thickness = .5.dp)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = if (compact) 34.dp else 42.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(label, modifier = Modifier.width(if (compact) 31.dp else 39.dp),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1)
             Spacer(Modifier.weight(1f))
-            if (p.present) LiveMiniValue(p.display(en), p.count, en)
-            else Text(TwoDLiveSummary.unavailable(en),
+            // Two leaders such as 02·46 should remain numbers (not prose).
+            peak.visibleDigits(limit = 2).forEach {
+                PreviewBadge(it, small = true)
+            }
+            if (peak.hiddenDigitCount(limit = 2) > 0) {
+                Text("+" + peak.hiddenDigitCount(limit = 2),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                "×" + peak.count,
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2)
+                maxLines = 1,
+            )
+        }
+    }
+    if (unavailable.isNotEmpty()) {
+        if (available.isNotEmpty()) HorizontalDivider(thickness = .5.dp)
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .27f),
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(
+                1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = .10f)),
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 9.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text(unavailable.joinToString(" / ") { it.first },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium)
+                Text(TwoDLiveSummary.unavailable(en),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2)
+            }
         }
     }
 }
