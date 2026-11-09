@@ -1332,3 +1332,19 @@ All eight details follow **Information First / Progressive Disclosure / Smart Sp
 
 A-02 keeps the existing rich frequency dashboard; A-01, A-03, A-04, A-05, A-06, A-07 and A-08 get compact, result-first and evidence-on-demand detail views. Main 4–2–2 screen and its card routing are unchanged; the old duplicate primary finding and oversized non-A02 header are replaced by one compact approved-title header and the actual result-first detail panels. Existing formula engine, read-only history, closed dates, selected ranges and independent A-08 searches are untouched. Partial-data UI shows only available independent outcomes; no missing-subresult placeholders, false zero or \`+\` for unknown absence draws. Unit tests cover leader ties, independent streams and one-reference A-08.
 
+---
+
+## Part XX — Evidence-first detail audit correction (2026-11-09)
+
+The user's final acceptance requirement is **complete traceable historical information**, not simply fewer detail cards. Details must show which 2D value(s) were checked, which target day/AM-PM occasion was under review, which outcomes were recorded, frequency totals and the exact corresponding prior and following historical date/session evidence.
+
+- A-08: show source first and/or second reference **digits**, separate source conditions, all recorded following 2D results and frequency, and each matching episode's actual historical reference date/session/result followed by the actual target date/session/result. Do not infer unrecorded outcomes.
+- A-02: keep the accepted two-column first view; enrich per-digit history (including double-digit two positional appearances) and parity/special group occurrence evidence. Display least-seen leaders with explicit multiplication separator to distinguish digits from counts.
+- A-03: retain exact Monday-anchored parity formula, show current slot-specific prefix and each matching historical week's preceding slots with its recorded next 2D outcome. Skip unrecorded following outcomes.
+- A-05: use engine's \`classificationVerified\` to qualify incomplete history, show newly observed/old digits per recorded result and remaining unseen digits after each result. The \`11\` double introduces only one new distinct digit.
+- A-06: AM/PM/ALL are independent; compact first-view leaders, all recorded digit/pair streak rankings accessible by explicit detail action, with last-seen dates where available and historical absence limited to observed draws.
+- A-07: the most frequent special groups are primary; each observed group has actual dates and digits. Repeated exact pair episodes show initial and each later occurrence.
+- A-04: render the previous-week actual date range, top digit and missing digits first; expose digit/parity/special/repeated frequency histories from recorded results.
+- A-01: display previous-week missing digits, actual current-week observed return, most common historical companion(s), and each historical missing-week-to-first-observed-return episode.
+- The user's **Noto Sans Myanmar UI / English Sans Serif** approved typography and \`TwoDAnalysisText\` titles remain the source of truth. The main 4–2–2 overview and all eight formula arithmetic rules are unchanged.
+

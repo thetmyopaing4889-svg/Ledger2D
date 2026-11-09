@@ -54,6 +54,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
     var pairExpanded by rememberSaveable { mutableStateOf(false) }
     var digitExpanded by rememberSaveable { mutableStateOf(false) }
     var leadersDialog by rememberSaveable { mutableStateOf("") }
+    var selectedDigitHistory by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedGroupHistory by rememberSaveable { mutableStateOf<String?>(null) }
     val maxCount = data.numbers.maxOfOrNull { it.count } ?: 0
     val maxPairs = data.numbers.filter { it.count == maxCount && maxCount > 0 }
     val leastCount = data.numbers.filter { it.count > 0 }.minOfOrNull { it.count }
@@ -94,8 +96,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
         }
         if (data.samples == 0) {
             A02Panel {
-                Text(tr("နေ့တူ အကြိမ်တူ ထွက်ဂဏန်းမှတ်တမ်း မရှိသေးပါ။",
-                    "No recorded results for the same weekday and draw yet."),
+                Text(tr("အချက်အလက် မရရှိနိုင်သေးပါ",
+                    "Information not yet available"),
                     style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
                     color = scheme.onSurfaceVariant)
             }
@@ -126,7 +128,7 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                         "Least observed digit (>0)"),
                         style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
                         modifier = Modifier.weight(1f))
-                    Text(showCandidates(leastDigits) + " · " + (leastDigitCount ?: 0) +
+                    Text(showCandidates(leastDigits) + " ×" + (leastDigitCount ?: 0) +
                         tr(" ကြိမ်", " times"),
                         style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang),
                         fontWeight = FontWeight.SemiBold, color = scheme.primary)
@@ -172,6 +174,13 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     A02CompactCounts(data.parity.entries.map {
                         twoDParityLabel(it.key, en) to it.value
                     }, en)
+                    data.parity.filterValues { it > 0 }.forEach { (key, _) ->
+                        TextButton(onClick = { selectedGroupHistory = "parity:" + key }) {
+                            Text(twoDParityLabel(key, en) + " · " +
+                                tr("ထွက်ခဲ့သောရက်များ", "View dates"),
+                                style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, lang))
+                        }
+                    }
                     A02PanelTitle(tr("အထူးဂဏန်းအုပ်စုများ", "Special groups"), "", en)
                     Text(categoryLeaders(data.groups) { twoDGroupLabel(it, en) },
                         style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang),
@@ -179,6 +188,13 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     A02CompactCounts(data.groups.entries.map {
                         twoDGroupLabel(it.key, en) to it.value
                     }, en)
+                    data.groups.filterValues { it > 0 }.forEach { (key, _) ->
+                        TextButton(onClick = { selectedGroupHistory = "group:" + key }) {
+                            Text(twoDGroupLabel(key, en) + " · " +
+                                tr("ထွက်ခဲ့သောရက်များ", "View dates"),
+                                style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, lang))
+                        }
+                    }
                     if (data.unseenNumbers.isNotEmpty()) {
                         OutlinedButton(
                             onClick = { browserOpen = true; missingOnly = true },
@@ -297,6 +313,15 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                                 fontWeight = FontWeight.Bold)
                             Text(candidate.count.toString() + tr(" ကြိမ်", " times"),
                                 style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang))
+                            if (leadersDialog != "pairs") {
+                                TextButton(onClick = {
+                                    selectedDigitHistory = candidate.digit
+                                    leadersDialog = ""
+                                }) {
+                                    Text(tr("မှတ်တမ်း", "History"),
+                                        style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, lang))
+                                }
+                            }
                         }
                     }
                 }
@@ -314,6 +339,71 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
             title = { Text(TwoDAnalysisText.title("02", en)) },
             text = { Text(TwoDAnalysisText.description("02", en)) },
             confirmButton = { TextButton(onClick = { explanationOpen = false }) {
+                Text(tr("ပိတ်မည်", "Close"))
+            } },
+        )
+    }
+
+    selectedDigitHistory?.let { digit ->
+        val records = data.digitOccurrences[digit].orEmpty()
+        AlertDialog(
+            onDismissRequest = { selectedDigitHistory = null },
+            title = { Text(digit + " · " + tr("ဂဏန်းထွက်ရှိမှု", "Digit appearances"),
+                style = LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE, lang)) },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 440.dp)) {
+                    items(records.size) { index ->
+                        val row = records[index]
+                        Column(Modifier.padding(vertical = 7.dp)) {
+                            Text(row.date.toString() + " · " +
+                                (if (row.session ==
+                                    com.myanmar.ledger2d.core.model.DrawSession.MORNING)
+                                    tr("မနက်အကြိမ်", "Morning")
+                                else tr("ညနေအကြိမ်", "Evening")),
+                                style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang))
+                            Text(row.digit + " · " + digit + " ×" +
+                                row.digit.count { c -> c == digit[0] },
+                                style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang))
+                        }
+                        HorizontalDivider(color = scheme.outlineVariant)
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedDigitHistory = null }) {
+                Text(tr("ပိတ်မည်", "Close"))
+            } },
+        )
+    }
+    selectedGroupHistory?.let { selected ->
+        val type = selected.substringBefore(":")
+        val key = selected.substringAfter(":")
+        val records = data.recordedResults.filter { row ->
+            if (type == "parity")
+                com.myanmar.ledger2d.core.domain.TwoDigitGroups.parity(row.digit) == key
+            else row.digit in
+                com.myanmar.ledger2d.core.domain.TwoDigitGroups.named[key].orEmpty()
+        }
+        AlertDialog(
+            onDismissRequest = { selectedGroupHistory = null },
+            title = { Text(if (type == "parity") twoDParityLabel(key, en)
+                else twoDGroupLabel(key, en),
+                style = LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE, lang)) },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 440.dp)) {
+                    items(records.size) { index ->
+                        val row = records[index]
+                        Text(row.date.toString() + " · " +
+                            (if (row.session ==
+                                com.myanmar.ledger2d.core.model.DrawSession.MORNING)
+                                tr("မနက်အကြိမ်", "Morning")
+                            else tr("ညနေအကြိမ်", "Evening")) + " · " + row.digit,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang))
+                        HorizontalDivider(color = scheme.outlineVariant)
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedGroupHistory = null }) {
                 Text(tr("ပိတ်မည်", "Close"))
             } },
         )
