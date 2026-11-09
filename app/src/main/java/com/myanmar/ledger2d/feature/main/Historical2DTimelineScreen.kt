@@ -75,12 +75,16 @@ fun Historical2DTimelineScreen(
     val dailyFlow = remember(container) { container.liveResults.observeAll() }
     val winnerFlow = remember(container) { container.winners.observeAll() }
     val lockFlow = remember(container) { container.database.manualWinnerLockDao().observeAll() }
-    val closed by closedFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val daily by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val winners by winnerFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val locks by lockFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val closedDates = remember(closed) { closed.map { it.date }.toSet() }
+    // Null means the first Room emission has not arrived. An empty list is
+    // legitimate observed state, and must never be confused with "still loading".
+    val closed by closedFlow.collectAsStateWithLifecycle(initialValue = null)
+    val history by historyFlow.collectAsStateWithLifecycle(initialValue = null)
+    val daily by dailyFlow.collectAsStateWithLifecycle(initialValue = null)
+    val winners by winnerFlow.collectAsStateWithLifecycle(initialValue = null)
+    val locks by lockFlow.collectAsStateWithLifecycle(initialValue = null)
+    val inputsReady = closed != null && history != null && daily != null &&
+        winners != null && locks != null
+    val closedDates = remember(closed) { closed.orEmpty().map { it.date }.toSet() }
     val defaultTarget = remember(now, closedDates) {
         var candidate = DrawSchedule.nextDraw(now)
         while (!DrawSchedule.isWorkingDate(candidate.date, closedDates)) {
@@ -91,14 +95,15 @@ fun Historical2DTimelineScreen(
     var userChosen by rememberSaveable { mutableStateOf(false) }
     var selectedDate by rememberSaveable { mutableStateOf(defaultTarget.date.toString()) }
     var selectedSession by rememberSaveable { mutableStateOf(defaultTarget.session.name) }
-    LaunchedEffect(defaultTarget, userChosen) {
-        if (!userChosen) {
-            selectedDate = defaultTarget.date.toString()
-            selectedSession = defaultTarget.session.name
-        }
-    }
-    val date = runCatching { LocalDate.parse(selectedDate) }.getOrDefault(defaultTarget.date)
-    val target = DrawIdentity(date, DrawSession.valueOf(selectedSession))
+    // Date/session are derived synchronously until the user explicitly chooses.
+    // Avoid a later effect changing the default after a transient first frame.
+    val date = if (userChosen)
+        runCatching { LocalDate.parse(selectedDate) }.getOrDefault(defaultTarget.date)
+    else defaultTarget.date
+    val session = if (userChosen)
+        runCatching { DrawSession.valueOf(selectedSession) }.getOrDefault(defaultTarget.session)
+    else defaultTarget.session
+    val target = DrawIdentity(date, session)
 
     var lookback by rememberSaveable { mutableStateOf("all") }
     var rangeMenu by remember { mutableStateOf(false) }
@@ -124,7 +129,8 @@ fun Historical2DTimelineScreen(
     val merged = remember(daily, history, winners, locks, closedDates,
         now.toLocalDate(), now.hour, now.minute) {
         val verified = Historic2DDataSource.resolve(
-            daily, history, now.toLocalDate(), now.toLocalTime(), winners, locks,
+            daily.orEmpty(), history.orEmpty(), now.toLocalDate(), now.toLocalTime(),
+            winners.orEmpty(), locks.orEmpty(),
         )
         verified.copy(
             draws = verified.draws.filterNot { it.date in closedDates },
@@ -132,8 +138,9 @@ fun Historical2DTimelineScreen(
         )
     }
     val validTarget = DrawSchedule.isWorkingDate(date, closedDates)
-    val report = remember(merged, target, closedDates, range, validTarget, lookback, customValid) {
-        if (validTarget)
+    val report = remember(merged, target, closedDates, range, validTarget,
+        lookback, customValid, inputsReady) {
+        if (inputsReady && validTarget)
             TwoDAnalysisEngine.calculate(merged.draws, target, closedDates, range)
         else null
     }
@@ -411,7 +418,18 @@ fun Historical2DTimelineScreen(
                     }
                 }
 
-                if (demoPreview) {
+                if (!inputsReady && !demoPreview) {
+                    // Keep one stable screen frame while the initial Room
+                    // snapshots arrive; never flash a fake empty result grid.
+                    Box(Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(26.dp),
+                            color = scheme.primary,
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                } else if (demoPreview) {
                     // Visual PREVIEW only: no reading from live report and
                     // no writes to Room, history, or user ledger tables.
                     Surface(
