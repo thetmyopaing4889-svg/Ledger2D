@@ -53,6 +53,7 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
     var initialPair by rememberSaveable { mutableStateOf<String?>(null) }
     var explanationOpen by rememberSaveable { mutableStateOf(false) }
     var selectedDigitHistory by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedDigitPosition by rememberSaveable { mutableStateOf("both") }
     var selectedGroupHistory by rememberSaveable { mutableStateOf<String?>(null) }
 
     val maxPairs = TwoDDetailSelection.leaders(data.numbers)
@@ -96,7 +97,10 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     tr("အထွက်အများဆုံးဂဏန်း", "Top digits"),
                     condensed(maxDigits), maxDigitCount.toString() + tr(" ကြိမ်စီ", " times each"),
                     en, Modifier.weight(1f),
-                    onClick = { selectedDigitHistory = maxDigits.first().digit })
+                    onClick = {
+                        selectedDigitPosition = "both"
+                        selectedDigitHistory = maxDigits.first().digit
+                    })
             }
 
             // Explicitly means the least frequent among digits that appeared, NOT missing digits.
@@ -124,7 +128,7 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TwoDNumberFocus(item.digit, en, compact = true)
+                            TwoDListNumberBadge(item.digit, en)
                             Spacer(Modifier.weight(1f))
                             Text(item.count.toString() + tr(" ကြိမ်", " times"),
                                 style = LedgerTypographyStandard.style(LedgerTextRole.TABLE, lang))
@@ -175,7 +179,10 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                         group.forEach { digit ->
                             val key = digit.toString()
                             val hit = byDigit[key]?.count ?: 0
-                            Surface(onClick = { selectedDigitHistory = key },
+                            Surface(onClick = {
+                                selectedDigitPosition = position
+                                selectedDigitHistory = key
+                            },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(10.dp),
                                 color = if (hit == list.maxOfOrNull { it.count } && hit > 0)
@@ -245,10 +252,16 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
         } })
 
     selectedDigitHistory?.let { digit ->
-        val occurrences = data.digitOccurrences[digit].orEmpty()
+        val occurrences = TwoDDetailSelection.positionEvidence(
+            data.digitOccurrences[digit].orEmpty(), digit, selectedDigitPosition)
         AlertDialog(
             onDismissRequest = { selectedDigitHistory = null },
-            title = { Text(digitsHistoryLabel(digit),
+            title = { Text(
+                (when (selectedDigitPosition) {
+                    "tens" -> tr("ထိပ်", "Tens") + " "
+                    "ones" -> tr("ပိတ်", "Ones") + " "
+                    else -> ""
+                }) + digitsHistoryLabel(digit),
                 style = LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE, lang)) },
             text = {
                 LazyColumn(Modifier.heightIn(max = 420.dp)) {
@@ -262,7 +275,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                                 else tr("ညနေအကြိမ်", "Evening")),
                                 style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang))
                             Text(record.digit + " · " + digit + " ×" +
-                                record.digit.count { it == digit[0] },
+                                TwoDDetailSelection.positionCount(
+                                    record.digit, digit, selectedDigitPosition),
                                 style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang))
                         }
                         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = .25f))

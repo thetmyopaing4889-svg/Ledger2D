@@ -1348,3 +1348,13 @@ The user's final acceptance requirement is **complete traceable historical infor
 - A-01: display previous-week missing digits, actual current-week observed return, most common historical companion(s), and each historical missing-week-to-first-observed-return episode.
 - The user's **Noto Sans Myanmar UI / English Sans Serif** approved typography and \`TwoDAnalysisText\` titles remain the source of truth. The main 4–2–2 overview and all eight formula arithmetic rules are unchanged.
 
+---
+
+## Part XXI — Screenshot-approved detail frame families (2026-11-09)
+
+The user explicitly accepted A-06's AM/PM/ALL selector + compact scope summary + **two side-by-side highlighted primary-number cards** + directly visible detail lists as a frame reference. Key result digits must pop via a separate contrasting rounded inset, subtle elevation and depth (font size alone is insufficient). Long result histories remain on demand. A restrained un-elevated list-number badge must not compete with the primary result well.
+
+**Frame assignments:** A-02, A-04, A-06, A-07 use the A-06 frame family adapted to their data; A-01 and A-08 use relationship/result variants; A-03 and A-05 use chronological evidence timelines. Do not force identical content card counts across methods. Preserve all engine calculations and read-only historical evidence. Compact first views must still show meaningful frequencies and evidence categories; collapsing an entire detail screen into empty disclosure drawers is rejected.
+
+**A-02 explicit correction:** separate 2D pair frequency, 0–9 digit frequency, even/odd parity, and special number-group sections. Never bury parity/special groups inside 2D pair details. The digit Frequency table has combined/tens/ones selectors; tapping a digit must filter historical evidence to that chosen positional mode, with a double such as 55 contributing two combined digit appearances, one tens appearance, one ones appearance. Replace ambiguous \`ဂဏန်း အထွက်အနည်းဆုံး (ပေါ်ဖူး)\` with \`ထွက်ဖူးသောဂဏန်းများထဲမှ အနည်းဆုံး\` meaning the least frequent **among digits recorded at least once**, distinct from never-seen digits.
+

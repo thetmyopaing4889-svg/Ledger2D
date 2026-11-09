@@ -102,3 +102,16 @@ internal fun TwoDResultFrame(
         }
     }
 }
+
+/** A lightweight list badge; reserve 3D elevation for the primary result. */
+@Composable
+internal fun TwoDListNumberBadge(digits: String, en: Boolean) {
+    val c = MaterialTheme.colorScheme
+    Surface(shape = RoundedCornerShape(9.dp),
+        color = c.secondaryContainer.copy(alpha = .58f)) {
+        Text(digits, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style = LedgerTypographyStandard.style(LedgerTextRole.CARD_TITLE,
+                if (en) "en" else "my"),
+            color = c.onSecondaryContainer, maxLines = 1)
+    }
+}

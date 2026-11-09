@@ -58,4 +58,18 @@ class TwoDDetailPresentationTest {
         assertTrue('3' !in firstRender[1])
         assertEquals(8, firstRender[0].split(" ").size)
     }
+
+    @Test fun digitHistoryRespectsSelectedTensOnesAndBoth() {
+        val draw = com.myanmar.ledger2d.core.domain.TwoDMatch(
+            LocalDate.parse("2026-10-28"), DrawSession.MORNING, "55")
+        assertEquals(2, TwoDDetailSelection.positionCount("55", "5", "both"))
+        assertEquals(1, TwoDDetailSelection.positionCount("55", "5", "tens"))
+        assertEquals(1, TwoDDetailSelection.positionCount("55", "5", "ones"))
+        assertEquals(0, TwoDDetailSelection.positionCount("15", "5", "tens"))
+        assertEquals(1, TwoDDetailSelection.positionCount("15", "5", "ones"))
+        assertEquals(1, TwoDDetailSelection.positionEvidence(
+            listOf(draw), "5", "ones").size)
+        assertTrue(TwoDDetailSelection.positionEvidence(
+            listOf(draw), "1", "ones").isEmpty())
+    }
 }

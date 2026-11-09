@@ -58,6 +58,18 @@ internal object TwoDDetailSelection {
     }
 
     /** Stable per-row remaining digits; no mutable state is captured by a composable lambda. */
+    fun positionCount(pair: String, digit: String, position: String): Int =
+        if (digit.length != 1 || pair.length != 2) 0 else when (position) {
+            "tens" -> if (pair[0] == digit[0]) 1 else 0
+            "ones" -> if (pair[1] == digit[0]) 1 else 0
+            else -> pair.count { it == digit[0] }
+        }
+
+    fun positionEvidence(records: List<TwoDMatch>, digit: String, position: String):
+        List<TwoDMatch> = records.filter {
+            positionCount(it.digit, digit, position) > 0
+        }
+
     fun remainingAfter(transitions: List<TwoDTransition>): List<String> {
         val seen = mutableSetOf<Char>()
         return transitions.map { row ->
@@ -217,7 +229,7 @@ private fun DNumberLine(number: String, countText: String, en: Boolean,
     val c = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        TwoDNumberFocus(number, en, compact = true)
+        TwoDListNumberBadge(number, en)
         Spacer(Modifier.weight(1f))
         DT(countText, en, LedgerTextRole.TABLE)
         if (action != null) DB(tx(en, "မှတ်တမ်း", "History"), en, action)
@@ -280,8 +292,9 @@ internal fun TwoDAnalysisDetails(
                             }, en, Modifier.fillMaxWidth())
                         DL(tx(en, "အများဆုံး ဆက်ထွက်", "Most observed"),
                             count(en, max), en)
-                        DGroups(tx(en, "စုံ/မ အကြိမ်ရေ", "Parity counts"),
-                            a.nextParity.filterValues { it > 0 }, en, parity = true)
+                        a.nextParity.filterValues { it > 0 }.forEach { (parity, times) ->
+                            DL(twoDParityLabel(parity, en), count(en, times), en)
+                        }
                     }
                     DP(tx(en, "ပုံစံတူ အပတ်များ", "Matching weeks"), en) {
                         a.matchingWeeks.forEach { week ->
