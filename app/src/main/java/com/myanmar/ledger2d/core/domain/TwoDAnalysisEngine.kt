@@ -29,13 +29,23 @@ data class TwoDSameSlot(
     val unseenNumbers: List<String>,
     /** Verified same-weekday/same-session historical evidence for each exact 2D pair. */
     val numberOccurrences: Map<String, List<TwoDMatch>> = emptyMap(),
+    /** One record per draw; an equal double such as 55 contributes two digit appearances. */
+    val digitOccurrences: Map<String, List<TwoDMatch>> = emptyMap(),
+    val recordedResults: List<TwoDMatch> = emptyList(),
 )
 
+data class TwoDPatternWeekEvidence(
+    val weekStart: LocalDate,
+    val preceding: List<TwoDMatch>,
+    val following: TwoDMatch,
+)
 data class TwoDPattern(
     val eligible: Boolean,
     val checkedPrefix: List<String>,
     val matched: List<TwoDMatch>,
     val nextParity: Map<String, Int>,
+    val currentPreceding: List<TwoDMatch> = emptyList(),
+    val matchingWeeks: List<TwoDPatternWeekEvidence> = emptyList(),
 )
 
 data class TwoDStreak(
@@ -74,6 +84,8 @@ data class TwoDWeekSpecial(
     val groupOccurrences: Map<String, List<TwoDMatch>>,
     /** Exact same 2D returning: every appearance after its first counts. */
     val repeatedNumbers: List<TwoDCount>,
+    /** Include first occurrence and subsequent repeated occurrences in chronological order. */
+    val repeatedOccurrences: Map<String, List<TwoDMatch>> = emptyMap(),
 )
 
 data class TwoDWeekReview(
@@ -86,11 +98,16 @@ data class TwoDWeekReview(
     val parity: Map<String, Int>,
     val groups: Map<String, Int>,
     val repeatedNumbers: List<TwoDCount>,
+    val recordedResults: List<TwoDMatch> = emptyList(),
 )
 
 data class TwoDReturnCompanion(
     val companion: Char,
     val count: Int,
+)
+data class TwoDMissingReturnEpisode(
+    val missingWeekStart: LocalDate,
+    val followingWeekFirstReturn: TwoDMatch,
 )
 data class TwoDMissingDigitReturn(
     val digit: Char,
@@ -105,6 +122,7 @@ data class TwoDMissingDigitReturn(
     val historyFirstReturnEpisodes: Int,
     val commonCompanions: List<TwoDReturnCompanion>,
     val historicalFirstReturns: List<TwoDMatch>,
+    val historicalEpisodes: List<TwoDMissingReturnEpisode> = emptyList(),
 )
 data class TwoDMissingReturn(
     val previousWeekComplete: Boolean,
@@ -112,12 +130,18 @@ data class TwoDMissingReturn(
     val results: List<TwoDMissingDigitReturn>,
 )
 
+data class TwoDReferenceChain(
+    val precedingFirst: TwoDMatch?,
+    val precedingSecond: TwoDMatch?,
+    val following: TwoDMatch,
+)
 data class TwoDConditional(
     val sourceDigit: String?,
     val matches: List<TwoDMatch>,
     val frequencies: List<TwoDCount>,
     /** Historical source matches whose corresponding target result is unknown. */
     val missingTargetCount: Int,
+    val referenceChains: List<TwoDReferenceChain> = emptyList(),
 )
 data class TwoDPreviousResults(
     val firstReference: TwoDMatch?,
@@ -248,6 +272,12 @@ object TwoDAnalysisEngine {
                     TwoDMatch(row.date, row.session, row.digit)
                 }
             },
+            digitOccurrences = allDigits.associate { digit ->
+                digit.toString() to candidates.filter { digit in it.digit }.map { row ->
+                    TwoDMatch(row.date, row.session, row.digit)
+                }
+            },
+            recordedResults = candidates.map { TwoDMatch(it.date, it.session, it.digit) },
         )
     }
 
@@ -268,7 +298,7 @@ object TwoDAnalysisEngine {
         }
         val prefix = prefixSlots.map { bySlot[it] ?: return TwoDPattern(false, emptyList(), emptyList(), emptyMap()) }
         val weeklyCandidates = known.map { monday(it.date) }.distinct().filter { it < start }
-        val matched = weeklyCandidates.mapNotNull { candidateStart ->
+        val matchingWeeks = weeklyCandidates.mapNotNull { candidateStart ->
             if ((0L..4L).any { candidateStart.plusDays(it) in closed }) return@mapNotNull null
             val candidateTarget = candidateStart.plusDays(ChronoUnit.DAYS.between(start, target.date))
             if (!range.includes(candidateTarget)) return@mapNotNull null
@@ -279,13 +309,20 @@ object TwoDAnalysisEngine {
             if (!earlier.zip(prefix).all { (a, b) ->
                     TwoDigitGroups.parity(a.digit) == TwoDigitGroups.parity(b.digit)
                 }) return@mapNotNull null
-            bySlot[candidateTarget to target.session]
-                ?.let { TwoDMatch(it.date, it.session, it.digit) }
+            val next = bySlot[candidateTarget to target.session] ?: return@mapNotNull null
+            TwoDPatternWeekEvidence(
+                candidateStart,
+                earlier.map { TwoDMatch(it.date, it.session, it.digit) },
+                TwoDMatch(next.date, next.session, next.digit),
+            )
         }
+        val matched = matchingWeeks.map { it.following }
         val classes = matched.map { TwoDigitGroups.parity(it.digit) }
         return TwoDPattern(
             true, prefix.map { TwoDigitGroups.parity(it.digit) },
             matched, parityNames.associateWith { clazz -> classes.count { it == clazz } },
+            currentPreceding = prefix.map { TwoDMatch(it.date, it.session, it.digit) },
+            matchingWeeks = matchingWeeks,
         )
     }
 
@@ -303,6 +340,7 @@ object TwoDAnalysisEngine {
             start, draws.size, expected.size, expected.isNotEmpty() && expected.all { it in bySlot },
             singles(values), if (values.isEmpty()) emptyList() else allDigits.filter { it !in observed },
             parityCounts(values), TwoDigitGroups.counts(values), repeats(values),
+            draws.map { TwoDMatch(it.date, it.session, it.digit) },
         )
     }
 
@@ -340,7 +378,12 @@ object TwoDAnalysisEngine {
                 TwoDMatch(it.date, it.session, it.digit)
             }
         }
-        return TwoDWeekSpecial(draws.size, complete, TwoDigitGroups.counts(values), occurrences, repeats(values))
+        val repeats = draws.groupBy { it.digit }.filterValues { it.size > 1 }
+            .mapValues { (_, items) -> items.map { TwoDMatch(it.date, it.session, it.digit) } }
+        return TwoDWeekSpecial(
+            draws.size, complete, TwoDigitGroups.counts(values), occurrences,
+            repeats(values), repeats,
+        )
     }
 
     /** A-06: ongoing absence separately for AM, PM and both, per observed draw. */
@@ -423,8 +466,19 @@ object TwoDAnalysisEngine {
         val a = bySlot[aSlot]
         val b = bySlot[bSlot]
         fun match(rows: List<HistoricDraw>, source: String?, missing: Int): TwoDConditional =
-            TwoDConditional(source, rows.map { TwoDMatch(it.date, it.session, it.digit) },
-                numberCounts(rows.map { it.digit }), missing)
+            TwoDConditional(
+                source, rows.map { TwoDMatch(it.date, it.session, it.digit) },
+                numberCounts(rows.map { it.digit }), missing,
+                referenceChains = rows.map { row ->
+                    val (firstSlot, secondSlot) =
+                        referenceSlots(DrawIdentity(row.date, row.session), closed)
+                    TwoDReferenceChain(
+                        bySlot[firstSlot]?.let { TwoDMatch(it.date, it.session, it.digit) },
+                        bySlot[secondSlot]?.let { TwoDMatch(it.date, it.session, it.digit) },
+                        TwoDMatch(row.date, row.session, row.digit),
+                    )
+                },
+            )
         val candidates = historical.filter {
             range.includes(it.date) && it.date.dayOfWeek == target.date.dayOfWeek &&
                 it.session == target.session && it.date != target.date
@@ -497,6 +551,7 @@ object TwoDAnalysisEngine {
                     .all { it in bySlot }
             }
             val historicalReturns = mutableListOf<TwoDMatch>()
+            val historicalEpisodes = mutableListOf<TwoDMissingReturnEpisode>()
             var qualifyingMissingWeeks = 0
             var noReturnWeeks = 0
             var unknownNextWeeks = 0
@@ -521,9 +576,11 @@ object TwoDAnalysisEngine {
                 // The first observed return is not a claim about unrecorded slots.
                 val firstObserved = recordedFollowing.firstOrNull { digit in it.digit }
                 if (firstObserved != null) {
-                    historicalReturns.add(TwoDMatch(
+                    val returning = TwoDMatch(
                         firstObserved.date, firstObserved.session, firstObserved.digit,
-                    ))
+                    )
+                    historicalReturns.add(returning)
+                    historicalEpisodes.add(TwoDMissingReturnEpisode(week, returning))
                 } else {
                     noReturnWeeks++
                 }
@@ -540,7 +597,7 @@ object TwoDAnalysisEngine {
                 noReturnWeeks, unknownNextWeeks, companions.size,
                 counts.filterValues { it == highest }.map { TwoDReturnCompanion(it.key, it.value) }
                     .sortedBy { it.companion },
-                historicalReturns,
+                historicalReturns, historicalEpisodes,
             )
         }
         return TwoDMissingReturn(previous.complete, previous.remainingDigits, results)

@@ -422,4 +422,48 @@ class TwoDAnalysisEngineTest {
         assertFalse(report.a04.complete)
         assertFalse(report.a01.previousWeekComplete)
     }
+
+    @Test fun detailEvidencePreservesA02DigitPositionCountsWithoutDuplicatingDates() {
+        val rows = listOf(row("2026-10-28", am, "55"), row("2026-10-21", am, "15"))
+        val a = TwoDAnalysisEngine.calculate(rows, target("2026-11-04")).a02
+        assertEquals(3, a.singles.single { it.digit == "5" }.count)
+        assertEquals(2, a.digitOccurrences.getValue("5").size)
+        assertEquals(3, a.digitOccurrences.getValue("5").sumOf { it.digit.count { c -> c == '5' } })
+        assertEquals(2, a.recordedResults.size)
+    }
+
+    @Test fun detailEvidenceKeepsExactPatternPrefixSlots() {
+        val current = listOf(row("2026-11-02", am, "22"), row("2026-11-02", pm, "11"),
+            row("2026-11-03", am, "23"), row("2026-11-03", pm, "34"))
+        val history = listOf(row("2026-10-26", am, "44"), row("2026-10-26", pm, "33"),
+            row("2026-10-27", am, "45"), row("2026-10-27", pm, "56"),
+            row("2026-10-28", am, "77"))
+        val a = TwoDAnalysisEngine.calculate(current + history, target("2026-11-04")).a03
+        assertEquals(4, a.currentPreceding.size)
+        assertEquals(1, a.matchingWeeks.size)
+        assertEquals("77", a.matchingWeeks.single().following.digit)
+        assertEquals(a.matched, a.matchingWeeks.map { it.following })
+        assertEquals(4, a.matchingWeeks.single().preceding.size)
+    }
+
+    @Test fun detailEvidenceExposesPreviousWeekAndRepeatChronology() {
+        val history = listOf(row("2026-11-02", am, "12"),row("2026-11-03", am, "12"),
+            row("2026-10-29", am, "33"))
+        val report = TwoDAnalysisEngine.calculate(history,target("2026-11-04"))
+        assertEquals(1,report.a04.recordedResults.size)
+        assertEquals(listOf("12","12"),report.a07.repeatedOccurrences.getValue("12").map { it.digit })
+        assertEquals(1,report.a07.repeatedNumbers.single().count)
+    }
+
+    @Test fun conditionalEvidenceIncludesExactHistoricPrecedingResult() {
+        val rows = listOf(
+            row("2026-10-26", pm, "05"), row("2026-10-27", am, "67"),
+            row("2026-10-27", pm, "41"), row("2026-11-06", pm, "05"),
+            row("2026-11-09", am, "67"),
+        )
+        val report = TwoDAnalysisEngine.calculate(rows,target("2026-11-09",pm))
+        val hit = report.a08.secondOnly.referenceChains.first { it.following.digit == "41" }
+        assertEquals("67",hit.precedingSecond?.digit)
+        assertEquals("41",hit.following.digit)
+    }
 }
