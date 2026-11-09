@@ -138,15 +138,14 @@ fun Historical2DTimelineScreen(
         else null
     }
     var openGroup by rememberSaveable { mutableStateOf("1") }
-    // Isolated layout experiment. ON by default only in this feature branch,
-    // clearly marked as artificial and reversible via the DEMO switch.
-    var demoPreview by rememberSaveable { mutableStateOf(true) }
+    // Real verified results are the default. DEMO stays available as a
+    // reversible visual stress test, clearly marked when enabled.
+    var demoPreview by rememberSaveable { mutableStateOf(false) }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
-    val overviewScroll = rememberScrollState()
-    BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
+     BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
     var rulesOpen by remember { mutableStateOf(false) }
 
 
@@ -283,8 +282,6 @@ fun Historical2DTimelineScreen(
             val selectedSection = sections.first { it.key == openGroup }
             Column(
                 Modifier.fillMaxSize().padding(inset)
-                    .then(if (demoPreview) Modifier
-                        else Modifier.verticalScroll(overviewScroll))
                     .padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -458,20 +455,36 @@ fun Historical2DTimelineScreen(
                         TwoDStatusMessage(tr("ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ",
                             "Check the selected date range"), true)
                     }
-    
-                    // Fixed-week A-05/A-07 remain usable even if a hidden custom
-                    // history range is invalid. Other groups require valid dates.
-                    if (report != null && (openGroup == "2" || lookback != "custom" || customValid)) {
-                        TwoDAnalysisResultGrid(
-                            group = selectedSection.key, report = report, en = en,
+
+                    // The confirmed-data renderer uses the EXACT same
+                    // approved adaptive grid and glass components as DEMO.
+                    // Nonworking dates / invalid historical filters cannot
+                    // fabricate results; show the user-approved text instead.
+                    if (report != null &&
+                        (openGroup == "2" || lookback != "custom" || customValid)) {
+                        TwoDAnalysisLiveGrid(
+                            group = selectedSection.key,
+                            report = report,
+                            en = en,
+                            modifier = Modifier.fillMaxWidth().weight(1f),
                             onOpenDetail = { openCheck = it },
                         )
+                    } else {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = scheme.secondaryContainer.copy(alpha = .35f),
+                        ) {
+                            Text(
+                                tr("အချက်အလက် မရရှိနိုင်သေးပါ",
+                                    "Information not yet available"),
+                                modifier = Modifier.padding(12.dp),
+                                color = scheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
                     }
-                    Text(tr("မှတ်တမ်းအခြေခံ · ခန့်မှန်းချက်မဟုတ်",
-                        "Historical results · Not a forecast"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant)
-                    Spacer(Modifier.height(4.dp))
+                
                 }
             }
         } else {
