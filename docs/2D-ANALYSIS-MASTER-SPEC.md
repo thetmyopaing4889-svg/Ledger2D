@@ -1268,3 +1268,20 @@ The three Build #1079 phone screenshots showed **A-01's final row clipped**, and
 - **Premium depth without heavy grey framing:** a consistent glass-*like* ivory-to-blush gradient on outer cards, restrained reflective one-pixel highlight and hairline wine border, soft shadow; wine-toned raised hero panels use gentle beveled gradient and highlight; secondary values use quiet translucent inset panes with significantly weaker elevation. Do not add real-time blur/shaders or heavy nesting that harms text contrast/performance.
 - **A-06:** the missing 0–9 digit stays larger and visually primary; missing 00–99 pair stays next to it, and both own counts are small. Preserve full count labels across MM/EN without clipping or overflowing the fixed 2×2 cards.
 - Confirm on the handset in all three tabs (MM and EN) before accepting the sample as the basis for production real-data integration. Automated compile/test is not visual certification. The demo remains artificial and never persists to data storage.
+
+---
+
+## Part XVI — Approved demo shell with real data (2026-11-09)
+
+The user approved the 4–2–2 visual layout and explicitly authorized connecting verified history results. They also specified a **mandatory unavailable-state exact text** and reiterated that the previously corrected vocabulary must be retained.
+
+- **Real results are the default**, using the original `TwoDAnalysisEngine.calculate` report and the exact same glass/3D result components from the accepted demo. The source of truth remains the selected date/session, verified history and relevant lookback/closed-day rules. Do not invent or save any actual 2D result.
+- Keep the `DEMO` switch only as a **visibly marked, reversible test harness** until the real-data visual behavior is approved; demo fixtures stay isolated and nonpersistent.
+- **No dash placeholders for unavailable output.** Show exactly **`အချက်အလက် မရရှိနိုင်သေးပါ`** in Burmese and **`Information not yet available`** in English. This applies to entire unavailable methods and unavailable independent subresults (including missing AM/PM/ALL stream data or absent A-08 condition data). The message must not be presented as a verified observed zero.
+- Verified results with **a true numeric zero** are distinct from unknown/not enough history. Do not change engine calculations or silently transform a zero into a fabricated outcome. Where there are *no* missing digits in a verified complete set, use `ပျောက်ဂဏန်းမရှိ` instead of an empty placeholder.
+- Respect the user's corrected terminology: **`ပျောက်ဂဏန်း` (0–9), `ပျောက်ဂဏန်းတွဲ` (00–99), `ညီအကို`** for display, and the approved compact home-card headings. The internal special-group key `ညီကို` from `TwoDigitGroups` remains untouched and is mapped only at display time. Localize parity labels through `twoDParityLabel`.
+- Preserve independent AM/PM/ALL single-digit/pair streaks and `+` lower-bound metadata; the digit remains the primary raised result. A-02 must show maximum-frequency pair, digit, parity, special group, tens and ones, respecting ties. A-08 shows independently sourced both/first/second condition leaders. A-05/A-04 missing-digit sets wrap to four tokens per line to prevent clipping for actual full 0–9 populations.
+- Keep **current draw = four equally sized 2×2 cards filling available height**. Keep the two weekly groups as **equal-width, equal-height, side-by-side pairs with content-measured height**, not stretched to the bottom nav. Maintain method detail navigation.
+- Add unit regression tests for exact unavailable wording, maximum-frequency ties, missing-digit and missing-pair streak rankings. CI plus a real phone screenshot are required before calling final.
+
+This supersedes earlier demo-default guidance in Part XV. Do not migrate or modify the financial ledger, live-feed job, commission, or transaction rules as part of this phase.
