@@ -94,10 +94,14 @@ class TwoDDetailPresentationTest {
                 tensNew, onesNew, emptySet(), verified)
         assertEquals("အသစ် + အသစ်",
             TwoDDetailSelection.flowPattern(row("67", true, true, true), false))
-        assertEquals("အဟောင်း + အသစ်",
+        assertEquals("အသစ် + အဟောင်း",
             TwoDDetailSelection.flowPattern(row("74", false, true, true), false))
+        assertEquals(listOf('4' to true, '7' to false),
+            TwoDDetailSelection.flowComponents(row("74", false, true, true)))
         assertEquals("New + Old",
             TwoDDetailSelection.flowPattern(row("74", true, false, true), true))
+        assertEquals("အဟောင်း + အဟောင်း",
+            TwoDDetailSelection.flowPattern(row("67", false, false, true), false))
         assertEquals("အသစ် + အသစ်",
             TwoDDetailSelection.flowPattern(row("11", true, true, true), false))
         assertEquals(null,

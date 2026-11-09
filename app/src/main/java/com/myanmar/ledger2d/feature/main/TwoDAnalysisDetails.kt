@@ -62,7 +62,20 @@ internal object TwoDDetailSelection {
         } else {
             if (en) "Old" else "အဟောင်း"
         }
-        return status(item.newTens) + " + " + status(item.newOnes)
+        return when {
+            item.newTens && item.newOnes -> status(true) + " + " + status(true)
+            !item.newTens && !item.newOnes -> status(false) + " + " + status(false)
+            else -> status(true) + " + " + status(false)
+        }
+    }
+
+    /** Preserve digit-to-status evidence but show the three approved pattern groups. */
+    fun flowComponents(item: TwoDTransition): List<Pair<Char, Boolean>> {
+        val pair = item.result.digit
+        val components = listOf(pair[0] to item.newTens, pair[1] to item.newOnes)
+        return if (item.newTens != item.newOnes)
+            components.sortedByDescending { it.second }
+        else components
     }
     fun longest(data: List<TwoDStreak>): List<TwoDStreak> {
         val max = data.maxOfOrNull { it.observedDrawsSince } ?: 0
@@ -552,19 +565,17 @@ internal fun TwoDAnalysisDetails(
                             // The most prominent part of each row is its NEW/OLD pattern.
                             DT(requireNotNull(TwoDDetailSelection.flowPattern(item, en)),
                                 en, LedgerTextRole.CARD_TITLE)
+                            val components = TwoDDetailSelection.flowComponents(item)
                             Row(Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically) {
-                                DFlowStatus(tx(en, "အသစ်", "New").takeIf { item.newTens }
-                                        ?: tx(en, "အဟောင်း", "Old"),
-                                    item.result.digit[0], item.newTens, en,
-                                    Modifier.weight(1f))
-                                DT("+", en, LedgerTextRole.CARD_TITLE,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                DFlowStatus(tx(en, "အသစ်", "New").takeIf { item.newOnes }
-                                        ?: tx(en, "အဟောင်း", "Old"),
-                                    item.result.digit[1], item.newOnes, en,
-                                    Modifier.weight(1f))
+                                components.forEachIndexed { index, (digit, isNew) ->
+                                    if (index > 0) DT("+", en, LedgerTextRole.CARD_TITLE,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    DFlowStatus(if (isNew) tx(en, "အသစ်", "New")
+                                        else tx(en, "အဟောင်း", "Old"),
+                                        digit, isNew, en, Modifier.weight(1f))
+                                }
                             }
                         } else {
                             // Missing earlier draws cannot be classified as verified new/old.
