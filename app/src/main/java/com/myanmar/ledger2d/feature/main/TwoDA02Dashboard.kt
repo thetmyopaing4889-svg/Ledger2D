@@ -106,7 +106,8 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
                     color = scheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TwoDNumberFocus(condensed(leastDigits), en, compact = true)
+                    TwoDNumberFocus(leastDigits.joinToString(" · ") { it.digit },
+                        en, modifier = Modifier.weight(1f), compact = true)
                     Text(leastDigit.toString() + tr(" ကြိမ်စီ", " times each"),
                         style = LedgerTypographyStandard.style(LedgerTextRole.BODY, lang),
                         color = scheme.onSurface)

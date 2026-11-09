@@ -55,13 +55,15 @@ internal fun TwoDNumberFocus(
                 digits,
                 style = LedgerTypographyStandard.style(LedgerTextRole.MONEY,
                     if (en) "en" else "my").copy(
-                    fontSize = (if (compact || digits.length > 9) 20 else 25).sp,
-                    lineHeight = (if (compact || digits.length > 9) 27 else 32).sp,
+                    fontSize = (if (digits.length > 11) 16
+                        else if (compact || digits.length > 9) 20 else 25).sp,
+                    lineHeight = (if (digits.length > 11) 23
+                        else if (compact || digits.length > 9) 27 else 32).sp,
                     fontWeight = FontWeight.Bold,
                 ),
                 color = c.onPrimaryContainer,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
+                maxLines = if (digits.length > 11) 4 else 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
