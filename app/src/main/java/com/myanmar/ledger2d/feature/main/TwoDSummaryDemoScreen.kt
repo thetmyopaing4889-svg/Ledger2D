@@ -6,6 +6,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -113,12 +117,21 @@ private fun demoSummaryGroups(): List<SummarySampleGroup> {
         SummarySampleGroup("ယခုအပတ်", "This week", listOf(
             e("05", "အသစ်/အဟောင်း စီးဆင်းမှု", "New / old flow",
                 listOf(
-                    c("အသစ်+အသစ် · ၁", "New+new · 1", "ပုံစံ", "Class"),
-                    c("အသစ်+အဟောင်း · ၁", "New+old · 1", "ပုံစံ", "Class"),
-                    c("ကျန် · 0·1·2·3·5·8·9", "Unseen · 0·1·2·3·5·8·9", "မထွက်သေး", "Unseen digits"),
+                    // Five mornings, five evenings: a FULL-WEEK layout stress test.
+                    // Sequence is display order Monday–Friday for each session.
+                    c("သစ်/သစ်", "New/new", "တနင်္လာ · မနက်", "Monday · AM"),
+                    c("သစ်/ဟောင်း", "New/old", "အင်္ဂါ · မနက်", "Tuesday · AM"),
+                    c("သစ်/သစ်", "New/new", "ဗုဒ္ဓဟူး · မနက်", "Wednesday · AM"),
+                    c("ဟောင်း/ဟောင်း", "Old/old", "ကြာသပတေး · မနက်", "Thursday · AM"),
+                    c("သစ်/ဟောင်း", "New/old", "သောကြာ · မနက်", "Friday · AM"),
+                    c("သစ်/ဟောင်း", "New/old", "တနင်္လာ · ညနေ", "Monday · PM"),
+                    c("ဟောင်း/ဟောင်း", "Old/old", "အင်္ဂါ · ညနေ", "Tuesday · PM"),
+                    c("သစ်/ဟောင်း", "New/old", "ဗုဒ္ဓဟူး · ညနေ", "Wednesday · PM"),
+                    c("ဟောင်း/ဟောင်း", "Old/old", "ကြာသပတေး · ညနေ", "Thursday · PM"),
+                    c("ဟောင်း/ဟောင်း", "Old/old", "သောကြာ · ညနေ", "Friday · PM"),
                 ),
-                "ယခုအပတ် နောက်ဆုံးအကြိမ်တွင် အသစ်+အဟောင်း ပုံစံဖြစ်ပြီး မထွက်သေးသော ဂဏန်းများလည်း ကျန်ရှိပါသည်။",
-                "The latest verified pattern is new+old."),
+                "မနက် ၅ ကြိမ်၊ ညနေ ၅ ကြိမ်၏ သစ်/ဟောင်း ပုံစံနှင့် မထွက်သေးသော ဂဏန်းများကို စုပြထားပါသည်။",
+                "Shows new/old classes across five AM and five PM results, plus unseen digits."),
             e("07", "အထူးဂဏန်းအုပ်စု", "Special groups",
                 listOf(
                     c("ညီအကို · ၁ ကြိမ်", "Siblings · 1x", "အများဆုံးအုပ်စု", "Top group"),
@@ -158,62 +171,105 @@ internal fun TwoDSummaryDemoScreen(
 ) {
     val scheme = MaterialTheme.colorScheme
     val groups = remember { demoSummaryGroups() }
-    var expandedChip by remember { mutableStateOf<String?>(null) }
+    var selectedGroup by rememberSaveable { mutableStateOf(0) }
+    var enlargedChip by remember { mutableStateOf<Pair<String, SummarySampleChip>?>(null) }
 
-    // One uninterrupted report: section dividers are labels, not large cards
-    // or separate mini-dashboards. All eight sample findings share one reading flow.
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 11.dp, vertical = 3.dp),
-        verticalArrangement = Arrangement.spacedBy(1.dp),
+            .padding(horizontal = 11.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         CherryMysteryHeader(date, session, en, onPickDate, onChangeSession)
 
         Row(
-            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Surface(
                 shape = RoundedCornerShape(5.dp),
                 color = scheme.tertiaryContainer,
             ) {
                 Text(
-                    "DEMO",
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onTertiaryContainer,
+                    "DEMO", style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
+                    color = scheme.onTertiaryContainer,
+                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
                 )
             }
             Text(
-                if (en) "Sample only · Not live · Date does not change examples"
-                else "နမူနာသာ · ရလဒ်အစစ်မဟုတ် · ရက်စွဲနှင့် မပြောင်းပါ",
+                if (en) "Illustrative only · Not actual results · Date does not change samples"
+                else "နမူနာဒေတာသာ · အစစ်မဟုတ် · ရက်စွဲပြောင်းလည်း မပြောင်းပါ",
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
 
-        groups.forEach { group ->
-            val visibleEntries = group.entries.filter { it.chips.isNotEmpty() }
-            if (visibleEntries.isNotEmpty()) {
-                SummaryReportSection(
-                    title = if (en) group.enTitle else group.mmTitle,
+        // Reuse the same compact selector as the existing Analysis screen.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            groups.forEachIndexed { index, group ->
+                TwoDAnalysisGroupTag(
+                    text = if (en) group.enTitle else group.mmTitle,
+                    selected = selectedGroup == index,
+                    modifier = Modifier.weight(1f),
+                    onClick = { selectedGroup = index; enlargedChip = null },
                 )
-                visibleEntries.forEach { entry ->
-                    SummaryReportParagraph(
-                        entry = entry,
-                        en = en,
-                        expandedChip = expandedChip,
-                        onToggleChip = { expandedChip = if (expandedChip == it) null else it },
-                        onOpenDetail = onOpenDetail,
+            }
+        }
+
+        groups[selectedGroup].entries.filter { it.chips.isNotEmpty() }.forEach { entry ->
+            SummarySideBySideFinding(
+                entry = entry,
+                en = en,
+                onEnlarge = { chip -> enlargedChip = entry.id to chip },
+                onOpenDetail = onOpenDetail,
+            )
+        }
+        Spacer(Modifier.height(5.dp))
+    }
+
+    // Compact transient zoom, not a page-sized dialog; the underlying 2-column
+    // layout is unaffected by expanding a miniature data cell.
+    val chosen = enlargedChip
+    if (chosen != null) {
+        val chip = chosen.second
+        Popup(
+            alignment = Alignment.Center,
+            onDismissRequest = { enlargedChip = null },
+            properties = PopupProperties(focusable = true),
+        ) {
+            Surface(
+                onClick = { enlargedChip = null },
+                modifier = Modifier.widthIn(min = 130.dp, max = 205.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = scheme.primaryContainer,
+                shadowElevation = 10.dp,
+                border = BorderStroke(1.dp, scheme.primary.copy(alpha = .24f)),
+            ) {
+                Column(
+                    Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        if (en) chip.enLabel else chip.mmLabel,
+                        color = scheme.onPrimaryContainer.copy(alpha = .75f),
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center,
                     )
+                    val (primary, meta) = summaryPrimaryAndMeta(
+                        if (en) chip.enValue else chip.mmValue)
+                    Text(primary, style = MaterialTheme.typography.titleLarge,
+                        color = scheme.onPrimaryContainer, fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center)
+                    if (meta.isNotBlank()) {
+                        Text(meta, style = MaterialTheme.typography.bodySmall,
+                            color = scheme.onPrimaryContainer, textAlign = TextAlign.Center)
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -250,7 +306,7 @@ private fun CherryMysteryHeader(
                     center = Offset(size.width * .08f, size.height * 1.07f))
             }
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
@@ -303,7 +359,7 @@ private fun CherryMysteryHeader(
 @Composable
 private fun CherryFrostedDigit(variant: Int) {
     Surface(
-        modifier = Modifier.size(width = 49.dp, height = 46.dp),
+        modifier = Modifier.size(width = 62.dp, height = 57.dp),
         shape = RoundedCornerShape(11.dp),
         color = Color.White.copy(alpha = .12f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = .40f)),
@@ -364,129 +420,216 @@ private fun CherryFrostedDigit(variant: Int) {
     }
 }
 
-/** Hairline section headings keep the chronology without splitting the report into cards. */
+/** One analysis check = one data card (left) plus its explanation/link (right). */
 @Composable
-private fun SummaryReportSection(title: String) {
-    val scheme = MaterialTheme.colorScheme
+private fun SummarySideBySideFinding(
+    entry: SummarySampleEntry,
+    en: Boolean,
+    onEnlarge: (SummarySampleChip) -> Unit,
+    onOpenDetail: (String) -> Unit,
+) {
+    val c = MaterialTheme.colorScheme
+    val sentence = if (en) entry.enSentence else entry.mmSentence
+    val more = if (en) "More details ↗" else "ပိုမိုလေ့လာရန် ↗"
+
     Row(
-        Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 1.dp),
+        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        HorizontalDivider(Modifier.weight(1f),
-            color = scheme.primary.copy(alpha = .20f))
+        Surface(
+            modifier = Modifier.weight(.55f),
+            shape = RoundedCornerShape(12.dp),
+            color = c.surfaceVariant.copy(alpha = .56f),
+            border = BorderStroke(1.dp, c.outlineVariant.copy(alpha = .48f)),
+        ) {
+            if (entry.id == "05") {
+                SummaryTenSlotGrid(entry, en, onEnlarge)
+            } else {
+                SummarySmallDataGrid(entry, en, onEnlarge)
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(.45f),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(
+                sentence,
+                style = MaterialTheme.typography.bodySmall,
+                color = c.onSurface,
+            )
+            val annotated = buildAnnotatedString {
+                withLink(
+                    LinkAnnotation.Clickable(
+                        tag = "summary-detail-" + entry.id,
+                        linkInteractionListener = { onOpenDetail(entry.id) },
+                    )
+                ) {
+                    withStyle(SpanStyle(
+                        fontWeight = FontWeight.SemiBold,
+                        color = c.primary,
+                    )) {
+                        append(more)
+                    }
+                }
+            }
+            Text(
+                text = annotated,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+/** 2 x 2 for A-02; 2 columns with natural rows for the remaining checks. */
+@Composable
+private fun SummarySmallDataGrid(
+    entry: SummarySampleEntry,
+    en: Boolean,
+    onEnlarge: (SummarySampleChip) -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        entry.chips.chunked(2).forEach { pair ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                pair.forEach { chip ->
+                    Box(Modifier.weight(1f)) {
+                        SummaryInnerDataChip(
+                            chip = chip, en = en,
+                            compact = false,
+                            onClick = { onEnlarge(chip) },
+                        )
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/**
+ * A-05 stress case: exactly 10 draw slots across two rows.
+ * The first row is Mon–Fri morning, the second Mon–Fri evening.
+ * Do not use NN/NO/OO: show Burmese "သစ်/ဟောင်း" directly.
+ */
+@Composable
+private fun SummaryTenSlotGrid(
+    entry: SummarySampleEntry,
+    en: Boolean,
+    onEnlarge: (SummarySampleChip) -> Unit,
+) {
+    val c = MaterialTheme.colorScheme
+    val days = listOf("M","T","W","T","F")
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            days.forEach { day ->
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(day, style = MaterialTheme.typography.labelSmall,
+                        color = c.onSurfaceVariant, fontSize = 9.sp)
+                }
+            }
+        }
+        listOf(0, 5).forEachIndexed { rowIndex, start ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                (start until start + 5).forEach { slot ->
+                    Box(Modifier.weight(1f)) {
+                        val chip = entry.chips.getOrNull(slot)
+                        if (chip != null) {
+                            SummaryInnerDataChip(
+                                chip = chip, en = en, compact = true,
+                                onClick = { onEnlarge(chip) },
+                            )
+                        } else {
+                            // Empty placeholders in the fixed full-week grid
+                            // never count as observed results.
+                            Box(Modifier.fillMaxWidth().height(38.dp))
+                        }
+                    }
+                }
+            }
+            if (rowIndex == 0) {
+                Text(if (en) "AM ↑    PM ↓" else "အပေါ် မနက် · အောက် ညနေ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = c.onSurfaceVariant, fontSize = 9.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        HorizontalDivider(color = c.outlineVariant.copy(alpha = .5f))
         Text(
-            title,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = scheme.primary,
+            if (en) "Unseen digits: 0·1·2·3·5·8·9"
+            else "ကျန်ဂဏန်း  0·1·2·3·5·8·9",
+            style = MaterialTheme.typography.labelSmall,
+            color = c.primary,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
         )
-        HorizontalDivider(Modifier.weight(1f),
-            color = scheme.primary.copy(alpha = .20f))
     }
 }
 
 @Composable
-private fun SummaryReportParagraph(
-    entry: SummarySampleEntry,
+private fun SummaryInnerDataChip(
+    chip: SummarySampleChip,
     en: Boolean,
-    expandedChip: String?,
-    onToggleChip: (String) -> Unit,
-    onOpenDetail: (String) -> Unit,
+    compact: Boolean,
+    onClick: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val sentence = if (en) entry.enSentence else entry.mmSentence
-    val more = if (en) "More details ↗" else "ပိုမိုလေ့လာရန် ↗"
-
-    // No per-check card or heading. Make the key data more legible while
-    // shrinking only the wasted inter-paragraph whitespace.
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 1.dp),
-        verticalArrangement = Arrangement.spacedBy(1.dp),
+    val c = MaterialTheme.colorScheme
+    val (primary, meta) = summaryPrimaryAndMeta(
+        if (en) chip.enValue else chip.mmValue)
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(if (compact) 5.dp else 8.dp),
+        color = c.surface,
+        border = BorderStroke(1.dp, c.primary.copy(alpha = .13f)),
+        shadowElevation = 1.dp,
     ) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+        Column(
+            Modifier.fillMaxWidth().padding(
+                horizontal = if (compact) 1.dp else 2.dp,
+                vertical = if (compact) 5.dp else 5.dp,
+            ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
-            entry.chips.forEachIndexed { chipIndex, chip ->
-                val key = entry.id + "-" + chipIndex
-                val expanded = expandedChip == key
-                val (primary, meta) = summaryPrimaryAndMeta(
-                    if (en) chip.enValue else chip.mmValue)
-                val isRemaining = entry.id == "05" && chipIndex == 2
-                Surface(
-                    onClick = { onToggleChip(key) },
-                    modifier = Modifier.animateContentSize(),
-                    shape = RoundedCornerShape(if (expanded) 11.dp else 7.dp),
-                    color = if (expanded) scheme.primaryContainer
-                        else if (isRemaining) scheme.primaryContainer.copy(alpha = .55f)
-                        else scheme.primary.copy(alpha = .055f),
-                    border = BorderStroke(1.dp, scheme.primary.copy(
-                        alpha = if (expanded) .37f else if (isRemaining) .28f else .12f)),
-                    shadowElevation = if (expanded) 2.dp else 0.dp,
-                ) {
-                    Column(
-                        Modifier.padding(
-                            horizontal = if (expanded) 10.dp else 4.dp,
-                            vertical = if (expanded) 5.dp else 1.dp,
-                        ),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(1.dp),
-                    ) {
-                        if (expanded) {
-                            Text(
-                                if (en) chip.enLabel else chip.mmLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = scheme.onSurfaceVariant,
-                            )
-                        }
-                        Text(
-                            buildAnnotatedString {
-                                withStyle(SpanStyle(
-                                    fontSize = if (expanded) 21.sp else if (isRemaining) 16.sp else 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (expanded) scheme.onPrimaryContainer else scheme.onSurface,
-                                )) { append(primary) }
-                                if (meta.isNotBlank()) {
-                                    append(" ")
-                                    withStyle(SpanStyle(
-                                        fontSize = if (expanded) 13.sp else 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (expanded) scheme.onPrimaryContainer.copy(alpha = .82f)
-                                            else scheme.onSurfaceVariant,
-                                    )) { append(meta) }
-                                }
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = if (expanded) 3 else 2,
-                            softWrap = true,
-                        )
-                    }
-                }
-            }
-        }
-        val annotated = buildAnnotatedString {
-            append(sentence)
-            append("  ")
-            withLink(
-                LinkAnnotation.Clickable(
-                    tag = "detail-" + entry.id,
-                    linkInteractionListener = { onOpenDetail(entry.id) },
+            val readable = if (compact) {
+                // Fixed 5-column cells require two lines, not English codes.
+                primary.replace("/", "/\n")
+            } else primary
+            Text(
+                readable,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = if (compact) 9.sp else 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = c.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = if (compact) 2 else 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = if (compact) 11.sp else 15.sp,
+            )
+            if (meta.isNotBlank()) {
+                Text(
+                    meta,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 9.sp,
+                    color = c.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            ) {
-                pushStyle(SpanStyle(
-                    color = scheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                ))
-                append(more)
-                pop()
             }
         }
-        Text(
-            text = annotated,
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant,
-        )
     }
 }
