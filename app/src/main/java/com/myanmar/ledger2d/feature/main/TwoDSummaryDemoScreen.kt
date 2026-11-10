@@ -414,6 +414,406 @@ private fun demoFindings(s: DemoSituation): List<DemoFinding> = listOf(
     demoFlow(s), demoSpecial(s), demoPrevious(s), demoReturns(s),
 )
 
+
+/**
+ * DEMO presentation contract: each numbered finding has a left-hand question,
+ * a stable right-hand answer column, and its own plain-language conclusion.
+ * Long explanations and extra result families live in the same method's
+ * disclosure, not in decorative cards. Each scenario is an isolated fixture.
+ */
+private data class DemoReportLine(
+    val question: DemoWords,
+    val value: DemoWords,
+    val ending: DemoWords,
+)
+private fun line(
+    mmQuestion: String, enQuestion: String,
+    mmValue: String, enValue: String,
+    mmEnding: String, enEnding: String,
+) = DemoReportLine(words(mmQuestion, enQuestion), words(mmValue, enValue),
+    words(mmEnding, enEnding))
+
+private data class DemoReportMethod(
+    val id: String,
+    val title: DemoWords,
+    val lines: List<DemoReportLine>,
+)
+
+private fun mmNumbers(values: Collection<String>) =
+    if (values.isEmpty()) "မရှိ" else values.joinToString("၊ ")
+private fun enNumbers(values: Collection<String>) =
+    if (values.isEmpty()) "none" else values.joinToString(", ")
+private fun winners(values: List<String>): Pair<List<String>, Int> {
+    val counts = values.groupingBy { it }.eachCount()
+    val top = counts.values.maxOrNull() ?: 0
+    return counts.filterValues { it == top && top > 0 }.keys.sorted() to top
+}
+private fun countDigits(values: List<String>): Pair<List<String>, Int> =
+    winners(values.flatMap { pair -> pair.map { it.toString() } })
+
+private fun sameSlotFixture(s: DemoSituation) = when (s) {
+    DemoSituation.EARLY -> listOf("21", "73", "21", "73", "66", "12")
+    DemoSituation.MIDDLE -> listOf(
+        "21", "73", "21", "73", "66", "21", "73", "46",
+        "46", "12", "35", "88", "73", "21")
+    DemoSituation.FULL -> listOf(
+        "21", "73", "21", "73", "66", "21", "73", "46",
+        "46", "12", "35", "88", "73", "21", "73", "73",
+        "45", "88", "35", "77")
+    DemoSituation.TIES -> listOf(
+        "21", "73", "46", "21", "73", "46", "21", "73",
+        "46", "08", "55", "60")
+    DemoSituation.PARTIAL -> emptyList()
+}
+
+private fun report02(s: DemoSituation): DemoReportMethod {
+    val title = words("အထွက်အများဆုံး စစ်ဆေးချက်", "Most frequent results")
+    val samples = sameSlotFixture(s)
+    if (samples.isEmpty()) return DemoReportMethod("02", title, listOf(line(
+        "နေ့တူ၊ အကြိမ်တူ သမိုင်းမှတ်တမ်းမှာ",
+        "In the same-weekday/session history",
+        "မရရှိသေး", "No records",
+        "နှိုင်းယှဉ်နိုင်တဲ့ မှတ်တမ်း မရှိသေးပါ။",
+        "No comparable historical samples are available.")))
+    val (pairs, pairCount) = winners(samples)
+    val (digits, digitCount) = countDigits(samples)
+    val (tens, tensCount) = winners(samples.map { it.first().toString() })
+    val (ones, onesCount) = winners(samples.map { it.last().toString() })
+    val (parity, parityCount) = winners(samples.map { TwoDigitGroups.parity(it) })
+    val specialCounts = TwoDigitGroups.named.mapValues { (_, group) ->
+        samples.count { it in group }
+    }
+    val specialMax = specialCounts.values.maxOrNull() ?: 0
+    val specials = specialCounts.filterValues { it == specialMax && specialMax > 0 }.keys
+        .map { if (it == "ညီကို") "ညီအကို" else it }
+    fun frequencyEnding(count: Int) = count.toString() + " ကြိမ်စီ တွေ့ခဲ့ပါတယ်။"
+    fun frequencyEndingEn(count: Int) = count.toString() + " recorded appearances each."
+    return DemoReportMethod("02", title, listOf(
+        line("၁။ နေ့တူ၊ အကြိမ်တူ သမိုင်းမှာ အထွက်အများဆုံး 2D ဂဏန်းတွဲက",
+            "1. The most frequent exact 2D pair in matching weekday/session history is",
+            mmNumbers(pairs), enNumbers(pairs),
+            frequencyEnding(pairCount), frequencyEndingEn(pairCount)),
+        line("အထွက်အများဆုံး တစ်လုံးဂဏန်းက",
+            "The most frequent single digit is",
+            mmNumbers(digits), enNumbers(digits),
+            frequencyEnding(digitCount), frequencyEndingEn(digitCount)),
+        line("အများဆုံးတွေ့တဲ့ စုံ/မ အမျိုးအစားက",
+            "The leading parity class is",
+            mmNumbers(parity), enNumbers(parity),
+            frequencyEnding(parityCount), frequencyEndingEn(parityCount)),
+        line("အထူးဂဏန်းအုပ်စုထဲမှာ အများဆုံးက",
+            "The most observed special group is",
+            mmNumbers(specials), enNumbers(specials),
+            if (specialMax==0) "အထူးအုပ်စု မတွေ့ပါ။" else frequencyEnding(specialMax),
+            if (specialMax==0) "No group observed." else frequencyEndingEn(specialMax)),
+        line("အများဆုံးတွေ့တဲ့ ထိပ်ဂဏန်းက",
+            "The most frequent tens digit is",
+            mmNumbers(tens), enNumbers(tens),
+            frequencyEnding(tensCount), frequencyEndingEn(tensCount)),
+        line("အများဆုံးတွေ့တဲ့ ပိတ်ဂဏန်းက",
+            "The most frequent ones digit is",
+            mmNumbers(ones), enNumbers(ones),
+            frequencyEnding(onesCount), frequencyEndingEn(onesCount)),
+    ))
+}
+
+private fun report03(s: DemoSituation): DemoReportMethod {
+    val title=words("စုံ/မ ပုံစံတူ စစ်ဆေးချက်", "Matching parity sequence")
+    val item=when(s) {
+        DemoSituation.EARLY -> line(
+            "၂။ ယခုအပတ် စုံ/မ အစဉ်ကို စစ်ဖို့",
+            "2. The current week's parity sequence",
+            "မပြည့်သေး", "Not ready",
+            "ရှေ့အကြိမ် အနည်းဆုံး ၄ ကြိမ် လိုပါသေးတယ်။",
+            "Needs at least four preceding results.")
+        DemoSituation.PARTIAL -> line(
+            "၂။ ယခုအပတ် စုံ/မ အစဉ်ကို",
+            "2. The current week's parity sequence",
+            "အတည်မပြုနိုင်", "Unverified",
+            "ရှေ့အကြိမ်မှတ်တမ်း မပြည့်စုံသေးပါ။",
+            "Earlier draw records have gaps.")
+        DemoSituation.FULL -> line(
+            "၂။ ယခုအပတ် စုံ/မ အစဉ်နဲ့ တူတဲ့ သမိုင်းအပတ်ကို",
+            "2. Historical weeks with the same parity sequence",
+            "မတွေ့ပါ", "No matches",
+            "ရရှိတဲ့သမိုင်းမှတ်တမ်းမှာ မတွေ့ခဲ့ပါ။",
+            "None matched in the sample history.")
+        DemoSituation.TIES -> line(
+            "၂။ ပုံစံတူ သမိုင်းအပတ်တွေရဲ့ နောက်အကြိမ်မှာ",
+            "2. After historically matching parity sequences",
+            "စုံမ၊ မမ", "Even/odd, odd/odd",
+            "တစ်ကြိမ်စီ တူညီစွာတွေ့ခဲ့ပါတယ် (စုစုပေါင်း ၂ ပတ်)။",
+            "Each occurred once across two matching weeks.")
+        DemoSituation.MIDDLE -> line(
+            "၂။ ယခုအပတ်ပုံစံနဲ့ တူတဲ့ သမိုင်းအပတ် ၃ ပတ်ရဲ့ နောက်အကြိမ်မှာ",
+            "2. Following three historically matching weeks",
+            "စုံမ", "Even/odd",
+            "၂ ကြိမ်နဲ့ အများဆုံးတွေ့ခဲ့ပါတယ်။",
+            "Led with two observed following outcomes.")
+    }
+    return DemoReportMethod("03",title,listOf(item))
+}
+
+private fun report06(s: DemoSituation): DemoReportMethod {
+    val title=words("ပျောက်ဂဏန်း စစ်ဆေးချက်", "Longest observed absences")
+    val tied=s==DemoSituation.TIES
+    val items=mutableListOf(
+        line("၃။ မနက်အကြိမ်မှာ အကြာဆုံးပျောက်နေတဲ့ တစ်လုံးဂဏန်းက",
+            "3. The longest-absent digit in morning draws is",
+            if(tied)"3၊ 7" else "3", if(tied)"3, 7" else "3",
+            if(tied)"၁၆ ကြိမ်စီ မတွေ့ရသေးပါ။" else "၁၆ ကြိမ်ဆက် မတွေ့ရသေးပါ။",
+            "Absent for 16 observed morning draws."),
+        line("မနက်အကြိမ် ပျောက်နေတဲ့ 2D ဂဏန်းတွဲက",
+            "The longest-absent AM 2D pair is",
+            if(tied)"93၊ 62" else "93",if(tied)"93, 62" else "93",
+            if(tied)"၄၅ ကြိမ်စီ မတွေ့ရသေးပါ။" else "၄၅ ကြိမ်ဆက် မတွေ့ရသေးပါ။",
+            "Absent for 45 observed morning draws."),
+    )
+    if(s==DemoSituation.PARTIAL) {
+        items += line("ညနေနဲ့ နှစ်ကြိမ်ပေါင်း မှတ်တမ်းတွေကို",
+            "Evening and combined streams are",
+            "မရရှိသေး", "Unavailable",
+            "အတည်ပြုနိုင်တဲ့ နမူနာအချက်အလက် မရှိသေးပါ။",
+            "No verified sample evidence is available.")
+    } else {
+        items += listOf(
+            line("ညနေအကြိမ်မှာ အကြာဆုံးပျောက်တဲ့ တစ်လုံးဂဏန်းက",
+                "The longest-absent PM single digit is",
+                "1","1","၈ ကြိမ်ဆက် မတွေ့ရသေးပါ။","Absent for eight PM draws."),
+            line("ညနေအကြိမ်မှာ အကြာဆုံးပျောက်တဲ့ 2D တွဲက",
+                "The longest-absent PM 2D pair is",
+                "56","56","၃၇ ကြိမ်ဆက် မတွေ့ရသေးပါ။","Absent for 37 PM draws."),
+            line("မနက်/ညနေ ပေါင်းမှတ်တမ်းမှာ အကြာဆုံးပျောက်တဲ့ တစ်လုံးဂဏန်းက",
+                "The longest-absent single digit across both sessions is",
+                "0","0","၆ ကြိမ်ဆက် မတွေ့ရသေးပါ။","Absent for six combined draws."),
+            line("မနက်/ညနေ ပေါင်းမှတ်တမ်းမှာ အကြာဆုံးပျောက်တဲ့ 2D တွဲက",
+                "The longest-absent 2D pair across both sessions is",
+                "47","47","၂၂ ကြိမ်ဆက် မတွေ့ရသေးပါ။","Absent for 22 combined draws."),
+        )
+    }
+    return DemoReportMethod("06",title,items)
+}
+
+private fun report08(s: DemoSituation): DemoReportMethod {
+    val title=words("ရှေ့ထွက်ဂဏန်း တိုက်စစ်", "Previous results comparison")
+    val both=when(s) {
+        DemoSituation.EARLY, DemoSituation.PARTIAL -> line(
+            "၄။ ရှေ့ထွက်ဂဏန်းနှစ်ခုလုံး တိုက်စစ်ဖို့",
+            "4. To compare both previous results",
+            "မပြည့်စုံ", "Not available",
+            "ဒုတိယရှေ့ဂဏန်း မသိရသေးပါ။",
+            "The second reference is unknown.")
+        DemoSituation.FULL -> line(
+            "၄။ 21 နဲ့ 66 နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းနောက်ထွက်ကို",
+            "4. Following history matched by both 21 and 66",
+            "မတွေ့ပါ", "No match",
+            "တစ်ခုချင်းစီ စစ်ထားတဲ့အဖြေကတော့ သီးခြားရှိပါတယ်။",
+            "Individual reference searches still have outcomes.")
+        DemoSituation.TIES -> line(
+            "၄။ ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
+            "4. History matching both previous 21 and 66",
+            "35၊ 70", "35, 70",
+            "နောက်အကြိမ် ၂ ကြိမ်စီ အများဆုံးတွေ့ခဲ့ပါတယ်။",
+            "Each led following outcomes twice.")
+        DemoSituation.MIDDLE -> line(
+            "၄။ ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
+            "4. History matching both previous 21 and 66",
+            "35", "35",
+            "နောက်အကြိမ် ၁ ကြိမ် တွေ့ခဲ့ပါတယ်။",
+            "One following appearance was found.")
+    }
+    val first=if(s==DemoSituation.PARTIAL)
+        line("ပထမရှေ့ဂဏန်း 21 တစ်ခုတည်းနဲ့ တိုက်စစ်ရာမှာ",
+            "With first reference 21 alone",
+            "မတွေ့ပါ","No match",
+            "သမိုင်းနောက်ထွက် မတွေ့ခဲ့ပါ။",
+            "No following recorded sample matched.")
+    else line("ပထမရှေ့ဂဏန်း 21 တစ်ခုတည်းနဲ့ တိုက်စစ်ရာမှာ",
+        "With first reference 21 alone",
+        "12","12","နောက်အကြိမ် ၂ ကြိမ် တွေ့ခဲ့ပါတယ်။",
+        "Appeared twice afterward.")
+    val second=if(s==DemoSituation.EARLY||s==DemoSituation.PARTIAL)
+        line("ဒုတိယရှေ့ဂဏန်းအတွက်",
+            "For the second reference",
+            "မရရှိသေး", "Unknown",
+            "ရှေ့မှတ်တမ်း မရှိသေးပါ။","Reference is unavailable.")
+    else line("ဒုတိယရှေ့ဂဏန်း 66 တစ်ခုတည်းနဲ့ တိုက်စစ်ရာမှာ",
+        "With second reference 66 alone",
+        "57","57","နောက်အကြိမ် ၁ ကြိမ် တွေ့ခဲ့ပါတယ်။",
+        "Appeared once afterward.")
+    return DemoReportMethod("08",title,listOf(both,first,second))
+}
+
+private fun report05(s: DemoSituation): DemoReportMethod {
+    val title=words("အသစ်/အဟောင်း ဂဏန်းစီးဆင်းမှု", "New / old digit flow")
+    val slots=weekSlots(s)
+    val events=slots.mapIndexedNotNull { i,pair->pair?.let { i to it } }
+    if(events.isEmpty())return DemoReportMethod("05",title,listOf(line(
+        "၅။ ယခုအပတ် အသစ်/အဟောင်းအခြေအနေက",
+        "5. This week's new/old flow is",
+        "မရရှိသေး", "No data", "အတည်ပြုထားသောရလဒ် မရှိသေးပါ။",
+        "No recorded sample outcomes yet.")))
+    val (idx, last)=events.last()
+    val earlier=events.filter { it.first<idx }.map { it.second }
+    val priorDigits=earlier.flatMap { it.toList() }.toSet()
+    val known=(0..idx).all { it<slots.size && slots[it]!=null }
+    val statement=when {
+        !known -> words("ရှေ့အကြိမ်မှတ်တမ်း ပျောက်နေတဲ့အတွက် အသစ်/အဟောင်းကို အတည်မပြုနိုင်ပါ။",
+            "Unknown earlier slots prevent a verified new/old classification.")
+        last[0]==last[1]&&last[0] !in priorDigits ->
+            words("တစ်လုံးဂဏန်းအသစ် တစ်မျိုးတည်းက နှစ်နေရာလုံးမှာ ပါဝင်ပါတယ်။",
+                "One distinct new digit occupies both positions.")
+        last[0]==last[1] -> words("တစ်လုံးဂဏန်းအဟောင်း တစ်မျိုးတည်းက နှစ်နေရာလုံးမှာ ပါဝင်ပါတယ်။",
+            "One distinct old digit occupies both positions.")
+        else -> words(last[0].toString() + " က " +
+            (if(last[0] in priorDigits)"အဟောင်း" else "အသစ်") + "၊ " +
+            last[1] + " က " + (if(last[1] in priorDigits)"အဟောင်း" else "အသစ်") +
+            " ဖြစ်ပါတယ်။",
+            last[0].toString() + " is " + (if(last[0] in priorDigits)"old" else "new") +
+            "; " + last[1] + " is " + (if(last[1] in priorDigits)"old" else "new") + ".")
+    }
+    val unseen=unseenDigits(events.map { it.second })
+    val evidence=if(known) {
+        statement
+    } else words("ရှေ့အကြိမ်မှတ်တမ်း ပျောက်နေလို့ အမျိုးအစား မသေချာပါ။",
+        "Earlier slots are missing; classification is unverified.")
+    val mmRemainder=joinedDigits(unseen)
+    val enRemainder=joinedDigitsEnglish(unseen)
+    return DemoReportMethod("05",title,listOf(
+        line("၅။ ယခုအပတ် နောက်ဆုံးတွေ့ရှိတဲ့ 2D ရလဒ်က",
+            "5. The latest recorded 2D this week is",
+            last,last,evidence.mm,evidence.en),
+        line("ယခုအပတ် ရရှိထားတဲ့မှတ်တမ်းမှာ မတွေ့ရသေးတဲ့ တစ်လုံးဂဏန်းတွေက",
+            "The single digits not seen in available weekly records are",
+            mmRemainder,enRemainder,
+            "မှတ်တမ်း " + events.size + "/10 ကြိမ်အရ ဖြစ်ပါတယ်။",
+            "Based on " + events.size + " of 10 possible weekly draws."),
+    ))
+}
+
+private fun report07(s: DemoSituation): DemoReportMethod {
+    val title=words("ယခုအပတ် အထူးအုပ်စု", "Special groups this week")
+    val known=weekSlots(s).filterNotNull()
+    val groups=TwoDigitGroups.named.map { (name, values) -> name to known.count { it in values } }
+    val repeatCount=known.groupingBy { it }.eachCount().values.sumOf { (it-1).coerceAtLeast(0) }
+    val all=groups+("ပြန်ကျ" to repeatCount)
+    val maximum=all.maxOfOrNull { it.second }?:0
+    fun friendly(k: String)=if(k=="ညီကို")"ညီအကို" else k
+    val leaders=all.filter { it.second==maximum&&maximum>0 }.map { friendly(it.first) }
+    val main=line("၆။ ယခုအပတ် ထွက်ရှိထားတဲ့ အထူးအုပ်စုတွေထဲမှာ အများဆုံးက",
+        "6. The most recorded special group this week is",
+        if(maximum==0)"မတွေ့သေး" else mmNumbers(leaders),
+        if(maximum==0)"None" else enNumbers(leaders),
+        if(maximum==0)"အထူးအုပ်စုထွက်ရှိမှု မတွေ့ရသေးပါ။"
+        else maximum.toString()+" ကြိမ်စီ ဖြစ်ပါတယ်။",
+        if(maximum==0)"No special-group occurrence yet."
+        else maximum.toString()+" appearances each.")
+    return DemoReportMethod("07",title,listOf(main)+all.map { (key,count) ->
+        line(friendly(key)+" အုပ်စုရဲ့ ထွက်ရှိမှုက",
+            "Observed count for "+friendly(key)+" is",
+            count.toString(),count.toString(),
+            "ကြိမ် တွေ့ထားပါတယ်။","recorded appearances.")
+    })
+}
+
+private fun report04(s: DemoSituation): DemoReportMethod {
+    val title=words("ပြီးခဲ့တဲ့အပတ် စာရင်းချုပ်", "Previous-week findings")
+    val results=previousWeek(s)
+    val (leaders,high)=countDigits(results)
+    val missing=unseenDigits(results)
+    val (parity,parityCount)=winners(results.map { TwoDigitGroups.parity(it) })
+    val special=TwoDigitGroups.named.map { (name,values) ->
+        (if(name=="ညီကို")"ညီအကို" else name) to results.count { it in values }
+    }
+    val spMax=special.maxOfOrNull { it.second }?:0
+    val spTop=special.filter { it.second==spMax&&spMax>0 }.map { it.first }
+    val repeats=results.groupingBy { it }.eachCount().values.sumOf { (it-1).coerceAtLeast(0) }
+    return DemoReportMethod("04",title,listOf(
+        line("၇။ ပြီးခဲ့တဲ့အပတ် တစ်လုံးဂဏန်းတွေထဲမှာ အထွက်အများဆုံးက",
+            "7. The most frequent single digit last week was",
+            mmNumbers(leaders),enNumbers(leaders),
+            high.toString()+" ကြိမ်စီ တွေ့ထားပါတယ်။",
+            high.toString()+" appearances each."),
+        line("ပြီးခဲ့တဲ့အပတ် ရရှိထားတဲ့မှတ်တမ်းမှာ မတွေ့ခဲ့တဲ့ ဂဏန်းတွေက",
+            "Digits not seen in available previous-week records are",
+            joinedDigits(missing),joinedDigitsEnglish(missing),
+            if(s==DemoSituation.PARTIAL)"မှတ်တမ်းအချို့ မပြည့်စုံသေးပါ။"
+            else "မှတ်တမ်းအရ ဖြစ်ပါတယ်။",
+            if(s==DemoSituation.PARTIAL)"Some draw records are missing."
+            else "Based on the available historical record."),
+        line("ပြီးခဲ့တဲ့အပတ် အများဆုံး စုံ/မ အမျိုးအစားက",
+            "The most frequent parity class last week was",
+            mmNumbers(parity),enNumbers(parity),
+            parityCount.toString()+" ကြိမ်စီ တွေ့ထားပါတယ်။",
+            parityCount.toString()+" occurrences each."),
+        line("ပြီးခဲ့တဲ့အပတ် အများဆုံး အထူးအုပ်စုက",
+            "The most observed special group last week was",
+            mmNumbers(spTop),enNumbers(spTop),
+            spMax.toString()+" ကြိမ်စီ တွေ့ထားပါတယ်။",
+            spMax.toString()+" occurrences each."),
+        line("ပြီးခဲ့တဲ့အပတ် တူညီတဲ့ 2D တွဲ ပြန်ကျမှုက",
+            "Exact 2D repeat events last week total",
+            repeats.toString(),repeats.toString(),
+            "ကြိမ် ထပ်ထွက်ခဲ့ပါတယ်။",
+            "additional appearances."),
+    ))
+}
+
+private fun report01(s: DemoSituation): DemoReportMethod {
+    val title=words("ယခင်အပတ် ပျောက်ဂဏန်း ပြန်ပေါ်မှု", "Previous-week digit returns")
+    val missing=unseenDigits(previousWeek(s))
+    val slots=weekSlots(s)
+    val seen=slots.filterNotNull().flatMap { it.toList() }.toSet()
+    val returned=missing.filter { it in seen }
+    val still=missing.filter { it !in seen }
+    val first=returned.firstOrNull()
+    val firstSlot=first?.let { digit ->
+        slots.indexOfFirst { it?.contains(digit)==true }
+    }?:-1
+    val certain=firstSlot>=0&&(0..firstSlot).all { it<slots.size&&slots[it]!=null }
+    val start=line("၈။ ပြီးခဲ့တဲ့အပတ် မတွေ့ခဲ့တဲ့ဂဏန်းတွေထဲက ယခုအပတ် ပြန်တွေ့ရတာက",
+        "8. Digits unseen last week but observed this week are",
+        joinedDigits(returned),joinedDigitsEnglish(returned),
+        if(returned.isEmpty())"ရရှိထားတဲ့ ယခုအပတ်မှတ်တမ်းမှာ မပေါ်သေးပါ။"
+        else "ရရှိထားတဲ့ ယခုအပတ်မှတ်တမ်းမှာ ပြန်ပေါ်ခဲ့ပါတယ်။",
+        if(returned.isEmpty())"None has returned in the sample records yet."
+        else "These have appeared in available weekly samples.")
+    val more=mutableListOf(
+        line("ယခင်အပတ် မတွေ့ရသေးတဲ့ တစ်လုံးဂဏန်းတွေက",
+            "Digits unseen in previous-week records were",
+            joinedDigits(missing),joinedDigitsEnglish(missing),
+            if(s==DemoSituation.PARTIAL)"ယခင်အပတ်မှတ်တမ်း မပြည့်စုံသေးပါ။"
+            else "ရရှိထားတဲ့မှတ်တမ်းအရ ဖြစ်ပါတယ်။",
+            if(s==DemoSituation.PARTIAL)"Previous-week records are incomplete."
+            else "As observed in the previous-week records."),
+        line("ယခုအပတ်မှာ မတွေ့ရသေးတဲ့ ယခင်ပျောက်ဂဏန်းတွေက",
+            "Previously unseen digits still not recorded this week are",
+            joinedDigits(still),joinedDigitsEnglish(still),
+            "ရရှိထားတဲ့ ယခုအပတ်မှတ်တမ်းအရ ဖြစ်ပါတယ်။",
+            "Based on available current-week results."),
+    )
+    if(first!=null) {
+        more+=line("ပြန်ပေါ်ခဲ့တဲ့ "+first+" ရဲ့ ပထမဆုံးပြန်ပေါ်မှုကို",
+            "The first verified return of "+first+" is",
+            if(certain)slots[firstSlot].orEmpty() else "မအတည်ပြုနိုင်",
+            if(certain)slots[firstSlot].orEmpty() else "Unverified",
+            if(certain)"ယခုအပတ်မှတ်တမ်းမှာ ပထမတွေ့ခဲ့တာ ဖြစ်ပါတယ်။"
+            else "ရှေ့အကြိမ်မှတ်တမ်း ပျောက်နေပါတယ်။",
+            if(certain)"First observed return in the current week."
+            else "Earlier draw slots are missing.")
+        more+=line("သမိုင်းနမူနာမှာ "+first+" ပြန်ပေါ်စဉ် အများဆုံးတွဲထွက်တဲ့ဂဏန်းက",
+            "The illustrative historical return companion to "+first+" is",
+            "3","3","နမူနာသမိုင်းမှာ ၃ ကြိမ် တွေ့ခဲ့ပါတယ်။",
+            "Seen three times in a sample historical fixture.")
+    }
+    return DemoReportMethod("01",title,listOf(start)+more)
+}
+
+private fun reportMethods(s: DemoSituation): List<DemoReportMethod> = listOf(
+    report02(s),report03(s),report06(s),report08(s),
+    report05(s),report07(s),report04(s),report01(s),
+)
+
 @Composable
 internal fun TwoDSummaryDemoScreen(
     date: LocalDate,
@@ -425,81 +825,86 @@ internal fun TwoDSummaryDemoScreen(
     onOpenDetail: (String) -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf(DemoSituation.MIDDLE.name) }
-    var openCheck by rememberSaveable { mutableStateOf("") }
-    val situation = DemoSituation.entries.firstOrNull { it.name == selected }
-        ?: DemoSituation.MIDDLE
-    val entries = remember(situation) { demoFindings(situation) }
-
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        DemoDateAndSession(date, session, en, onPickDate, onChangeSession)
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Surface(color = ReportPale, shape = RoundedCornerShape(5.dp)) {
-                Text("DEMO", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ReportWine)
-            }
-            Text(
-                words("နမူနာဒေတာသာ · ရက်စွဲပြောင်းလည်း အဖြေမပြောင်းပါ",
-                    "Examples only · date/session do not alter sample findings").display(en),
-                fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DemoSituation.entries.forEach { option ->
-                val active = option == situation
-                Surface(
-                    onClick = { selected = option.name; openCheck = "" },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (active) ReportWine else ReportPale,
-                    border = BorderStroke(1.dp, if (active) ReportWine else ReportLine),
-                ) {
-                    Text(
-                        option.label.display(en),
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
-                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                        color = if (active) Color.White else ReportWine,
-                    )
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var open by rememberSaveable { mutableStateOf("") }
+    var scenarioMenu by remember { mutableStateOf(false) }
+    val situation=DemoSituation.entries.firstOrNull { it.name==selected }?:DemoSituation.MIDDLE
+    val methods=remember(situation) { reportMethods(situation) }
+    val tabs=listOf(
+        words("လက်ရှိအကြိမ်", "Current draw"),
+        words("ယခုအပတ်", "This week"),
+        words("ယခင်အပတ်", "Last week"),
+    )
+    val sections=listOf(methods.take(4),methods.drop(4).take(2),methods.takeLast(2))
+    Column(modifier.fillMaxSize().padding(horizontal=10.dp, vertical=5.dp),
+        verticalArrangement=Arrangement.spacedBy(5.dp)) {
+        DemoDateAndSession(date,session,en,onPickDate,onChangeSession)
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+            Text("DEMO",fontWeight=FontWeight.Bold,color=ReportWine,fontSize=11.sp)
+            Text(words("နမူနာ Data · အစစ်မဟုတ်", "Illustrative samples only").display(en),
+                color=MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize=10.sp,modifier=Modifier.weight(1f))
+            Box {
+                TextButton(onClick={scenarioMenu=true},
+                    contentPadding=PaddingValues(horizontal=6.dp,vertical=0.dp)) {
+                    Text(situation.label.display(en)+" ▾",fontSize=11.sp,color=ReportWine)
+                }
+                DropdownMenu(expanded=scenarioMenu,onDismissRequest={scenarioMenu=false}) {
+                    DemoSituation.entries.forEach { situationOption ->
+                        DropdownMenuItem(
+                            text={Text(situationOption.label.display(en))},
+                            onClick={
+                                selected=situationOption.name
+                                open=""
+                                scenarioMenu=false
+                            })
+                    }
                 }
             }
         }
-
-        DemoSectionHeading(words("လက်ရှိအကြိမ်", "Current draw").display(en))
-        entries.take(4).forEach { item ->
-            DemoSentenceRow(item, en, openCheck == item.id,
-                onToggle = { openCheck = if (openCheck == item.id) "" else item.id },
-                onRealDetail = { onOpenDetail(item.id) })
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+            tabs.forEachIndexed { index,t ->
+                val active=tab==index
+                Surface(onClick={tab=index;open=""},
+                    modifier=Modifier.weight(1f),
+                    shape=RoundedCornerShape(8.dp),
+                    color=if(active)ReportWine else ReportPale,
+                    border=BorderStroke(1.dp,if(active)ReportWine else ReportLine)) {
+                    Column(Modifier.fillMaxWidth().padding(vertical=9.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(1.dp)) {
+                        Text(t.display(en),fontWeight=FontWeight.SemiBold,
+                            fontSize=11.sp,color=if(active)Color.White else ReportWine,
+                            maxLines=1)
+                        Text(if(index==0)"4" else "2",
+                            fontSize=10.sp,color=if(active)Color.White.copy(alpha=.84f)
+                            else ReportWine.copy(alpha=.72f))
+                    }
+                }
+            }
         }
-        DemoSectionHeading(words("ယခုအပတ်", "This week").display(en))
-        entries.drop(4).take(2).forEach { item ->
-            DemoSentenceRow(item, en, openCheck == item.id,
-                onToggle = { openCheck = if (openCheck == item.id) "" else item.id },
-                onRealDetail = { onOpenDetail(item.id) })
+        // Only one time-scope is visible. This was the original reason for 4/2/2 tags.
+        Column(
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement=Arrangement.spacedBy(1.dp),
+        ) {
+            Text(words("ဘာကိုစစ်ထားသလဲ", "What was checked").display(en),
+                fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier=Modifier.padding(start=30.dp,top=5.dp,bottom=3.dp))
+            sections[tab].forEachIndexed { index,item ->
+                DemoAlignedMethod(index+1,item,en,expanded=open==item.id,
+                    onToggle={open=if(open==item.id)"" else item.id},
+                    onRealDetail={onOpenDetail(item.id)})
+            }
+            Text(words(
+                "အဖြေများသည် စမ်းသပ်ဒေတာသာဖြစ်ပြီး ခန့်မှန်းချက်မဟုတ်ပါ။ အချက်အလက်အပြည့်ကို မြင်ရန် သက်ဆိုင်ရာအချက်ကို နှိပ်ပါ။",
+                "Only sample findings, never forecasts. Tap a finding for its full set of outputs.")
+                .display(en),
+                fontSize=10.sp,lineHeight=16.sp,
+                color=MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier=Modifier.padding(vertical=8.dp))
         }
-        DemoSectionHeading(words("ပြီးခဲ့တဲ့အပတ်", "Previous week").display(en))
-        entries.takeLast(2).forEach { item ->
-            DemoSentenceRow(item, en, openCheck == item.id,
-                onToggle = { openCheck = if (openCheck == item.id) "" else item.id },
-                onRealDetail = { onOpenDetail(item.id) })
-        }
-        Text(
-            words("ဤစာသားများသည် စမ်းသပ်ရန် နမူနာမှတ်တမ်းများသာဖြစ်ပြီး တကယ့်ရလဒ် သို့မဟုတ် ခန့်မှန်းချက်မဟုတ်ပါ။",
-                "Illustrative records only; not actual results or forecasts.").display(en),
-            fontSize = 10.sp, lineHeight = 15.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 5.dp, bottom = 8.dp),
-        )
     }
 }
 
@@ -508,27 +913,25 @@ private fun DemoDateAndSession(
     date: LocalDate, session: DrawSession, en: Boolean,
     onPickDate: () -> Unit, onChangeSession: (DrawSession) -> Unit,
 ) {
-    Surface(color = ReportWine, shape = RoundedCornerShape(11.dp),
-        modifier = Modifier.fillMaxWidth(), shadowElevation = 2.dp) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(date.toString(),
-                modifier = Modifier.weight(1f).clickable(onClick = onPickDate)
-                    .padding(vertical = 6.dp),
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+    Surface(color=ReportWine,shape=RoundedCornerShape(10.dp),
+        modifier=Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=4.dp),
+            verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            Text(date.toString(),fontSize=12.sp,fontWeight=FontWeight.SemiBold,
+                color=Color.White,
+                modifier=Modifier.weight(1f).clickable(onClick=onPickDate)
+                    .padding(vertical=8.dp))
             listOf(
-                DrawSession.MORNING to (if (en) "AM" else "မနက်"),
-                DrawSession.EVENING to (if (en) "PM" else "ညနေ"),
-            ).forEach { (key, label) ->
-                Surface(onClick = { onChangeSession(key) },
-                    color = if (key == session) Color(0xFFFFE1EA) else Color.White.copy(alpha = .13f),
-                    shape = RoundedCornerShape(8.dp)) {
-                    Text(label, modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                        color = if (key == session) ReportWine else Color.White)
+                DrawSession.MORNING to (if(en)"AM" else "မနက်"),
+                DrawSession.EVENING to (if(en)"PM" else "ညနေ"),
+            ).forEach { (s,label) ->
+                Surface(onClick={onChangeSession(s)},
+                    color=if(s==session)Color(0xFFFFE2EC) else Color.White.copy(alpha=.16f),
+                    shape=RoundedCornerShape(7.dp)) {
+                    Text(label,fontSize=11.sp,fontWeight=FontWeight.SemiBold,
+                        color=if(s==session)ReportWine else Color.White,
+                        modifier=Modifier.padding(horizontal=10.dp,vertical=7.dp))
                 }
             }
         }
@@ -536,79 +939,77 @@ private fun DemoDateAndSession(
 }
 
 @Composable
-private fun DemoSectionHeading(label: String) {
-    Row(
-        Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, fontSize = 12.sp, color = ReportWine, fontWeight = FontWeight.Bold)
-        HorizontalDivider(modifier = Modifier.weight(1f), color = ReportLine)
-    }
-}
-
-/** Lead sentences stay readable. Tap to reveal examples of other independent outputs. */
-@Composable
-private fun DemoSentenceRow(
-    finding: DemoFinding, en: Boolean, expanded: Boolean,
-    onToggle: () -> Unit, onRealDetail: () -> Unit,
+private fun DemoAlignedMethod(
+    ordinal:Int,
+    method:DemoReportMethod,
+    en:Boolean,
+    expanded:Boolean,
+    onToggle:()->Unit,
+    onRealDetail:()->Unit,
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.fillMaxWidth().clickable(onClick = onToggle)
-                .padding(vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(shape = RoundedCornerShape(5.dp), color = ReportPale) {
-                    Text("A-" + finding.id,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                        color = ReportWine, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-                Text(finding.name.display(en), modifier = Modifier.weight(1f),
-                    fontSize = 12.sp, lineHeight = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface)
-                Text(if (expanded) "−" else "+", fontSize = 18.sp, color = ReportWine)
-            }
-            Text(finding.lead.display(en),
-                fontSize = 13.sp, lineHeight = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 3.dp))
+    val primary=method.lines.firstOrNull() ?: return
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(1.dp)) {
+        Row(Modifier.fillMaxWidth().clickable(onClick=onToggle)
+            .padding(top=7.dp,bottom=4.dp),
+            verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            Text(ordinal.toString()+".",fontSize=12.sp,
+                fontWeight=FontWeight.Bold,color=ReportWine,
+                modifier=Modifier.width(20.dp))
+            Text(method.title.display(en),fontSize=12.sp,
+                fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,
+                modifier=Modifier.weight(1f))
+            Text("A-"+method.id,fontSize=10.sp,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(if(expanded)"−" else "+",fontSize=17.sp,color=ReportWine)
         }
-        if (expanded) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp),
-                color = ReportPale,
-                shape = RoundedCornerShape(9.dp),
-            ) {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 7.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (finding.details.isEmpty()) {
-                        Text(words("ဤအခြေအနေအတွက် ထပ်မံအတည်ပြုထားသော နမူနာအဖြေ မရှိသေးပါ။",
-                            "No further verified sample finding is available for this situation.")
-                            .display(en), fontSize = 12.sp, lineHeight = 18.sp)
-                    } else {
-                        finding.details.forEach {
-                            Text("•  " + it.display(en), fontSize = 12.sp,
-                                lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-                    HorizontalDivider(color = ReportLine)
-                    TextButton(
-                        onClick = onRealDetail,
-                        modifier = Modifier.align(Alignment.End).heightIn(min = 40.dp),
-                    ) {
-                        Text(words("အစစ်အမှန် စစ်ဆေးမှုအသေးစိတ် ကြည့်ရန်",
-                            "Open REAL analysis detail").display(en),
-                            fontSize = 12.sp, color = ReportWine)
-                    }
+        DemoAlignedLine(primary,en,main=true)
+        if(expanded) {
+            Column(Modifier.padding(start=26.dp,bottom=5.dp),
+                verticalArrangement=Arrangement.spacedBy(0.dp)) {
+                method.lines.drop(1).forEach { item ->
+                    HorizontalDivider(color=ReportLine.copy(alpha=.6f))
+                    DemoAlignedLine(item,en,main=false)
+                }
+                TextButton(onClick=onRealDetail,
+                    modifier=Modifier.align(Alignment.End).heightIn(min=42.dp)) {
+                    Text(words("စစ်ဆေးမှုအသေးစိတ် ကြည့်ရန်",
+                        "Open analysis details").display(en),
+                        fontSize=11.sp,color=ReportWine)
                 }
             }
         }
-        HorizontalDivider(color = ReportLine.copy(alpha = .70f), thickness = .5.dp)
+        HorizontalDivider(color=ReportLine,thickness=1.dp)
+    }
+}
+
+/**
+ * A fixed answer column stays aligned even if the explanation wraps in Burmese.
+ * No card is placed around the number, and the closing clause stays attached
+ * to that number (rather than becoming a disconnected third tiny column).
+ */
+@Composable
+private fun DemoAlignedLine(item:DemoReportLine,en:Boolean,main:Boolean) {
+    Row(Modifier.fillMaxWidth().padding(
+        start=if(main)26.dp else 0.dp,
+        top=if(main)2.dp else 6.dp,
+        bottom=if(main)7.dp else 6.dp),
+        horizontalArrangement=Arrangement.spacedBy(9.dp),
+        verticalAlignment=Alignment.Top) {
+        Text(item.question.display(en),fontSize=if(main)12.sp else 11.sp,
+            lineHeight=if(main)18.sp else 17.sp,
+            color=MaterialTheme.colorScheme.onSurface,
+            modifier=Modifier.weight(.61f))
+        Column(modifier=Modifier.weight(.39f),
+            verticalArrangement=Arrangement.spacedBy(2.dp)) {
+            Text(item.value.display(en),
+                fontSize=if(main)16.sp else 14.sp,
+                lineHeight=if(main)21.sp else 19.sp,
+                fontWeight=FontWeight.Bold,color=ReportWine)
+            Text(item.ending.display(en),
+                fontSize=if(main)11.sp else 10.sp,
+                lineHeight=if(main)16.sp else 15.sp,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
