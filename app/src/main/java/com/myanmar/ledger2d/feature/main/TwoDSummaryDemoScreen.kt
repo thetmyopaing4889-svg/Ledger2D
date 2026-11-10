@@ -1,22 +1,32 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.domain.TwoDigitGroups
+import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
 
@@ -36,19 +46,14 @@ private data class DemoWords(val mm: String, val en: String) {
     fun display(english: Boolean) = if (english) en else mm
 }
 private fun words(mm: String, en: String) = DemoWords(mm, en)
-private data class DemoFinding(
-    val id: String,
-    val name: DemoWords,
-    val lead: DemoWords,
-    val details: List<DemoWords> = emptyList(),
-)
-
 private enum class DemoSituation(val label: DemoWords) {
     EARLY(words("အပတ်အစ", "Early")),
     MIDDLE(words("အပတ်လယ်", "Midweek")),
     FULL(words("အပတ်ဆုံး", "Full week")),
     TIES(words("အဖြေတူ", "Ties")),
-    PARTIAL(words("မပြည့်စုံ", "Gaps")),
+    PARTIAL(words("မှတ်တမ်းပျောက်", "Gaps")),
+    CLOSED(words("အတည်ပြုပိတ်ရက်", "Closed day")),
+    MISSING_REF(words("ရှေ့ Result မရှိ", "Missing reference")),
 }
 
 private fun weekSlots(s: DemoSituation): List<String?> = when (s) {
@@ -57,6 +62,7 @@ private fun weekSlots(s: DemoSituation): List<String?> = when (s) {
     DemoSituation.FULL -> listOf("12", "03", "02", "35", "74", "11", "21", "90", "57", "66")
     DemoSituation.TIES -> listOf("12", "03", "02", "35", "74", "11", "21", "90")
     DemoSituation.PARTIAL -> listOf("12", null, "02", "35")
+    DemoSituation.CLOSED, DemoSituation.MISSING_REF -> listOf("12", "03", "02", "35")
 }
 
 private val previousFull = listOf("17", "73", "24", "72", "35", "57", "35", "33", "28", "66")
@@ -70,350 +76,6 @@ private fun joinedDigits(digits: Collection<Char>): String =
     if (digits.isEmpty()) "မရှိ" else digits.joinToString(" · ")
 private fun joinedDigitsEnglish(digits: Collection<Char>): String =
     if (digits.isEmpty()) "none" else digits.joinToString(" · ")
-
-/** Demo-only chronological observations; missing slots never become false old/new facts. */
-private fun demoFlow(s: DemoSituation): DemoFinding {
-    val slots = weekSlots(s)
-    val observed = slots.mapIndexedNotNull { index, draw ->
-        draw?.let { index to it }
-    }
-    val known = observed.map { it.second }
-    val remaining = unseenDigits(known)
-    val last = observed.lastOrNull()
-    val latestIndex = last?.first ?: -1
-    val completeBeforeLast = latestIndex >= 0 &&
-        (0..latestIndex).all { it < slots.size && slots[it] != null }
-    val before = observed.filter { it.first < latestIndex }.map { it.second }
-    val earlierDigits = digitsSeen(before)
-    val newest = last?.second.orEmpty()
-    val newDigits = newest.toSet().filter { it !in earlierDigits }
-    val slotNamesMm = listOf("တနင်္လာမနက်", "တနင်္လာညနေ", "အင်္ဂါမနက်",
-        "အင်္ဂါညနေ", "ဗုဒ္ဓဟူးမနက်", "ဗုဒ္ဓဟူးညနေ", "ကြာသပတေးမနက်",
-        "ကြာသပတေးညနေ", "သောကြာမနက်", "သောကြာညနေ")
-    val slotNamesEn = listOf("Mon AM", "Mon PM", "Tue AM", "Tue PM", "Wed AM",
-        "Wed PM", "Thu AM", "Thu PM", "Fri AM", "Fri PM")
-    fun status(ch: Char, en: Boolean) =
-        if (ch in earlierDigits) { if (en) "old" else "အဟောင်း" }
-        else { if (en) "new" else "အသစ်" }
-    val mmLead: String
-    val enLead: String
-    when {
-        last == null -> {
-            mmLead = "ယခုအပတ်အတွက် အတည်ပြုထားသောရလဒ် မရှိသေးပါ။"
-            enLead = "There are no recorded results for this week yet."
-        }
-        !completeBeforeLast -> {
-            mmLead = "နောက်ဆုံးမှတ်တမ်း " + newest +
-                " ကို တွေ့ထားပေမဲ့ ရှေ့အကြိမ်မှတ်တမ်း ပျောက်နေလို့ အသစ်/အဟောင်းကို အတည်မပြုနိုင်သေးပါ။"
-            enLead = "The latest recorded result is " + newest +
-                ", but an earlier slot is unknown, so its new/old class cannot be verified."
-        }
-        newest[0] == newest[1] && newDigits.isNotEmpty() -> {
-            mmLead = "နောက်ဆုံး " + newest + " တွင် " + newest[0] +
-                " တစ်လုံးဂဏန်းအသစ် တစ်မျိုးတည်းက နှစ်နေရာလုံးမှာ ပါဝင်ပါတယ်။"
-            enLead = "In the latest " + newest + ", the same new digit " + newest[0] +
-                " occupies both positions; it is one distinct new digit."
-        }
-        else -> {
-            mmLead = "နောက်ဆုံး " + newest + " တွင် " + newest[0] + " က " +
-                status(newest[0], false) + "၊ " + newest[1] + " က " +
-                status(newest[1], false) + " ဖြစ်ပါတယ်။"
-            enLead = "In the latest " + newest + ", " + newest[0] +
-                " is " + status(newest[0], true) + " and " + newest[1] +
-                " is " + status(newest[1], true) + "."
-        }
-    }
-    val fullObserved = slots.size == 10 && slots.all { it != null }
-    val remainingText = if (fullObserved) {
-        words(
-            if (remaining.isEmpty()) "ယခုအပတ်မှာ တစ်လုံးဂဏန်း 0–9 အားလုံး တွေ့ရှိထားပါတယ်။"
-            else "ယခုအပတ် မတွေ့ရသေးသောဂဏန်းများမှာ " + joinedDigits(remaining) + " ဖြစ်ပါတယ်။",
-            if (remaining.isEmpty()) "All 0–9 digits have been observed this week."
-            else "Digits unseen this week: " + joinedDigitsEnglish(remaining) + ".")
-    } else {
-        words("ရရှိထားသောမှတ်တမ်းအရ မတွေ့ရသေးသောဂဏန်းများမှာ " +
-            joinedDigits(remaining) + " ဖြစ်ပါတယ်။",
-            "Not seen in the available records: " + joinedDigitsEnglish(remaining) + ".")
-    }
-    val history = observed.map { (index, draw) ->
-        val prior = observed.filter { it.first < index }.map { it.second }
-        val priorKnown = (0..index).all { it < slots.size && slots[it] != null }
-        val oldSet = digitsSeen(prior)
-        val labelMm = if (priorKnown) draw[0].toString() + " " +
-            (if (draw[0] in oldSet) "အဟောင်း" else "အသစ်") + " + " +
-            draw[1] + " " + (if (draw[1] in oldSet) "အဟောင်း" else "အသစ်")
-            else "ရှေ့အကြိမ်မပြည့်၍ အမျိုးအစားအတည်မပြုနိုင်"
-        val labelEn = if (priorKnown) draw[0].toString() + " " +
-            (if (draw[0] in oldSet) "old" else "new") + " + " +
-            draw[1] + " " + (if (draw[1] in oldSet) "old" else "new")
-            else "earlier slot missing; unverified class"
-        words(slotNamesMm[index] + " · " + draw + " — " + labelMm,
-            slotNamesEn[index] + " · " + draw + " — " + labelEn)
-    }
-    return DemoFinding("05", words("အသစ်/အဟောင်း စီးဆင်းမှု", "New / old flow"),
-        words(mmLead, enLead), listOf(
-            words("စစ်ထားသောရလဒ် " + observed.size + "/10 ကြိမ်။" +
-                if (s == DemoSituation.PARTIAL) " တစ်ကြိမ်မှတ်တမ်း မရရှိပါ။" else "",
-                "Recorded " + observed.size + "/10 results." +
-                if (s == DemoSituation.PARTIAL) " One slot is unknown." else ""),
-            remainingText,
-        ) + history)
-}
-
-private fun demoSameSlot(s: DemoSituation): DemoFinding {
-    val title = words("နေ့တူ၊ အကြိမ်တူ အထွက်", "Same-day/session history")
-    if (s == DemoSituation.PARTIAL) return DemoFinding("02", title,
-        words("ရွေးထားတဲ့နေ့၊ အကြိမ်တူ သမိုင်းမှတ်တမ်း မရရှိသေးပါ။",
-            "No same-weekday, same-session historical records are available."))
-    val pair = when (s) {
-        DemoSituation.TIES -> "21၊ 73 နဲ့ 46"
-        DemoSituation.FULL -> "73"
-        DemoSituation.EARLY -> "21"
-        else -> "21 နဲ့ 73"
-    }
-    val pairEn = when (s) {
-        DemoSituation.TIES -> "21, 73 and 46"
-        DemoSituation.FULL -> "73"
-        DemoSituation.EARLY -> "21"
-        else -> "21 and 73"
-    }
-    val count = when (s) {
-        DemoSituation.FULL -> 8
-        DemoSituation.EARLY -> 2
-        else -> 6
-    }
-    val details = listOf(
-        words("တစ်လုံးဂဏန်း အများဆုံးမှာ 1 နဲ့ 7 ဖြစ်ပြီး 45 ကြိမ်စီ တွေ့ထားပါတယ်။",
-            "Digits 1 and 7 lead with 45 appearances each."),
-        words("ထိပ်အများဆုံး 2 (12 ကြိမ်)၊ ပိတ်အများဆုံး 1 (9 ကြိမ်) ဖြစ်ပါတယ်။",
-            "Tens: 2 (12); ones: 1 (9)."),
-        words("စုံ/မ အများဆုံးမှာ စုံမ (13 ကြိမ်) ဖြစ်ပါတယ်။",
-            "Most observed parity: even/odd (13)."),
-        words("အထူးအုပ်စုမှာ ညီအကို (43 ကြိမ်) အများဆုံး တွေ့ထားပါတယ်။",
-            "Most observed special group: siblings (43)."),
-        words("ရလဒ်များကို အကြိမ်တူ သမိုင်းမှတ်တမ်းအရ တွက်ထားခြင်းသာဖြစ်ပြီး ခန့်မှန်းချက်မဟုတ်ပါ။",
-            "These are recorded same-slot frequencies, not a prediction."),
-    )
-    return DemoFinding("02", title,
-        words("ရွေးထားတဲ့နေ့၊ အကြိမ်တူ သမိုင်းမှတ်တမ်းမှာ " + pair + " က " +
-            count + " ကြိမ်စီနဲ့ အထွက်အများဆုံးဖြစ်ပါတယ်။",
-            "In the same weekday/session history, " + pairEn +
-            (if (s == DemoSituation.FULL || s == DemoSituation.EARLY) " leads" else " tie for the lead") +
-            " at " + count + " appearances each."), details)
-}
-
-private fun demoPattern(s: DemoSituation): DemoFinding {
-    val title = words("စုံ/မ အစဉ်ပုံစံတူ", "Parity-sequence matches")
-    return when (s) {
-        DemoSituation.EARLY -> DemoFinding("03", title,
-            words("ယခုအပတ် ရှေ့အကြိမ် 4 ကြိမ် မပြည့်သေးလို့ စုံ/မ ပုံစံတူ မစစ်နိုင်သေးပါ။",
-                "Four preceding weekly draws are required before checking parity sequences."))
-        DemoSituation.PARTIAL -> DemoFinding("03", title,
-            words("ယခုအပတ် ရှေ့အကြိမ်မှတ်တမ်း မပြည့်စုံသေးလို့ စုံ/မ ပုံစံတူကို အတည်မပြုနိုင်ပါ။",
-                "The preceding weekly sequence has a missing result, so no verified match can be calculated."))
-        DemoSituation.FULL -> DemoFinding("03", title,
-            words("ယခုအပတ် စုံ/မ အစဉ်နဲ့ တိတိကျကျတူတဲ့ သမိုင်းအပတ် မတွေ့ခဲ့ပါ။",
-                "No historical week matches the full aligned parity sequence."))
-        DemoSituation.TIES -> DemoFinding("03", title,
-            words("စုံ/မ အစဉ်တူ သမိုင်းအပတ် 2 ပတ်ရှိပြီး နောက်အကြိမ်မှာ စုံမနဲ့ မမ တစ်ကြိမ်စီ တွေ့ခဲ့ပါတယ်။",
-                "Two historical weeks match; the following draw was even/odd once and odd/odd once."),
-            listOf(words("အများဆုံးတူနေသဖြင့် အမျိုးအစားတစ်ခုတည်းကို မရွေးထားပါ။",
-                "Both following parity classes are tied, so neither is singled out.")))
-        DemoSituation.MIDDLE -> DemoFinding("03", title,
-            words("ယခုအပတ် စုံ/မ အစဉ်နဲ့တူတဲ့ သမိုင်းအပတ် 3 ပတ်ရှိပြီး နောက်အကြိမ်မှာ စုံမ 2 ကြိမ် တွေ့ခဲ့ပါတယ်။",
-                "Three historical weeks match this parity sequence; the following draw was even/odd twice."),
-            listOf(words("ကျန် 1 ကြိမ်မှာ မမ ထွက်ခဲ့ပါတယ်။",
-                "The remaining observed following draw was odd/odd.")))
-    }
-}
-
-private fun demoStreaks(s: DemoSituation): DemoFinding {
-    val title = words("ပျောက်ဂဏန်း / ပျောက်ဂဏန်းတွဲ", "Missing digits / pairs")
-    val am = when (s) {
-        DemoSituation.TIES -> words("မနက်အကြိမ်မှာ 3 နဲ့ 7 တို့ 16 ကြိမ်စီ၊ တွဲ 93 နဲ့ 62 တို့ 45 ကြိမ်စီ မတွေ့ရသေးပါ။",
-            "AM: 3 and 7 are each absent for 16 draws; pairs 93 and 62 for 45 draws each.")
-        else -> words("မနက်အကြိမ်မှာ ဂဏန်း 3 ကို 16 ကြိမ်ဆက်၊ တွဲ 93 ကို 45 ကြိမ်ဆက် မတွေ့ရသေးပါ။",
-            "AM: digit 3 has been absent for 16 recorded draws; pair 93 for 45.")
-    }
-    val pm = words("ညနေအကြိမ်မှာ ဂဏန်း 1 ကို 8 ကြိမ်ဆက်၊ တွဲ 56 ကို 37 ကြိမ်ဆက် မတွေ့ရသေးပါ။",
-        "PM: digit 1 has been absent for 8 recorded draws; pair 56 for 37.")
-    val all = words("မနက်/ညနေ ပေါင်းမှတ်တမ်းမှာ ဂဏန်း 0 ကို 6 ကြိမ်၊ တွဲ 47 ကို 22 ကြိမ်ဆက် မတွေ့ရသေးပါ။",
-        "Combined AM/PM: digit 0 has been absent for 6 recorded draws; pair 47 for 22.")
-    if (s == DemoSituation.PARTIAL) return DemoFinding("06", title, am,
-        listOf(words("ညနေအကြိမ်နှင့် နှစ်ကြိမ်ပေါင်းအတွက် အတည်ပြုနိုင်သော နမူနာမှတ်တမ်း မရရှိသေးပါ။",
-            "No verified sample evidence is available for PM or combined streams.")))
-    return DemoFinding("06", title, am, listOf(pm, all,
-        words("မနက်၊ ညနေနဲ့ နှစ်ကြိမ်ပေါင်းကို သီးခြားစီတွက်ထားပါတယ်။",
-            "AM, PM and combined are independent rankings.")))
-}
-
-private fun demoReferences(s: DemoSituation): DemoFinding {
-    val title = words("ရှေ့ထွက်ဂဏန်း တိုက်စစ်", "Previous-results comparison")
-    return when (s) {
-        DemoSituation.EARLY -> DemoFinding("08", title,
-            words("ရှေ့ဂဏန်း 21 တစ်ခုတည်းနဲ့ တူတဲ့ သမိုင်းမှာ နောက်အကြိမ် 12 ကို 2 ကြိမ် တွေ့ခဲ့ပါတယ်။",
-                "With reference 21 alone, the following 12 was recorded twice."),
-            listOf(words("ဒုတိယ ရှေ့ထွက်ဂဏန်း မရရှိသေးလို့ BOTH အခြေအနေကို မစစ်နိုင်သေးပါ။",
-                "The second reference is unavailable; BOTH cannot be evaluated.")))
-        DemoSituation.MIDDLE -> DemoFinding("08", title,
-            words("ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံး တူခဲ့တဲ့ သမိုင်းမှာ နောက်အကြိမ် 35 ကို 1 ကြိမ် တွေ့ခဲ့ပါတယ်။",
-                "When both references 21 and 66 matched, the following 35 appeared once."),
-            listOf(words("21 တစ်ခုတည်းနဲ့ တူတဲ့ History မှာ 12 ကို 2 ကြိမ် တွေ့ထားပါတယ်။",
-                "First-reference condition: 12 appeared twice."),
-                words("66 တစ်ခုတည်းနဲ့ တူတဲ့ History မှာ 57 ကို 1 ကြိမ် တွေ့ထားပါတယ်။",
-                    "Second-reference condition: 57 appeared once.")))
-        DemoSituation.FULL -> DemoFinding("08", title,
-            words("21 နဲ့ 66 နှစ်ခုလုံး တစ်ပြိုင်နက်တူတဲ့ သမိုင်းနောက်ထွက် မတွေ့ပါ။ တစ်ခုချင်းစီမှာတော့ အဖြေရှိပါတယ်။",
-                "No recorded following outcome matches BOTH 21 and 66; individual conditions have results."),
-            listOf(words("21 တစ်ခုတည်းနဲ့တူတဲ့ မှတ်တမ်းမှာ 12 ကို 2 ကြိမ် တွေ့ခဲ့ပါတယ်။",
-                "First only: 12 appeared twice."),
-                words("66 တစ်ခုတည်းနဲ့တူတဲ့ မှတ်တမ်းမှာ 57 ကို 1 ကြိမ် တွေ့ခဲ့ပါတယ်။",
-                    "Second only: 57 appeared once.")))
-        DemoSituation.TIES -> DemoFinding("08", title,
-            words("21 နဲ့ 66 နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းမှာ 35 နဲ့ 70 ကို 2 ကြိမ်စီ နောက်ထွက်အများဆုံး တွေ့ခဲ့ပါတယ်။",
-                "With BOTH references 21 and 66 matched, 35 and 70 tie at two following results each."),
-            listOf(words("First နဲ့ Second အခြေအနေတွေကို BOTH နဲ့ မပေါင်းဘဲ သီးခြားစစ်ထားပါတယ်။",
-                "First-only and second-only searches remain independent of BOTH.")))
-        DemoSituation.PARTIAL -> DemoFinding("08", title,
-            words("ရှေ့ဂဏန်း 21 ကို သိထားပေမဲ့ ဒုတိယရှေ့ဂဏန်း မရှိသေးလို့ BOTH ကို မစစ်နိုင်ပါ။",
-                "Reference 21 is available, but the second reference is unknown; BOTH cannot be checked."),
-            listOf(words("21 တစ်ခုတည်းနဲ့ စစ်ထားသော နမူနာ History မှာ နောက်ထွက်အဖြေ မတွေ့ခဲ့ပါ။",
-                "No recorded following outcome was found in the sample first-reference search.")))
-    }
-}
-
-private fun demoSpecial(s: DemoSituation): DemoFinding {
-    val known = weekSlots(s).filterNotNull()
-    val groups = TwoDigitGroups.named.map { (name, numbers) ->
-        name to known.count { it in numbers }
-    }
-    val repeatCount = known.groupingBy { it }.eachCount().values.sumOf {
-        (it - 1).coerceAtLeast(0)
-    }
-    val all = groups + ("ပြန်ကျ" to repeatCount)
-    fun myName(s: String) = if (s == "ညီကို") "ညီအကို" else s
-    fun englishName(s: String) = when (s) {
-        "အပူး" -> "doubles"
-        "ညီကို" -> "siblings"
-        "ပါဝါ" -> "power"
-        "နက္ခတ်" -> "astrology"
-        else -> "exact repeats"
-    }
-    val maximum = all.maxOfOrNull { it.second } ?: 0
-    val leaders = all.filter { it.second == maximum && maximum > 0 }
-    val lead = if (maximum == 0) {
-        words("ယခုအပတ် ရရှိထားတဲ့မှတ်တမ်းမှာ အထူးအုပ်စုထွက်ရှိမှု မတွေ့ရသေးပါ။",
-            "No special-group appearances were found in the recorded weekly sample.")
-    } else {
-        words("ယခုအပတ် မှတ်တမ်းမှာ " + leaders.joinToString(" နဲ့ ") { myName(it.first) } +
-            " က " + maximum + " ကြိမ်စီနဲ့ အများဆုံး တွေ့ရှိထားပါတယ်။",
-            "In this week's records, " + leaders.joinToString(" and ") { englishName(it.first) } +
-                " lead at " + maximum + " appearances each.")
-    }
-    return DemoFinding("07", words("ယခုအပတ် အထူးအုပ်စု", "This week's special groups"),
-        lead, all.map { (name, count) ->
-            words(myName(name) + " — " + count + " ကြိမ်။",
-                englishName(name) + " — " + count + " recorded appearances.")
-        } + words("အုပ်စုတစ်ခုနဲ့တစ်ခု ဂဏန်းထပ်နိုင်လို့ Count တွေကို စုပေါင်း Total မလုပ်ထားပါ။",
-            "Special groups can overlap; these counts are not an additive total."))
-}
-
-private fun demoPrevious(s: DemoSituation): DemoFinding {
-    val results = previousWeek(s)
-    val counted = results.flatMap { it.toList() }.groupingBy { it }.eachCount()
-    val maximum = counted.values.maxOrNull() ?: 0
-    val leaders = counted.filterValues { it == maximum }.keys.sorted()
-    val missing = unseenDigits(results)
-    val prefixMm = if (s == DemoSituation.PARTIAL) "ပြီးခဲ့တဲ့အပတ် ရရှိထားတဲ့မှတ်တမ်း " +
-        results.size + " ကြိမ်မှာ " else "ပြီးခဲ့တဲ့အပတ် မှတ်တမ်းမှာ "
-    val prefixEn = if (s == DemoSituation.PARTIAL) "In the " + results.size +
-        " available previous-week records, " else "In last week's recorded results, "
-    val parity = results.groupingBy { TwoDigitGroups.parity(it) }.eachCount()
-    val parityMax = parity.values.maxOrNull() ?: 0
-    val parityLead = parity.filterValues { it == parityMax }.keys.joinToString("၊ ")
-    val specialCounts = TwoDigitGroups.counts(results)
-    val specialMax = specialCounts.values.maxOrNull() ?: 0
-    val specialTop = specialCounts.filterValues { it == specialMax }.keys.joinToString("၊ ") {
-        if (it == "ညီကို") "ညီအကို" else it
-    }
-    val repeats = results.groupingBy { it }.eachCount().values.sumOf { (it - 1).coerceAtLeast(0) }
-    return DemoFinding("04", words("ပြီးခဲ့တဲ့အပတ် အခြေအနေ", "Previous-week review"),
-        words(prefixMm + joinedDigits(leaders) + " က " + maximum +
-            " ကြိမ်စီနဲ့ အထွက်အများဆုံးဖြစ်ပြီး " + joinedDigits(missing) +
-            " ကို မတွေ့ခဲ့ရပါ။",
-            prefixEn + joinedDigitsEnglish(leaders) + " lead at " + maximum +
-                " appearances each; " + joinedDigitsEnglish(missing) + " were not observed."),
-        listOf(
-            words("စုံ/မ အများဆုံးမှာ " + parityLead + " (" + parityMax + " ကြိမ်) ဖြစ်ပါတယ်။",
-                "Most observed parity: " + parityLead + " (" + parityMax + ")."),
-            words("အထူးအုပ်စု အများဆုံးမှာ " + specialTop + " (" + specialMax + " ကြိမ်) ဖြစ်ပါတယ်။",
-                "Highest special-group count: " + specialMax + " (" + specialTop + ")."),
-            words("တူညီတဲ့ 2D ဂဏန်း ထပ်ထွက်မှု " + repeats + " ကြိမ် တွေ့ထားပါတယ်။",
-                "Exact 2D repeats: " + repeats + " additional appearances."),
-            if (s == DemoSituation.PARTIAL) words(
-                "မှတ်တမ်းမပြည့်စုံသဖြင့် မတွေ့ရသောဂဏန်းများကို အပတ်လုံး လုံးဝမထွက်ခဲ့ဟု မဆိုနိုင်ပါ။",
-                "Records are incomplete; unseen-in-records does not mean absent for the entire week.")
-            else words("ဒီအပတ်ရဲ့ အချက်အလက်တွေဟာ မှတ်တမ်းတွင် တွေ့ရှိထားသမျှကိုသာ ဖော်ပြခြင်းဖြစ်ပါတယ်။",
-                "Findings describe observed records only."),
-        ))
-}
-
-private fun demoReturns(s: DemoSituation): DemoFinding {
-    val old = previousWeek(s)
-    val missing = unseenDigits(old)
-    val slots = weekSlots(s)
-    val records = slots.mapIndexedNotNull { i, value -> value?.let { i to it } }
-    val returned = missing.filter { digit -> records.any { digit in it.second } }
-    val notRecorded = missing.filter { it !in returned }
-    val firstReturned = returned.firstOrNull()?.let { digit ->
-        digit to records.first { digit in it.second }
-    }
-    val prefix = if (s == DemoSituation.PARTIAL)
-        "ပြီးခဲ့တဲ့အပတ် ရရှိထားတဲ့မှတ်တမ်းမှာ မတွေ့ခဲ့တဲ့ " else
-        "ပြီးခဲ့တဲ့အပတ် မတွေ့ခဲ့တဲ့ "
-    val prefixEn = if (s == DemoSituation.PARTIAL)
-        "Among digits unseen in available previous-week records (" else
-        "Of last week's unseen digits ("
-    val messageMm = if (missing.isEmpty()) "ယခင်အပတ် ပျောက်ဂဏန်းမရှိပါ။"
-        else if (returned.isEmpty()) prefix + joinedDigits(missing) +
-            " တို့ကို ယခုအပတ် မှတ်တမ်းမှာလည်း မတွေ့ရသေးပါ။"
-        else prefix + joinedDigits(missing) + " အနက် " + joinedDigits(returned) +
-            " ကို ယခုအပတ်မှတ်တမ်းမှာ ပြန်တွေ့ထားပါတယ်။" +
-            (if (notRecorded.isEmpty()) "" else " " + joinedDigits(notRecorded) + " ကို မတွေ့ရသေးပါ။")
-    val messageEn = if (missing.isEmpty()) "No previous-week unseen digits were found."
-        else prefixEn + joinedDigitsEnglish(missing) + "), " +
-            (if (returned.isEmpty()) "none has been observed this week."
-             else joinedDigitsEnglish(returned) + " have been observed again." +
-                if (notRecorded.isEmpty()) "" else " Still unseen: " +
-                    joinedDigitsEnglish(notRecorded) + ".")
-    val details = mutableListOf<DemoWords>()
-    if (firstReturned != null) {
-        val (digit, first) = firstReturned
-        val priorUncertain = (0..first.first).any { slots[it] == null }
-        details += if (priorUncertain)
-            words(digit + " ကို " + first.second + " မှာ တွေ့ထားပေမဲ့ ရှေ့မှတ်တမ်းမပြည့်စုံလို့ ပထမဆုံးပြန်ပေါ်မှုဟု မအတည်ပြုနိုင်ပါ။",
-                "Digit " + digit + " appears in " + first.second +
-                    ", but unknown earlier slots prevent a verified first-return claim.")
-            else words(digit + " ရဲ့ ယခုအပတ် ပထမဆုံးတွေ့ရှိမှုမှာ " +
-                first.second + " ဖြစ်ပါတယ်။", "First observed return of " + digit +
-                " this week was in " + first.second + ".")
-        details += words("သမိုင်းနမူနာမှာ " + digit +
-            " ပြန်ပေါ်ချိန် တွဲထွက်ဂဏန်း 3 ကို 3 ကြိမ် တွေ့ခဲ့ပါတယ်။",
-            "In the illustrative historical sample, companion digit 3 appeared three times when " +
-                digit + " returned.")
-    }
-    if (s == DemoSituation.PARTIAL) details += words(
-        "ပျောက်နေတဲ့မှတ်တမ်းတွေထဲမှာ အခြားဂဏန်းတွေ ပါနိုင်သဖြင့် စာရင်းကို ရရှိထားတဲ့ရလဒ်အဖြစ်သာ ဖတ်ပါ။",
-        "Unknown records can contain other digits; treat this as observed-only evidence.")
-    return DemoFinding("01", words("ပျောက်ဂဏန်း ပြန်ပေါ်မှု", "Return of unseen digits"),
-        words(messageMm, messageEn), details)
-}
-
-private fun demoFindings(s: DemoSituation): List<DemoFinding> = listOf(
-    demoSameSlot(s), demoPattern(s), demoStreaks(s), demoReferences(s),
-    demoFlow(s), demoSpecial(s), demoPrevious(s), demoReturns(s),
-)
-
 
 /**
  * DEMO presentation contract: each numbered finding has a left-hand question,
@@ -464,6 +126,9 @@ private fun sameSlotFixture(s: DemoSituation) = when (s) {
         "21", "73", "46", "21", "73", "46", "21", "73",
         "46", "08", "55", "60")
     DemoSituation.PARTIAL -> emptyList()
+    DemoSituation.CLOSED, DemoSituation.MISSING_REF -> listOf(
+        "21", "73", "21", "73", "66", "21", "73", "46",
+        "46", "12", "35", "88", "73", "21")
 }
 
 private fun report02(s: DemoSituation): DemoReportMethod {
@@ -544,7 +209,7 @@ private fun report03(s: DemoSituation): DemoReportMethod {
             "စုံမ၊ မမ", "Even/odd, odd/odd",
             "တစ်ကြိမ်စီ တူညီစွာတွေ့ခဲ့ပါတယ် (စုစုပေါင်း ၂ ပတ်)။",
             "Each occurred once across two matching weeks.")
-        DemoSituation.MIDDLE -> line(
+        DemoSituation.MIDDLE, DemoSituation.CLOSED, DemoSituation.MISSING_REF -> line(
             "ယခုအပတ်ပုံစံနဲ့ တူတဲ့ သမိုင်းအပတ် ၃ ပတ်ရဲ့ နောက်အကြိမ်မှာ",
             "2. Following three historically matching weeks",
             "စုံမ", "Even/odd",
@@ -594,54 +259,211 @@ private fun report06(s: DemoSituation): DemoReportMethod {
     return DemoReportMethod("06",title,items)
 }
 
-private fun report08(s: DemoSituation): DemoReportMethod {
-    val title=words("ရှေ့ထွက်ဂဏန်း တိုက်စစ်", "Previous results comparison")
-    val both=when(s) {
-        DemoSituation.EARLY, DemoSituation.PARTIAL -> line(
-            "ရှေ့ထွက်ဂဏန်းနှစ်ခုလုံး တိုက်စစ်ဖို့",
-            "4. To compare both previous results",
-            "မပြည့်စုံ", "Not available",
-            "ဒုတိယရှေ့ဂဏန်း မသိရသေးပါ။",
-            "The second reference is unknown.")
-        DemoSituation.FULL -> line(
-            "21 နဲ့ 66 နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းနောက်ထွက်ကို",
-            "4. Following history matched by both 21 and 66",
-            "မတွေ့ပါ", "No match",
-            "တစ်ခုချင်းစီ စစ်ထားတဲ့အဖြေကတော့ သီးခြားရှိပါတယ်။",
-            "Individual reference searches still have outcomes.")
-        DemoSituation.TIES -> line(
-            "ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
-            "4. History matching both previous 21 and 66",
-            "35၊ 70", "35, 70",
-            "နောက်အကြိမ် ၂ ကြိမ်စီ အများဆုံးတွေ့ခဲ့ပါတယ်။",
-            "Each led following outcomes twice.")
-        DemoSituation.MIDDLE -> line(
-            "ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
-            "4. History matching both previous 21 and 66",
-            "35", "35",
-            "နောက်အကြိမ် ၁ ကြိမ် တွေ့ခဲ့ပါတယ်။",
-            "One following appearance was found.")
+private data class DemoPriorReference(
+    val date: LocalDate,
+    val session: DrawSession,
+    val result: String?,
+)
+
+private data class DemoFollowingEpisode(
+    val date: LocalDate,
+    val first: String,
+    val second: String,
+    val result: String?,
+)
+
+private fun demoEarlierTradingDay(
+    date: LocalDate, closedDates: Set<LocalDate>,
+): LocalDate {
+    var candidate = date.minusDays(1)
+    while (!DrawSchedule.isWorkingDate(candidate, closedDates))
+        candidate = candidate.minusDays(1)
+    return candidate
+}
+
+/** Stable, artificial values indexed by date/session: never read verified app results. */
+private fun demoSyntheticResult(date: LocalDate, session: DrawSession): String {
+    val seed = date.toEpochDay() * 37L +
+        if (session == DrawSession.MORNING) 19L else 63L
+    return Math.floorMod(seed, 100L).toString().padStart(2, '0')
+}
+
+private fun demoRefLabel(ref: DemoPriorReference, en: Boolean): String {
+    val sessionLabel = if (en) {
+        if (ref.session == DrawSession.MORNING) "AM" else "PM"
+    } else {
+        if (ref.session == DrawSession.MORNING) "မနက်" else "ညနေ"
     }
-    val first=if(s==DemoSituation.PARTIAL)
-        line("ပထမရှေ့ဂဏန်း 21 တစ်ခုတည်းနဲ့ တိုက်စစ်ရာမှာ",
-            "With first reference 21 alone",
-            "မတွေ့ပါ","No match",
-            "သမိုင်းနောက်ထွက် မတွေ့ခဲ့ပါ။",
-            "No following recorded sample matched.")
-    else line("ပထမရှေ့ဂဏန်း 21 တစ်ခုတည်းနဲ့ တိုက်စစ်ရာမှာ",
-        "With first reference 21 alone",
-        "12","12","နောက်အကြိမ် ၂ ကြိမ် တွေ့ခဲ့ပါတယ်။",
-        "Appeared twice afterward.")
-    val second=if(s==DemoSituation.EARLY||s==DemoSituation.PARTIAL)
-        line("ဒုတိယရှေ့ဂဏန်းအတွက်",
-            "For the second reference",
-            "မရရှိသေး", "Unknown",
-            "ရှေ့မှတ်တမ်း မရှိသေးပါ။","Reference is unavailable.")
-    else line("ဒုတိယရှေ့ဂဏန်း 66 တစ်ခုတည်းနဲ့ တိုက်စစ်ရာမှာ",
-        "With second reference 66 alone",
-        "57","57","နောက်အကြိမ် ၁ ကြိမ် တွေ့ခဲ့ပါတယ်။",
-        "Appeared once afterward.")
-    return DemoReportMethod("08",title,listOf(both,first,second))
+    return ref.date.toString() + " · " + sessionLabel
+}
+
+private fun demoSampleEpisodes(
+    date: LocalDate,
+    first: String,
+    second: String,
+    situation: DemoSituation,
+): List<DemoFollowingEpisode> {
+    // The target and every fixture episode share weekday/session by using
+    // the target date minus whole weeks. A matching reference never implies
+    // that the historical NEXT draw must be known.
+    val otherFirst = ((first.toInt() + 1) % 100).toString().padStart(2, '0')
+    val otherSecond = ((second.toInt() + 1) % 100).toString().padStart(2, '0')
+    val paired = ((first.toInt() + second.toInt() + 13) % 100).toString().padStart(2, '0')
+    val tie = ((paired.toInt() + 17) % 100).toString().padStart(2, '0')
+    val soloFirst = ((first.toInt() + 29) % 100).toString().padStart(2, '0')
+    val soloSecond = ((second.toInt() + 47) % 100).toString().padStart(2, '0')
+    val candidates = when (situation) {
+        DemoSituation.FULL -> listOf(
+            Triple(first, otherSecond, soloFirst),
+            Triple(first, otherSecond, soloFirst),
+            Triple(otherFirst, second, soloSecond),
+            Triple(first, second, null), // matching sources, result not recorded
+        )
+        DemoSituation.TIES -> listOf(
+            Triple(first, second, paired),
+            Triple(first, second, tie),
+            Triple(first, second, paired),
+            Triple(first, second, tie),
+            Triple(first, otherSecond, soloFirst),
+            Triple(otherFirst, second, soloSecond),
+        )
+        else -> listOf(
+            Triple(first, second, paired),
+            Triple(first, otherSecond, soloFirst),
+            Triple(first, otherSecond, soloFirst),
+            Triple(otherFirst, second, soloSecond),
+            Triple(first, second, null),
+        )
+    }
+    return candidates.mapIndexed { idx, it ->
+        DemoFollowingEpisode(date.minusWeeks((idx + 1).toLong()),
+            it.first, it.second, it.third)
+    }
+}
+
+private fun report08(
+    s: DemoSituation, date: LocalDate, session: DrawSession,
+): DemoReportMethod {
+    val title = words("ရှေ့ထွက်ဂဏန်း တိုက်စစ်", "Historical references")
+    if (!DrawSchedule.isWorkingDate(date, emptySet())) return DemoReportMethod(
+        "08", title, listOf(line(
+            "ရွေးထားတဲ့နေ့ရဲ့ ရှေ့ထွက်ဂဏန်း တိုက်စစ်မှုက",
+            "Historical prior-result comparison for this date",
+            "အကြိမ်ပိတ်", "Closed date",
+            "စနေ/တနင်္ဂနွေဖြစ်လို့ ဒီရက်စွဲမှာ 2D အကြိမ် မရှိပါ။",
+            "This date is a weekend; no trading draw is scheduled.")))
+
+    val usualPrior = demoEarlierTradingDay(date, emptySet())
+    // The closed-day situation supplies VERIFIED demo closure evidence.
+    // A missing *record* never enters this closure set.
+    val closedDates = if (s == DemoSituation.CLOSED) setOf(usualPrior)
+        else emptySet()
+    val prior = demoEarlierTradingDay(date, closedDates)
+    val firstSlot = if (session == DrawSession.MORNING)
+        DemoPriorReference(prior, DrawSession.MORNING, null)
+        else DemoPriorReference(prior, DrawSession.EVENING, null)
+    val secondSlot = if (session == DrawSession.MORNING)
+        DemoPriorReference(prior, DrawSession.EVENING, null)
+        else DemoPriorReference(date, DrawSession.MORNING, null)
+    val first = firstSlot.copy(result = if (s == DemoSituation.MISSING_REF)
+        null else demoSyntheticResult(firstSlot.date, firstSlot.session))
+    val second = secondSlot.copy(result = if (s == DemoSituation.PARTIAL)
+        null else demoSyntheticResult(secondSlot.date, secondSlot.session))
+
+    val firstValue = first.result
+    val secondValue = second.result
+    val artificialFirst = firstValue ?: demoSyntheticResult(first.date, first.session)
+    val artificialSecond = secondValue ?: demoSyntheticResult(second.date, second.session)
+    val episodes = demoSampleEpisodes(date, artificialFirst, artificialSecond, s)
+    fun matchesFirst(x: DemoFollowingEpisode) =
+        firstValue != null && x.first == firstValue
+    fun matchesSecond(x: DemoFollowingEpisode) =
+        secondValue != null && x.second == secondValue
+
+    val bothRows = episodes.filter { matchesFirst(it) && matchesSecond(it) }
+    val firstRows = episodes.filter { matchesFirst(it) }
+    val secondRows = episodes.filter { matchesSecond(it) }
+    val resultBoth = bothRows.mapNotNull { it.result }
+    val resultFirst = firstRows.mapNotNull { it.result }
+    val resultSecond = secondRows.mapNotNull { it.result }
+
+    fun conditionLine(
+        mmQuestion: String, enQuestion: String, eligible: Boolean,
+        all: List<DemoFollowingEpisode>, known: List<String>,
+    ): DemoReportLine {
+        if (!eligible) return line(mmQuestion, enQuestion,
+            "Result မတွေ့", "Reference unavailable",
+            "လိုအပ်တဲ့ ရှေ့အကြိမ်ရလဒ် မရှိသေးလို့ ဒီအခြေအနေကို မစစ်နိုင်ပါ။",
+            "The source draw is unknown; this comparison cannot run.")
+        if (all.isEmpty()) return line(mmQuestion, enQuestion,
+            "မတွေ့ပါ", "No match",
+            "နှိုင်းယှဉ်ခဲ့တဲ့ သမိုင်းအခြေအနေတူ မတွေ့ရှိပါ။",
+            "No historical source sequence matched.")
+        if (known.isEmpty()) return line(mmQuestion, enQuestion,
+            "နောက်ထွက်မသိ", "Outcome unknown",
+            "ရှေ့ဂဏန်းတူတဲ့ မှတ်တမ်းရှိပေမဲ့ နောက်ထွက် Result မရရှိပါ။",
+            "Reference matches exist, but following draw results are missing.")
+        val (leaders, count) = winners(known)
+        val gaps = all.size - known.size
+        val mmEnding = count.toString() + " ကြိမ်စီ နောက်ထွက်တွေ့ခဲ့ပါတယ်။" +
+            if (gaps > 0) " နောက်ထွက်မရှိသေးတဲ့ မှတ်တမ်း " + gaps + " ခုကို မတွက်ထားပါ။" else ""
+        val enEnding = count.toString() + " following appearances each." +
+            if (gaps > 0) " Excluded " + gaps + " missing historical outcomes." else ""
+        return line(mmQuestion, enQuestion,
+            mmNumbers(leaders), enNumbers(leaders), mmEnding, enEnding)
+    }
+
+    val firstDesc = firstValue?.let { "ပထမရှေ့ဂဏန်း " + it } ?: "ပထမရှေ့အကြိမ်"
+    val firstDescEn = firstValue?.let { "first reference " + it } ?: "first reference"
+    val secondDesc = secondValue?.let { "ဒုတိယရှေ့ဂဏန်း " + it } ?: "ဒုတိယရှေ့အကြိမ်"
+    val secondDescEn = secondValue?.let { "second reference " + it } ?: "second reference"
+    val bothDesc = if (firstValue != null && secondValue != null)
+        "ရှေ့ထွက် " + firstValue + " နဲ့ " + secondValue +
+            " နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းနောက်ထွက်အများဆုံးက"
+        else "ရှေ့ထွက်ဂဏန်းနှစ်ခုလုံးကို သမိုင်းနဲ့ တိုက်စစ်ရာမှာ"
+    val bothDescEn = if (firstValue != null && secondValue != null)
+        "The leading historical next result after both " + firstValue +
+            " and " + secondValue + " matched is"
+        else "Comparing both preceding results with history"
+
+    val output = mutableListOf(
+        conditionLine(bothDesc, bothDescEn,
+            firstValue != null && secondValue != null, bothRows, resultBoth),
+        conditionLine(firstDesc + " နဲ့ သီးခြားတိုက်စစ်ရာမှာ",
+            "When independently matching " + firstDescEn,
+            firstValue != null, firstRows, resultFirst),
+        conditionLine(secondDesc + " နဲ့ သီးခြားတိုက်စစ်ရာမှာ",
+            "When independently matching " + secondDescEn,
+            secondValue != null, secondRows, resultSecond),
+    )
+    output += listOf(
+        line("ပထမရည်ညွှန်းအကြိမ် (" + demoRefLabel(first, false) + ") ရလဒ်က",
+            "First source draw (" + demoRefLabel(first, true) + ") is",
+            firstValue ?: "Result မတွေ့",
+            firstValue ?: "Not recorded",
+            if (firstValue == null)
+                "ဖွင့်ရက်မှတ်တမ်း မရရှိသေးတာဖြစ်ပြီး ပိတ်ရက်လို့ မယူဆပါ။"
+            else "ဒီရလဒ်ကို အခြေခံပြီး စစ်ထားပါတယ်။",
+            if (firstValue == null) "Unknown draw; not treated as a closure."
+            else "This verified sample is the first reference."),
+        line("ဒုတိယရည်ညွှန်းအကြိမ် (" + demoRefLabel(second, false) + ") ရလဒ်က",
+            "Second source draw (" + demoRefLabel(second, true) + ") is",
+            secondValue ?: "Result မတွေ့",
+            secondValue ?: "Not recorded",
+            if (secondValue == null)
+                "ဖွင့်ရက်မှတ်တမ်း မရရှိသေးတာဖြစ်ပြီး ပိတ်ရက်လို့ မယူဆပါ။"
+            else "ဒီရလဒ်ကို အခြေခံပြီး စစ်ထားပါတယ်။",
+            if (secondValue == null) "Unknown draw; not treated as a closure."
+            else "This verified sample is the second reference."),
+    )
+    if (closedDates.isNotEmpty()) output += line(
+        "ရှေ့ဆုံးရက် " + usualPrior + " ကို",
+        "The immediately preceding weekday " + usualPrior + " was",
+        "ပိတ်ရက်", "Verified closed",
+        "နမူနာပိတ်ရက်အဖြစ် အတည်ပြုထားလို့ ကျော်ပြီး " + prior +
+            " ရဲ့ ရလဒ်တွေကို ရည်ညွှန်းထားပါတယ်။",
+        "A verified sample closure, so references move to " + prior + ".")
+    return DemoReportMethod("08", title, output)
 }
 
 private fun report05(s: DemoSituation): DemoReportMethod {
@@ -809,8 +631,8 @@ private fun report01(s: DemoSituation): DemoReportMethod {
     return DemoReportMethod("01",title,listOf(start)+more)
 }
 
-private fun reportMethods(s: DemoSituation): List<DemoReportMethod> = listOf(
-    report02(s),report03(s),report06(s),report08(s),
+private fun reportMethods(s: DemoSituation, date: LocalDate, session: DrawSession): List<DemoReportMethod> = listOf(
+    report02(s),report03(s),report06(s),report08(s, date, session),
     report05(s),report07(s),report04(s),report01(s),
 )
 
@@ -829,7 +651,7 @@ internal fun TwoDSummaryDemoScreen(
     var open by rememberSaveable { mutableStateOf("") }
     var scenarioMenu by remember { mutableStateOf(false) }
     val situation=DemoSituation.entries.firstOrNull { it.name==selected }?:DemoSituation.MIDDLE
-    val methods=remember(situation) { reportMethods(situation) }
+    val methods=remember(situation, date, session) { reportMethods(situation, date, session) }
     val tabs=listOf(
         words("လက်ရှိအကြိမ်", "Current draw"),
         words("ယခုအပတ်", "This week"),
@@ -838,11 +660,12 @@ internal fun TwoDSummaryDemoScreen(
     val sections=listOf(methods.take(4),methods.drop(4).take(2),methods.takeLast(2))
     Column(modifier.fillMaxSize().padding(horizontal=10.dp, vertical=5.dp),
         verticalArrangement=Arrangement.spacedBy(5.dp)) {
-        DemoDateAndSession(date,session,en,onPickDate,onChangeSession)
+        CherryMysteryHeader(date,session,en,onPickDate,onChangeSession)
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
             horizontalArrangement=Arrangement.spacedBy(5.dp)) {
             Text("DEMO",fontWeight=FontWeight.Bold,color=ReportWine,fontSize=11.sp)
-            Text(words("နမူနာ Data · အစစ်မဟုတ်", "Illustrative samples only").display(en),
+            Text(words("နမူနာ Data · ရက်စွဲ/အကြိမ်ရွေးရင် ရှေ့ဂဏန်းနမူနာပြောင်းမည်",
+                    "Sample data · date/session changes A-08 references").display(en),
                 color=MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize=10.sp,modifier=Modifier.weight(1f))
             Box {
@@ -889,9 +712,6 @@ internal fun TwoDSummaryDemoScreen(
             Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
             verticalArrangement=Arrangement.spacedBy(1.dp),
         ) {
-            Text(words("ဘာကိုစစ်ထားသလဲ", "What was checked").display(en),
-                fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier=Modifier.padding(start=30.dp,top=5.dp,bottom=3.dp))
             sections[tab].forEachIndexed { index,item ->
                 DemoAlignedMethod(index+1+(if(tab==0)0 else if(tab==1)4 else 6),item,en,
                     expanded=open==item.id,
@@ -909,80 +729,199 @@ internal fun TwoDSummaryDemoScreen(
     }
 }
 
+/** Compact brand banner; seven-segment silhouettes are deliberately undecipherable. */
 @Composable
-private fun DemoDateAndSession(
-    date: LocalDate, session: DrawSession, en: Boolean,
-    onPickDate: () -> Unit, onChangeSession: (DrawSession) -> Unit,
+private fun CherryMysteryHeader(
+    date: LocalDate,
+    session: DrawSession,
+    en: Boolean,
+    onPickDate: () -> Unit,
+    onChangeSession: (DrawSession) -> Unit,
 ) {
-    Surface(color=ReportWine,shape=RoundedCornerShape(10.dp),
-        modifier=Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=4.dp),
-            verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-            Text(date.toString(),fontSize=12.sp,fontWeight=FontWeight.SemiBold,
-                color=Color.White,
-                modifier=Modifier.weight(1f).clickable(onClick=onPickDate)
-                    .padding(vertical=8.dp))
-            listOf(
-                DrawSession.MORNING to (if(en)"AM" else "မနက်"),
-                DrawSession.EVENING to (if(en)"PM" else "ညနေ"),
-            ).forEach { (s,label) ->
-                Surface(onClick={onChangeSession(s)},
-                    color=if(s==session)Color(0xFFFFE2EC) else Color.White.copy(alpha=.16f),
-                    shape=RoundedCornerShape(7.dp)) {
-                    Text(label,fontSize=11.sp,fontWeight=FontWeight.SemiBold,
-                        color=if(s==session)ReportWine else Color.White,
-                        modifier=Modifier.padding(horizontal=10.dp,vertical=7.dp))
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFF681031),
+        shadowElevation = 5.dp,
+    ) {
+        Box(
+            Modifier.fillMaxWidth().background(
+                Brush.horizontalGradient(listOf(
+                    Color(0xFF420C29),
+                    Color(0xFF971A48),
+                    Color(0xFFE46485),
+                ))
+            )
+        ) {
+            Canvas(Modifier.matchParentSize()) {
+                drawCircle(Color(0xFFFFB6CA).copy(alpha = .09f),
+                    radius = size.height * .72f,
+                    center = Offset(size.width * .94f, size.height * .12f))
+                drawCircle(Color(0xFF35051F).copy(alpha = .19f),
+                    radius = size.height * .58f,
+                    center = Offset(size.width * .08f, size.height * 1.07f))
+            }
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    CherryFrostedDigit(0)
+                    CherryFrostedDigit(1)
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        date.toString() + " · " + when (session) {
+                            DrawSession.MORNING -> if (en) "Morning" else "မနက်အကြိမ်"
+                            else -> if (en) "Evening" else "ညနေအကြိမ်"
+                        },
+                        modifier = Modifier.clickable(onClick = onPickDate)
+                            .padding(horizontal = 3.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = .94f),
+                    )
+                    IconButton(
+                        modifier = Modifier.size(24.dp),
+                        onClick = {
+                            onChangeSession(if (session == DrawSession.MORNING)
+                                DrawSession.EVENING else DrawSession.MORNING)
+                        },
+                    ) {
+                        Icon(
+                            Icons.Default.SwapHoriz,
+                            contentDescription = if (en) "Change session" else "အကြိမ်ပြောင်းရန်",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White.copy(alpha = .88f),
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Frosted fragments of two different digital glyphs: the segment outlines
+ * are deliberately incomplete, so the hero cannot read as "88" or any
+ * specific result. This is brand decoration, never a prediction.
+ */
+@Composable
+private fun CherryFrostedDigit(variant: Int) {
+    Surface(
+        modifier = Modifier.size(width = 62.dp, height = 57.dp),
+        shape = RoundedCornerShape(11.dp),
+        color = Color.White.copy(alpha = .12f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .40f)),
+        shadowElevation = 2.dp,
+    ) {
+        Box(Modifier.fillMaxSize().background(
+            Brush.verticalGradient(listOf(
+                Color.White.copy(alpha = .13f),
+                Color.White.copy(alpha = .025f),
+                Color(0xFFFFB8C9).copy(alpha = .11f),
+            ))
+        )) {
+            Canvas(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = 13.dp, vertical = 8.dp)
+                    .blur(4.dp),
+            ) {
+                val w = size.width
+                val h = size.height
+                // A different set of OPEN fragments per cell, with no
+                // top/middle/bottom loops and no complete seven-segment "8".
+                val fragments = if (variant == 0) listOf(
+                    Pair(Offset(w*.22f,h*.11f), Offset(w*.71f,h*.11f)),
+                    Pair(Offset(w*.80f,h*.19f), Offset(w*.80f,h*.43f)),
+                    Pair(Offset(w*.26f,h*.52f), Offset(w*.57f,h*.52f)),
+                    Pair(Offset(w*.18f,h*.64f), Offset(w*.18f,h*.81f)),
+                ) else listOf(
+                    Pair(Offset(w*.20f,h*.18f), Offset(w*.20f,h*.42f)),
+                    Pair(Offset(w*.37f,h*.49f), Offset(w*.78f,h*.49f)),
+                    Pair(Offset(w*.81f,h*.60f), Offset(w*.81f,h*.80f)),
+                    Pair(Offset(w*.27f,h*.90f), Offset(w*.62f,h*.90f)),
+                )
+                fragments.forEachIndexed { idx, (from, to) ->
+                    drawLine(
+                        color = Color.White.copy(alpha = if (idx % 2 == 0) .70f else .46f),
+                        start = from, end = to,
+                        strokeWidth = 5.5.dp.toPx(),
+                        cap = StrokeCap.Round,
+                    )
+                }
+                drawLine(
+                    color = Color(0xFFFFDEEA).copy(alpha = .36f),
+                    start = if (variant == 0) Offset(w*.35f,h*.80f) else Offset(w*.10f,h*.75f),
+                    end = if (variant == 0) Offset(w*.67f,h*.28f) else Offset(w*.46f,h*.18f),
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+            }
+            Box(Modifier.matchParentSize().background(
+                Brush.verticalGradient(listOf(
+                    Color.White.copy(alpha = .16f),
+                    Color.White.copy(alpha = .14f),
+                    Color.White.copy(alpha = .05f),
+                    Color.White.copy(alpha = .21f),
+                ))
+            ))
+        }
+    }
+}
+
+
 @Composable
 private fun DemoAlignedMethod(
-    ordinal:Int,
-    method:DemoReportMethod,
-    en:Boolean,
-    expanded:Boolean,
-    onToggle:()->Unit,
-    onRealDetail:()->Unit,
+    ordinal: Int,
+    method: DemoReportMethod,
+    en: Boolean,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onRealDetail: () -> Unit,
 ) {
-    val primary=method.lines.firstOrNull() ?: return
-    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(1.dp)) {
-        Row(Modifier.fillMaxWidth().clickable(onClick=onToggle)
-            .padding(top=7.dp,bottom=4.dp),
-            verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-            Text(ordinal.toString()+".",fontSize=12.sp,
-                fontWeight=FontWeight.Bold,color=ReportWine,
-                modifier=Modifier.width(20.dp))
-            Text(method.title.display(en),fontSize=12.sp,
-                fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,
-                modifier=Modifier.weight(1f))
-            Text("A-"+method.id,fontSize=10.sp,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(if(expanded)"−" else "+",fontSize=17.sp,color=ReportWine)
+    val primary = method.lines.firstOrNull() ?: return
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onToggle)
+                .padding(vertical = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(ordinal.toString() + ".", fontSize = 13.sp,
+                fontWeight = FontWeight.Bold, color = ReportWine,
+                modifier = Modifier.width(21.dp))
+            // One fixed answer column, no separate method-name header.
+            Column(Modifier.weight(1f)) {
+                DemoAlignedLine(primary, en, main = true)
+            }
+            Text(if (expanded) "−" else "+", fontSize = 18.sp,
+                color = ReportWine, modifier = Modifier.width(16.dp))
         }
-        Box(Modifier.fillMaxWidth().clickable(onClick=onToggle)) {
-            DemoAlignedLine(primary,en,main=true)
-        }
-        if(expanded) {
-            Column(Modifier.padding(start=26.dp,bottom=5.dp),
-                verticalArrangement=Arrangement.spacedBy(0.dp)) {
+        if (expanded) {
+            Column(
+                Modifier.fillMaxWidth().padding(start = 27.dp, bottom = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
                 method.lines.drop(1).forEach { item ->
-                    HorizontalDivider(color=ReportLine.copy(alpha=.6f))
-                    DemoAlignedLine(item,en,main=false)
+                    HorizontalDivider(color = ReportLine.copy(alpha = .65f))
+                    DemoAlignedLine(item, en, main = false)
                 }
-                TextButton(onClick=onRealDetail,
-                    modifier=Modifier.align(Alignment.End).heightIn(min=42.dp)) {
+                TextButton(onClick = onRealDetail,
+                    modifier = Modifier.align(Alignment.End).heightIn(min = 40.dp)) {
                     Text(words("စစ်ဆေးမှုအသေးစိတ် ကြည့်ရန်",
                         "Open analysis details").display(en),
-                        fontSize=11.sp,color=ReportWine)
+                        fontSize = 11.sp, color = ReportWine)
                 }
             }
         }
-        HorizontalDivider(color=ReportLine,thickness=1.dp)
+        HorizontalDivider(color = ReportLine)
     }
 }
 
@@ -994,7 +933,7 @@ private fun DemoAlignedMethod(
 @Composable
 private fun DemoAlignedLine(item:DemoReportLine,en:Boolean,main:Boolean) {
     Row(Modifier.fillMaxWidth().padding(
-        start=if(main)26.dp else 0.dp,
+        start=0.dp,
         top=if(main)2.dp else 6.dp,
         bottom=if(main)7.dp else 6.dp),
         horizontalArrangement=Arrangement.spacedBy(9.dp),
