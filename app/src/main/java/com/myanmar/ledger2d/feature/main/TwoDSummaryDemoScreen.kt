@@ -489,7 +489,7 @@ private fun report02(s: DemoSituation): DemoReportMethod {
     fun frequencyEnding(count: Int) = count.toString() + " ကြိမ်စီ တွေ့ခဲ့ပါတယ်။"
     fun frequencyEndingEn(count: Int) = count.toString() + " recorded appearances each."
     return DemoReportMethod("02", title, listOf(
-        line("၁။ နေ့တူ၊ အကြိမ်တူ သမိုင်းမှာ အထွက်အများဆုံး 2D ဂဏန်းတွဲက",
+        line("နေ့တူ၊ အကြိမ်တူ သမိုင်းမှာ အထွက်အများဆုံး 2D ဂဏန်းတွဲက",
             "1. The most frequent exact 2D pair in matching weekday/session history is",
             mmNumbers(pairs), enNumbers(pairs),
             frequencyEnding(pairCount), frequencyEndingEn(pairCount)),
@@ -521,31 +521,31 @@ private fun report03(s: DemoSituation): DemoReportMethod {
     val title=words("စုံ/မ ပုံစံတူ စစ်ဆေးချက်", "Matching parity sequence")
     val item=when(s) {
         DemoSituation.EARLY -> line(
-            "၂။ ယခုအပတ် စုံ/မ အစဉ်ကို စစ်ဖို့",
+            "ယခုအပတ် စုံ/မ အစဉ်ကို စစ်ဖို့",
             "2. The current week's parity sequence",
             "မပြည့်သေး", "Not ready",
             "ရှေ့အကြိမ် အနည်းဆုံး ၄ ကြိမ် လိုပါသေးတယ်။",
             "Needs at least four preceding results.")
         DemoSituation.PARTIAL -> line(
-            "၂။ ယခုအပတ် စုံ/မ အစဉ်ကို",
+            "ယခုအပတ် စုံ/မ အစဉ်ကို",
             "2. The current week's parity sequence",
             "အတည်မပြုနိုင်", "Unverified",
             "ရှေ့အကြိမ်မှတ်တမ်း မပြည့်စုံသေးပါ။",
             "Earlier draw records have gaps.")
         DemoSituation.FULL -> line(
-            "၂။ ယခုအပတ် စုံ/မ အစဉ်နဲ့ တူတဲ့ သမိုင်းအပတ်ကို",
+            "ယခုအပတ် စုံ/မ အစဉ်နဲ့ တူတဲ့ သမိုင်းအပတ်ကို",
             "2. Historical weeks with the same parity sequence",
             "မတွေ့ပါ", "No matches",
             "ရရှိတဲ့သမိုင်းမှတ်တမ်းမှာ မတွေ့ခဲ့ပါ။",
             "None matched in the sample history.")
         DemoSituation.TIES -> line(
-            "၂။ ပုံစံတူ သမိုင်းအပတ်တွေရဲ့ နောက်အကြိမ်မှာ",
+            "ပုံစံတူ သမိုင်းအပတ်တွေရဲ့ နောက်အကြိမ်မှာ",
             "2. After historically matching parity sequences",
             "စုံမ၊ မမ", "Even/odd, odd/odd",
             "တစ်ကြိမ်စီ တူညီစွာတွေ့ခဲ့ပါတယ် (စုစုပေါင်း ၂ ပတ်)။",
             "Each occurred once across two matching weeks.")
         DemoSituation.MIDDLE -> line(
-            "၂။ ယခုအပတ်ပုံစံနဲ့ တူတဲ့ သမိုင်းအပတ် ၃ ပတ်ရဲ့ နောက်အကြိမ်မှာ",
+            "ယခုအပတ်ပုံစံနဲ့ တူတဲ့ သမိုင်းအပတ် ၃ ပတ်ရဲ့ နောက်အကြိမ်မှာ",
             "2. Following three historically matching weeks",
             "စုံမ", "Even/odd",
             "၂ ကြိမ်နဲ့ အများဆုံးတွေ့ခဲ့ပါတယ်။",
@@ -558,7 +558,7 @@ private fun report06(s: DemoSituation): DemoReportMethod {
     val title=words("ပျောက်ဂဏန်း စစ်ဆေးချက်", "Longest observed absences")
     val tied=s==DemoSituation.TIES
     val items=mutableListOf(
-        line("၃။ မနက်အကြိမ်မှာ အကြာဆုံးပျောက်နေတဲ့ တစ်လုံးဂဏန်းက",
+        line("မနက်အကြိမ်မှာ အကြာဆုံးပျောက်နေတဲ့ တစ်လုံးဂဏန်းက",
             "3. The longest-absent digit in morning draws is",
             if(tied)"3၊ 7" else "3", if(tied)"3, 7" else "3",
             if(tied)"၁၆ ကြိမ်စီ မတွေ့ရသေးပါ။" else "၁၆ ကြိမ်ဆက် မတွေ့ရသေးပါ။",
@@ -598,25 +598,25 @@ private fun report08(s: DemoSituation): DemoReportMethod {
     val title=words("ရှေ့ထွက်ဂဏန်း တိုက်စစ်", "Previous results comparison")
     val both=when(s) {
         DemoSituation.EARLY, DemoSituation.PARTIAL -> line(
-            "၄။ ရှေ့ထွက်ဂဏန်းနှစ်ခုလုံး တိုက်စစ်ဖို့",
+            "ရှေ့ထွက်ဂဏန်းနှစ်ခုလုံး တိုက်စစ်ဖို့",
             "4. To compare both previous results",
             "မပြည့်စုံ", "Not available",
             "ဒုတိယရှေ့ဂဏန်း မသိရသေးပါ။",
             "The second reference is unknown.")
         DemoSituation.FULL -> line(
-            "၄။ 21 နဲ့ 66 နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းနောက်ထွက်ကို",
+            "21 နဲ့ 66 နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းနောက်ထွက်ကို",
             "4. Following history matched by both 21 and 66",
             "မတွေ့ပါ", "No match",
             "တစ်ခုချင်းစီ စစ်ထားတဲ့အဖြေကတော့ သီးခြားရှိပါတယ်။",
             "Individual reference searches still have outcomes.")
         DemoSituation.TIES -> line(
-            "၄။ ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
+            "ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
             "4. History matching both previous 21 and 66",
             "35၊ 70", "35, 70",
             "နောက်အကြိမ် ၂ ကြိမ်စီ အများဆုံးတွေ့ခဲ့ပါတယ်။",
             "Each led following outcomes twice.")
         DemoSituation.MIDDLE -> line(
-            "၄။ ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
+            "ရှေ့ဂဏန်း 21 နဲ့ 66 နှစ်ခုလုံးတူတဲ့ သမိုင်းမှာ",
             "4. History matching both previous 21 and 66",
             "35", "35",
             "နောက်အကြိမ် ၁ ကြိမ် တွေ့ခဲ့ပါတယ်။",
@@ -649,7 +649,7 @@ private fun report05(s: DemoSituation): DemoReportMethod {
     val slots=weekSlots(s)
     val events=slots.mapIndexedNotNull { i,pair->pair?.let { i to it } }
     if(events.isEmpty())return DemoReportMethod("05",title,listOf(line(
-        "၅။ ယခုအပတ် အသစ်/အဟောင်းအခြေအနေက",
+        "ယခုအပတ် အသစ်/အဟောင်းအခြေအနေက",
         "5. This week's new/old flow is",
         "မရရှိသေး", "No data", "အတည်ပြုထားသောရလဒ် မရှိသေးပါ။",
         "No recorded sample outcomes yet.")))
@@ -680,7 +680,7 @@ private fun report05(s: DemoSituation): DemoReportMethod {
     val mmRemainder=joinedDigits(unseen)
     val enRemainder=joinedDigitsEnglish(unseen)
     return DemoReportMethod("05",title,listOf(
-        line("၅။ ယခုအပတ် နောက်ဆုံးတွေ့ရှိတဲ့ 2D ရလဒ်က",
+        line("ယခုအပတ် နောက်ဆုံးတွေ့ရှိတဲ့ 2D ရလဒ်က",
             "5. The latest recorded 2D this week is",
             last,last,evidence.mm,evidence.en),
         line("ယခုအပတ် ရရှိထားတဲ့မှတ်တမ်းမှာ မတွေ့ရသေးတဲ့ တစ်လုံးဂဏန်းတွေက",
@@ -700,7 +700,7 @@ private fun report07(s: DemoSituation): DemoReportMethod {
     val maximum=all.maxOfOrNull { it.second }?:0
     fun friendly(k: String)=if(k=="ညီကို")"ညီအကို" else k
     val leaders=all.filter { it.second==maximum&&maximum>0 }.map { friendly(it.first) }
-    val main=line("၆။ ယခုအပတ် ထွက်ရှိထားတဲ့ အထူးအုပ်စုတွေထဲမှာ အများဆုံးက",
+    val main=line("ယခုအပတ် ထွက်ရှိထားတဲ့ အထူးအုပ်စုတွေထဲမှာ အများဆုံးက",
         "6. The most recorded special group this week is",
         if(maximum==0)"မတွေ့သေး" else mmNumbers(leaders),
         if(maximum==0)"None" else enNumbers(leaders),
@@ -729,7 +729,7 @@ private fun report04(s: DemoSituation): DemoReportMethod {
     val spTop=special.filter { it.second==spMax&&spMax>0 }.map { it.first }
     val repeats=results.groupingBy { it }.eachCount().values.sumOf { (it-1).coerceAtLeast(0) }
     return DemoReportMethod("04",title,listOf(
-        line("၇။ ပြီးခဲ့တဲ့အပတ် တစ်လုံးဂဏန်းတွေထဲမှာ အထွက်အများဆုံးက",
+        line("ပြီးခဲ့တဲ့အပတ် တစ်လုံးဂဏန်းတွေထဲမှာ အထွက်အများဆုံးက",
             "7. The most frequent single digit last week was",
             mmNumbers(leaders),enNumbers(leaders),
             high.toString()+" ကြိမ်စီ တွေ့ထားပါတယ်။",
@@ -771,7 +771,7 @@ private fun report01(s: DemoSituation): DemoReportMethod {
         slots.indexOfFirst { it?.contains(digit)==true }
     }?:-1
     val certain=firstSlot>=0&&(0..firstSlot).all { it<slots.size&&slots[it]!=null }
-    val start=line("၈။ ပြီးခဲ့တဲ့အပတ် မတွေ့ခဲ့တဲ့ဂဏန်းတွေထဲက ယခုအပတ် ပြန်တွေ့ရတာက",
+    val start=line("ပြီးခဲ့တဲ့အပတ် မတွေ့ခဲ့တဲ့ဂဏန်းတွေထဲက ယခုအပတ် ပြန်တွေ့ရတာက",
         "8. Digits unseen last week but observed this week are",
         joinedDigits(returned),joinedDigitsEnglish(returned),
         if(returned.isEmpty())"ရရှိထားတဲ့ ယခုအပတ်မှတ်တမ်းမှာ မပေါ်သေးပါ။"
@@ -893,7 +893,8 @@ internal fun TwoDSummaryDemoScreen(
                 fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier=Modifier.padding(start=30.dp,top=5.dp,bottom=3.dp))
             sections[tab].forEachIndexed { index,item ->
-                DemoAlignedMethod(index+1,item,en,expanded=open==item.id,
+                DemoAlignedMethod(index+1+(if(tab==0)0 else if(tab==1)4 else 6),item,en,
+                    expanded=open==item.id,
                     onToggle={open=if(open==item.id)"" else item.id},
                     onRealDetail={onOpenDetail(item.id)})
             }
@@ -963,7 +964,9 @@ private fun DemoAlignedMethod(
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
             Text(if(expanded)"−" else "+",fontSize=17.sp,color=ReportWine)
         }
-        DemoAlignedLine(primary,en,main=true)
+        Box(Modifier.fillMaxWidth().clickable(onClick=onToggle)) {
+            DemoAlignedLine(primary,en,main=true)
+        }
         if(expanded) {
             Column(Modifier.padding(start=26.dp,bottom=5.dp),
                 verticalArrangement=Arrangement.spacedBy(0.dp)) {
