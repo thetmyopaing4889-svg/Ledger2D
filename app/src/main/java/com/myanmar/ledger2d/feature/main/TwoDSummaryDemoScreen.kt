@@ -23,10 +23,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
 
@@ -41,6 +43,18 @@ private data class SummarySampleChip(
     val mmValue: String, val enValue: String,
     val mmLabel: String, val enLabel: String,
 )
+
+/** Separate bold data from its compact secondary frequency or status. */
+private fun summaryPrimaryAndMeta(raw: String): Pair<String, String> {
+    val divider = " · "
+    val at = raw.lastIndexOf(divider)
+    if (at < 0) return raw to ""
+    val front = raw.substring(0, at)
+    val back = raw.substring(at + divider.length)
+    // Unseen-digit lists are the main fact; the short prefix becomes the caption.
+    return if (front == "ကျန်" || front == "Unseen") back to front
+        else front to back
+}
 
 private data class SummarySampleEntry(
     val id: String,
@@ -150,13 +164,13 @@ internal fun TwoDSummaryDemoScreen(
     // or separate mini-dashboards. All eight sample findings share one reading flow.
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 13.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = 11.dp, vertical = 3.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {
         CherryMysteryHeader(date, session, en, onPickDate, onChangeSession)
 
         Row(
-            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            Modifier.fillMaxWidth().padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -199,7 +213,7 @@ internal fun TwoDSummaryDemoScreen(
                 }
             }
         }
-        Spacer(Modifier.height(9.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -236,16 +250,16 @@ private fun CherryMysteryHeader(
                     center = Offset(size.width * .08f, size.height * 1.07f))
             }
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(3.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
-                    CherryFrostedDigit()
-                    CherryFrostedDigit()
+                    CherryFrostedDigit(0)
+                    CherryFrostedDigit(1)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -282,64 +296,68 @@ private fun CherryMysteryHeader(
 }
 
 /**
- * A pair of frosted, overlapping digital-number traces, NOT an actual result:
- * no readable numeral or question-mark glyph is rendered.
+ * Frosted fragments of two different digital glyphs: the segment outlines
+ * are deliberately incomplete, so the hero cannot read as "88" or any
+ * specific result. This is brand decoration, never a prediction.
  */
 @Composable
-private fun CherryFrostedDigit() {
+private fun CherryFrostedDigit(variant: Int) {
     Surface(
-        modifier = Modifier.size(width = 53.dp, height = 53.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = .13f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .42f)),
+        modifier = Modifier.size(width = 49.dp, height = 46.dp),
+        shape = RoundedCornerShape(11.dp),
+        color = Color.White.copy(alpha = .12f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .40f)),
         shadowElevation = 2.dp,
     ) {
         Box(Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(
-                Color.White.copy(alpha = .15f),
+                Color.White.copy(alpha = .13f),
                 Color.White.copy(alpha = .025f),
-                Color(0xFFFFB8C9).copy(alpha = .13f),
+                Color(0xFFFFB8C9).copy(alpha = .11f),
             ))
         )) {
             Canvas(
                 Modifier.fillMaxSize()
-                    .padding(horizontal = 13.dp, vertical = 10.dp)
-                    .blur(3.dp),
+                    .padding(horizontal = 13.dp, vertical = 8.dp)
+                    .blur(4.dp),
             ) {
                 val w = size.width
                 val h = size.height
-                // All segments overlap with varying opacity: digit-shaped, but
-                // deliberately impossible to interpret as a particular result.
-                val segments = listOf(
-                    Pair(Offset(w*.24f,h*.12f),Offset(w*.76f,h*.12f)),
-                    Pair(Offset(w*.83f,h*.20f),Offset(w*.83f,h*.43f)),
-                    Pair(Offset(w*.83f,h*.57f),Offset(w*.83f,h*.80f)),
-                    Pair(Offset(w*.24f,h*.88f),Offset(w*.76f,h*.88f)),
-                    Pair(Offset(w*.17f,h*.57f),Offset(w*.17f,h*.80f)),
-                    Pair(Offset(w*.17f,h*.20f),Offset(w*.17f,h*.43f)),
-                    Pair(Offset(w*.24f,h*.50f),Offset(w*.76f,h*.50f)),
+                // A different set of OPEN fragments per cell, with no
+                // top/middle/bottom loops and no complete seven-segment "8".
+                val fragments = if (variant == 0) listOf(
+                    Pair(Offset(w*.22f,h*.11f), Offset(w*.71f,h*.11f)),
+                    Pair(Offset(w*.80f,h*.19f), Offset(w*.80f,h*.43f)),
+                    Pair(Offset(w*.26f,h*.52f), Offset(w*.57f,h*.52f)),
+                    Pair(Offset(w*.18f,h*.64f), Offset(w*.18f,h*.81f)),
+                ) else listOf(
+                    Pair(Offset(w*.20f,h*.18f), Offset(w*.20f,h*.42f)),
+                    Pair(Offset(w*.37f,h*.49f), Offset(w*.78f,h*.49f)),
+                    Pair(Offset(w*.81f,h*.60f), Offset(w*.81f,h*.80f)),
+                    Pair(Offset(w*.27f,h*.90f), Offset(w*.62f,h*.90f)),
                 )
-                segments.forEachIndexed { index, (a,b) ->
+                fragments.forEachIndexed { idx, (from, to) ->
                     drawLine(
-                        Color.White.copy(alpha = if (index % 2 == 0) .52f else .32f),
-                        start = a, end = b, strokeWidth = 4.5.dp.toPx(),
+                        color = Color.White.copy(alpha = if (idx % 2 == 0) .70f else .46f),
+                        start = from, end = to,
+                        strokeWidth = 5.5.dp.toPx(),
                         cap = StrokeCap.Round,
                     )
                 }
                 drawLine(
-                    Color(0xFFFFD8E4).copy(alpha = .46f),
-                    start = Offset(w*.12f,h*.75f),
-                    end = Offset(w*.88f,h*.26f),
+                    color = Color(0xFFFFDEEA).copy(alpha = .36f),
+                    start = if (variant == 0) Offset(w*.35f,h*.80f) else Offset(w*.10f,h*.75f),
+                    end = if (variant == 0) Offset(w*.67f,h*.28f) else Offset(w*.46f,h*.18f),
                     strokeWidth = 3.dp.toPx(),
                     cap = StrokeCap.Round,
                 )
             }
             Box(Modifier.matchParentSize().background(
                 Brush.verticalGradient(listOf(
-                    Color.White.copy(alpha = .13f),
-                    Color.White.copy(alpha = .09f),
-                    Color.White.copy(alpha = .22f),
-                    Color.Transparent,
+                    Color.White.copy(alpha = .16f),
+                    Color.White.copy(alpha = .14f),
+                    Color.White.copy(alpha = .05f),
+                    Color.White.copy(alpha = .21f),
                 ))
             ))
         }
@@ -351,7 +369,7 @@ private fun CherryFrostedDigit() {
 private fun SummaryReportSection(title: String) {
     val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 3.dp),
+        Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -380,37 +398,41 @@ private fun SummaryReportParagraph(
     val sentence = if (en) entry.enSentence else entry.mmSentence
     val more = if (en) "More details ↗" else "ပိုမိုလေ့လာရန် ↗"
 
-    // No per-check card, ID heading or distant footer link: chips and the
-    // sentence together form a continuous written finding.
+    // No per-check card or heading. Make the key data more legible while
+    // shrinking only the wasted inter-paragraph whitespace.
     Column(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        Modifier.fillMaxWidth().padding(vertical = 1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             entry.chips.forEachIndexed { chipIndex, chip ->
                 val key = entry.id + "-" + chipIndex
                 val expanded = expandedChip == key
+                val (primary, meta) = summaryPrimaryAndMeta(
+                    if (en) chip.enValue else chip.mmValue)
+                val isRemaining = entry.id == "05" && chipIndex == 2
                 Surface(
                     onClick = { onToggleChip(key) },
                     modifier = Modifier.animateContentSize(),
                     shape = RoundedCornerShape(if (expanded) 11.dp else 7.dp),
                     color = if (expanded) scheme.primaryContainer
+                        else if (isRemaining) scheme.primaryContainer.copy(alpha = .55f)
                         else scheme.primary.copy(alpha = .055f),
                     border = BorderStroke(1.dp, scheme.primary.copy(
-                        alpha = if (expanded) .37f else .16f)),
+                        alpha = if (expanded) .37f else if (isRemaining) .28f else .12f)),
                     shadowElevation = if (expanded) 2.dp else 0.dp,
                 ) {
                     Column(
                         Modifier.padding(
-                            horizontal = if (expanded) 10.dp else 5.dp,
-                            vertical = if (expanded) 6.dp else 2.dp,
+                            horizontal = if (expanded) 10.dp else 4.dp,
+                            vertical = if (expanded) 5.dp else 1.dp,
                         ),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
                         if (expanded) {
                             Text(
@@ -420,13 +442,25 @@ private fun SummaryReportParagraph(
                             )
                         }
                         Text(
-                            if (en) chip.enValue else chip.mmValue,
-                            style = if (expanded) MaterialTheme.typography.titleSmall
-                                else MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (expanded) scheme.onPrimaryContainer
-                                else scheme.onSurface,
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(
+                                    fontSize = if (expanded) 21.sp else if (isRemaining) 16.sp else 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (expanded) scheme.onPrimaryContainer else scheme.onSurface,
+                                )) { append(primary) }
+                                if (meta.isNotBlank()) {
+                                    append(" ")
+                                    withStyle(SpanStyle(
+                                        fontSize = if (expanded) 13.sp else 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (expanded) scheme.onPrimaryContainer.copy(alpha = .82f)
+                                            else scheme.onSurfaceVariant,
+                                    )) { append(meta) }
+                                }
+                            },
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = if (expanded) 3 else 2,
+                            softWrap = true,
                         )
                     }
                 }
