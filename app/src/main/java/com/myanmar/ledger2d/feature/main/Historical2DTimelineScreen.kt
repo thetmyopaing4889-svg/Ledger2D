@@ -243,6 +243,8 @@ fun Historical2DTimelineScreen(
                                 else scheme.onSurfaceVariant,
                         )
                     }
+                }
+                if (openCheck.isEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
                         color = scheme.primaryContainer.copy(alpha = 0.75f),
