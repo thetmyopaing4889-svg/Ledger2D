@@ -149,6 +149,7 @@ fun Historical2DTimelineScreen(
     // reversible visual stress test, clearly marked when enabled.
     var demoPreview by rememberSaveable { mutableStateOf(false) }
     var openCheck by rememberSaveable { mutableStateOf("") }
+    var activeTwoDTab by rememberSaveable { mutableStateOf("analysis") }
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
@@ -216,12 +217,14 @@ fun Historical2DTimelineScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = tr("ပြန်ရန်", "Back"))
                 }
-                Text(tr("2D စစ်ဆေးမှု", "2D Analysis"),
+                Text(if (activeTwoDTab == "summary" && openCheck.isEmpty())
+                        tr("2D အနှစ်ချုပ်", "2D Summary")
+                    else tr("2D စစ်ဆေးမှု", "2D Analysis"),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
-                if (openCheck.isEmpty()) {
+                if (openCheck.isEmpty() && activeTwoDTab == "analysis") {
                     Surface(
                         onClick = { demoPreview = !demoPreview },
                         shape = RoundedCornerShape(9.dp),
@@ -265,10 +268,16 @@ fun Historical2DTimelineScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         TwoDNavAction(
-                            modifier = Modifier.weight(1f), active = true,
+                            modifier = Modifier.weight(1f), active = activeTwoDTab == "analysis",
                             label = tr("စစ်ဆေးမှု", "Analysis"),
                             icon = Icons.Default.Analytics,
-                            onClick = { openCheck = "" },
+                            onClick = { activeTwoDTab = "analysis"; openCheck = "" },
+                        )
+                        TwoDNavAction(
+                            modifier = Modifier.weight(1f), active = activeTwoDTab == "summary",
+                            label = tr("အနှစ်ချုပ်", "Summary"),
+                            icon = Icons.Default.Summarize,
+                            onClick = { activeTwoDTab = "summary"; openCheck = "" },
                         )
                         TwoDNavAction(
                             modifier = Modifier.weight(1f), active = false,
@@ -285,7 +294,21 @@ fun Historical2DTimelineScreen(
             }
         },
     ) { inset ->
-        if (openCheck.isEmpty()) {
+        if (openCheck.isEmpty() && activeTwoDTab == "summary") {
+            TwoDSummaryDemoScreen(
+                date = date,
+                session = session,
+                en = en,
+                modifier = Modifier.fillMaxSize().padding(inset),
+                onPickDate = { datePickerMode = "target" },
+                onChangeSession = { chosen ->
+                    selectedDate = date.toString()
+                    selectedSession = chosen.name
+                    userChosen = true
+                },
+                onOpenDetail = { openCheck = it },
+            )
+        } else if (openCheck.isEmpty()) {
             val selectedSection = sections.first { it.key == openGroup }
             Column(
                 Modifier.fillMaxSize().padding(inset)
