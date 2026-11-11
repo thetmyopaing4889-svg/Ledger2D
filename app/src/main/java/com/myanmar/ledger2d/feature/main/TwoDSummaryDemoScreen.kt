@@ -50,6 +50,9 @@ private val ReportWine = Color(0xFF751B3C)
 private val ReportPale = Color(0xFFFFEDF2)
 private val ReportLine = Color(0xFFE8CED8)
 
+/** One consistent value size in every numbered finding and the weekly pattern. */
+private val DemoResultSize = 15.sp
+
 private data class DemoWords(val mm: String, val en: String) {
     fun display(english: Boolean) = if (english) en else mm
 }
@@ -516,23 +519,43 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
             fontSize = 12.sp, lineHeight = 18.sp,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        slots.chunked(5).forEach { row ->
+        // Five permanent columns in each of two rows: Monday AM through
+        // Friday PM. Empty future slots are visibly neutral, NOT "Result missing".
+        // Existing, missing and future slots retain chronological positions.
+        repeat(2) { row ->
             Row(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                repeat(5) { index ->
-                    Column(Modifier.weight(1f).padding(vertical = 3.dp),
+                repeat(5) { col ->
+                    val item = slots.getOrNull(row * 5 + col)
+                    Column(
+                        Modifier.weight(1f).heightIn(min = 54.dp)
+                            .padding(vertical = 3.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        if(index < row.size) {
-                            val item = row[index]
-                            Text(item.result ?: "—", fontSize = 19.sp,
-                                fontWeight = FontWeight.Bold, lineHeight = 24.sp,
-                                color = if(item.result == null)
-                                    MaterialTheme.colorScheme.onSurfaceVariant else ReportWine)
-                            Text(item.pattern.display(en), fontSize = 9.sp,
-                                lineHeight = 12.sp, fontWeight = FontWeight.Medium,
-                                maxLines = 2, textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        if (item != null) {
+                            Text(
+                                item.result ?: "—",
+                                fontSize = DemoResultSize, lineHeight = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (item.result == null)
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                else ReportWine,
+                            )
+                            Text(
+                                item.pattern.display(en),
+                                fontSize = 9.sp, lineHeight = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 2,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            // Not-yet-recorded future positions; intentionally not
+                            // marked as a historical closure or missing result.
+                            Text("··", fontSize = DemoResultSize,
+                                lineHeight = 22.sp,
+                                color = ReportWine.copy(alpha = .22f))
                         }
                     }
                 }
@@ -547,7 +570,7 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
                 lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurface)
             Column(Modifier.weight(.44f)) {
                 Text(if(en) joinedDigitsEnglish(remaining) else joinedDigits(remaining),
-                    fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ReportWine)
+                    fontSize = DemoResultSize, fontWeight = FontWeight.Bold, color = ReportWine)
                 Text(
                     if(missing)
                         words("ရရှိထားတဲ့မှတ်တမ်းအရသာ။",
@@ -883,86 +906,174 @@ internal fun TwoDSummaryDemoScreen(
     }
 }
 
-/** Visual-only mystery: neither a hidden result nor a label or forecast. */
+/**
+ * Decorative two-digit mystery: fragmented, blurred numeral silhouettes.
+ * They are deliberately NOT decoded digits, predictions or historical results.
+ */
 @Composable
 private fun CherryMysteryHeader(
     date: LocalDate, session: DrawSession, en: Boolean,
     onPickDate: () -> Unit, onChangeSession: (DrawSession) -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(17.dp),
-        color = Color(0xFF200B24), shadowElevation = 5.dp) {
-        Box(Modifier.fillMaxWidth().height(117.dp).background(
-            Brush.horizontalGradient(listOf(
-                Color(0xFF170A1F), Color(0xFF52153B), Color(0xFF230A26)))
-        )) {
+        color = Color(0xFF270C28),
+        shadowElevation = 5.dp,
+    ) {
+        Box(
+            Modifier.fillMaxWidth().height(117.dp).background(
+                Brush.horizontalGradient(listOf(
+                    Color(0xFF21091F), Color(0xFF671D42),
+                    Color(0xFF2D0D2C),
+                ))
+            )
+        ) {
             Canvas(Modifier.matchParentSize()) {
-                val c = Offset(size.width * .5f, size.height * .39f)
-                val r = size.height * .30f
-                val light = Color(0xFFFFD9B7)
-                drawCircle(Color(0xFFC3588A).copy(alpha=.13f),
-                    radius=r*1.7f,center=c)
-                drawCircle(light.copy(alpha=.16f),radius=r*1.3f,center=c,
-                    style=Stroke(width=1.dp.toPx()))
-                drawCircle(light.copy(alpha=.42f),radius=r,center=c,
-                    style=Stroke(width=1.1.dp.toPx()))
-                drawArc(light.copy(alpha=.78f),startAngle=205f,sweepAngle=60f,
-                    useCenter=false,topLeft=Offset(c.x-r,c.y-r),
-                    size=Size(r*2,r*2),style=Stroke(width=2.dp.toPx()))
-                drawArc(light.copy(alpha=.52f),startAngle=28f,sweepAngle=45f,
-                    useCenter=false,topLeft=Offset(c.x-r,c.y-r),
-                    size=Size(r*2,r*2),style=Stroke(width=1.6.dp.toPx()))
-                val shard = Path().apply {
-                    moveTo(c.x,c.y-r*.77f)
-                    lineTo(c.x+r*.33f,c.y)
-                    lineTo(c.x,c.y+r*.77f)
-                    lineTo(c.x-r*.33f,c.y)
-                    close()
-                }
-                drawPath(shard,light.copy(alpha=.49f),
-                    style=Stroke(width=1.4.dp.toPx()))
-                drawCircle(light.copy(alpha=.16f),radius=r*.25f,center=c)
-                drawLine(light.copy(alpha=.60f),
-                    start=Offset(c.x-r*.6f,c.y-r*.09f),
-                    end=Offset(c.x+r*.6f,c.y+r*.09f),
-                    strokeWidth=1.dp.toPx())
-                listOf(.13f to .24f,.17f to .61f,.24f to .32f,
-                    .34f to .65f,.68f to .16f,.74f to .59f,
-                    .83f to .29f,.89f to .62f).forEachIndexed { i,p ->
-                    drawCircle(if(i%3==0)light else Color.White,
-                        radius=if(i%3==0)1.8.dp.toPx() else 1.dp.toPx(),
-                        center=Offset(size.width*p.first,size.height*p.second),
-                        alpha=if(i%3==0).61f else .38f)
+                val glow = Color(0xFFF5A4C1)
+                drawCircle(
+                    glow.copy(alpha = .12f), radius = size.height * .84f,
+                    center = Offset(size.width * .47f, size.height * .33f),
+                )
+                drawCircle(
+                    Color.White.copy(alpha = .075f),
+                    radius = size.height * .53f,
+                    center = Offset(size.width * .94f, size.height * -.22f),
+                )
+                listOf(
+                    .11f to .25f, .22f to .70f, .80f to .16f,
+                    .91f to .62f, .70f to .78f,
+                ).forEachIndexed { index, p ->
+                    drawCircle(
+                        color = Color(0xFFFFD7D9),
+                        radius = if (index % 2 == 0) 1.5.dp.toPx()
+                            else 1.dp.toPx(),
+                        center = Offset(size.width * p.first,
+                            size.height * p.second),
+                        alpha = .23f,
+                    )
                 }
             }
-            // The draw selector remains readable; no MYSTERY, '?' or caption.
-            Surface(
-                modifier=Modifier.align(Alignment.BottomCenter)
-                    .padding(bottom=7.dp),
-                shape=RoundedCornerShape(30.dp),
-                color=Color(0xFF150A19).copy(alpha=.83f),
+            Row(
+                modifier = Modifier.align(Alignment.TopCenter)
+                    .padding(top = 9.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Row(Modifier.padding(start=12.dp,end=6.dp),
-                    verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                    Text(date.toString()+" · "+when(session) {
-                        DrawSession.MORNING->if(en)"Morning" else "မနက်အကြိမ်"
-                        DrawSession.EVENING->if(en)"Evening" else "ညနေအကြိမ်"
-                    },color=Color.White.copy(alpha=.95f),
-                        fontSize=11.sp,fontWeight=FontWeight.Medium,
-                        modifier=Modifier.clickable(onClick=onPickDate)
-                            .padding(vertical=5.dp))
+                CherryFrostedDigit(variant = 0)
+                CherryFrostedDigit(variant = 1)
+            }
+            // Keep the real navigation affordance, not a Mystery caption.
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp),
+                shape = RoundedCornerShape(30.dp),
+                color = Color(0xFF1D091E).copy(alpha = .88f),
+            ) {
+                Row(
+                    Modifier.padding(start = 11.dp, end = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        date.toString() + " · " + when (session) {
+                            DrawSession.MORNING ->
+                                if (en) "Morning" else "မနက်အကြိမ်"
+                            DrawSession.EVENING ->
+                                if (en) "Evening" else "ညနေအကြိမ်"
+                        },
+                        fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = .95f),
+                        modifier = Modifier.clickable(onClick = onPickDate)
+                            .padding(vertical = 5.dp),
+                    )
                     IconButton(
-                        modifier=Modifier.size(25.dp),
-                        onClick={onChangeSession(if(session==DrawSession.MORNING)
-                            DrawSession.EVENING else DrawSession.MORNING)}
+                        modifier = Modifier.size(25.dp),
+                        onClick = {
+                            onChangeSession(
+                                if (session == DrawSession.MORNING)
+                                    DrawSession.EVENING else DrawSession.MORNING
+                            )
+                        },
                     ) {
-                        Icon(Icons.Default.SwapHoriz,
-                            contentDescription=if(en)"Change session" else "အကြိမ်ပြောင်းရန်",
-                            modifier=Modifier.size(17.dp),
-                            tint=Color.White.copy(alpha=.9f))
+                        Icon(
+                            Icons.Default.SwapHoriz,
+                            contentDescription = if (en) "Change session"
+                                else "အကြိမ်ပြောင်းရန်",
+                            modifier = Modifier.size(17.dp),
+                            tint = Color.White.copy(alpha = .9f),
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Each pane contains broken seven-segment-like strokes. Their outlines are
+ * intentionally incomplete and heavily softened under a tinted glass overlay,
+ * so the eye recognizes TWO numeric forms but cannot identify actual digits.
+ */
+@Composable
+private fun CherryFrostedDigit(variant: Int) {
+    Surface(
+        modifier = Modifier.size(width = 74.dp, height = 70.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White.copy(alpha = .075f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .27f)),
+        shadowElevation = 1.dp,
+    ) {
+        Box(Modifier.fillMaxSize().background(
+            Brush.verticalGradient(listOf(
+                Color.White.copy(alpha = .09f),
+                Color(0xFFECB0C9).copy(alpha = .055f),
+                Color.White.copy(alpha = .04f),
+            ))
+        )) {
+            Canvas(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = 15.dp, vertical = 8.dp)
+                    .blur(7.dp),
+            ) {
+                val w = size.width
+                val h = size.height
+                val pieces = if (variant == 0) listOf(
+                    Offset(w * .24f, h * .13f) to Offset(w * .70f, h * .15f),
+                    Offset(w * .76f, h * .21f) to Offset(w * .76f, h * .42f),
+                    Offset(w * .24f, h * .49f) to Offset(w * .61f, h * .50f),
+                    Offset(w * .19f, h * .66f) to Offset(w * .19f, h * .86f),
+                ) else listOf(
+                    Offset(w * .22f, h * .19f) to Offset(w * .23f, h * .43f),
+                    Offset(w * .39f, h * .45f) to Offset(w * .76f, h * .48f),
+                    Offset(w * .75f, h * .61f) to Offset(w * .74f, h * .82f),
+                    Offset(w * .28f, h * .86f) to Offset(w * .58f, h * .86f),
+                )
+                pieces.forEachIndexed { i, segment ->
+                    drawLine(
+                        color = if (i % 2 == 0)
+                            Color(0xFFFFE2E7).copy(alpha = .58f)
+                        else Color(0xFFF2A3C3).copy(alpha = .51f),
+                        start = segment.first, end = segment.second,
+                        strokeWidth = 7.dp.toPx(), cap = StrokeCap.Round,
+                    )
+                }
+            }
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.horizontalGradient(listOf(
+                        Color(0xFF8E3C64).copy(alpha = .35f),
+                        Color.White.copy(alpha = .14f),
+                        Color(0xFF4D1A38).copy(alpha = .23f),
+                    ))
+                )
+            )
+            Canvas(Modifier.matchParentSize()) {
+                drawLine(
+                    color = Color.White.copy(alpha = .10f),
+                    start = Offset(size.width * .13f, size.height * .15f),
+                    end = Offset(size.width * .84f, size.height * .08f),
+                    strokeWidth = 2.dp.toPx(),
+                )
             }
         }
     }
@@ -1051,17 +1162,17 @@ private fun DemoAlignedLine(item: DemoReportLine, en: Boolean, main: Boolean) {
         Text(
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight=FontWeight.Bold,
-                    color=ReportWine,fontSize=if(main)16.sp else 13.sp)) {
+                    color=ReportWine,fontSize=DemoResultSize)) {
                     append(item.value.display(en))
                 }
                 append("  ")
                 withStyle(SpanStyle(fontWeight=FontWeight.SemiBold,
                     color=MaterialTheme.colorScheme.onSurface,
-                    fontSize=if(main)11.sp else 10.sp)) {
+                    fontSize=11.sp)) {
                     append(item.ending.display(en))
                 }
             },
-            modifier=Modifier.weight(.43f),lineHeight=if(main)20.sp else 18.sp
+            modifier=Modifier.weight(.43f),lineHeight=20.sp
         )
     }
 }
