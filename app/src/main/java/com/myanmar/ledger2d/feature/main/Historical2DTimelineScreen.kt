@@ -297,10 +297,17 @@ fun Historical2DTimelineScreen(
         },
     ) { inset ->
         if (openCheck.isEmpty() && activeTwoDTab == "summary") {
-            TwoDSummaryDemoScreen(
+            // Summary uses the exact verified historical report computed above.
+            // No demo fixture is ever used as a fallback for absent data.
+            TwoDSummaryScreen(
                 date = date,
                 session = session,
                 en = en,
+                report = if (lookback == "custom" && !customValid) null else report,
+                closedDates = closedDates,
+                isLoading = !inputsReady,
+                validTarget = validTarget,
+                validHistoryRange = lookback != "custom" || customValid,
                 modifier = Modifier.fillMaxSize().padding(inset),
                 onPickDate = { datePickerMode = "target" },
                 onChangeSession = { chosen ->
