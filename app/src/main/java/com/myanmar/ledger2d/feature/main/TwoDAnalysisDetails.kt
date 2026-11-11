@@ -45,6 +45,23 @@ internal object TwoDDetailSelection {
         return if (max == 0) emptyList()
         else counts.filter { it.count == max }.sortedBy { it.digit }
     }
+    /** Excludes never-seen digits and keeps ties in the chosen 0-9 position. */
+    fun leastObservedByPosition(
+        position: String,
+        combined: List<TwoDCount>,
+        tens: List<TwoDCount>,
+        ones: List<TwoDCount>,
+    ): List<TwoDCount> {
+        val counts = when (position) {
+            "tens" -> tens
+            "ones" -> ones
+            else -> combined
+        }
+        val minimum = counts.filter { it.count > 0 }.minOfOrNull { it.count }
+            ?: return emptyList()
+        return counts.filter { it.count == minimum }.sortedBy { it.digit }
+    }
+
     fun streams(data: Map<String, TwoDStreakStream>): List<String> =
         listOf("morning", "evening", "combined").filter {
             (data[it]?.observedDraws ?: 0) > 0

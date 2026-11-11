@@ -61,8 +61,9 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
 
     val maxPairs = TwoDDetailSelection.leaders(data.numbers)
     val maxDigits = TwoDDetailSelection.leaders(data.singles)
-    val leastDigit = data.singles.filter { it.count > 0 }.minOfOrNull { it.count }
-    val leastDigits = data.singles.filter { leastDigit != null && it.count == leastDigit }
+    val leastDigits = TwoDDetailSelection.leastObservedByPosition(
+        position, data.singles, data.tens, data.ones)
+    val leastDigit = leastDigits.firstOrNull()?.count
     val maxPairCount = maxPairs.firstOrNull()?.count ?: 0
     val maxDigitCount = maxDigits.firstOrNull()?.count ?: 0
     fun condensed(items: List<TwoDCount>) = items.take(3).joinToString(" · ") { it.digit } +
@@ -204,7 +205,12 @@ internal fun TwoDA02Dashboard(data: TwoDSameSlot, en: Boolean) {
             }
             // Explicitly means the least frequent among digits that appeared, NOT missing digits.
             if (leastDigits.isNotEmpty()) A02Panel {
-                Text(tr("ထွက်ဖူးသောဂဏန်းများထဲမှ အနည်းဆုံး", "Least frequent of observed digits"),
+                Text(tr("ထွက်ဖူးသောဂဏန်းများထဲမှ အနည်းဆုံး", "Least frequent of observed digits") +
+                    " · " + when (position) {
+                        "tens" -> tr("ထိပ်", "Tens")
+                        "ones" -> tr("ပိတ်", "Ones")
+                        else -> tr("ပေါင်း", "Both")
+                    },
                     style = LedgerTypographyStandard.style(LedgerTextRole.HELPER, lang),
                     color = scheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically,

@@ -107,4 +107,27 @@ class TwoDDetailPresentationTest {
         assertEquals(null,
             TwoDDetailSelection.flowPattern(row("74", false, true, false), false))
     }
+    @Test fun leastObservedChangesWithCombinedTensOnesWithoutCountingZeroes() {
+        val combined = listOf(
+            TwoDCount("0", 9), TwoDCount("1", 2),
+            TwoDCount("2", 2), TwoDCount("3", 0),
+        )
+        val tens = listOf(
+            TwoDCount("0", 1), TwoDCount("1", 6),
+            TwoDCount("2", 4), TwoDCount("3", 0),
+        )
+        val ones = listOf(
+            TwoDCount("0", 6), TwoDCount("1", 3),
+            TwoDCount("2", 1), TwoDCount("3", 0),
+        )
+        fun select(position: String) = TwoDDetailSelection.leastObservedByPosition(
+            position, combined, tens, ones)
+        assertEquals(listOf("1", "2"), select("both").map { it.digit })
+        assertEquals(listOf("0"), select("tens").map { it.digit })
+        assertEquals(listOf("2"), select("ones").map { it.digit })
+        assertEquals(emptyList<TwoDCount>(),
+            TwoDDetailSelection.leastObservedByPosition(
+                "both", listOf(TwoDCount("0", 0)), emptyList(), emptyList()))
+    }
+
 }

@@ -145,9 +145,6 @@ fun Historical2DTimelineScreen(
         else null
     }
     var openGroup by rememberSaveable { mutableStateOf("1") }
-    // Real verified results are the default. DEMO stays available as a
-    // reversible visual stress test, clearly marked when enabled.
-    var demoPreview by rememberSaveable { mutableStateOf(false) }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var activeTwoDTab by rememberSaveable { mutableStateOf("analysis") }
     var streakStream by remember(target.session) { mutableStateOf(
@@ -224,27 +221,7 @@ fun Historical2DTimelineScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
-                if (openCheck.isEmpty() && activeTwoDTab == "analysis") {
-                    Surface(
-                        onClick = { demoPreview = !demoPreview },
-                        shape = RoundedCornerShape(9.dp),
-                        color = if (demoPreview) scheme.secondaryContainer
-                            else scheme.surfaceVariant,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp, scheme.secondary.copy(alpha =
-                                if (demoPreview) .48f else .15f)),
-                    ) {
-                        Text(
-                            if (demoPreview) "DEMO ON" else "DEMO",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (demoPreview) scheme.secondary
-                                else scheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                if (openCheck.isEmpty()) {
+                if (openCheck.isEmpty() && activeTwoDTab == "summary") {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
                         color = scheme.primaryContainer.copy(alpha = 0.75f),
@@ -453,7 +430,7 @@ fun Historical2DTimelineScreen(
                     }
                 }
 
-                if (!inputsReady && !demoPreview) {
+                if (!inputsReady) {
                     // Keep one stable screen frame while the initial Room
                     // snapshots arrive; never flash a fake empty result grid.
                     Box(Modifier.fillMaxWidth().weight(1f),
@@ -464,42 +441,6 @@ fun Historical2DTimelineScreen(
                             strokeWidth = 2.dp,
                         )
                     }
-                } else if (demoPreview) {
-                    // Visual PREVIEW only: no reading from live report and
-                    // no writes to Room, history, or user ledger tables.
-                    Surface(
-                        color = scheme.tertiary.copy(alpha = .15f),
-                        shape = RoundedCornerShape(9.dp),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp, scheme.tertiary.copy(alpha = .27f)),
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .padding(horizontal = 9.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        ) {
-                            Icon(Icons.Default.Science, null,
-                                modifier = Modifier.size(14.dp),
-                                tint = scheme.onSurfaceVariant)
-                            Text(
-                                tr("DEMO · စမ်းသပ်ဒေတာသာ · Filter မသက်ဆိုင်",
-                                    "DEMO · Sample data only · Filters ignored"),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = scheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    // Weight is the ACTUAL leftover height after the header,
-                    // date, tabs, history selector and bottom nav.
-                    TwoDFixedDemoGrid(
-                        group = selectedSection.key,
-                        en = en,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    )
                 } else {
                     if (!validTarget) {
                         TwoDStatusMessage(tr("ရွေးထားသောနေ့မှာ 2D အကြိမ်ပိတ်ထားသည်။",

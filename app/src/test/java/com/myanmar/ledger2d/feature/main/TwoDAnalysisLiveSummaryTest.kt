@@ -87,4 +87,22 @@ class TwoDAnalysisLiveSummaryTest {
         assertTrue(TwoDLiveSummary.observedConditions(
             TwoDPreviousResults(null, null, empty, empty, empty)).isEmpty())
     }
+    @Test fun multipleLeadingPairsAlwaysExposeReal2DDigitsNotJustTieCounts() {
+        val peak = TwoDLiveSummary.peak(listOf(
+            TwoDCount("56", 6), TwoDCount("12", 6),
+            TwoDCount("34", 6), TwoDCount("78", 3),
+        ))
+        assertEquals(6, peak.count)
+        assertEquals("3 မျိုးတူ", peak.display(en = false))
+        assertEquals(listOf("12"), peak.visibleDigits(limit = 1))
+        assertEquals(2, peak.hiddenDigitCount(limit = 1))
+        assertEquals(listOf("12", "34"), peak.visibleDigits(limit = 2))
+        assertEquals(1, peak.hiddenDigitCount(limit = 2))
+        val solo = TwoDLiveSummary.peak(listOf(
+            TwoDCount("08", 4), TwoDCount("90", 1),
+        ))
+        assertEquals(listOf("08"), solo.visibleDigits(limit = 1))
+        assertEquals(0, solo.hiddenDigitCount(limit = 1))
+    }
+
 }

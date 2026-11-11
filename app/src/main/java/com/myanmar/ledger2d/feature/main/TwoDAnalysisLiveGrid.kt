@@ -1,6 +1,7 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -8,9 +9,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.domain.TwoDAnalysisReport
 import com.myanmar.ledger2d.core.domain.TwoDCount
 import com.myanmar.ledger2d.core.domain.TwoDMissingDigitReturn
@@ -241,6 +244,75 @@ private fun LiveCountRow(label: String, peak: TwoDLiveSummary.Peak, en: Boolean,
         peak.display(en) + " ×" + peak.count, compact)
 }
 
+/**
+ * A-02 pair hero: "3 tied" was truncated to "3..." on narrow phones,
+ * concealing the real 2D numbers. Reserve enough width for at least one
+ * complete pair and show +N for hidden ties. All ties remain in A-02 detail.
+ * The sample-data PreviewHero and every formula stay untouched.
+ */
+@Composable
+private fun RealPairHero(
+    peak: TwoDLiveSummary.Peak,
+    en: Boolean,
+    compact: Boolean,
+    modifier: Modifier,
+) {
+    val c = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(10.dp)
+    Surface(
+        modifier = modifier.height(if (compact) 88.dp else 106.dp),
+        shape = shape,
+        color = c.secondary,
+        shadowElevation = 5.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .24f)),
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            // Two 2D pairs fit at medium widths; at narrow widths keep one
+            // complete, legible pair rather than ellipsizing both of them.
+            val limit = if (maxWidth >= 114.dp) 2 else 1
+            val shown = peak.visibleDigits(limit)
+            val hidden = peak.hiddenDigitCount(limit)
+            Column(
+                Modifier.fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(
+                        c.secondary.copy(alpha = .90f), c.secondary,
+                        c.secondary.copy(alpha = .97f),
+                    )))
+                    .padding(horizontal = 6.dp, vertical = 5.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("2D", style = MaterialTheme.typography.labelSmall,
+                    color = c.onSecondary.copy(alpha = .84f), maxLines = 1)
+                Text(
+                    shown.joinToString("·"),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = if (shown.size > 1) 18.sp else 23.sp,
+                        lineHeight = if (shown.size > 1) 22.sp else 27.sp,
+                    ),
+                    fontWeight = FontWeight.ExtraBold,
+                    color = c.onSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                )
+                if (hidden > 0) {
+                    Text("+$hidden " + if (en) "pairs" else "တွဲ",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp, lineHeight = 13.sp,
+                        ),
+                        color = c.onSecondary.copy(alpha = .95f),
+                        maxLines = 1)
+                }
+                Text(peak.count.toString() + if (en) " hits" else " ကြိမ်",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.sp, lineHeight = 13.sp,
+                    ),
+                    color = c.onSecondary.copy(alpha = .95f),
+                    maxLines = 1)
+            }
+        }
+    }
+}
+
 @Composable
 private fun ColumnScope.RealMostSeen(
     r: TwoDAnalysisReport, en: Boolean, compact: Boolean,
@@ -254,9 +326,8 @@ private fun ColumnScope.RealMostSeen(
     val digit = TwoDLiveSummary.peak(a.singles)
     Row(Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (pair.present) PreviewHero("2D",
-            PreviewNumber(pair.display(en), pair.count.toString()),
-            Modifier.weight(1f), en, compact)
+        if (pair.present) RealPairHero(
+            pair, en, compact, Modifier.weight(1f))
         if (digit.present) PreviewHero("0–9",
             PreviewNumber(digit.display(en), digit.count.toString()),
             Modifier.weight(1f), en, compact)
