@@ -150,7 +150,10 @@ fun Historical2DTimelineScreen(
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
-     BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
+     BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
+        if (openCheck.isNotEmpty()) openCheck = ""
+        else activeTwoDTab = "analysis"
+    }
     var rulesOpen by remember { mutableStateOf(false) }
 
 
@@ -214,9 +217,13 @@ fun Historical2DTimelineScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = tr("ပြန်ရန်", "Back"))
                 }
-                Text(if (activeTwoDTab == "summary" && openCheck.isEmpty())
+                Text(when {
+                    activeTwoDTab == "research" && openCheck.isEmpty() ->
+                        tr("2D လေ့လာရန်", "2D Research")
+                    activeTwoDTab == "summary" && openCheck.isEmpty() ->
                         tr("2D အနှစ်ချုပ်", "2D Summary")
-                    else tr("2D စစ်ဆေးမှု", "2D Analysis"),
+                    else -> tr("2D စစ်ဆေးမှု", "2D Analysis")
+                },
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, maxLines = 1,
@@ -259,9 +266,11 @@ fun Historical2DTimelineScreen(
                             onClick = { activeTwoDTab = "summary"; openCheck = "" },
                         )
                         TwoDNavAction(
-                            modifier = Modifier.weight(1f), active = false,
+                            modifier = Modifier.weight(1f),
+                            active = activeTwoDTab == "research",
                             label = tr("လေ့လာရန်", "Research"),
-                            icon = Icons.Default.MenuBook, onClick = onLegacy,
+                            icon = Icons.Default.MenuBook,
+                            onClick = { activeTwoDTab = "research"; openCheck = "" },
                         )
                         TwoDNavAction(
                             modifier = Modifier.weight(1f), active = false,
@@ -293,6 +302,15 @@ fun Historical2DTimelineScreen(
                     userChosen = true
                 },
                 onOpenDetail = { openCheck = it },
+            )
+        } else if (openCheck.isEmpty() && activeTwoDTab == "research") {
+            TwoDResearchWorkspace(
+                draws = merged.draws,
+                closedDates = closedDates,
+                cutoff = defaultTarget,
+                en = en,
+                ready = inputsReady,
+                modifier = Modifier.fillMaxSize().padding(inset),
             )
         } else if (openCheck.isEmpty()) {
             val selectedSection = sections.first { it.key == openGroup }
