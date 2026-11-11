@@ -79,20 +79,15 @@ internal object TwoDDetailSelection {
         } else {
             if (en) "Old" else "အဟောင်း"
         }
-        return when {
-            item.newTens && item.newOnes -> status(true) + " + " + status(true)
-            !item.newTens && !item.newOnes -> status(false) + " + " + status(false)
-            else -> status(true) + " + " + status(false)
-        }
+        // Preserve the confirmed 2D pair's tens/ones order. A mixed
+        // Old+New pair must not be reordered into New+Old.
+        return status(item.newTens) + " + " + status(item.newOnes)
     }
 
-    /** Preserve digit-to-status evidence but show the three approved pattern groups. */
+    /** Keep tens first, ones second: never sort by new/old status. */
     fun flowComponents(item: TwoDTransition): List<Pair<Char, Boolean>> {
         val pair = item.result.digit
-        val components = listOf(pair[0] to item.newTens, pair[1] to item.newOnes)
-        return if (item.newTens != item.newOnes)
-            components.sortedByDescending { it.second }
-        else components
+        return listOf(pair[0] to item.newTens, pair[1] to item.newOnes)
     }
     fun longest(data: List<TwoDStreak>): List<TwoDStreak> {
         val max = data.maxOfOrNull { it.observedDrawsSince } ?: 0
