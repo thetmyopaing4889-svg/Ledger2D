@@ -404,10 +404,12 @@ class TwoDAnalysisEngineTest {
         val five = report.a01.results.single { it.digit == '5' }
         assertEquals("50", five.thisWeekFirstSeen?.digit)
         assertTrue(five.firstSeenVerified)
-        assertEquals(1, five.historicalMissingWeeks)
-        assertEquals(1, five.historyFirstReturnEpisodes)
-        assertEquals('9', five.commonCompanions.single().companion)
-        assertEquals("59", five.historicalFirstReturns.single().digit)
+        // An incomplete historical source week cannot establish that 5
+        // was absent for the entire week; no first-return companion is proven.
+        assertEquals(0, five.historicalMissingWeeks)
+        assertEquals(0, five.historyFirstReturnEpisodes)
+        assertTrue(five.commonCompanions.isEmpty())
+        assertTrue(five.historicalFirstReturns.isEmpty())
     }
 
     @Test fun futureTargetIsExcludedAndUnverifiedAbsenceIsNotClaimedComplete() {
@@ -466,4 +468,109 @@ class TwoDAnalysisEngineTest {
         assertEquals("67",hit.precedingSecond?.digit)
         assertEquals("41",hit.following.digit)
     }
+    @Test fun a01PartialFollowingWeekCannotProveNonReturn() {
+        val source = week("2026-10-05",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        // Missing nine next-week draws is NOT proof that 0 did not return.
+        val nextWeek = listOf(row("2026-10-12", am, "11"))
+        val previous = week("2026-10-26",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        val result = TwoDAnalysisEngine.calculate(
+            source + nextWeek + previous, target("2026-11-02")
+        ).a01.results.single { it.digit == '0' }
+        assertEquals(1, result.historicalMissingWeeks)
+        assertEquals(0, result.historicalNoReturnWeeks)
+        assertEquals(1, result.historicalUnknownNextWeeks)
+        assertTrue(result.commonCompanions.isEmpty())
+    }
+
+    @Test fun a01GapBeforeObservedReturnDoesNotProduceVerifiedCompanion() {
+        val source = week("2026-10-05",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        // Monday AM unknown; Monday PM=03 could be the SECOND return.
+        val nextWeek = week("2026-10-12",
+            listOf("11","03","22","33","44","55","66","77","88","99")).drop(1)
+        val previous = week("2026-10-26",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        val result = TwoDAnalysisEngine.calculate(
+            source + nextWeek + previous, target("2026-11-02")
+        ).a01.results.single { it.digit == '0' }
+        assertEquals(1, result.historicalMissingWeeks)
+        assertEquals(0, result.historicalNoReturnWeeks)
+        assertEquals(1, result.historicalUnknownNextWeeks)
+        assertEquals(0, result.historyFirstReturnEpisodes)
+        assertTrue(result.commonCompanions.isEmpty())
+    }
+
+    @Test fun a01GapsAfterFirstReturnDoNotInvalidateVerifiedCompanion() {
+        val source = week("2026-10-05",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        // Monday AM is provably the first return; later results may be absent.
+        val nextWeek = listOf(row("2026-10-12", am, "03"))
+        val previous = week("2026-10-26",
+            listOf("11","22","33","44","55","66","77","88","99","12"))
+        val result = TwoDAnalysisEngine.calculate(
+            source + nextWeek + previous, target("2026-11-02")
+        ).a01.results.single { it.digit == '0' }
+        assertEquals(1, result.historicalMissingWeeks)
+        assertEquals(1, result.historyFirstReturnEpisodes)
+        assertEquals('3', result.commonCompanions.single().companion)
+        assertEquals(0, result.historicalUnknownNextWeeks)
+    }
+
+    @Test fun a03DistinguishesMatchedPrefixWithUnknownFollowingFromNoMatch() {
+        val current = listOf(
+            row("2026-11-02", am, "22"),
+            row("2026-11-02", pm, "11"),
+            row("2026-11-03", am, "23"),
+            row("2026-11-03", pm, "34"),
+        )
+        val samePrefixWithoutOutcome = listOf(
+            row("2026-10-26", am, "44"),
+            row("2026-10-26", pm, "33"),
+            row("2026-10-27", am, "45"),
+            row("2026-10-27", pm, "56"),
+            // Wednesday AM is NOT recorded.
+        )
+        val unknown = TwoDAnalysisEngine.calculate(
+            current + samePrefixWithoutOutcome, target("2026-11-04")
+        ).a03
+        assertTrue(unknown.eligible)
+        assertTrue(unknown.matched.isEmpty())
+        assertEquals(1, unknown.missingFollowingCount)
+        assertTrue(unknown.nextParity.values.all { it == 0 })
+        val noMatch = TwoDAnalysisEngine.calculate(
+            current + listOf(
+                row("2026-10-26", am, "11"),
+                row("2026-10-26", pm, "33"),
+                row("2026-10-27", am, "45"),
+                row("2026-10-27", pm, "56"),
+            ), target("2026-11-04")
+        ).a03
+        assertEquals(0, noMatch.missingFollowingCount)
+        assertTrue(noMatch.matched.isEmpty())
+    }
+
+    @Test fun a03OnlyVerifiedFollowingOutcomesCountButUnknownAreRetained() {
+        val current = listOf(
+            row("2026-11-02", am, "22"), row("2026-11-02", pm, "11"),
+            row("2026-11-03", am, "23"), row("2026-11-03", pm, "34"),
+        )
+        val known = listOf(
+            row("2026-10-26", am, "44"), row("2026-10-26", pm, "33"),
+            row("2026-10-27", am, "45"), row("2026-10-27", pm, "56"),
+            row("2026-10-28", am, "77"),
+        )
+        val unknown = listOf(
+            row("2026-10-19", am, "44"), row("2026-10-19", pm, "33"),
+            row("2026-10-20", am, "45"), row("2026-10-20", pm, "56"),
+        )
+        val result = TwoDAnalysisEngine.calculate(
+            current + known + unknown, target("2026-11-04")
+        ).a03
+        assertEquals(listOf("77"), result.matched.map { it.digit })
+        assertEquals(1, result.missingFollowingCount)
+        assertEquals(1, result.nextParity["မမ"])
+    }
+
 }
