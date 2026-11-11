@@ -46,6 +46,8 @@ data class TwoDPattern(
     val nextParity: Map<String, Int>,
     val currentPreceding: List<TwoDMatch> = emptyList(),
     val matchingWeeks: List<TwoDPatternWeekEvidence> = emptyList(),
+    /** Matching ordered prefixes whose following result was not recorded. */
+    val missingFollowingCount: Int = 0,
 )
 
 data class TwoDStreak(
@@ -113,11 +115,11 @@ data class TwoDMissingDigitReturn(
     val digit: Char,
     val thisWeekFirstSeen: TwoDMatch?,
     val firstSeenVerified: Boolean,
-    /** Past weeks where this digit is absent from at least one available draw. */
+    /** Completed historical weeks where the digit is verified entirely absent. */
     val historicalMissingWeeks: Int,
-    /** Following weeks where available draws do not contain the digit. */
+    /** Fully observed following weeks with no occurrence of the digit. */
     val historicalNoReturnWeeks: Int,
-    /** Following weeks with no usable recorded draws in the selected range. */
+    /** Following weeks with incomplete/uncertain first return or no complete outcome. */
     val historicalUnknownNextWeeks: Int,
     val historyFirstReturnEpisodes: Int,
     val commonCompanions: List<TwoDReturnCompanion>,
@@ -298,6 +300,7 @@ object TwoDAnalysisEngine {
         }
         val prefix = prefixSlots.map { bySlot[it] ?: return TwoDPattern(false, emptyList(), emptyList(), emptyMap()) }
         val weeklyCandidates = known.map { monday(it.date) }.distinct().filter { it < start }
+        var missingFollowingCount = 0
         val matchingWeeks = weeklyCandidates.mapNotNull { candidateStart ->
             if ((0L..4L).any { candidateStart.plusDays(it) in closed }) return@mapNotNull null
             val candidateTarget = candidateStart.plusDays(ChronoUnit.DAYS.between(start, target.date))
@@ -309,7 +312,13 @@ object TwoDAnalysisEngine {
             if (!earlier.zip(prefix).all { (a, b) ->
                     TwoDigitGroups.parity(a.digit) == TwoDigitGroups.parity(b.digit)
                 }) return@mapNotNull null
-            val next = bySlot[candidateTarget to target.session] ?: return@mapNotNull null
+            // A matching prefix is evidence even if its following result is absent.
+            // Only verified following outcomes contribute to next-parity frequencies.
+            val next = bySlot[candidateTarget to target.session]
+            if (next == null) {
+                missingFollowingCount++
+                return@mapNotNull null
+            }
             TwoDPatternWeekEvidence(
                 candidateStart,
                 earlier.map { TwoDMatch(it.date, it.session, it.digit) },
@@ -323,6 +332,7 @@ object TwoDAnalysisEngine {
             matched, parityNames.associateWith { clazz -> classes.count { it == clazz } },
             currentPreceding = prefix.map { TwoDMatch(it.date, it.session, it.digit) },
             matchingWeeks = matchingWeeks,
+            missingFollowingCount = missingFollowingCount,
         )
     }
 
@@ -557,32 +567,43 @@ object TwoDAnalysisEngine {
             var unknownNextWeeks = 0
             for (week in episodes) {
                 val sourceSlots = slotsForWeek(week, closed)
-                // A digit is "missing" if it did not appear in ANY available
-                // draw of that week, even when other scheduled slots are unknown.
-                val recordedSource = sourceSlots.mapNotNull { bySlot[it] }
-                if (recordedSource.isEmpty() || recordedSource.any { digit in it.digit }) continue
+                // An absent digit is VERIFIED missing only if every scheduled
+                // source-week draw is recorded. Partial weeks are unknown, not
+                // proof of absence; never rank companion digits from them.
+                if (sourceSlots.isEmpty() || sourceSlots.any { it !in bySlot }) continue
+                if (sourceSlots.any { digit in requireNotNull(bySlot[it]).digit }) continue
                 val nextWeek = week.plusWeeks(1)
                 val followingSlots = slotsForWeek(nextWeek, closed)
                 if (followingSlots.isEmpty() || followingSlots.none { range.includes(it.first) }) continue
-                val recordedFollowing = followingSlots
-                    .filter { range.includes(it.first) }
-                    .mapNotNull { bySlot[it] }
                 qualifyingMissingWeeks++
-                if (recordedFollowing.isEmpty()) {
+                // A range cutting across a following week cannot prove its first
+                // return or complete non-return without the earlier draws.
+                if (followingSlots.any { !range.includes(it.first) }) {
                     unknownNextWeeks++
                     continue
                 }
-                // Only recorded results decide whether the missing digit returned.
-                // The first observed return is not a claim about unrecorded slots.
-                val firstObserved = recordedFollowing.firstOrNull { digit in it.digit }
-                if (firstObserved != null) {
+                val firstReturnSlot = followingSlots.firstOrNull { slot ->
+                    bySlot[slot]?.digit?.contains(digit) == true
+                }
+                if (firstReturnSlot != null) {
+                    // An earlier open slot without a result could contain the digit:
+                    // later first-OBSERVED is not a verified FIRST return.
+                    val preceding = followingSlots.takeWhile { it != firstReturnSlot }
+                    if (preceding.any { it !in bySlot }) {
+                        unknownNextWeeks++
+                        continue
+                    }
+                    val firstObserved = requireNotNull(bySlot[firstReturnSlot])
                     val returning = TwoDMatch(
                         firstObserved.date, firstObserved.session, firstObserved.digit,
                     )
                     historicalReturns.add(returning)
                     historicalEpisodes.add(TwoDMissingReturnEpisode(week, returning))
-                } else {
+                } else if (followingSlots.all { it in bySlot }) {
+                    // Only a fully recorded following week proves non-return.
                     noReturnWeeks++
+                } else {
+                    unknownNextWeeks++
                 }
             }
             val companions = historicalReturns.map { returned ->
