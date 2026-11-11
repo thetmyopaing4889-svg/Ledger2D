@@ -808,7 +808,14 @@ private fun real02(r:TwoDAnalysisReport):DemoReportMethod {
         realCountLine("တစ်လုံးဂဏန်း အများဆုံးက","The leading single digit is",d.singles),
         realCountLine("အများဆုံး စုံ/မ အမျိုးအစားက","The leading parity class is",
             d.parity,renameEn={twoDParityLabel(it,true)}),
-        realCountLine("အများဆုံး အထူးအုပ်စုက","The leading special group is",
+        // Real observations exist, but zero special groups is a genuine
+        // "none observed" finding, not an unavailable-data error.
+        if(d.groups.values.all { it == 0 })
+            line("အများဆုံး အထူးအုပ်စုက","The leading special group is",
+                "မတွေ့ပါ","None",
+                "ရရှိထားတဲ့ Result တွေထဲမှာ အထူးအုပ်စုမတွေ့ခဲ့ပါ။",
+                "No special-group occurrence in recorded results.")
+        else realCountLine("အများဆုံး အထူးအုပ်စုက","The leading special group is",
             d.groups,renameEn={twoDGroupLabel(it,true)},
             renameMm={twoDGroupLabel(it,false)}),
         realCountLine("အများဆုံး ထိပ်ဂဏန်းက","The leading tens digit is",d.tens),
@@ -823,11 +830,25 @@ private fun real03(r:TwoDAnalysisReport):DemoReportMethod {
         !d.eligible -> line(mm,en,"မပြည့်စုံ","Insufficient",
             "ရှေ့အကြိမ် ၄–၉ ကြိမ်ရဲ့ အစဉ်ကို အတည်မပြုနိုင်သေးပါ။",
             "A verified preceding 4–9 draw prefix is not available.")
+        d.matched.isEmpty() && d.missingFollowingCount>0 ->
+            line(mm,en,"နောက်ထွက်မသိ","Following result unknown",
+                "Pattern တူတဲ့ သမိုင်းအပတ် "+d.missingFollowingCount+
+                    " ပတ်မှာ နောက်အကြိမ် Result မရှိသေးပါ။",
+                d.missingFollowingCount.toString()+
+                    " historically matching prefixes have missing following results.")
         d.matched.isEmpty() -> line(mm,en,"မတွေ့ပါ","No match",
             "ရရှိထားတဲ့သမိုင်းမှာ ပုံစံတူမတွေ့ခဲ့ပါ။",
             "No verified matching history was found.")
-        else -> realCountLine(mm,en,d.nextParity,
-            renameEn={twoDParityLabel(it,true)})
+        else -> {
+            val observed=realCountLine(mm,en,d.nextParity,
+                renameEn={twoDParityLabel(it,true)})
+            if(d.missingFollowingCount>0) observed.copy(ending=words(
+                observed.ending.mm+" နောက်ထွက်မသိတဲ့ Pattern တူအပတ် "+
+                    d.missingFollowingCount+" ပတ်ကို မတွက်ထားပါ။",
+                observed.ending.en+" Excludes "+
+                    d.missingFollowingCount+" unknown following results."))
+            else observed
+        }
     }
     return DemoReportMethod("03",words("စုံ/မ အစဉ်","Parity pattern"),listOf(result))
 }
@@ -907,17 +928,21 @@ private fun real08(r:TwoDAnalysisReport):DemoReportMethod {
     val en=if(first!=null&&second!=null)
         "After historical references "+first.digit+" and "+second.digit+" both matched"
         else "Historical comparison requiring both previous results"
-    val rows=mutableListOf(
-        realCondition(mm,en,first!=null&&second!=null,data.both),
-        realCondition("ပထမရှေ့ဂဏန်း "+
+    val bothRow=realCondition(mm,en,first!=null&&second!=null,data.both)
+    val firstRow=realCondition("ပထမရှေ့ဂဏန်း "+
             (first?.digit?:"မရှိ")+" တစ်ခုတည်းနဲ့တိုက်စစ်ရာမှာ",
             "With the first reference "+(first?.digit?:"unknown")+" alone",
-            first!=null,data.firstOnly),
-        realCondition("ဒုတိယရှေ့ဂဏန်း "+
+            first!=null,data.firstOnly)
+    val secondRow=realCondition("ဒုတိယရှေ့ဂဏန်း "+
             (second?.digit?:"မရှိ")+" တစ်ခုတည်းနဲ့တိုက်စစ်ရာမှာ",
             "With the second reference "+(second?.digit?:"unknown")+" alone",
-            second!=null,data.secondOnly),
-    )
+            second!=null,data.secondOnly)
+    val rows=when {
+        first!=null && second!=null -> mutableListOf(bothRow,firstRow,secondRow)
+        first!=null -> mutableListOf(firstRow,bothRow,secondRow)
+        second!=null -> mutableListOf(secondRow,bothRow,firstRow)
+        else -> mutableListOf(bothRow,firstRow,secondRow)
+    }
     fun refLine(qmm:String,qen:String,
         ref:com.myanmar.ledger2d.core.domain.TwoDMatch?):DemoReportLine =
         line(qmm,qen,ref?.digit?:"Result မရှိ",
@@ -1086,6 +1111,17 @@ private fun RealWeekFlow(
 ){
     val monday=target.date.minusDays((target.date.dayOfWeek.value-1).toLong())
     val bySlot=flow.transitions.associateBy{it.result.date to it.result.session}
+    if(flow.transitions.isEmpty()){
+        Text(
+            words("ယခုအပတ် ပထမဆုံးအတည်ပြု Result မထွက်သေးလို့ အသစ်/အဟောင်း စစ်ဆေးမှု မစတင်ရသေးပါ။",
+                "New/old analysis is inactive until the first verified result this week.")
+                .display(en),
+            modifier=Modifier.fillMaxWidth().padding(start=28.dp,end=21.dp,bottom=7.dp),
+            fontSize=12.sp,lineHeight=18.sp,
+            color=MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
     Column(
         Modifier.fillMaxWidth().padding(start=28.dp,end=21.dp,bottom=7.dp),
         verticalArrangement=Arrangement.spacedBy(5.dp),
