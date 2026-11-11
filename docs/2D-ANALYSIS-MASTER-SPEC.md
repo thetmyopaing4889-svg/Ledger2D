@@ -1379,3 +1379,41 @@ The entire 4–2–2 overview, the eight approved formulas, the user-provided me
 
 The user approves the A-05 frame and keeping the weekly **remaining unseen digits** at the top. The detailed chronological flow must visually prioritize the **new/old class**, NOT the raw 2D value. There are exactly three approved, position-independent classes: **အသစ် + အသစ်**, **အသစ် + အဟောင်း**, **အဟောင်း + အဟောင်း**. A mixed outcome such as historical 7 (old) and 4 (new) in pair 74 belongs to **အသစ် + အဟောင်း**, with the individual new digit 4 and old digit 7 named accurately. Use prominent separated semantic status surfaces, smaller original outcome/date/session context and secondary remaining-digits information. If earlier known data is incomplete, honor classificationVerified: show the recorded result but do not assert a verified new/old pattern. Preserve the one-distinct-new-digit semantics of doubles such as 11.
 
+
+
+---
+
+# Part XXIV — Research Workspace V1 implementation initiated (2026-11-11)
+
+The user entrusted implementation/design leadership of Research to the assistant and
+explicitly authorized starting work. Research remains **a separate user-directed
+feature**, not A-09, not the automatic eight checks and not the unchanged Rules
+destination. This is a **work-in-progress implementation note**, not a claim
+that the APK has passed CI or phone acceptance.
+
+Detailed first-version contract and tests:
+[`docs/2D-RESEARCH-WORKSPACE-SPEC.md`](2D-RESEARCH-WORKSPACE-SPEC.md).
+
+**V1 scope:** exact 2D pair (00–99) source; AM, PM or ALL scopes for
+next-draw searches; same-day AM→PM; optional exact following pair or
+following-pair discovery; all/week/month/custom evidence ranges; counts and
+dated evidence for observed, matching, other, missing, pending, and
+range-boundary outcomes. A reverse-pair shortcut fills the chosen exact
+target; it is not a new probability formula.
+
+**Work branch:** `feature/2d-research-workspace`, based on
+`feature/2d-analysis-timeline-redesign`. Research has its own read-only
+domain engine, independent guided Compose screen and unit tests; the
+bottom Research tab is wired into the new screen. The existing
+`Historic2DDataSource.resolve` is reused for verified reconciliation,
+manual overrides, deletion locks and final-result time boundaries.
+
+**Acceptance not granted yet:** CI/unit tests, lint/APK verification, real
+historical-result audit and handset MM/EN UI inspection are all required.
+Do not merge to main or describe the feature as released until those gates
+are satisfied. Later candidate research operators (tens/ones, groups,
+multi-draw sequences, weekly conditions, AND/OR and saving queries) remain
+unapproved implementation extensions, not confirmed V1 features.
+
+**Earlier confirmed constraints remain in force:** no changes to
+A-01–A-08 business formulas, Summary contract, ledger, LIVE or Rules.
