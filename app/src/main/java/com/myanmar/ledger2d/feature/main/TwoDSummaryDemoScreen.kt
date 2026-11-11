@@ -1176,54 +1176,52 @@ private fun reportMethods(s: DemoSituation, date: LocalDate, session: DrawSessio
 )
 
 @Composable
-internal fun TwoDSummaryDemoScreen(
-    date: LocalDate,
-    session: DrawSession,
-    en: Boolean,
-    modifier: Modifier = Modifier,
-    onPickDate: () -> Unit,
-    onChangeSession: (DrawSession) -> Unit,
-    onOpenDetail: (String) -> Unit,
-) {
-    var selected by rememberSaveable { mutableStateOf(DemoSituation.MIDDLE.name) }
+internal fun TwoDSummaryScreen(
+    date:LocalDate,
+    session:DrawSession,
+    en:Boolean,
+    report:TwoDAnalysisReport?,
+    closedDates:Set<LocalDate>,
+    isLoading:Boolean,
+    validTarget:Boolean,
+    validHistoryRange:Boolean,
+    modifier:Modifier=Modifier,
+    onPickDate:()->Unit,
+    onChangeSession:(DrawSession)->Unit,
+    onOpenDetail:(String)->Unit,
+){
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var open by rememberSaveable { mutableStateOf("") }
-    var scenarioMenu by remember { mutableStateOf(false) }
-    val situation=DemoSituation.entries.firstOrNull { it.name==selected }?:DemoSituation.MIDDLE
-    val methods=remember(situation, date, session) { reportMethods(situation, date, session) }
+    val methods=remember(report){report?.let(::realReportMethods).orEmpty()}
     val tabs=listOf(
-        words("လက်ရှိအကြိမ်", "Current draw"),
-        words("ယခုအပတ်", "This week"),
-        words("ယခင်အပတ်", "Last week"),
+        words("လက်ရှိအကြိမ်","Current draw"),
+        words("ယခုအပတ်","This week"),
+        words("ယခင်အပတ်","Last week"),
     )
     val sections=listOf(methods.take(4),methods.drop(4).take(2),methods.takeLast(2))
-    Column(modifier.fillMaxSize().padding(horizontal=10.dp, vertical=5.dp),
-        verticalArrangement=Arrangement.spacedBy(5.dp)) {
+    Column(modifier.fillMaxSize().padding(horizontal=10.dp,vertical=5.dp),
+        verticalArrangement=Arrangement.spacedBy(5.dp)){
         CherryMysteryHeader(date,session,en,onPickDate,onChangeSession)
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text("DEMO",fontWeight=FontWeight.Bold,color=ReportWine,fontSize=11.sp)
-            Text(words("နမူနာဒေတာသာ · အစစ်မဟုတ်", "Sample data only · not real results").display(en),
-                color=MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize=10.sp,modifier=Modifier.weight(1f))
-            Box {
-                TextButton(onClick={scenarioMenu=true},
-                    contentPadding=PaddingValues(horizontal=6.dp,vertical=0.dp)) {
-                    Text(situation.label.display(en)+" ▾",fontSize=11.sp,color=ReportWine)
-                }
-                DropdownMenu(expanded=scenarioMenu,onDismissRequest={scenarioMenu=false}) {
-                    DemoSituation.entries.forEach { situationOption ->
-                        DropdownMenuItem(
-                            text={Text(situationOption.label.display(en))},
-                            onClick={
-                                selected=situationOption.name
-                                open=""
-                                scenarioMenu=false
-                            })
-                    }
+        if(report==null){
+            Box(Modifier.fillMaxWidth().weight(1f),
+                contentAlignment=Alignment.Center){
+                if(isLoading){
+                    CircularProgressIndicator(modifier=Modifier.size(28.dp),
+                        color=ReportWine,strokeWidth=2.dp)
+                }else{
+                    Text(when{
+                        !validTarget -> words("ရွေးထားတဲ့ရက်စွဲမှာ 2D အကြိမ်ပိတ်ထားပါတယ်။",
+                            "No trading draw is scheduled on this date.").display(en)
+                        !validHistoryRange -> words("History ရက်စွဲအပိုင်းအခြားကို ပြန်စစ်ပါ။",
+                            "Review the selected history date range.").display(en)
+                        else -> words("အတည်ပြုထားတဲ့ Result မှတ်တမ်း မရရှိနိုင်သေးပါ။",
+                            "Verified result data is not available yet.").display(en)
+                    },fontSize=13.sp,lineHeight=20.sp,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign=TextAlign.Center)
                 }
             }
-        }
+        }else{
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
             tabs.forEachIndexed { index,t ->
                 val active=tab==index
@@ -1283,7 +1281,9 @@ internal fun TwoDSummaryDemoScreen(
                                             else -> 6
                                         },
                                         method = item,
-                                        situation = situation,
+                                        weekFlow = report.a05,
+                                        target = report.target,
+                                        closedDates = closedDates,
                                         en = en,
                                         expanded = open == item.id,
                                         visibleCount = if (item.id == "05") 0
@@ -1295,8 +1295,8 @@ internal fun TwoDSummaryDemoScreen(
                                     )
                                 }
                                 Text(
-                                    words("နမူနာရလဒ်သာဖြစ်ပြီး ခန့်မှန်းချက်မဟုတ်ပါ။",
-                                        "Illustrative results, not a forecast.")
+                                    words("သမိုင်းမှတ်တမ်းအရ စစ်ဆေးထားခြင်းဖြစ်ပြီး ခန့်မှန်းချက်မဟုတ်ပါ။",
+                                        "Historical observations, not a prediction.")
                                         .display(en),
                                     fontSize = 10.sp, lineHeight = 15.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1317,6 +1317,7 @@ internal fun TwoDSummaryDemoScreen(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -1550,7 +1551,9 @@ private fun CherryFrostedDigit(variant: Int) {
 
 @Composable
 private fun DemoAlignedMethod(
-    ordinal: Int, method: DemoReportMethod, situation: DemoSituation,
+    ordinal: Int, method: DemoReportMethod,
+    weekFlow: TwoDWeekFlow, target: DrawIdentity,
+    closedDates: Set<LocalDate>,
     en: Boolean, expanded: Boolean, visibleCount: Int,
     onToggle: () -> Unit, onRealDetail: () -> Unit,
 ) {
@@ -1579,7 +1582,7 @@ private fun DemoAlignedMethod(
                 color=ReportWine,modifier=Modifier.width(15.dp))
         }
         if(method.id=="05") {
-            DemoWeekFlow(situation,en)
+            RealWeekFlow(weekFlow,target,closedDates,en)
         } else {
             Column(Modifier.fillMaxWidth().padding(start=28.dp,end=21.dp,bottom=5.dp),
                 verticalArrangement=Arrangement.spacedBy(1.dp)) {
