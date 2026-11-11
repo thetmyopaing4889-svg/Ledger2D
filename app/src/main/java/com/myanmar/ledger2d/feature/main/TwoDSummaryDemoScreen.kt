@@ -17,16 +17,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.domain.TwoDigitGroups
@@ -483,7 +488,8 @@ private fun demoFlowSlots(situation: DemoSituation): List<DemoFlowSlot> {
                 val label = when {
                     firstOld && secondOld -> words("ဟောင်း+ဟောင်း", "Old+Old")
                     !firstOld && !secondOld -> words("သစ်+သစ်", "New+New")
-                    else -> words("သစ်+ဟောင်း", "New+Old")
+                    !firstOld && secondOld -> words("သစ်+ဟောင်း", "New+Old")
+                    else -> words("ဟောင်း+သစ်", "Old+New")
                 }
                 seen.addAll(result.toList()) // 11 contains just one distinct digit
                 DemoFlowSlot(result, label)
@@ -759,8 +765,7 @@ internal fun TwoDSummaryDemoScreen(
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
             horizontalArrangement=Arrangement.spacedBy(5.dp)) {
             Text("DEMO",fontWeight=FontWeight.Bold,color=ReportWine,fontSize=11.sp)
-            Text(words("နမူနာ Data · ရက်စွဲ/အကြိမ်ရွေးရင် ရှေ့ဂဏန်းနမူနာပြောင်းမည်",
-                    "Illustrative samples; date/session alter demo reference values").display(en),
+            Text(words("နမူနာဒေတာသာ · အစစ်မဟုတ်", "Sample data only · not real results").display(en),
                 color=MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize=10.sp,modifier=Modifier.weight(1f))
             Box {
@@ -802,107 +807,160 @@ internal fun TwoDSummaryDemoScreen(
                 }
             }
         }
-        // Only one time-scope is visible. This was the original reason for 4/2/2 tags.
-        Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
-            verticalArrangement=Arrangement.spacedBy(1.dp),
-        ) {
-            sections[tab].forEachIndexed { index,item ->
-                DemoAlignedMethod(index+1+(if(tab==0)0 else if(tab==1)4 else 6),item,situation,en,
-                    expanded=open==item.id,
-                    onToggle={open=if(open==item.id)"" else item.id},
-                    onRealDetail={onOpenDetail(item.id)})
+
+        // Render all four/two/two MAIN findings first. Only measured spare room
+        // can add another line. Opened sections show their full detail on scroll.
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            val viewportPx = with(LocalDensity.current) { maxHeight.roundToPx() }
+            val reservePx = with(LocalDensity.current) { 8.dp.roundToPx() }
+            val plans: List<Map<String, Int>> = when (tab) {
+                0 -> listOf(
+                    emptyMap(),
+                    mapOf("02" to 2),
+                    mapOf("02" to 2, "08" to 2),
+                    mapOf("02" to 2, "08" to 2, "06" to 2),
+                    mapOf("02" to 3, "08" to 2, "06" to 2),
+                )
+                1 -> listOf(emptyMap(), mapOf("07" to 2), mapOf("07" to 3))
+                else -> listOf(
+                    emptyMap(),
+                    mapOf("04" to 2),
+                    mapOf("04" to 2, "01" to 2),
+                    mapOf("04" to 3, "01" to 2),
+                    mapOf("04" to 3, "01" to 3),
+                )
             }
-            Text(words(
-                "အဖြေများသည် စမ်းသပ်ဒေတာသာဖြစ်ပြီး ခန့်မှန်းချက်မဟုတ်ပါ။ အချက်အလက်အပြည့်ကို မြင်ရန် သက်ဆိုင်ရာအချက်ကို နှိပ်ပါ။",
-                "Only sample findings, never forecasts. Tap a finding for its full set of outputs.")
-                .display(en),
-                fontSize=10.sp,lineHeight=16.sp,
-                color=MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier=Modifier.padding(vertical=8.dp))
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                SubcomposeLayout(modifier = Modifier.fillMaxWidth()) { constraints ->
+                    val choices = if (open.isNotEmpty()) listOf(emptyMap()) else plans
+                    val measured = choices.mapIndexed { candidate, plan ->
+                        val measurable = subcompose("summary-$tab-$candidate") {
+                            Column(Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                sections[tab].forEachIndexed { index, item ->
+                                    DemoAlignedMethod(
+                                        ordinal = index + 1 + when (tab) {
+                                            0 -> 0
+                                            1 -> 4
+                                            else -> 6
+                                        },
+                                        method = item,
+                                        situation = situation,
+                                        en = en,
+                                        expanded = open == item.id,
+                                        visibleCount = if (item.id == "05") 0
+                                            else plan[item.id] ?: 1,
+                                        onToggle = {
+                                            open = if (open == item.id) "" else item.id
+                                        },
+                                        onRealDetail = { onOpenDetail(item.id) },
+                                    )
+                                }
+                                Text(
+                                    words("နမူနာရလဒ်သာဖြစ်ပြီး ခန့်မှန်းချက်မဟုတ်ပါ။",
+                                        "Illustrative results, not a forecast.")
+                                        .display(en),
+                                    fontSize = 10.sp, lineHeight = 15.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 6.dp, bottom = 7.dp),
+                                )
+                            }
+                        }.single()
+                        measurable.measure(
+                            constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+                        )
+                    }
+                    val selectedIndex = measured.indexOfLast {
+                        it.height + reservePx <= viewportPx
+                    }.coerceAtLeast(0)
+                    val selected = measured[selectedIndex]
+                    layout(constraints.maxWidth, selected.height) {
+                        selected.placeRelative(0, 0)
+                    }
+                }
+            }
         }
     }
 }
 
-/** Mystery is a decorative seal, not a hidden forecast or a computed 2D pair. */
+/** Visual-only mystery: neither a hidden result nor a label or forecast. */
 @Composable
 private fun CherryMysteryHeader(
     date: LocalDate, session: DrawSession, en: Boolean,
     onPickDate: () -> Unit, onChangeSession: (DrawSession) -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
+    Surface(modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(17.dp),
-        color = Color(0xFF290F2C), shadowElevation = 5.dp,
-    ) {
-        Box(
-            Modifier.fillMaxWidth().height(119.dp).background(
-                Brush.horizontalGradient(listOf(
-                    Color(0xFF200A29), Color(0xFF5A1239), Color(0xFF230D2D)))
-            )
-        ) {
+        color = Color(0xFF200B24), shadowElevation = 5.dp) {
+        Box(Modifier.fillMaxWidth().height(117.dp).background(
+            Brush.horizontalGradient(listOf(
+                Color(0xFF170A1F), Color(0xFF52153B), Color(0xFF230A26)))
+        )) {
             Canvas(Modifier.matchParentSize()) {
-                val cx = size.width * .5f
-                val cy = size.height * .42f
-                val gold = Color(0xFFFFDDAA)
-                // Layered occult-style orbital seal, deliberately no readable digits.
-                drawCircle(Color(0xFFB5497C).copy(alpha=.15f),
-                    radius=size.height*.43f, center=Offset(cx, cy))
-                drawCircle(gold.copy(alpha=.38f),
-                    radius=size.height*.34f, center=Offset(cx, cy),
-                    style=Stroke(width=1.2.dp.toPx()))
-                drawCircle(gold.copy(alpha=.17f),
-                    radius=size.height*.48f, center=Offset(cx, cy),
-                    style=Stroke(width=.8.dp.toPx()))
-                drawCircle(Color.White.copy(alpha=.19f),
-                    radius=size.height*.22f, center=Offset(cx, cy),
+                val c = Offset(size.width * .5f, size.height * .39f)
+                val r = size.height * .30f
+                val light = Color(0xFFFFD9B7)
+                drawCircle(Color(0xFFC3588A).copy(alpha=.13f),
+                    radius=r*1.7f,center=c)
+                drawCircle(light.copy(alpha=.16f),radius=r*1.3f,center=c,
                     style=Stroke(width=1.dp.toPx()))
-                listOf(
-                    Pair(.14f,.29f), Pair(.23f,.63f), Pair(.80f,.18f),
-                    Pair(.87f,.61f), Pair(.69f,.39f), Pair(.33f,.18f)
-                ).forEachIndexed { i, point ->
-                    val p=Offset(size.width*point.first,size.height*point.second)
-                    drawCircle(if(i%2==0)gold else Color.White,
-                        radius=if(i%3==0)2.1.dp.toPx() else 1.1.dp.toPx(),
-                        center=p, alpha=.55f)
+                drawCircle(light.copy(alpha=.42f),radius=r,center=c,
+                    style=Stroke(width=1.1.dp.toPx()))
+                drawArc(light.copy(alpha=.78f),startAngle=205f,sweepAngle=60f,
+                    useCenter=false,topLeft=Offset(c.x-r,c.y-r),
+                    size=Size(r*2,r*2),style=Stroke(width=2.dp.toPx()))
+                drawArc(light.copy(alpha=.52f),startAngle=28f,sweepAngle=45f,
+                    useCenter=false,topLeft=Offset(c.x-r,c.y-r),
+                    size=Size(r*2,r*2),style=Stroke(width=1.6.dp.toPx()))
+                val shard = Path().apply {
+                    moveTo(c.x,c.y-r*.77f)
+                    lineTo(c.x+r*.33f,c.y)
+                    lineTo(c.x,c.y+r*.77f)
+                    lineTo(c.x-r*.33f,c.y)
+                    close()
                 }
-                val rad=size.height*.34f
-                listOf(0f,90f,180f,270f).forEach { angle ->
-                    val t=(angle*3.14159265f/180f)
-                    drawCircle(gold.copy(alpha=.62f),radius=2.dp.toPx(),
-                        center=Offset(cx + kotlin.math.cos(t)*rad,
-                            cy + kotlin.math.sin(t)*rad))
+                drawPath(shard,light.copy(alpha=.49f),
+                    style=Stroke(width=1.4.dp.toPx()))
+                drawCircle(light.copy(alpha=.16f),radius=r*.25f,center=c)
+                drawLine(light.copy(alpha=.60f),
+                    start=Offset(c.x-r*.6f,c.y-r*.09f),
+                    end=Offset(c.x+r*.6f,c.y+r*.09f),
+                    strokeWidth=1.dp.toPx())
+                listOf(.13f to .24f,.17f to .61f,.24f to .32f,
+                    .34f to .65f,.68f to .16f,.74f to .59f,
+                    .83f to .29f,.89f to .62f).forEachIndexed { i,p ->
+                    drawCircle(if(i%3==0)light else Color.White,
+                        radius=if(i%3==0)1.8.dp.toPx() else 1.dp.toPx(),
+                        center=Offset(size.width*p.first,size.height*p.second),
+                        alpha=if(i%3==0).61f else .38f)
                 }
             }
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal=9.dp,vertical=5.dp),
-                horizontalAlignment=Alignment.CenterHorizontally,
-                verticalArrangement=Arrangement.spacedBy(0.dp),
+            // The draw selector remains readable; no MYSTERY, '?' or caption.
+            Surface(
+                modifier=Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom=7.dp),
+                shape=RoundedCornerShape(30.dp),
+                color=Color(0xFF150A19).copy(alpha=.83f),
             ) {
-                Text("M Y S T E R Y   ·   2D", color=Color(0xFFFFDBAB),
-                    fontWeight=FontWeight.SemiBold, fontSize=10.sp)
-                Text("?", fontSize=43.sp, lineHeight=48.sp,
-                    fontWeight=FontWeight.Light, color=Color(0xFFFFE6C5))
-                Text(if(en) "An unanswered mystery" else "လျှို့ဝှက်ဆန်းကြယ်မှု",
-                    color=Color.White.copy(alpha=.83f),fontSize=11.sp)
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,
+                Row(Modifier.padding(start=12.dp,end=6.dp),
                     verticalAlignment=Alignment.CenterVertically,
-                    ) {
+                    horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                     Text(date.toString()+" · "+when(session) {
                         DrawSession.MORNING->if(en)"Morning" else "မနက်အကြိမ်"
                         DrawSession.EVENING->if(en)"Evening" else "ညနေအကြိမ်"
-                    }, color=Color.White.copy(alpha=.94f),
-                        fontSize=11.sp,modifier=Modifier.clickable(onClick=onPickDate)
-                            .padding(horizontal=4.dp,vertical=2.dp))
+                    },color=Color.White.copy(alpha=.95f),
+                        fontSize=11.sp,fontWeight=FontWeight.Medium,
+                        modifier=Modifier.clickable(onClick=onPickDate)
+                            .padding(vertical=5.dp))
                     IconButton(
-                        modifier=Modifier.size(24.dp),
+                        modifier=Modifier.size(25.dp),
                         onClick={onChangeSession(if(session==DrawSession.MORNING)
                             DrawSession.EVENING else DrawSession.MORNING)}
                     ) {
                         Icon(Icons.Default.SwapHoriz,
                             contentDescription=if(en)"Change session" else "အကြိမ်ပြောင်းရန်",
-                            modifier=Modifier.size(16.dp),
-                            tint=Color.White.copy(alpha=.92f))
+                            modifier=Modifier.size(17.dp),
+                            tint=Color.White.copy(alpha=.9f))
                     }
                 }
             }
@@ -913,18 +971,11 @@ private fun CherryMysteryHeader(
 @Composable
 private fun DemoAlignedMethod(
     ordinal: Int, method: DemoReportMethod, situation: DemoSituation,
-    en: Boolean, expanded: Boolean,
+    en: Boolean, expanded: Boolean, visibleCount: Int,
     onToggle: () -> Unit, onRealDetail: () -> Unit,
 ) {
     val main = method.lines.firstOrNull() ?: return
-    val visible = when(method.id) {
-        "02" -> 3  // 2D pair, single digit and parity
-        "03" -> 1
-        "06" -> method.lines.size // 3 streams, digit + pair together
-        "08" -> 3 // BOTH, first alone and second alone
-        "05" -> 0 // special 5×2 weekly timeline instead of last-only
-        else -> method.lines.size // the two-check tabs have room
-    }
+    val visible = visibleCount.coerceIn(0, method.lines.size)
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().clickable(onClick=onToggle)
                 .padding(top=7.dp,bottom=3.dp),
