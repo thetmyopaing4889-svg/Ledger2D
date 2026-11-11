@@ -36,6 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.domain.TwoDigitGroups
 import com.myanmar.ledger2d.core.domain.DrawSchedule
+import com.myanmar.ledger2d.core.domain.TwoDAnalysisReport
+import com.myanmar.ledger2d.core.domain.TwoDCount
+import com.myanmar.ledger2d.core.domain.TwoDWeekFlow
+import com.myanmar.ledger2d.core.domain.TwoDStreakStream
+import com.myanmar.ledger2d.core.domain.TwoDConditional
+import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
 
@@ -754,6 +760,414 @@ private fun report01(s: DemoSituation): DemoReportMethod {
             "Seen three times in a sample historical fixture.")
     }
     return DemoReportMethod("01",title,listOf(start)+more)
+}
+
+
+/** Render the Engine's verified data, never synthetic DEMO results. */
+private fun realShown(items:List<String>, en:Boolean, limit:Int=4):String {
+    val values=items.distinct().sorted()
+    if(values.isEmpty())return if(en)"None" else "မရှိ"
+    val join=if(en)", " else "၊ "
+    return values.take(limit).joinToString(join) +
+        if(values.size>limit)" +"+(values.size-limit) else ""
+}
+private fun realEmpty(id:String, mm:String, en:String):DemoReportMethod =
+    DemoReportMethod(id,words(mm,en),listOf(line(
+        mm,en,"မရရှိသေး","Unavailable",
+        "အတည်ပြုထားတဲ့ နှိုင်းယှဉ်မှတ်တမ်း မလုံလောက်သေးပါ။",
+        "Insufficient verified recorded results.")))
+private fun realCountLine(
+    qmm:String,qen:String,data:List<TwoDCount>,
+    renameEn:(String)->String={it},renameMm:(String)->String={it},
+):DemoReportLine {
+    val p=TwoDLiveSummary.peak(data)
+    return if(!p.present)line(qmm,qen,
+        "မရရှိသေး","Unavailable",
+        "နှိုင်းယှဉ်နိုင်တဲ့ မှတ်တမ်း မရှိသေးပါ။",
+        "No verified observations are available.")
+    else line(qmm,qen,
+        realShown(p.values.map(renameMm),false),
+        realShown(p.values.map(renameEn),true),
+        p.count.toString()+" ကြိမ်စီ တွေ့ထားပါတယ်။",
+        p.count.toString()+" observations each.")
+}
+private fun realCountLine(
+    qmm:String,qen:String,data:Map<String,Int>,
+    renameEn:(String)->String={it},renameMm:(String)->String={it},
+):DemoReportLine=realCountLine(qmm,qen,
+    data.map{TwoDCount(it.key,it.value)},renameEn,renameMm)
+
+private fun real02(r:TwoDAnalysisReport):DemoReportMethod {
+    val d=r.a02
+    if(d.samples==0)return realEmpty("02",
+        "နေ့တူ၊ အကြိမ်တူ သမိုင်းအထွက်အများဆုံးက",
+        "Most frequent results for the matching weekday and session")
+    return DemoReportMethod("02",words("အထွက်အများဆုံး","Most frequent"),listOf(
+        realCountLine("နေ့တူ၊ အကြိမ်တူ သမိုင်းမှာ အထွက်အများဆုံး 2D ဂဏန်းတွဲက",
+            "The leading exact 2D pair for this weekday/session is",d.numbers),
+        realCountLine("တစ်လုံးဂဏန်း အများဆုံးက","The leading single digit is",d.singles),
+        realCountLine("အများဆုံး စုံ/မ အမျိုးအစားက","The leading parity class is",
+            d.parity,renameEn={twoDParityLabel(it,true)}),
+        realCountLine("အများဆုံး အထူးအုပ်စုက","The leading special group is",
+            d.groups,renameEn={twoDGroupLabel(it,true)},
+            renameMm={twoDGroupLabel(it,false)}),
+        realCountLine("အများဆုံး ထိပ်ဂဏန်းက","The leading tens digit is",d.tens),
+        realCountLine("အများဆုံး ပိတ်ဂဏန်းက","The leading ones digit is",d.ones)
+    ))
+}
+private fun real03(r:TwoDAnalysisReport):DemoReportMethod {
+    val d=r.a03
+    val mm="ယခုအပတ် စုံ/မ အစဉ်ပုံစံတူ သမိုင်းနောက်ထွက်မှာ"
+    val en="After matching historical weekly parity sequences"
+    val result=when {
+        !d.eligible -> line(mm,en,"မပြည့်စုံ","Insufficient",
+            "ရှေ့အကြိမ် ၄–၉ ကြိမ်ရဲ့ အစဉ်ကို အတည်မပြုနိုင်သေးပါ။",
+            "A verified preceding 4–9 draw prefix is not available.")
+        d.matched.isEmpty() -> line(mm,en,"မတွေ့ပါ","No match",
+            "ရရှိထားတဲ့သမိုင်းမှာ ပုံစံတူမတွေ့ခဲ့ပါ။",
+            "No verified matching history was found.")
+        else -> realCountLine(mm,en,d.nextParity,
+            renameEn={twoDParityLabel(it,true)})
+    }
+    return DemoReportMethod("03",words("စုံ/မ အစဉ်","Parity pattern"),listOf(result))
+}
+private fun realStreak(
+    stream:TwoDStreakStream?, qmm:String, qen:String,
+):DemoReportLine {
+    if(stream==null||stream.observedDraws==0)return line(qmm,qen,
+        "မရရှိသေး","Unavailable",
+        "အတည်ပြုထားတဲ့ အကြိမ်မှတ်တမ်း မရှိသေးပါ။",
+        "No verified draws are available in this stream.")
+    val digit=TwoDLiveSummary.missing(stream.singleDigits,stream.hasUnknownOpenSlots)
+    val pair=TwoDLiveSummary.missing(stream.fullNumbers,stream.hasUnknownOpenSlots)
+    val dmm=realShown(digit.top.values,false,2)
+    val pmm=realShown(pair.top.values,false,2)
+    val den=realShown(digit.top.values,true,2)
+    val pen=realShown(pair.top.values,true,2)
+    val lowerBound=digit.lowerBound||pair.lowerBound
+    return line(qmm,qen,
+        "0–9: "+dmm+" · "+digit.top.count+" ကြိမ်\n"+
+            "2D: "+pmm+" · "+pair.top.count+" ကြိမ်",
+        "0–9: "+den+" · "+digit.top.count+" draws\n"+
+            "2D: "+pen+" · "+pair.top.count+" draws",
+        if(lowerBound)"မှတ်တမ်းအကန့်အသတ်ရှိ၍ အနည်းဆုံးအကြိမ်ရေ ဖြစ်ပါတယ်။"
+            else "အတည်ပြုမှတ်တမ်းအရ ဖြစ်ပါတယ်။",
+        if(lowerBound)"Lower bounds; some open slots or earlier history are unknown."
+            else "Measured across verified draws.")
+}
+private fun real06(r:TwoDAnalysisReport):DemoReportMethod {
+    val keys=if(r.target.session==DrawSession.MORNING)
+        listOf("morning","evening","combined") else
+        listOf("evening","morning","combined")
+    val captions=mapOf(
+        "morning" to words("မနက်အကြိမ် အကြာဆုံးပျောက်တဲ့ တစ်လုံး/2D တွဲက",
+            "Longest missing digit / pair in AM draws"),
+        "evening" to words("ညနေအကြိမ် အကြာဆုံးပျောက်တဲ့ တစ်လုံး/2D တွဲက",
+            "Longest missing digit / pair in PM draws"),
+        "combined" to words("မနက်/ညနေ ပေါင်းအကြိမ်မှာ အကြာဆုံးပျောက်တဲ့ တစ်လုံး/2D တွဲက",
+            "Longest missing digit / pair across both sessions"),
+    )
+    return DemoReportMethod("06",words("ပျောက်ဂဏန်း","Missing streaks"),
+        keys.map{key->
+            val q=requireNotNull(captions[key])
+            realStreak(r.a06[key],q.mm,q.en)
+        })
+}
+private fun realCondition(qmm:String,qen:String,
+    known:Boolean,source:TwoDConditional):DemoReportLine {
+    if(!known)return line(qmm,qen,"Result မရှိ","Unknown reference",
+        "လိုအပ်တဲ့ ရှေ့ထွက် Result ကို အတည်မပြုနိုင်သေးပါ။",
+        "The required preceding draw is not recorded.")
+    val p=TwoDLiveSummary.peak(source.frequencies)
+    if(!p.present){
+        return if(source.missingTargetCount>0)line(qmm,qen,
+            "နောက်ထွက်မသိ","Unknown following result",
+            "ရှေ့ပုံစံတူပြီး နောက်ထွက်မှတ်တမ်း "+
+                source.missingTargetCount+" ခု မရှိသေးပါ။",
+            source.missingTargetCount.toString()+
+                " matching sources have unknown following results.")
+        else line(qmm,qen,"မတွေ့ပါ","No match",
+            "ရရှိတဲ့သမိုင်းမှာ တူညီတဲ့အခြေအနေ မတွေ့ခဲ့ပါ။",
+            "No comparable recorded historical outcome was found.")
+    }
+    val gaps=source.missingTargetCount
+    return line(qmm,qen,realShown(p.values,false),realShown(p.values,true),
+        p.count.toString()+" ကြိမ်စီ တွေ့ခဲ့ပါတယ်။"+
+            if(gaps>0)" နောက်ထွက်မရှိတဲ့မှတ်တမ်း "+gaps+" ခု မတွက်ထားပါ။" else "",
+        p.count.toString()+" following appearances each."+
+            if(gaps>0)" Excludes "+gaps+" unknown outcomes." else "")
+}
+private fun real08(r:TwoDAnalysisReport):DemoReportMethod {
+    val data=r.a08
+    val first=data.firstReference
+    val second=data.secondReference
+    val mm=if(first!=null&&second!=null)
+        "ရှေ့ဂဏန်း "+first.digit+" နဲ့ "+second.digit+" နှစ်ခုလုံးတူခဲ့တဲ့ သမိုင်းမှာ"
+        else "ရှေ့ထွက်ဂဏန်းနှစ်ခုလုံးကို သမိုင်းနဲ့ တိုက်စစ်ရာမှာ"
+    val en=if(first!=null&&second!=null)
+        "After historical references "+first.digit+" and "+second.digit+" both matched"
+        else "Historical comparison requiring both previous results"
+    val rows=mutableListOf(
+        realCondition(mm,en,first!=null&&second!=null,data.both),
+        realCondition("ပထမရှေ့ဂဏန်း "+
+            (first?.digit?:"မရှိ")+" တစ်ခုတည်းနဲ့တိုက်စစ်ရာမှာ",
+            "With the first reference "+(first?.digit?:"unknown")+" alone",
+            first!=null,data.firstOnly),
+        realCondition("ဒုတိယရှေ့ဂဏန်း "+
+            (second?.digit?:"မရှိ")+" တစ်ခုတည်းနဲ့တိုက်စစ်ရာမှာ",
+            "With the second reference "+(second?.digit?:"unknown")+" alone",
+            second!=null,data.secondOnly),
+    )
+    fun refLine(qmm:String,qen:String,
+        ref:com.myanmar.ledger2d.core.domain.TwoDMatch?):DemoReportLine =
+        line(qmm,qen,ref?.digit?:"Result မရှိ",
+            ref?.digit?:"Unknown",
+            if(ref!=null)ref.date.toString()+" · "+
+                (if(ref.session==DrawSession.MORNING)"မနက်" else "ညနေ")+
+                " အကြိမ်ရလဒ် ဖြစ်ပါတယ်။"
+            else "Result မရှိတာကို ပိတ်ရက်လို့ မယူဆပါ။",
+            if(ref!=null)ref.date.toString()+" · "+
+                (if(ref.session==DrawSession.MORNING)"AM" else "PM")+
+                " verified result."
+            else "An unrecorded draw is not assumed to be a closed day.")
+    rows+=refLine("ပထမရှေ့ထွက်ရလဒ်က","The first preceding result is",first)
+    rows+=refLine("ဒုတိယရှေ့ထွက်ရလဒ်က","The second preceding result is",second)
+    return DemoReportMethod("08",words("ရှေ့ထွက်","Prior results"),rows)
+}
+private fun real05(r:TwoDAnalysisReport):DemoReportMethod =
+    DemoReportMethod("05",words("အသစ်/အဟောင်း","New/old"),listOf(line(
+        "ယခုအပတ် အသစ်/အဟောင်း အစဉ်က",
+        "This week's chronological new/old pattern is",
+        r.a05.transitions.size.toString()+" ကြိမ်",
+        r.a05.transitions.size.toString()+" draws",
+        if(r.a05.completeThroughTarget)"ရရှိထားတဲ့အကြိမ်အထိ အတည်ပြုထားပါတယ်။"
+        else "ဖွင့်ရက် Result မရရှိတဲ့အကြိမ် ရှိနိုင်ပါတယ်။",
+        if(r.a05.completeThroughTarget)"Verified through the selected target."
+        else "Some preceding open results are unknown.")))
+private fun real07(r:TwoDAnalysisReport):DemoReportMethod {
+    val a=r.a07
+    if(a.observedDraws==0)return realEmpty("07",
+        "ယခုအပတ် အထူးအုပ်စု ထွက်ရှိမှုက",
+        "This week's special-group occurrences")
+    val counts=linkedMapOf(
+        "အပူး" to (a.groups["အပူး"]?:0),
+        "ညီကို" to (a.groups["ညီကို"]?:a.groups["ညီအကို"]?:0),
+        "ပါဝါ" to (a.groups["ပါဝါ"]?:0),
+        "နက္ခတ်" to (a.groups["နက္ခတ်"]?:0),
+    )
+    val p=TwoDLiveSummary.peak(counts)
+    val lead=if(p.present)realCountLine(
+        "ယခုအပတ် အများဆုံးတွေ့တဲ့ အထူးအုပ်စုက",
+        "The most frequent weekly special group is",counts,
+        renameEn={twoDGroupLabel(it,true)},
+        renameMm={twoDGroupLabel(it,false)})
+    else line("ယခုအပတ် အထူးအုပ်စုထွက်ရှိမှုက",
+        "Special groups in recorded weekly draws",
+        "မတွေ့ပါ","None","ရရှိထားတဲ့အကြိမ်တွေမှာ မတွေ့ခဲ့ပါ။",
+        "None observed in recorded results.")
+    val note=if(a.completeThroughTarget)"" else " ရရှိထားတဲ့မှတ်တမ်းအရသာ။"
+    val noteEn=if(a.completeThroughTarget)"" else " Recorded results only."
+    val rest=counts.map{(key,count)->line(
+        twoDGroupLabel(key,false)+" အုပ်စုထွက်ရှိမှုက",
+        twoDGroupLabel(key,true)+" occurrences",
+        count.toString(),count.toString(),
+        "ကြိမ် ဖြစ်ပါတယ်။"+note,"occurrences."+noteEn)
+    }+listOf(line("ယခုအပတ် တူညီတဲ့ 2D တွဲ ပြန်ကျမှုက",
+        "Additional appearances of exact repeated 2D are",
+        a.repeatedNumbers.sumOf{it.count}.toString(),
+        a.repeatedNumbers.sumOf{it.count}.toString(),
+        "ကြိမ် ဖြစ်ပါတယ်။"+note,"additional appearances."+noteEn))
+    return DemoReportMethod("07",words("အထူး","Special groups"),listOf(lead)+rest)
+}
+private fun real04(r:TwoDAnalysisReport):DemoReportMethod {
+    val a=r.a04
+    if(a.observedDraws==0)return realEmpty("04",
+        "ပြီးခဲ့တဲ့အပတ် မှတ်တမ်းမှာ","In the previous week's recorded draws")
+    val mm=if(a.complete)"ပြီးခဲ့တဲ့အပတ်" else "ပြီးခဲ့တဲ့အပတ် ရရှိထားတဲ့မှတ်တမ်းမှာ"
+    val en=if(a.complete)"Last week" else "In available previous-week draws"
+    val coverage=if(a.complete)"ပြီးခဲ့တဲ့အပတ် မှတ်တမ်းအပြည့်အရ ဖြစ်ပါတယ်။"
+        else "ရရှိထားတဲ့ "+a.observedDraws+"/"+a.expectedOpenDraws+
+            " ကြိမ်အရသာ ဖြစ်ပါတယ်။"
+    val coverageEn=if(a.complete)"Based on the verified completed week."
+        else "Based only on "+a.observedDraws+"/"+a.expectedOpenDraws+" open draws."
+    return DemoReportMethod("04",words("ယခင်အပတ်","Previous week"),listOf(
+        realCountLine(mm+" အထွက်အများဆုံး တစ်လုံးဂဏန်းက",
+            en+" the leading single digit is",a.singleDigitFrequency),
+        line(mm+" မတွေ့ခဲ့တဲ့ တစ်လုံးဂဏန်းတွေက",
+            en+" the digits not observed were",
+            realShown(a.remainingDigits.map{it.toString()},false,10),
+            realShown(a.remainingDigits.map{it.toString()},true,10),
+            coverage,coverageEn),
+        realCountLine(mm+" စုံ/မ အများဆုံးအမျိုးအစားက",
+            en+" the most frequent parity class is",a.parity,
+            renameEn={twoDParityLabel(it,true)}),
+        realCountLine(mm+" အထူးအုပ်စု အများဆုံးက",
+            en+" the most frequent special group is",a.groups,
+            renameEn={twoDGroupLabel(it,true)},
+            renameMm={twoDGroupLabel(it,false)}),
+        line(mm+" တူညီတဲ့ 2D တွဲ ပြန်ကျမှုက",
+            en+" the additional exact repeated 2D total",
+            a.repeatedNumbers.sumOf{it.count}.toString(),
+            a.repeatedNumbers.sumOf{it.count}.toString(),
+            "ကြိမ် ဖြစ်ပါတယ်။"+if(a.complete)"" else " မှတ်တမ်းမပြည့်စုံသေးပါ။",
+            "additional appearances."+if(a.complete)"" else " Records are incomplete."),
+    ))
+}
+private fun real01(r:TwoDAnalysisReport):DemoReportMethod {
+    val a=r.a01
+    if(a.missingDigits.isEmpty()){
+        if(!a.previousWeekComplete)return realEmpty("01",
+            "ပြီးခဲ့တဲ့အပတ် ပျောက်ဂဏန်း ပြန်ပေါ်မှုက",
+            "Previous-week missing digit returns")
+        return DemoReportMethod("01",words("ပြန်ပေါ်မှု","Returns"),listOf(
+            line("ပြီးခဲ့တဲ့အပတ် မတွေ့ခဲ့တဲ့ဂဏန်းတွေက",
+                "Digits not seen last week are",
+                "မရှိ","None","အတည်ပြုထားတဲ့ အပတ်မှတ်တမ်းအရ ဖြစ်ပါတယ်။",
+                "The previous week is complete.")))
+    }
+    val returned=a.results.filter{it.thisWeekFirstSeen!=null}
+    val notReturned=a.results.filter{it.thisWeekFirstSeen==null}
+    val qualifier=if(a.previousWeekComplete)"" else "ရရှိထားတဲ့မှတ်တမ်းအရ "
+    val rows=mutableListOf(
+        line(qualifier+"ပြီးခဲ့တဲ့အပတ် မတွေ့ခဲ့တဲ့ဂဏန်းတွေထဲက ယခုအပတ် ပြန်တွေ့တာက",
+            "Previously unseen digits observed this week are",
+            realShown(returned.map{it.digit.toString()},false,10),
+            realShown(returned.map{it.digit.toString()},true,10),
+            if(returned.isEmpty())"ရရှိထားတဲ့ ယခုအပတ်မှတ်တမ်းမှာ မတွေ့ရသေးပါ။"
+                else "ရရှိထားတဲ့ ယခုအပတ်မှတ်တမ်းမှာ တွေ့ထားပါတယ်။",
+            if(returned.isEmpty())"None recorded yet this week."
+                else "Observed in available current-week records."),
+        line("ယခင်အပတ် မတွေ့ခဲ့တဲ့ တစ်လုံးဂဏန်းတွေက",
+            "Digits unseen in previous-week draws are",
+            realShown(a.missingDigits.map{it.toString()},false,10),
+            realShown(a.missingDigits.map{it.toString()},true,10),
+            if(a.previousWeekComplete)"အတည်ပြုထားတဲ့အပတ်အရ ဖြစ်ပါတယ်။"
+                else "ယခင်အပတ်မှတ်တမ်း မပြည့်စုံသေးပါ။",
+            if(a.previousWeekComplete)"Verified completed-week record."
+                else "Previous-week records have gaps."),
+        line("ယခုအပတ် ပြန်မတွေ့ရသေးတဲ့ ယခင်ပျောက်ဂဏန်းတွေက",
+            "Previously unseen digits still unrecorded this week are",
+            realShown(notReturned.map{it.digit.toString()},false,10),
+            realShown(notReturned.map{it.digit.toString()},true,10),
+            "ရရှိထားတဲ့အကြိမ်တွေ အရသာ ဖြစ်ပါတယ်။",
+            "Based only on current-week recorded results."),
+    )
+    returned.forEach{item->
+        val first=item.thisWeekFirstSeen
+        if(first!=null)rows+=line(
+            "ယခုအပတ် ဂဏန်း "+item.digit+" ရဲ့ ပထမပြန်တွေ့မှုက",
+            "The first observed return of "+item.digit+" this week is",
+            first.digit,first.digit,
+            if(item.firstSeenVerified)first.date.toString()+" မှာ အတည်ပြုထားပါတယ်။"
+                else "ရှေ့အကြိမ်ပျောက်နေလို့ ပထမဆုံးဟု မအတည်ပြုနိုင်သေးပါ။",
+            if(item.firstSeenVerified)"Verified on "+first.date+"."
+                else "Earlier gaps prevent verifying the first return.")
+        val c=item.commonCompanions.maxOfOrNull{it.count}?:0
+        if(c>0)rows+=line(
+            "ဂဏန်း "+item.digit+" ပြန်ပေါ်ရာ သမိုင်းတွဲထွက်အများဆုံးက",
+            "The top historical companion when "+item.digit+" returned is",
+            realShown(item.commonCompanions.filter{it.count==c}
+                .map{it.companion.toString()},false),
+            realShown(item.commonCompanions.filter{it.count==c}
+                .map{it.companion.toString()},true),
+            c.toString()+" ကြိမ်စီ တွေ့ခဲ့ပါတယ်။",
+            c.toString()+" recorded historical occurrences each.")
+    }
+    return DemoReportMethod("01",words("ပြန်ပေါ်မှု","Returns"),rows)
+}
+private fun realReportMethods(r:TwoDAnalysisReport):List<DemoReportMethod> =
+    listOf(real02(r),real03(r),real06(r),real08(r),
+        real05(r),real07(r),real04(r),real01(r))
+
+/** Fixed Mon–Fri columns and AM/PM rows; never fill future slots with mock data. */
+@Composable
+private fun RealWeekFlow(
+    flow:TwoDWeekFlow,target:DrawIdentity,closedDates:Set<LocalDate>,en:Boolean,
+){
+    val monday=target.date.minusDays((target.date.dayOfWeek.value-1).toLong())
+    val bySlot=flow.transitions.associateBy{it.result.date to it.result.session}
+    Column(
+        Modifier.fillMaxWidth().padding(start=28.dp,end=21.dp,bottom=7.dp),
+        verticalArrangement=Arrangement.spacedBy(5.dp),
+    ){
+        Text(words("ယခုအပတ် 2D ထွက်ရှိမှုနဲ့ အသစ်/အဟောင်းပုံစံက—",
+            "This week's 2D results and new/old patterns:").display(en),
+            fontSize=12.sp,lineHeight=18.sp,
+            color=MaterialTheme.colorScheme.onSurface)
+        repeat(2){row->
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(2.dp)){
+                repeat(5){col->
+                    val d=monday.plusDays(col.toLong())
+                    val ses=if(row==0)DrawSession.MORNING else DrawSession.EVENING
+                    val closed=!DrawSchedule.isWorkingDate(d,closedDates)
+                    val earlier=d.isBefore(target.date)||
+                        (d==target.date&&ses.ordinal<target.session.ordinal)
+                    val found=bySlot[d to ses]
+                    Column(Modifier.weight(1f).heightIn(min=54.dp)
+                        .padding(vertical=3.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(2.dp)){
+                        when{
+                            closed -> {
+                                Text("·",fontSize=DemoResultSize,
+                                    color=ReportWine.copy(alpha=.32f))
+                                Text(if(en)"Closed" else "ပိတ်",fontSize=9.sp,
+                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            !earlier -> Text("··",fontSize=DemoResultSize,
+                                color=ReportWine.copy(alpha=.22f))
+                            found==null -> {
+                                Text("—",fontSize=DemoResultSize,
+                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(if(en)"Missing" else "မရရှိသေး",fontSize=9.sp,
+                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            else -> {
+                                Text(found.result.digit,fontSize=DemoResultSize,
+                                    fontWeight=FontWeight.Bold,lineHeight=22.sp,
+                                    color=ReportDataInk)
+                                val p=if(!found.classificationVerified)
+                                    if(en)"Unverified" else "မသေချာ"
+                                else when{
+                                    found.newTens&&found.newOnes ->
+                                        if(en)"New+New" else "သစ်+သစ်"
+                                    !found.newTens&&!found.newOnes ->
+                                        if(en)"Old+Old" else "ဟောင်း+ဟောင်း"
+                                    found.newTens ->
+                                        if(en)"New+Old" else "သစ်+ဟောင်း"
+                                    else -> if(en)"Old+New" else "ဟောင်း+သစ်"
+                                }
+                                Text(p,fontSize=9.sp,lineHeight=12.sp,
+                                    maxLines=2,textAlign=TextAlign.Center,
+                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        HorizontalDivider(color=ReportLine)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp),
+            verticalAlignment=Alignment.Top){
+            Text(words("ယခုအပတ် မတွေ့ရသေးတဲ့ ကျန်ဂဏန်းတွေက",
+                "Digits not yet seen in the week's recorded results are").display(en),
+                modifier=Modifier.weight(.56f),
+                fontSize=12.sp,lineHeight=18.sp,
+                color=MaterialTheme.colorScheme.onSurface)
+            Column(Modifier.weight(.44f)){
+                Text(realShown(flow.remainingDigits.map{it.toString()},en,10),
+                    fontSize=DemoResultSize,fontWeight=FontWeight.Bold,
+                    color=ReportDataInk)
+                Text(if(flow.completeThroughTarget)
+                    words("ရွေးထားတဲ့အကြိမ်မတိုင်ခင်အထိ အတည်ပြုထားပါတယ်။",
+                        "Verified through the selected target.").display(en)
+                else words("ဖွင့်ရက် Result ပျောက်နေလို့ ရရှိတဲ့မှတ်တမ်းအရသာ။",
+                    "Preceding open slots are missing; recorded results only.").display(en),
+                    fontSize=10.sp,lineHeight=15.sp,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
 }
 
 private fun reportMethods(s: DemoSituation, date: LocalDate, session: DrawSession): List<DemoReportMethod> = listOf(
