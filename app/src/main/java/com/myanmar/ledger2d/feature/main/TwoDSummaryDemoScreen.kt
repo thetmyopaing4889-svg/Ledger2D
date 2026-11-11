@@ -49,6 +49,7 @@ import java.time.LocalDate
 private val ReportWine = Color(0xFF751B3C)
 private val ReportPale = Color(0xFFFFEDF2)
 private val ReportLine = Color(0xFFE8CED8)
+private val ReportDataInk = Color(0xFF164F6C) // High-contrast answer ink
 
 /** One consistent value size in every numbered finding and the weekly pattern. */
 private val DemoResultSize = 15.sp
@@ -519,14 +520,14 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
             fontSize = 12.sp, lineHeight = 18.sp,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        // Five permanent columns in each of two rows: Monday AM through
-        // Friday PM. Empty future slots are visibly neutral, NOT "Result missing".
-        // Existing, missing and future slots retain chronological positions.
+        // Five days across (columns); AM and PM stay vertically paired.
+        // Row 0: draws 1,3,5,7,9. Row 1: draws 2,4,6,8,10.
+        // Future slots are blank guides, never "Result missing".
         repeat(2) { row ->
             Row(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 repeat(5) { col ->
-                    val item = slots.getOrNull(row * 5 + col)
+                    val item = slots.getOrNull(col * 2 + row)
                     Column(
                         Modifier.weight(1f).heightIn(min = 54.dp)
                             .padding(vertical = 3.dp),
@@ -540,7 +541,7 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
                                 fontWeight = FontWeight.Bold,
                                 color = if (item.result == null)
                                     MaterialTheme.colorScheme.onSurfaceVariant
-                                else ReportWine,
+                                else ReportDataInk,
                             )
                             Text(
                                 item.pattern.display(en),
@@ -570,7 +571,7 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
                 lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurface)
             Column(Modifier.weight(.44f)) {
                 Text(if(en) joinedDigitsEnglish(remaining) else joinedDigits(remaining),
-                    fontSize = DemoResultSize, fontWeight = FontWeight.Bold, color = ReportWine)
+                    fontSize = DemoResultSize, fontWeight = FontWeight.Bold, color = ReportDataInk)
                 Text(
                     if(missing)
                         words("ရရှိထားတဲ့မှတ်တမ်းအရသာ။",
@@ -1010,71 +1011,116 @@ private fun CherryMysteryHeader(
 }
 
 /**
- * Each pane contains broken seven-segment-like strokes. Their outlines are
- * intentionally incomplete and heavily softened under a tinted glass overlay,
- * so the eye recognizes TWO numeric forms but cannot identify actual digits.
+ * Two frosted panes imply a hidden pair, but their soft, disjointed shapes
+ * cannot resolve into any particular two-digit number.
  */
 @Composable
 private fun CherryFrostedDigit(variant: Int) {
     Surface(
-        modifier = Modifier.size(width = 74.dp, height = 70.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White.copy(alpha = .075f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .27f)),
+        modifier = Modifier.size(width = 72.dp, height = 68.dp),
+        shape = RoundedCornerShape(15.dp),
+        color = Color.White.copy(alpha = .055f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .20f)),
         shadowElevation = 1.dp,
     ) {
-        Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(
-                Color.White.copy(alpha = .09f),
-                Color(0xFFECB0C9).copy(alpha = .055f),
-                Color.White.copy(alpha = .04f),
-            ))
-        )) {
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(
+                    Color.White.copy(alpha = .075f),
+                    Color(0xFFDB85AE).copy(alpha = .045f),
+                    Color(0xFF2B102D).copy(alpha = .16f),
+                ))
+            )
+        ) {
+            // Only ambiguous remnants of two possible numeral shapes:
+            // short incomplete curves never join into a readable 0-9 glyph.
             Canvas(
                 Modifier.fillMaxSize()
-                    .padding(horizontal = 15.dp, vertical = 8.dp)
-                    .blur(7.dp),
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+                    .blur(11.dp),
             ) {
                 val w = size.width
                 val h = size.height
-                val pieces = if (variant == 0) listOf(
-                    Offset(w * .24f, h * .13f) to Offset(w * .70f, h * .15f),
-                    Offset(w * .76f, h * .21f) to Offset(w * .76f, h * .42f),
-                    Offset(w * .24f, h * .49f) to Offset(w * .61f, h * .50f),
-                    Offset(w * .19f, h * .66f) to Offset(w * .19f, h * .86f),
-                ) else listOf(
-                    Offset(w * .22f, h * .19f) to Offset(w * .23f, h * .43f),
-                    Offset(w * .39f, h * .45f) to Offset(w * .76f, h * .48f),
-                    Offset(w * .75f, h * .61f) to Offset(w * .74f, h * .82f),
-                    Offset(w * .28f, h * .86f) to Offset(w * .58f, h * .86f),
-                )
-                pieces.forEachIndexed { i, segment ->
+                val pale = Color(0xFFFFD9E5)
+                val curveBounds = Offset(w * .13f, h * .08f)
+                val curveSize = Size(w * .74f, h * .82f)
+                if (variant == 0) {
+                    drawArc(
+                        color = pale.copy(alpha = .34f),
+                        startAngle = 191f, sweepAngle = 55f,
+                        useCenter = false,
+                        topLeft = curveBounds, size = curveSize,
+                        style = Stroke(width = 8.dp.toPx(),
+                            cap = StrokeCap.Round),
+                    )
+                    drawArc(
+                        color = pale.copy(alpha = .28f),
+                        startAngle = 17f, sweepAngle = 60f,
+                        useCenter = false,
+                        topLeft = curveBounds, size = curveSize,
+                        style = Stroke(width = 7.dp.toPx(),
+                            cap = StrokeCap.Round),
+                    )
                     drawLine(
-                        color = if (i % 2 == 0)
-                            Color(0xFFFFE2E7).copy(alpha = .58f)
-                        else Color(0xFFF2A3C3).copy(alpha = .51f),
-                        start = segment.first, end = segment.second,
-                        strokeWidth = 7.dp.toPx(), cap = StrokeCap.Round,
+                        color = pale.copy(alpha = .19f),
+                        start = Offset(w * .39f, h * .42f),
+                        end = Offset(w * .56f, h * .56f),
+                        strokeWidth = 7.dp.toPx(),
+                        cap = StrokeCap.Round,
+                    )
+                } else {
+                    drawArc(
+                        color = pale.copy(alpha = .32f),
+                        startAngle = 278f, sweepAngle = 57f,
+                        useCenter = false,
+                        topLeft = curveBounds, size = curveSize,
+                        style = Stroke(width = 8.dp.toPx(),
+                            cap = StrokeCap.Round),
+                    )
+                    drawArc(
+                        color = pale.copy(alpha = .27f),
+                        startAngle = 105f, sweepAngle = 48f,
+                        useCenter = false,
+                        topLeft = curveBounds, size = curveSize,
+                        style = Stroke(width = 8.dp.toPx(),
+                            cap = StrokeCap.Round),
+                    )
+                    drawLine(
+                        color = pale.copy(alpha = .16f),
+                        start = Offset(w * .55f, h * .33f),
+                        end = Offset(w * .39f, h * .59f),
+                        strokeWidth = 6.dp.toPx(),
+                        cap = StrokeCap.Round,
                     )
                 }
+                drawCircle(
+                    color = Color(0xFFFFB7CF).copy(alpha = .20f),
+                    radius = w * .30f,
+                    center = Offset(
+                        w * if (variant == 0) .38f else .62f,
+                        h * .47f,
+                    ),
+                )
             }
+            // Frost and non-uniform shadow mask the underlying fragments.
             Box(
                 Modifier.matchParentSize().background(
                     Brush.horizontalGradient(listOf(
-                        Color(0xFF8E3C64).copy(alpha = .35f),
-                        Color.White.copy(alpha = .14f),
-                        Color(0xFF4D1A38).copy(alpha = .23f),
+                        Color(0xFF43172F).copy(alpha = .43f),
+                        Color.White.copy(alpha = .12f),
+                        Color(0xFF4E1C3C).copy(alpha = .43f),
                     ))
                 )
             )
-            Canvas(Modifier.matchParentSize()) {
-                drawLine(
-                    color = Color.White.copy(alpha = .10f),
-                    start = Offset(size.width * .13f, size.height * .15f),
-                    end = Offset(size.width * .84f, size.height * .08f),
-                    strokeWidth = 2.dp.toPx(),
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(
+                        Color.White.copy(alpha = .07f),
+                        Color(0xFF6B2A50).copy(alpha = .21f),
+                        Color(0xFF2C1129).copy(alpha = .24f),
+                    ))
                 )
-            }
+            )
         }
     }
 }
@@ -1162,7 +1208,7 @@ private fun DemoAlignedLine(item: DemoReportLine, en: Boolean, main: Boolean) {
         Text(
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight=FontWeight.Bold,
-                    color=ReportWine,fontSize=DemoResultSize)) {
+                    color=ReportDataInk,fontSize=DemoResultSize)) {
                     append(item.value.display(en))
                 }
                 append("  ")
