@@ -1121,6 +1121,15 @@ private fun CherryFrostedDigit(variant: Int) {
                     ))
                 )
             )
+            Text(
+                "?",
+                modifier = Modifier.align(Alignment.Center)
+                    .padding(bottom = 3.dp),
+                color = Color(0xFFFFE0E9).copy(alpha = .66f),
+                fontSize = 28.sp,
+                lineHeight = 32.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 }
@@ -1158,7 +1167,7 @@ private fun DemoAlignedMethod(
         if(method.id=="05") {
             DemoWeekFlow(situation,en)
         } else {
-            Column(Modifier.fillMaxWidth().padding(start=28.dp,end=5.dp,bottom=5.dp),
+            Column(Modifier.fillMaxWidth().padding(start=28.dp,end=21.dp,bottom=5.dp),
                 verticalArrangement=Arrangement.spacedBy(1.dp)) {
                 method.lines.drop(1).take((visible-1).coerceAtLeast(0)).forEach { item ->
                     HorizontalDivider(color=ReportLine.copy(alpha=.50f),
@@ -1168,7 +1177,7 @@ private fun DemoAlignedMethod(
             }
         }
         if(expanded) {
-            Column(Modifier.fillMaxWidth().padding(start=28.dp,bottom=5.dp),
+            Column(Modifier.fillMaxWidth().padding(start=28.dp,end=21.dp,bottom=5.dp),
                 verticalArrangement=Arrangement.spacedBy(1.dp)) {
                 method.lines.drop(if(method.id=="05")method.lines.size else visible)
                     .forEach { item ->
@@ -1218,7 +1227,9 @@ private fun DemoAlignedLine(item: DemoReportLine, en: Boolean, main: Boolean) {
                     append(item.ending.display(en))
                 }
             },
-            modifier=Modifier.weight(.43f),lineHeight=20.sp
+            modifier=Modifier.weight(.43f),
+            textAlign=TextAlign.Start,
+            lineHeight=20.sp
         )
     }
 }
