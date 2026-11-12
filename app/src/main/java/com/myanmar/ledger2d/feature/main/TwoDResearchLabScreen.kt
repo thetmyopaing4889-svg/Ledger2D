@@ -536,22 +536,38 @@ internal fun TwoDResearchLabScreen(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        LabText(lab(en, "အမြန်စစ်ဆေးရန် · နှိပ်လိုက်ပါ",
-                            "ONE-TAP RESEARCH  /  TAP TO RUN"), en, p, LedgerTextRole.HELPER,
-                            color = p.muted)
+                        Row(Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween) {
+                            LabText(lab(en, "အမြန်စစ်ဆေးရန် · နှိပ်လိုက်ပါ",
+                                "ONE-TAP RESEARCH  /  TAP TO RUN"), en, p,
+                                LedgerTextRole.HELPER, color = p.muted,
+                                modifier = Modifier.weight(1f))
+                            TextButton(onClick = { session.guideVisible = true },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = p.accent)) {
+                                Icon(Icons.Default.HelpOutline, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(lab(en, "လမ်းညွှန်", "Guide"),
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            ResearchGuideCatalog.examples.take(4).forEach { example ->
-                                if (example.id != "digit-7-3") {
-                                    LabChoice(
-                                        if (example.id == "reverse-12") "12 → 21"
-                                        else if (example.id == "double-discovery")
+                            ResearchGuideCatalog.examples.filter {
+                                it.id in setOf("reverse-12", "double-discovery",
+                                    "odd-odd-discovery")
+                            }.forEach { example ->
+                                LabChoice(
+                                    when (example.id) {
+                                        "reverse-12" -> "12 → 21"
+                                        "double-discovery" ->
                                             lab(en, "အပူးနောက်", "After doubles")
-                                        else lab(en, "မမနောက်", "After odd/odd"),
-                                        false, p, enabled = ready,
-                                    ) {
-                                        session.openPreset(example)
-                                    }
+                                        else -> lab(en, "မမနောက်", "After odd/odd")
+                                    },
+                                    false, p, enabled = ready,
+                                ) {
+                                    session.openPreset(example)
                                 }
                             }
                         }
