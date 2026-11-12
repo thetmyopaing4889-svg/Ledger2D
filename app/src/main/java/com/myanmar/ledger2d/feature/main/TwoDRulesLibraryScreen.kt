@@ -735,16 +735,19 @@ private fun RulesOpenedBook(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Text(
-                        book.sectionTitle,
+                        if (book.title == book.sectionTitle) {
+                            if (en) "Original source · Section ${book.section}"
+                            else "မူရင်းစာတမ်း · အပိုင်း (${book.section})"
+                        } else book.sectionTitle,
                         color = colors.softInk,
                         style = MaterialTheme.typography.labelMedium,
                         lineHeight = 21.sp,
                     )
-                    if (book.title != book.sectionTitle) {
-                        Text(book.title,
-                            fontSize = 21.sp, lineHeight = 32.sp,
-                            fontWeight = FontWeight.Bold, color = colors.accent)
-                    }
+                    Text(
+                        book.title,
+                        fontSize = 21.sp, lineHeight = 32.sp,
+                        fontWeight = FontWeight.Bold, color = colors.accent,
+                    )
                     HorizontalDivider(color = colors.border)
                     when (book.kind) {
                         "digit-table" -> OriginalDigitTable(book, colors)
