@@ -5,8 +5,9 @@ package com.myanmar.ledger2d.feature.main
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -47,44 +48,46 @@ private val ruleCategories = listOf(
     RulesCategory("special", "အသေ / အထူး", "Cut / special"),
 )
 
-private data class RulesReaderPalette(
+private data class RuleColors(
     val page: Color, val panel: Color, val paper: Color, val ink: Color,
-    val subtle: Color, val outline: Color, val accent: Color, val activeText: Color,
+    val subtle: Color, val border: Color, val accent: Color, val selectedText: Color,
 )
 
 @Composable
-private fun rememberRulesPalette(): RulesReaderPalette {
+private fun rulesColors(): RuleColors {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (dark) RulesReaderPalette(
-        page = Color(0xFF151A21), panel = Color(0xFF212730),
-        paper = Color(0xFF2E343F), ink = Color(0xFFF6F1EA),
-        subtle = Color(0xFFC5BAB7), outline = Color(0xFF444A54),
-        accent = Color(0xFFE2BE88), activeText = Color(0xFF29221C),
-    ) else RulesReaderPalette(
-        page = Color(0xFFF4F1ED), panel = Color(0xFFEAE3DC),
-        paper = Color(0xFFFFFFFF), ink = Color(0xFF30272B),
-        subtle = Color(0xFF75686A), outline = Color(0xFFDDD0CB),
-        accent = Color(0xFF70364C), activeText = Color.White,
+    return if (dark) RuleColors(
+        Color(0xFF14191F), Color(0xFF242A33), Color(0xFF303641),
+        Color(0xFFF7F1EC), Color(0xFFC9BBB6), Color(0xFF484F5B),
+        Color(0xFFE2BE88), Color(0xFF29221C),
+    ) else RuleColors(
+        Color(0xFFF4F1ED), Color(0xFFEAE4DD), Color.White,
+        Color(0xFF30262B), Color(0xFF74676B), Color(0xFFDED1CB),
+        Color(0xFF70364C), Color.White,
     )
 }
 
 /**
- * A calm, text-first reader. The surrounding controls are physically grouped
- * into a search panel and a contextual browse panel; the original rule has the
- * only prominent reading card. Neither view modifies the source document.
+ * Two genuinely different ways of reading the SAME unchanged source document:
+ *
+ * By rule: the WHOLE selected rule, including all ten digits of a source
+ * table column, is shown together on one vertically scrolling paper.
+ * By number: all related rules across every section are individual swipe pages.
+ *
+ * Search and rule/number pickers are opt-in sheets. The reader dominates the
+ * screen instead of requiring the user to juggle three persistent filters.
  */
 @Composable
 internal fun TwoDRulesLibraryScreen(
     en: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    fun tr(mm: String, english: String) = if (en) english else mm
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
-    val palette = rememberRulesPalette()
-    fun tr(mm: String, english: String) = if (en) english else mm
-
+    val colors = rulesColors()
     val catalog = remember(context) {
         runCatching {
             context.assets.open("two_d_rules_source.txt")
@@ -97,163 +100,385 @@ internal fun TwoDRulesLibraryScreen(
     var favorites by remember {
         mutableStateOf(prefs.getStringSet("ids", emptySet())?.toSet().orEmpty())
     }
+    fun toggleFavorite(id: String) {
+        val updated = if (id in favorites) favorites - id else favorites + id
+        favorites = updated
+        prefs.edit().putStringSet("ids", updated).apply()
+    }
 
     var view by rememberSaveable { mutableStateOf("rule") }
-    var category by rememberSaveable { mutableStateOf("digits") }
     var groupId by rememberSaveable { mutableStateOf("s2-column-0") }
     var number by rememberSaveable { mutableStateOf("27") }
-    var query by rememberSaveable { mutableStateOf("") }
-    var savedOnly by rememberSaveable { mutableStateOf(false) }
-    var allCategories by remember { mutableStateOf(false) }
-    var allGroups by remember { mutableStateOf(false) }
-    var showInfo by remember { mutableStateOf(false) }
-
-    val categoryGroups = catalog?.groupsIn(category).orEmpty()
-    val group = categoryGroups.firstOrNull { it.id == groupId }
-        ?: categoryGroups.firstOrNull()
-    val entries = when {
-        catalog == null -> emptyList()
-        savedOnly -> catalog.allItems.filter { it.id in favorites }
-        query.isNotBlank() -> catalog.search(query)
-        view == "number" -> catalog.byNumber(number)
-        else -> group?.items.orEmpty()
+    var numberInput by rememberSaveable { mutableStateOf("27") }
+    var searchTerm by rememberSaveable { mutableStateOf("") }
+    var focusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var activeSheet by remember { mutableStateOf<String?>(null) }
+    var expandedCategory by remember { mutableStateOf("digits") }
+    val group = catalog?.groups?.firstOrNull { it.id == groupId }
+        ?: catalog?.groups?.firstOrNull()
+    val focused = catalog?.allItems?.firstOrNull { it.id == focusedItemId }
+    val numberEntries = remember(catalog, number) { catalog?.byNumber(number).orEmpty() }
+    val found = remember(catalog, searchTerm) {
+        if (searchTerm.isBlank()) emptyList() else catalog?.search(searchTerm).orEmpty()
     }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    if (showInfo) {
-        AlertDialog(
-            onDismissRequest = { showInfo = false },
-            title = { Text(tr("မူရင်းစာသားအကြောင်း", "About the source")) },
-            text = {
-                Text(tr(
-                    "မူဝါဒများကို မူရင်း 2D Document စာသားအတိုင်း ဖော်ပြထားသည်။ အပိုင်း (၇) ကို Better Data အတွက် ချန်ထားသည်။ စာတမ်းပါ ရာခိုင်နှုန်းများသည် အတည်ပြုထားသော တိကျမှုနှုန်း မဟုတ်ပါ။",
-                    "The original 2D wording is preserved. Source section 7 is reserved for Better Data. Claimed percentages are not verified accuracy rates.",
-                ))
-            },
-            confirmButton = {
-                TextButton(onClick = { showInfo = false }) {
-                    Text(tr("ပိတ်ရန်", "Close"))
-                }
-            },
-        )
-    }
-
-    Column(
-        modifier = modifier
-            .background(palette.page)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // SEARCH + VIEW. One shared control panel; no duplicate page title,
-        // since the host toolbar already says "2D မူဝါဒ".
-        Surface(
-            shape = RoundedCornerShape(18.dp), color = palette.panel,
-            modifier = Modifier.fillMaxWidth(),
+    if (activeSheet != null && catalog != null) {
+        ModalBottomSheet(
+            onDismissRequest = { activeSheet = null },
+            sheetState = sheetState,
+            containerColor = colors.paper,
         ) {
-            Column(
-                Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            when (activeSheet) {
+                "rules" -> {
                     Text(
-                        tr("မူဝါဒ ရှာဖွေရန်", "Find a rule"),
-                        color = palette.ink,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f),
+                        tr("မူစာရင်း ရွေးရန်", "Choose a rule"),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = colors.ink,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
-                    IconButton(
-                        modifier = Modifier.size(31.dp),
-                        onClick = {
-                            savedOnly = !savedOnly
-                            query = ""
-                            keyboard?.hide()
-                        },
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 510.dp),
+                        contentPadding = PaddingValues(bottom = 25.dp),
                     ) {
-                        Icon(
-                            if (savedOnly) Icons.Default.Star
-                            else Icons.Default.StarBorder,
-                            contentDescription = tr("မှတ်သားထားသော မူများ", "Saved rules"),
-                            tint = palette.accent,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                    IconButton(
-                        modifier = Modifier.size(31.dp),
-                        onClick = { showInfo = true },
-                    ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = tr("မူရင်းအကြောင်း", "Source information"),
-                            tint = palette.subtle, modifier = Modifier.size(19.dp),
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it; savedOnly = false },
-                    placeholder = {
-                        Text(tr("ဂဏန်း၊ မူအမည်၊ BK ရှာရန်", "Number, rule name, BK"),
-                            fontSize = 14.sp)
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, null,
-                            modifier = Modifier.size(20.dp), tint = palette.subtle)
-                    },
-                    trailingIcon = if (query.isNotBlank()) {
-                        {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Default.Close,
-                                    tr("ရှာဖွေမှုရှင်းရန်", "Clear search"),
-                                    modifier = Modifier.size(18.dp))
+                        ruleCategories.forEach { category ->
+                            item(key = "category-" + category.key) {
+                                val groups = catalog.groupsIn(category.key)
+                                val opened = expandedCategory == category.key
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable {
+                                            expandedCategory =
+                                                if (opened) "" else category.key
+                                        }
+                                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        if (en) category.en else category.mm,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colors.ink,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        groups.size.toString(),
+                                        color = colors.subtle,
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                    Icon(
+                                        if (opened) Icons.Default.ExpandLess
+                                        else Icons.Default.ExpandMore,
+                                        contentDescription = null, tint = colors.accent,
+                                    )
+                                }
+                                HorizontalDivider(color = colors.border)
+                            }
+                            if (expandedCategory == category.key) {
+                                items(groups, key = { it.id }) { candidate ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth()
+                                            .clickable {
+                                                groupId = candidate.id
+                                                focusedItemId = null
+                                                activeSheet = null
+                                            }
+                                            .background(
+                                                if (candidate.id == groupId)
+                                                    colors.panel else Color.Transparent
+                                            )
+                                            .padding(
+                                                start = 32.dp, end = 18.dp,
+                                                top = 12.dp, bottom = 12.dp,
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            candidate.title,
+                                            color = colors.ink,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (candidate.id == groupId)
+                                                FontWeight.Bold else FontWeight.Normal,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        if (candidate.id == groupId)
+                                            Icon(Icons.Default.Check, null, tint = colors.accent)
+                                    }
+                                }
                             }
                         }
-                    } else null,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = palette.ink),
-                    singleLine = true,
-                    shape = RoundedCornerShape(13.dp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = palette.paper,
-                        unfocusedContainerColor = palette.paper,
-                        focusedBorderColor = palette.accent,
-                        unfocusedBorderColor = palette.outline,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(
-                    Modifier.fillMaxWidth()
-                        .background(palette.paper, RoundedCornerShape(12.dp))
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    listOf(
-                        "rule" to tr("မူအလိုက်", "By rule"),
-                        "number" to tr("ဂဏန်းအလိုက်", "By number"),
-                    ).forEach { (value, label) ->
-                        Surface(
-                            onClick = {
-                                view = value
-                                query = ""
-                                savedOnly = false
-                                keyboard?.hide()
+                    }
+                }
+                "number" -> {
+                    Text(
+                        tr("ဂဏန်း ရွေးရန်", "Choose a number"),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = colors.ink,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(13.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = numberInput,
+                            onValueChange = { input ->
+                                if (input.length <= 2 && input.all { it in '0'..'9' })
+                                    numberInput = input
                             },
-                            modifier = Modifier.weight(1f).heightIn(min = 42.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (view == value) palette.accent else Color.Transparent,
+                            label = { Text(tr("0–9 သို့မဟုတ် 00–99", "0–9 or 00–99")) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                if (numberInput.isNotBlank()) {
+                                    number = numberInput
+                                    focusedItemId = null
+                                    activeSheet = null
+                                    keyboard?.hide()
+                                }
+                            }),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        (0..1).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                (0..4).forEach { col ->
+                                    val d = row * 5 + col
+                                    Surface(
+                                        onClick = {
+                                            numberInput = d.toString()
+                                            number = numberInput
+                                            focusedItemId = null
+                                            activeSheet = null
+                                            keyboard?.hide()
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (numberInput == d.toString())
+                                            colors.accent else colors.panel,
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center,
+                                            modifier = Modifier.height(44.dp)) {
+                                            Text(d.toString(),
+                                                color = if (numberInput == d.toString())
+                                                    colors.selectedText else colors.ink,
+                                                fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Button(
+                            onClick = {
+                                if (numberInput.isNotBlank()) {
+                                    number = numberInput
+                                    focusedItemId = null
+                                    activeSheet = null
+                                    keyboard?.hide()
+                                }
+                            },
+                            enabled = numberInput.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Box(contentAlignment = Alignment.Center,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 9.dp)) {
+                            Text(tr("ဒီဂဏန်း၏ မူများကို ကြည့်ရန်", "Read rules for this number"))
+                        }
+                        Spacer(Modifier.height(14.dp))
+                    }
+                }
+                "search" -> {
+                    Text(
+                        tr("မူဝါဒ ရှာဖွေရန်", "Find a rule"),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = colors.ink,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                    OutlinedTextField(
+                        value = searchTerm,
+                        onValueChange = { searchTerm = it },
+                        label = { Text(tr("ဂဏန်း၊ မူအမည်၊ BK", "Number, rule name, BK")) },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 470.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                    ) {
+                        if (searchTerm.isBlank()) {
+                            item {
                                 Text(
-                                    label,
-                                    color = if (view == value) palette.activeText else palette.ink,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (view == value) FontWeight.Bold
-                                        else FontWeight.Medium,
-                                    maxLines = 1,
+                                    tr("ဂဏန်း သို့မဟုတ် မူအမည် ရိုက်ရှာပါ။",
+                                        "Enter a number or rule name."),
+                                    color = colors.subtle,
+                                    modifier = Modifier.padding(20.dp),
+                                )
+                            }
+                        } else if (found.isEmpty()) {
+                            item {
+                                Text(
+                                    tr("သက်ဆိုင်သော မူ မတွေ့ပါ။", "No matching rules."),
+                                    color = colors.subtle,
+                                    modifier = Modifier.padding(20.dp),
+                                )
+                            }
+                        } else {
+                            items(found, key = { it.id }) { result ->
+                                val sourceGroup = catalog.groups.firstOrNull {
+                                    candidate -> candidate.items.any { it.id == result.id }
+                                }
+                                Column(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable {
+                                            focusedItemId = result.id
+                                            activeSheet = null
+                                            keyboard?.hide()
+                                        }
+                                        .padding(horizontal = 20.dp, vertical = 11.dp),
+                                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    Text(
+                                        sourceGroup?.title ?: result.label,
+                                        color = colors.accent,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        if (result.category == "digits")
+                                            result.label + "  •  " + result.original
+                                        else result.original,
+                                        color = colors.ink,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                HorizontalDivider(color = colors.border)
+                            }
+                        }
+                    }
+                }
+                "saved" -> {
+                    Text(
+                        tr("မှတ်သားထားသော မူများ", "Saved rules"),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = colors.ink,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    )
+                    val savedGroups = catalog.groups.filter { "group:" + it.id in favorites }
+                    val savedEntries = catalog.allItems.filter { it.id in favorites }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 450.dp),
+                        contentPadding = PaddingValues(bottom = 30.dp),
+                    ) {
+                        if (savedGroups.isEmpty() && savedEntries.isEmpty()) {
+                            item {
+                                Text(
+                                    tr("မှတ်သားထားသော မူ မရှိသေးပါ။", "Nothing saved yet."),
+                                    color = colors.subtle,
+                                    modifier = Modifier.padding(20.dp),
                                 )
                             }
                         }
+                        items(savedGroups, key = { "g:" + it.id }) { saved ->
+                            Text(
+                                saved.title,
+                                color = colors.ink,
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable {
+                                        view = "rule"
+                                        groupId = saved.id
+                                        focusedItemId = null
+                                        activeSheet = null
+                                    }
+                                    .padding(18.dp),
+                            )
+                            HorizontalDivider(color = colors.border)
+                        }
+                        items(savedEntries, key = { "i:" + it.id }) { saved ->
+                            Text(
+                                saved.original,
+                                color = colors.ink,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable {
+                                        focusedItemId = saved.id
+                                        activeSheet = null
+                                    }
+                                    .padding(18.dp),
+                            )
+                            HorizontalDivider(color = colors.border)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Column(
+        modifier = modifier.background(colors.page)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        // One compact search control, not an always-visible text input.
+        Surface(
+            shape = RoundedCornerShape(13.dp),
+            color = colors.panel,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(43.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                        .clickable { activeSheet = "search" }
+                        .padding(horizontal = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Icon(Icons.Default.Search,
+                        tr("မူဝါဒ ရှာဖွေရန်", "Search rules"),
+                        tint = colors.accent, modifier = Modifier.size(19.dp))
+                    Text(
+                        tr("မူဝါဒ ရှာဖွေရန်", "Search rules"),
+                        color = colors.ink, fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                IconButton(onClick = { activeSheet = "saved" }) {
+                    Icon(Icons.Default.StarBorder,
+                        tr("မှတ်သားထားသော မူများ", "Saved rules"),
+                        tint = colors.accent, modifier = Modifier.size(21.dp))
+                }
+            }
+        }
+
+        // Two actual reading models. Never show category tabs and a separate
+        // group dropdown at the same time.
+        Row(
+            Modifier.fillMaxWidth().background(colors.panel, RoundedCornerShape(12.dp))
+                .padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            listOf("rule" to tr("မူအလိုက်", "By rule"),
+                "number" to tr("ဂဏန်းအလိုက်", "By number")).forEach { (kind, text) ->
+                Surface(
+                    onClick = { view = kind; focusedItemId = null },
+                    color = if (view == kind) colors.accent else Color.Transparent,
+                    shape = RoundedCornerShape(9.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Box(
+                        modifier = Modifier.height(39.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text,
+                            color = if (view == kind) colors.selectedText else colors.ink,
+                            fontWeight = if (view == kind) FontWeight.Bold else FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     }
                 }
             }
@@ -261,398 +486,382 @@ internal fun TwoDRulesLibraryScreen(
 
         if (catalog == null) {
             Surface(
-                color = palette.paper,
-                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().weight(1f),
+                shape = RoundedCornerShape(17.dp), color = colors.paper,
             ) {
                 Box(Modifier.padding(20.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        tr("မူရင်း Document ကို မဖတ်နိုင်သဖြင့် မူအတု မပြထားပါ။",
-                            "Original source unavailable; no invented rules are displayed."),
-                        color = palette.ink,
+                        tr("မူရင်းစာတမ်းကို ဖတ်မရပါ။ မူအတု မပြပါ။",
+                            "Original document unavailable. No invented rules shown."),
+                        color = colors.ink,
                     )
                 }
             }
         } else {
-            // CONTEXT. Only controls relevant to the current browsing mode
-            // are visible. Search and Saved use the same reader, without
-            // showing irrelevant group/number controls.
-            if (query.isBlank() && !savedOnly) {
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = palette.panel,
-                    modifier = Modifier.fillMaxWidth(),
+            Surface(
+                onClick = {
+                    activeSheet = if (view == "rule") "rules" else "number"
+                    numberInput = number
+                    expandedCategory = group?.category ?: "digits"
+                },
+                color = colors.panel,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 13.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
-                    ) {
-                        if (view == "rule") {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    tr("မူအုပ်စု ရွေးရန်", "Browse category"),
-                                    color = palette.subtle,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Box {
-                                    IconButton(
-                                        onClick = { allCategories = true },
-                                        modifier = Modifier.size(32.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Default.GridView,
-                                            tr("အုပ်စု ၆ ခုလုံး", "All six categories"),
-                                            tint = palette.accent,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = allCategories,
-                                        onDismissRequest = { allCategories = false },
-                                    ) {
-                                        ruleCategories.forEach { c ->
-                                            DropdownMenuItem(
-                                                text = { Text(if (en) c.en else c.mm) },
-                                                onClick = {
-                                                    category = c.key
-                                                    groupId = catalog.groupsIn(c.key)
-                                                        .firstOrNull()?.id.orEmpty()
-                                                    allCategories = false
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(ruleCategories, key = { it.key }) { c ->
-                                    val selected = category == c.key
-                                    Surface(
-                                        onClick = {
-                                            category = c.key
-                                            groupId = catalog.groupsIn(c.key)
-                                                .firstOrNull()?.id.orEmpty()
-                                        },
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = if (selected) palette.accent else palette.paper,
-                                        border = if (selected) null
-                                            else BorderStroke(1.dp, palette.outline),
-                                    ) {
-                                        Text(
-                                            if (en) c.en else c.mm,
-                                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = if (selected) FontWeight.Bold
-                                                else FontWeight.Medium,
-                                            color = if (selected) palette.activeText else palette.ink,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                }
-                            }
-                            Box {
-                                Surface(
-                                    onClick = { allGroups = true },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = palette.paper,
-                                    border = BorderStroke(1.dp, palette.outline),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    ) {
-                                        Column(Modifier.weight(1f)) {
-                                            Text(
-                                                tr("မူခေါင်းစဉ်", "Selected rule"),
-                                                color = palette.subtle,
-                                                style = MaterialTheme.typography.labelSmall,
-                                            )
-                                            Text(
-                                                group?.title.orEmpty(),
-                                                color = palette.ink,
-                                                fontWeight = FontWeight.SemiBold,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
-                                        Icon(Icons.Default.ExpandMore, null, tint = palette.accent)
-                                    }
-                                }
-                                DropdownMenu(
-                                    expanded = allGroups,
-                                    onDismissRequest = { allGroups = false },
-                                ) {
-                                    categoryGroups.forEach { candidate ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(candidate.title,
-                                                    maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                            },
-                                            onClick = {
-                                                groupId = candidate.id
-                                                allGroups = false
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        tr("ဂဏန်း ရွေးရန်", "Choose a number"),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = palette.ink,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    Text(
-                                        tr("0–9 သို့မဟုတ် 00–99", "Single digit or pair, 00–99"),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = palette.subtle,
-                                    )
-                                }
-                                OutlinedTextField(
-                                    value = number,
-                                    onValueChange = { input ->
-                                        if (input.length <= 2 && input.all { it in '0'..'9' })
-                                            number = input
-                                    },
-                                    singleLine = true,
-                                    textStyle = MaterialTheme.typography.titleLarge.copy(
-                                        fontWeight = FontWeight.Bold, color = palette.ink),
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Done,
-                                    ),
-                                    keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = palette.paper,
-                                        unfocusedContainerColor = palette.paper,
-                                        focusedBorderColor = palette.accent,
-                                        unfocusedBorderColor = palette.outline,
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.width(110.dp),
-                                )
-                            }
-                        }
-                    }
+                    Icon(
+                        if (view == "rule") Icons.Default.MenuBook else Icons.Default.Tag,
+                        contentDescription = null,
+                        tint = colors.accent,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        if (view == "rule")
+                            tr("မူစာရင်း ရွေးရန်", "Choose a rule")
+                        else tr("ဂဏန်း ရွေးရန်", "Choose a number"),
+                        color = colors.ink,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (view == "number")
+                        Text(number, color = colors.accent, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(end = 7.dp))
+                    Icon(Icons.Default.ExpandMore, null, tint = colors.accent)
                 }
             }
 
-            // ONE READING AREA. No duplicate hero, noisy actions, or loose
-            // captions between the controls and source.
-            val contextTitle = when {
-                savedOnly -> tr("မှတ်သားထားသော မူများ", "Saved rules")
-                query.isNotBlank() -> tr("ရှာဖွေမှုရလဒ်", "Search results")
-                view == "number" -> tr("ဂဏန်း ", "Number ") + number
-                else -> if (en) ruleCategories.first { it.key == category }.en
-                    else ruleCategories.first { it.key == category }.mm
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    contextTitle,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold, color = palette.ink,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (query.isNotBlank() || savedOnly) {
-                    TextButton(onClick = { query = ""; savedOnly = false }) {
-                        Text(tr("ပြန်ကြည့်ရန်", "Browse"), color = palette.accent)
-                    }
+            if (focused != null) {
+                // A search hit may come from any category, independent of the active view.
+                val sourceGroup = catalog.groups.firstOrNull { g ->
+                    g.items.any { it.id == focused.id }
                 }
-            }
-
-            if (entries.isEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = palette.paper,
-                    border = BorderStroke(1.dp, palette.outline),
                     modifier = Modifier.fillMaxWidth().weight(1f),
+                    color = colors.paper,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, colors.border),
                 ) {
-                    Box(Modifier.padding(20.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            when {
-                                savedOnly -> tr("မှတ်သားထားသော မူ မရှိသေးပါ။", "No saved rules yet.")
-                                query.isNotBlank() -> tr("မူ မတွေ့ပါ။", "No matching rules.")
-                                else -> tr("ဒီဂဏန်းနှင့် ဆက်စပ်မူ မတွေ့ပါ။",
-                                    "No indexed rules for this number.")
-                            },
-                            color = palette.subtle,
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(
+                                onClick = { focusedItemId = null },
+                                modifier = Modifier.size(38.dp),
+                            ) {
+                                Icon(Icons.Default.ArrowBack, tr("ပြန်သွားရန်", "Back"),
+                                    tint = colors.accent)
+                            }
+                            Text(
+                                tr("ရှာဖွေတွေ့ရှိသော မူ", "Selected search result"),
+                                fontWeight = FontWeight.Bold,
+                                color = colors.ink,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        HorizontalDivider(color = colors.border)
+                        Column(
+                            Modifier.weight(1f).verticalScroll(rememberScrollState())
+                                .padding(17.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Text(
+                                sourceGroup?.title ?: focused.label,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold, color = colors.accent,
+                            )
+                            if (focused.category == "digits") {
+                                Text(
+                                    tr("ဂဏန်း ", "Digit ") + focused.label,
+                                    fontWeight = FontWeight.Bold, color = colors.subtle,
+                                )
+                            }
+                            Text(
+                                focused.original,
+                                fontSize = 21.sp, lineHeight = 34.sp, color = colors.ink,
+                            )
+                            Text(
+                                tr("မူရင်းစာတမ်း · အပိုင်း (", "Source · Section ") +
+                                    focused.section + if (en) "" else ")",
+                                color = colors.subtle,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                        HorizontalDivider(color = colors.border)
+                        RuleActionRow(
+                            colors = colors,
+                            favorite = focused.id in favorites,
+                            onFavorite = { toggleFavorite(focused.id) },
+                            onCopy = { clipboard.setText(AnnotatedString(focused.original)) },
+                            en = en,
                         )
+                    }
+                }
+            } else if (view == "rule") {
+                val selected = group
+                if (selected != null) {
+                    // Entire original rule in ONE vertical reading scroll.
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        color = colors.paper,
+                        shape = RoundedCornerShape(18.dp),
+                        shadowElevation = 4.dp,
+                        border = BorderStroke(1.dp, colors.border),
+                    ) {
+                        Column {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 17.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(15.dp),
+                            ) {
+                                Text(
+                                    tr("မူရင်းစာတမ်း · အပိုင်း (", "Source · Section ") +
+                                        selected.section + if (en) "" else ")",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.subtle,
+                                )
+                                Text(
+                                    selected.title,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accent,
+                                )
+                                HorizontalDivider(color = colors.border)
+                                selected.items.forEachIndexed { idx, entry ->
+                                    if (selected.category == "digits") {
+                                        // A source table cell belongs to this original digit row.
+                                        // No invented "if digit comes out" explanations.
+                                        Row(
+                                            verticalAlignment = Alignment.Top,
+                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                        ) {
+                                            Surface(
+                                                color = colors.panel,
+                                                shape = RoundedCornerShape(10.dp),
+                                            ) {
+                                                Text(
+                                                    entry.label,
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 15.dp, vertical = 9.dp),
+                                                    fontSize = 23.sp, fontWeight = FontWeight.Bold,
+                                                    color = colors.accent,
+                                                )
+                                            }
+                                            Text(
+                                                entry.original,
+                                                modifier = Modifier.weight(1f)
+                                                    .padding(top = 6.dp),
+                                                fontSize = 20.sp, lineHeight = 31.sp,
+                                                color = colors.ink,
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            entry.original,
+                                            color = colors.ink,
+                                            fontSize = 20.sp, lineHeight = 33.sp,
+                                        )
+                                    }
+                                    if (idx != selected.items.lastIndex)
+                                        HorizontalDivider(color = colors.border.copy(alpha = .68f))
+                                }
+                            }
+                            HorizontalDivider(color = colors.border)
+                            RuleActionRow(
+                                colors = colors,
+                                favorite = ("group:" + selected.id) in favorites,
+                                onFavorite = { toggleFavorite("group:" + selected.id) },
+                                onCopy = {
+                                    clipboard.setText(AnnotatedString(
+                                        selected.title + "\n\n" +
+                                            selected.items.joinToString("\n") { entry ->
+                                                if (selected.category == "digits")
+                                                    entry.label + "\n" + entry.original
+                                                else entry.original
+                                            }
+                                    ))
+                                },
+                                en = en,
+                            )
+                        }
                     }
                 }
             } else {
-                key(view, category, group?.id, number, query, savedOnly) {
-                    val pager = rememberPagerState(pageCount = { entries.size })
-                    val item = entries[pager.currentPage.coerceIn(0, entries.lastIndex)]
-
-                    HorizontalPager(
-                        state = pager,
+                // By-number remains a swipeable SINGLE-RULE reader.
+                if (numberEntries.isEmpty()) {
+                    Surface(
                         modifier = Modifier.fillMaxWidth().weight(1f),
-                        pageSpacing = 10.dp,
-                    ) { pageIndex ->
-                        val rule = entries[pageIndex]
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = RoundedCornerShape(20.dp),
-                            color = palette.paper,
-                            border = BorderStroke(1.dp, palette.outline),
-                            shadowElevation = 6.dp,
-                        ) {
-                            Column(Modifier.fillMaxSize()) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .background(palette.accent.copy(alpha = 0.07f))
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            tr("မူရင်းစာတမ်း • အပိုင်း (", "Source · Section ") +
-                                                rule.section + if (en) "" else ")",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = palette.subtle,
-                                        )
-                                        Text(
-                                            if (rule.category == "digits")
-                                                tr("ဂဏန်း ", "Digit ") + rule.label
-                                            else rule.label,
-                                            color = palette.accent,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(9.dp),
-                                        color = palette.panel,
+                        color = colors.paper,
+                        shape = RoundedCornerShape(18.dp),
+                    ) {
+                        Box(Modifier.padding(20.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                tr("ဒီဂဏန်းနှင့် ဆက်စပ်မူ မတွေ့ပါ။",
+                                    "No indexed rules for this number."),
+                                color = colors.subtle,
+                            )
+                        }
+                    }
+                } else {
+                    key(number) {
+                        val pager = rememberPagerState(pageCount = { numberEntries.size })
+                        HorizontalPager(
+                            state = pager,
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            pageSpacing = 8.dp,
+                        ) { page ->
+                            val entry = numberEntries[page]
+                            val sourceGroup = catalog.groups.firstOrNull { g ->
+                                g.items.any { it.id == entry.id }
+                            }
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = colors.paper,
+                                shape = RoundedCornerShape(18.dp),
+                                shadowElevation = 3.dp,
+                                border = BorderStroke(1.dp, colors.border),
+                            ) {
+                                Column {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(horizontal = 17.dp, vertical = 16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(15.dp),
                                     ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                tr("မူရင်း · အပိုင်း (", "Source · Section ") +
+                                                    entry.section + if (en) "" else ")",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = colors.subtle,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            Text(
+                                                (page + 1).toString() + " / " + numberEntries.size,
+                                                color = colors.accent, fontWeight = FontWeight.Bold,
+                                            )
+                                        }
                                         Text(
-                                            (pageIndex + 1).toString() + " / " + entries.size,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold, color = palette.accent,
+                                            sourceGroup?.title ?: entry.label,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.accent,
                                         )
-                                    }
-                                }
-                                HorizontalDivider(color = palette.outline)
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(horizontal = 19.dp, vertical = 18.dp),
-                                    contentAlignment = if (rule.original.length < 75)
-                                        Alignment.CenterStart else Alignment.TopStart,
-                                ) {
-                                    Text(
-                                        rule.original,
-                                        fontSize = 22.sp,
-                                        lineHeight = 36.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = palette.ink,
-                                    )
-                                }
-                                HorizontalDivider(color = palette.outline)
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 15.dp, end = 11.dp, top = 4.dp, bottom = 4.dp),
-                                ) {
-                                    Text(
-                                        if (view == "number" && query.isBlank() && !savedOnly)
-                                            if (number in rule.sourceNumbers)
+                                        if (entry.category == "digits") {
+                                            Text(
+                                                tr("ဂဏန်း ", "Digit ") + entry.label,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold, color = colors.ink,
+                                            )
+                                        }
+                                        HorizontalDivider(color = colors.border)
+                                        Text(
+                                            entry.original,
+                                            fontSize = 22.sp, lineHeight = 35.sp,
+                                            color = colors.ink,
+                                        )
+                                        Text(
+                                            if (number in entry.sourceNumbers)
                                                 tr("တိုက်ရိုက်ဆိုင်သော မူ", "Direct trigger")
-                                            else tr("ဆက်စပ်မူ", "Related rule")
-                                        else tr("မူရင်းစာသား", "Original text"),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = palette.subtle,
-                                        modifier = Modifier.weight(1f),
+                                            else tr("ဆက်စပ်မူ", "Related rule"),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = colors.subtle,
+                                        )
+                                    }
+                                    HorizontalDivider(color = colors.border)
+                                    RuleActionRow(
+                                        colors = colors,
+                                        favorite = entry.id in favorites,
+                                        onFavorite = { toggleFavorite(entry.id) },
+                                        onCopy = {
+                                            clipboard.setText(AnnotatedString(entry.original))
+                                        },
+                                        en = en,
                                     )
-                                    IconButton(onClick = {
-                                        val updated = if (rule.id in favorites)
-                                            favorites - rule.id else favorites + rule.id
-                                        favorites = updated
-                                        prefs.edit().putStringSet("ids", updated).apply()
-                                    }) {
-                                        Icon(
-                                            if (rule.id in favorites) Icons.Default.Star
-                                            else Icons.Default.StarBorder,
-                                            tr("မှတ်သားရန်", "Save"),
-                                            tint = palette.accent,
-                                        )
-                                    }
-                                    IconButton(onClick = {
-                                        clipboard.setText(AnnotatedString(rule.original))
-                                    }) {
-                                        Icon(
-                                            Icons.Default.ContentCopy,
-                                            tr("မူရင်းစာသား ကူးယူရန်", "Copy original text"),
-                                            tint = palette.accent,
-                                        )
-                                    }
                                 }
                             }
                         }
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Surface(
-                            onClick = {
-                                scope.launch {
-                                    pager.animateScrollToPage((pager.currentPage - 1).coerceAtLeast(0))
-                                }
-                            },
-                            enabled = pager.currentPage > 0,
-                            color = palette.paper,
-                            border = BorderStroke(1.dp, palette.outline),
-                            shape = RoundedCornerShape(12.dp),
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(43.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Icon(
-                                Icons.Default.ChevronLeft,
-                                tr("ရှေ့မူ", "Previous rule"),
-                                modifier = Modifier.padding(9.dp),
-                                tint = if (pager.currentPage > 0) palette.accent else palette.subtle,
+                            IconButton(
+                                enabled = pager.currentPage > 0,
+                                onClick = {
+                                    scope.launch {
+                                        pager.animateScrollToPage(pager.currentPage - 1)
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Default.ChevronLeft,
+                                    tr("ယခင်မူ", "Previous rule"), tint = colors.accent)
+                            }
+                            Text(
+                                tr("ဘယ် / ညာ ဆွဲဖတ်ပါ", "Swipe left or right"),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.subtle,
                             )
-                        }
-                        Text(
-                            tr("ဘယ် / ညာ ဆွဲဖတ်ပါ", "Swipe left / right"),
-                            color = palette.subtle,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                        Surface(
-                            onClick = {
-                                scope.launch {
-                                    pager.animateScrollToPage(
-                                        (pager.currentPage + 1).coerceAtMost(entries.lastIndex)
-                                    )
-                                }
-                            },
-                            enabled = pager.currentPage < entries.lastIndex,
-                            color = palette.paper,
-                            border = BorderStroke(1.dp, palette.outline),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                tr("နောက်မူ", "Next rule"),
-                                modifier = Modifier.padding(9.dp),
-                                tint = if (pager.currentPage < entries.lastIndex)
-                                    palette.accent else palette.subtle,
-                            )
+                            IconButton(
+                                enabled = pager.currentPage < numberEntries.lastIndex,
+                                onClick = {
+                                    scope.launch {
+                                        pager.animateScrollToPage(pager.currentPage + 1)
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Default.ChevronRight,
+                                    tr("နောက်မူ", "Next rule"), tint = colors.accent)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RuleActionRow(
+    colors: RuleColors,
+    favorite: Boolean,
+    onFavorite: () -> Unit,
+    onCopy: () -> Unit,
+    en: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(46.dp)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (en) "Original wording" else "မူရင်းစာသား",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.subtle,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onFavorite) {
+            Icon(
+                if (favorite) Icons.Default.Star else Icons.Default.StarBorder,
+                if (en) "Save rule" else "မှတ်သားရန်",
+                tint = colors.accent, modifier = Modifier.size(22.dp),
+            )
+        }
+        IconButton(onClick = onCopy) {
+            Icon(Icons.Default.ContentCopy,
+                if (en) "Copy original" else "မူရင်းကူးယူရန်",
+                tint = colors.accent, modifier = Modifier.size(20.dp))
         }
     }
 }
