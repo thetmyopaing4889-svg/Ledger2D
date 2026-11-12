@@ -231,3 +231,46 @@ same-day scope, disabled fake outcomes, and study-state reset. Android CI
 must pass on the guide-enabled branch; finally inspect handset Myanmar/English
 line wrapping, light/dark guide cards, both Back routes, and one-tap true
 history results. Keep PR #30 in draft until device acceptance.
+
+
+## 10. Research data-quality audit — first integrity milestone (2026-11-12)
+
+After the user accepted Research Academy, the next phase prioritizes data
+integrity over adding predictive-looking formulas. A **read-only** audit is
+available through the second icon (FactCheck) in the Research editor hero.
+The formerly accepted Research form, result evidence and Guide remain intact.
+
+The `TwoDResearchHistoryAuditor` inspects the already reconciled draw stream
+passed to the Research Engine, with the same two-digit / open-day / exclusive
+cutoff / distinct date+session eligibility policy. Its verified count therefore
+matches the Research hero and the equivalent analysis history count for the
+same source/cutoff. It classifies invalid pair rows, excluded weekend/verified
+closure rows, future-or-cutoff rows, duplicate same-slot rows and conflicting
+duplicate values if any survived reconciliation. The audit never writes data.
+
+For a reproducible coverage window, the first eligible verified draw defines
+the first inspected **date**, and the exclusive Research cutoff defines the
+end. Every weekday AM/PM slot not marked with a verified closure is an
+*expected open slot*; one without a verified value is an **unverified slot**.
+Such a slot is not declared a missing result, a completed draw, or a negative
+match. Dates before the first verified draw cannot be audited from this stream.
+Empty histories report no coverage percentage. The audit displays the recent
+unverified slot dates/sessions progressively and explicitly explains this
+uncertainty.
+
+This is **not** an independent upstream/provider completeness or provenance
+audit. Because `Historic2DDataSource.resolve` already merges and filters
+competing histories and manual locks, differences in upstream raw rows may be
+invisible to this read-only view. In particular, neither the 1862→1860
+screen-count difference nor the user's 14 unknown next-results is attributed
+to individual source-record causes without independent evidence.
+
+Unit tests cover empty history, cutoff exclusion, nonworking dates and known
+closures, double-slot deduplication, contradictory same-slot records, earliest
+baseline and agreement with `TwoDResearchEngine.eligibleHistoryCount`.
+Native/toolbar Back dismisses the audit before leaving Research.
+
+**Acceptance:** full Android CI, then handset inspection in Burmese and
+English, light and dark, and verification of the record-level unknown list.
+No automatic history edits, no changes to Analysis A-01–A-08 and no merge to
+main while PR #30 remains a draft.
