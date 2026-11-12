@@ -261,8 +261,8 @@ private fun LabHero(
                     horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("RESEARCH ATLAS  /  2D",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold, letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified),
-                        color = p.accent.copy(alpha = if (p.accent.green > .6f) 1f else .95f))
+                            fontWeight = FontWeight.Bold),
+                        color = Color(0xFF9CE7D9))
                     Icon(Icons.Default.TravelExplore, null,
                         tint = p.heroText, modifier = Modifier.size(24.dp))
                 }
@@ -555,7 +555,8 @@ internal fun TwoDResearchLabScreen(
                         .heightIn(min = 48.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = p.accent, contentColor = Color.White,
+                        containerColor = p.accent,
+                        contentColor = if (p.accent == Color(0xFF67E0CC)) p.hero else Color.White,
                         disabledContainerColor = p.outline, disabledContentColor = p.muted)
                 ) {
                     Icon(Icons.Default.Search, null, Modifier.size(19.dp))
