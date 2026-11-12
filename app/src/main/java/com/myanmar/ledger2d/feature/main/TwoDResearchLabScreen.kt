@@ -405,8 +405,6 @@ private fun LabEvidence(
 }
 
 @Composable
-
-@Composable
 private fun LabCompactEvidence(
     e: TwoDResearchEvidence, en: Boolean, p: ResearchLabPalette,
 ) {
