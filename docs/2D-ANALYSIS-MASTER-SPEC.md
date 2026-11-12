@@ -1456,3 +1456,31 @@ the existing isolated Analysis redesign branch. New
 `TwoDResearchWorkspace.kt` design. Source code and typed-condition unit
 tests exist; **Android CI / Kotlin compilation / APK and phone acceptance
 are not yet verified as of this document update.** Main is not merged.
+
+---
+
+# Part XXVI — Research Atlas evidence-frequency clarification (2026-11-12)
+
+The existing green comparison bars are **intentional for unequal frequencies**;
+they were replaced by compact number tiles only when multiple following pairs
+have identical counts. This is a presentation choice, not a removal of bars.
+
+For a Research query with a Target condition, the result frequency panel
+now defaults to **Matching pairs** (counting only target-matched following
+results), with a separate **All following outcomes** tab preserving the
+original histogram. An example `any digit 7 → any digit 3` must not imply
+that the most common *all* outcomes (e.g. 04, 15, 68) matched digit 3.
+With zero target matches, the matching view says so and the user can switch
+to all observed outcomes. Discovery-only queries continue showing all
+recorded following pairs.
+
+The displayed matched histogram sums to `matchCount`; the full histogram
+sums to `observedCount`. Neither histogram includes missing, pending or
+history-window-truncated target rows. The research evidence and original
+A-01–A-08 algorithms are unchanged. See
+[`docs/2D-RESEARCH-WORKSPACE-SPEC.md`](2D-RESEARCH-WORKSPACE-SPEC.md)
+§7 for detailed behavior and regression tests.
+
+Implementation is isolated to `feature/2d-research-workspace` and remains
+a draft PR until CI and device acceptance. This is a design record, not
+an assertion that historical device data has been independently audited.
