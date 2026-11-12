@@ -87,6 +87,22 @@ data class TwoDResearchReport(
             it.status == TwoDResearchStatus.OTHER
     }
     val matchCount: Int get() = evidence.count { it.status == TwoDResearchStatus.MATCH }
+
+    /**
+     * Histogram of actual following pairs that satisfied the selected TARGET.
+     * All-outcome followingFrequency remains unchanged, so the lab can offer
+     * separate "Matches" and "All outcomes" views without altering evidence.
+     * No target means there are no MATCH statuses and this list is empty.
+     */
+    val matchedFollowingFrequency: List<TwoDCount> by lazy {
+        evidence.asSequence()
+            .filter { it.status == TwoDResearchStatus.MATCH }
+            .mapNotNull { it.following?.digit }
+            .groupingBy { it }.eachCount()
+            .map { (pair, count) -> TwoDCount(pair, count) }
+            .sortedWith(compareByDescending<TwoDCount> { it.count }.thenBy { it.digit })
+    }
+
     val otherCount: Int get() = evidence.count { it.status == TwoDResearchStatus.OTHER }
     val missingCount: Int get() = evidence.count { it.status == TwoDResearchStatus.MISSING }
     val pendingCount: Int get() = evidence.count { it.status == TwoDResearchStatus.PENDING }
