@@ -145,4 +145,63 @@ class TwoDResearchEngineTest {
                 TwoDResearchRelationship.SAME_DAY_PM, "11"),
             cutoff("2026-11-03")).matchCount)
     }
+    /**
+     * Replays the six rows visible in the user's Atlas screenshots as a
+     * regression fixture. This verifies aggregation and date/session matching,
+     * not the independent authenticity of the underlying Room history.
+     */
+    @Test fun sixDisplayedMorningTwelveCasesAgreeWithEvidenceAndFrequency() {
+        val datesAndPm = listOf(
+            "2023-05-10" to "67",
+            "2023-07-10" to "95",
+            "2024-01-31" to "24",
+            "2024-04-05" to "82",
+            "2025-06-30" to "65",
+            "2026-04-09" to "63",
+        )
+        val rows = datesAndPm.flatMap { (day, evening) ->
+            listOf(row(day, am, "12"), row(day, pm, evening))
+        }
+        val report = TwoDResearchEngine.search(rows, exact(),
+            cutoff("2026-11-12", am))
+        assertEquals(6, report.sourceCount)
+        assertEquals(6, report.observedCount)
+        assertEquals(0, report.matchCount)
+        assertEquals(6, report.otherCount)
+        assertEquals(0, report.missingCount)
+        assertEquals(0, report.pendingCount)
+        assertEquals(0, report.outsideCount)
+        assertEquals(6, report.followingFrequency.sumOf { it.count })
+        assertEquals(setOf("24", "63", "65", "67", "82", "95"),
+            report.followingFrequency.map { it.digit }.toSet())
+        assertTrue(report.followingFrequency.all { it.count == 1 })
+        assertEquals(datesAndPm.map { it.first },
+            report.evidence.map { it.source.date.toString() })
+        assertEquals(datesAndPm.map { it.second },
+            report.evidence.map { it.following?.digit })
+    }
+
+    @Test fun frequencyAndCoverageExcludeUnknownPendingAndRangeBoundaries() {
+        val draws = listOf(
+            row("2026-11-02", am, "12"), row("2026-11-02", pm, "21"),
+            row("2026-11-03", am, "12"), row("2026-11-03", pm, "63"),
+            row("2026-11-04", am, "12"), // expected PM is missing
+            row("2026-11-05", am, "12"), row("2026-11-05", pm, "21"),
+            row("2026-11-06", am, "12"), // expected PM is not yet due
+        )
+        val report = TwoDResearchEngine.search(draws, exact(),
+            cutoff("2026-11-06", pm))
+        assertEquals(report.sourceCount,
+            report.observedCount + report.missingCount +
+                report.pendingCount + report.outsideCount)
+        assertEquals(report.observedCount,
+            report.matchCount + report.otherCount)
+        assertEquals(report.observedCount,
+            report.followingFrequency.sumOf { it.count })
+        assertEquals(2, report.matchCount)
+        assertEquals(1, report.otherCount)
+        assertEquals(1, report.missingCount)
+        assertEquals(1, report.pendingCount)
+    }
+
 }
