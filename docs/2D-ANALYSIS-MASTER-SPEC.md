@@ -1484,3 +1484,31 @@ A-01–A-08 algorithms are unchanged. See
 Implementation is isolated to `feature/2d-research-workspace` and remains
 a draft PR until CI and device acceptance. This is a design record, not
 an assertion that historical device data has been independently audited.
+
+
+---
+
+# Part XXVII — Research Atlas independent quality review (2026-11-12)
+
+**Assessment:** Research Atlas V1 input/results/compact evidence visual workflow
+has been accepted from handset screenshots, but the feature must not be
+called fully validated on real data until a full provenance audit is performed.
+Code and tests are confined to `feature/2d-research-workspace` (draft PR #30).
+
+The 2026-11-12 review checked: source and target typed conditions; AM/PM/ALL
+slot semantics; missing versus pending versus out-of-range outcomes; Friday PM
+to next working AM; 7-/30-day range endpoints; the default Target-matched
+frequency view and separate All-outcomes view; record counts; evidence filters;
+the user-approved Research Atlas palette and native back navigation.
+
+**Additional corrections from review:** The Atlas visual palette is derived
+from the **application MaterialTheme** instead of Android system dark mode,
+because users can choose their in-app theme independently. The header's
+Verified Results count now calls a shared engine eligibility function, so
+its valid open-slot, two-digit, cutoff and deduplication rules cannot silently
+diverge from the actual study. New tests cover cross-cutoff/closure eligibility,
+and all six target-condition kinds' matched-versus-observed histogram sums.
+
+**Acceptance gate:** Android CI green on the latest head, then real phone
+light/dark theme and result verification, plus an independent audit of historic
+source records. No merger into main or release before those checks.
