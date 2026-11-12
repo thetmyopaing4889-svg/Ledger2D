@@ -142,8 +142,8 @@ internal fun TwoDRulesLibraryScreen(
                         contentPadding = PaddingValues(bottom = 25.dp),
                     ) {
                         ruleCategories.forEach { category ->
+                            val groups = catalog.groupsIn(category.key)
                             item(key = "category-" + category.key) {
-                                val groups = catalog.groupsIn(category.key)
                                 val opened = expandedCategory == category.key
                                 Row(
                                     modifier = Modifier.fillMaxWidth()
