@@ -1417,3 +1417,42 @@ unapproved implementation extensions, not confirmed V1 features.
 
 **Earlier confirmed constraints remain in force:** no changes to
 A-01–A-08 business formulas, Summary contract, ledger, LIVE or Rules.
+
+
+---
+
+# Part XXV — Research Atlas creative redesign and typed research conditions (2026-11-12)
+
+**User authorization:** The user expressly delegated Research Workspace feature,
+layout, identity and UI design decisions to the assistant, with no obligation to
+retain the Cherry-pink brand theme. This delegation is specific to Research.
+Existing Analysis A-01–A-08, Summary, Rules, ledger, LIVE and verified-history
+business rules remain protected.
+
+**New implementation direction:** Research Atlas is a separate, navy/teal
+evidence-oriented mini-laboratory, using a compact guided query editor with
+always-accessible action, a **separate result-focused view**, editable queries,
+quick-start question templates and preserved state across Analysis/Summary
+tab switches. A second unrelated research form is not retained. Support both
+light and dark system appearance.
+
+**Typed conditions:** Source and optional Target can independently select
+an exact 00–99 pair, 0–9 digit in either position, tens digit, ones digit,
+double pair or tens/ones even-odd class. Source AM/PM/ALL controls,
+same-date morning→evening or next scheduled draw relationship, reverse-pair
+shortcut, source/target historic evidence and selected history range remain.
+All counts are observed historical records, not estimated future probabilities.
+
+**Auditable result contract:** Source cases, known eligible following results,
+matched exact/typed target cases, other recorded outcomes, missing expected
+records, not-yet-due outcomes and range-truncated cases remain distinct.
+The default result pane shows major counts, actual following-pair frequencies,
+and a filterable dated evidence list. Sample quick-start queries do **not**
+contain fictional results.
+
+**Implementation:** `feature/2d-research-workspace`, draft PR #30 targeting
+the existing isolated Analysis redesign branch. New
+`TwoDResearchLabScreen.kt` replaces the earlier long-form
+`TwoDResearchWorkspace.kt` design. Source code and typed-condition unit
+tests exist; **Android CI / Kotlin compilation / APK and phone acceptance
+are not yet verified as of this document update.** Main is not merged.
