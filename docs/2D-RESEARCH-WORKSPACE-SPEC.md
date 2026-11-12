@@ -1,6 +1,7 @@
 # Ledger2D — 2D Research Workspace (Version 1 implementation contract)
 
-**Status:** Work in progress on `feature/2d-research-workspace`. This is a
+**Status:** Research Atlas redesigned on `feature/2d-research-workspace`;
+Android CI/build and real-device acceptance are still unverified. This is a
 separate user-directed research tool, not A-09 and not Rules (မူ).
 **Reference:** `docs/2D-ANALYSIS-MASTER-SPEC.md`, Part IX, and the user's
 subsequent approval to lead implementation on 2026-11-11.
@@ -13,7 +14,12 @@ actual eligible draw evidence. Do not create synthetic real-world outcomes,
 predict the next result, or claim history-based odds.
 
 Version 1 permits:
-- Source **exact 2D pair 00–99**.
+- Typed SOURCE conditions: **exact pair 00–99**, **digit present at either position**,
+  **tens digit**, **ones digit**, **double 00/11/…/99**, or **tens/ones parity**
+  (even/even, even/odd, odd/even, odd/odd).
+- Typed TARGET condition with the same choices, or unfiltered discovery of all
+  recorded following results. A double is an equality of two positions; a digit
+  anywhere counts each qualifying source draw once, including doubles.
 - Source scope **AM / PM / ALL**, with same-day AM→PM forcing AM.
 - Relationship **same-date morning→evening** or **next scheduled draw**.
 - Optional exact 2D target (match query); blank target means discover all following values.
@@ -23,7 +29,7 @@ Version 1 permits:
 - Reverse-pair shortcut sets target to reverse(source); it is not a separate detector.
 
 Later candidate extensions, **not implemented/approved formulas**:
-single digits, tens/ones, special groups, consecutive multi-result patterns,
+additional named special groups, consecutive multi-result patterns,
 composed AND/OR conditions, weekly patterns, saved queries.
 
 ## 2. Strict chronological semantics
@@ -72,8 +78,16 @@ Every count can be audited against individual date/session and 2D evidence.
 
 - Keep Research a dedicated bottom navigation destination beside Analysis,
   Summary and Rules. Do not re-theme or re-layout the approved 4–2–2 Analysis.
-- Use brief guided relationship choices, source pair, optional exact target,
-  reverse shortcut and separate Research history-range selection.
+- Research Atlas has its own navy/teal semantic palette (light and dark), with
+  readable Burmese/English typography and a compact fixed search action.
+- Use guided relationship choices, selectable typed source and target criteria,
+  reverse shortcut for exact pairs and separate Research history-range selection.
+- Query editor and evidence results are *different states*: completing a query
+  brings the answer to the top, with a concise query summary and an Edit action.
+  Never put the entire form before the results.
+- The parent retains in-session Research draft, selection and result-view state
+  when switching to Analysis or Summary. Back from results first returns to
+  the editor; it must not leave the application.
 - Show the answer first: source count, verified following count, exact-match
   count or distinct following-pair count; then data-coverage context.
 - Follow with frequency distribution and per-source chronological evidence.
@@ -86,7 +100,9 @@ Every count can be audited against individual date/session and 2D evidence.
 
 Unit-test same-day matching, discovery frequency, Friday→Monday, verified
 closure skipping, unverified missing-slot noncompression, exact cutoff,
-selected-window truncation, duplicate rows, invalid inputs and doubles.
+selected-window truncation, duplicate rows, invalid inputs, leading-zero pairs,
+position/orientation-sensitive tens/ones parity, digit-in-either-position,
+doubles and typed criterion-based matching.
 
 Before acceptance:
 - Run Android CI unit tests, lint and debug APK assembly on research branch.
