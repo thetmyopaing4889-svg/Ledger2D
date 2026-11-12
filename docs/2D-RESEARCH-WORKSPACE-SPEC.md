@@ -162,3 +162,27 @@ unequal counts → bars**. Green bars were never removed globally.
 New tests verify digit-7→digit-3 matched pairs (including leading zero
 and double 77), the all-outcome fallback when zero matches, repeated
 matched-pair counts and discovery without a target.
+
+
+## 8. Independent quality audit (2026-11-12)
+
+- **Android app theme, not system theme:** Research Atlas must select its
+  light/dark palette from the active `MaterialTheme.colorScheme`, since the
+  Ledger2D `LedgerTheme(darkTheme=…)` application setting can differ from the
+  phone's Android appearance. Standalone navy/teal Research identity remains.
+- **One historical eligibility rule:** The hero's verified-result count and the
+  research engine must both use `TwoDResearchEngine.eligibleHistoryCount` /
+  shared `eligibleDraws` logic: exactly two digits, open working date,
+  strictly before research cutoff and unique date+session slots. This is
+  necessary to keep the visible history count aligned with the engine.
+- **Frequency invariants:** For every typed target, histogram sum of
+  matching outcomes = `matchCount`; histogram sum of all observed
+  following results = `observedCount`. Missing, pending and outside-range
+  cases are excluded from both; doubles create one source occurrence.
+- **Limits of verification:** Unit tests and GitHub Android CI validate
+  deterministic software and assembled APKs, not the independent provenance
+  of all 2D values in a user's phone database. Real-device tests must still
+  verify the app-theme override, source-to-evidence traceability, target
+  filter behavior and historical record completeness.
+- **Release gate:** Keep PR #30 as a draft targeting the isolated Analysis
+  feature branch. Main remains unmerged until acceptance.
