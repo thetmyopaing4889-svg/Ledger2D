@@ -135,3 +135,30 @@ Before acceptance:
   verification of the phone's Room database provenance.
 - Gate this change on the feature branch's Android CI compilation,
   unit tests, lint, debug and release APK tasks. Keep PR #30 a draft.
+
+
+## 7. Target-matched frequency versus all-outcome frequency (2026-11-12)
+
+When the user specifies a TARGET condition (exact pair, digit, tens/ones,
+double or parity), the Frequency panel has two explicitly selectable scopes:
+
+- **Matching pairs / ကိုက်ညီသောဂဏန်းတွဲ** (default): count only confirmed
+  following draw pairs whose evidence status is MATCH. Their frequencies
+  must add up to **matchCount**, not observedCount.
+- **All following outcomes / နောက်ထွက်သမျှ**: count all recorded eligible
+  following draw pairs, including both MATCH and OTHER. These frequencies
+  add up to **observedCount** and are the original discovery histogram.
+
+Queries without a target continue to show all observed following outcomes.
+A zero-match query displays an explicit no-matches note in the matching
+view but retains the All outcomes tab for exploration. Missing, pending
+and out-of-range entries contribute to neither histogram.
+
+Switching tabs resets expanded frequency pagination; it never changes
+the research query, evidence statuses or summary counts. Both scopes
+retain the existing visualization rule: **equal counts → compact tiles;
+unequal counts → bars**. Green bars were never removed globally.
+
+New tests verify digit-7→digit-3 matched pairs (including leading zero
+and double 77), the all-outcome fallback when zero matches, repeated
+matched-pair counts and discovery without a target.
