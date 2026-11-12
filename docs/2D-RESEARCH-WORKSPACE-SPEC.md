@@ -186,3 +186,48 @@ matched-pair counts and discovery without a target.
   filter behavior and historical record completeness.
 - **Release gate:** Keep PR #30 as a draft targeting the isolated Analysis
   feature branch. Main remains unmerged until acceptance.
+
+
+## 9. Research Academy — bilingual in-app guide (2026-11-12)
+
+User explicitly approved assistant-led implementation of an accessible,
+interactive Research Guide, without redesigning the accepted Research Atlas UI.
+
+**Entry points:** a help (?) control in the Research editor hero, a discreet
+"Guide" link next to Quick Start, and the same help (?) control in the Evidence
+hero. These all open the same Research Academy screen. There is no automatic
+first-run pop-up and no new bottom navigation tab.
+
+**Lessons (expandable, bilingual Burmese/English):**
+1. Get started in four steps: relationship → source → optional target → period.
+2. Six condition types: exact pair, any-position digit, tens, ones, double,
+   ordered tens/ones parity, with leading-zero and double examples.
+3. AM/PM/ALL source scope; same-day AM→PM; next scheduled draw; verified
+   closures versus truly unavailable expected results.
+4. Target switch, reverse shortcut, inclusive 7-/30-day/custom history windows.
+5. Source / known outcome / match / different / missing / pending / outside
+   range, and historically observed match-rate denominator.
+6. Target-matched versus all-outcome frequency, equal-count tile versus
+   unequal-count bar presentation, dated evidence and card/compact toggle.
+
+**Try it:** six immutable study templates (12→21, digit-7→digit-3,
+double→discovery, odd/odd→discovery, tens-7→ones-3, odd/odd→even/even)
+generate ordinary validated `TwoDResearchQuery` objects and execute on the
+same reconciled verified historic stream. They contain **no fake draw outcomes
+or pre-filled summary results**. Ready/loaded history is required to run.
+Selecting an example leaves the guide and enters Research Evidence directly.
+
+**State, back & reliability:** Opening the guide does not mutate the current
+study or form. Both device/system Back and the toolbar Back close Guide first,
+returning to the prior editor or result. Closing the Guide footer behaves the
+same. Switching tabs and back preserves in-session Guide/Research state.
+A one-tap example deliberately replaces only the current study query and resets
+its filter/pagination. No changes to Analysis A-01–A-08, Summary, Rules or
+persistent 2D historical data.
+
+**Quality gates:** Unit tests cover unique stable example IDs, bilingual
+content, valid typed source/target definitions, real query construction,
+same-day scope, disabled fake outcomes, and study-state reset. Android CI
+must pass on the guide-enabled branch; finally inspect handset Myanmar/English
+line wrapping, light/dark guide cards, both Back routes, and one-tap true
+history results. Keep PR #30 in draft until device acceptance.
