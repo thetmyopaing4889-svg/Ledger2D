@@ -56,6 +56,8 @@ internal class ResearchLabSessionState(date: LocalDate) {
     var end by mutableStateOf(date.toString())
     var submitted by mutableStateOf<TwoDResearchQuery?>(null)
     var resultVisible by mutableStateOf(false)
+    // Guide is an optional destination; closing it restores the prior editor/result.
+    var guideVisible by mutableStateOf(false)
     var evidenceFilter by mutableStateOf("all")
     var evidenceLimit by mutableIntStateOf(25)
     var frequencyExpanded by mutableStateOf(false)
@@ -74,32 +76,23 @@ internal fun useCompactFrequencyGrid(frequencies: List<TwoDCount>): Boolean =
  * One-tap templates execute a real query; they never populate fake results.
  * Preserve the editable fields so Back from the evidence view is intuitive.
  */
-private fun ResearchLabSessionState.openPreset(
-    source: TwoDResearchCriterion,
-    target: TwoDResearchCriterion?,
-    relationshipKey: String,
-    sourceScope: TwoDResearchScope,
-) {
-    relationship = relationshipKey
-    scope = sourceScope.name.lowercase(Locale.US)
-    sourceKind = source.kind
-    sourceValue = source.value
-    compare = target != null
-    targetKind = target?.kind ?: TwoDResearchCriterionKind.PAIR
-    targetValue = target?.value.orEmpty()
+internal fun ResearchLabSessionState.openPreset(example: ResearchGuideExample) {
+    val query = example.toQuery()
+    relationship = if (query.relationship == TwoDResearchRelationship.SAME_DAY_PM)
+        "same" else "next"
+    scope = query.scope.name.lowercase(Locale.US)
+    sourceKind = example.source.kind
+    sourceValue = example.source.value
+    compare = example.target != null
+    targetKind = example.target?.kind ?: TwoDResearchCriterionKind.PAIR
+    targetValue = example.target?.value.orEmpty()
     period = "all"
-    submitted = TwoDResearchQuery(
-        sourcePair = if (source.kind == TwoDResearchCriterionKind.PAIR) source.value else "",
-        scope = if (relationshipKey == "same") TwoDResearchScope.AM else sourceScope,
-        relationship = if (relationshipKey == "same")
-            TwoDResearchRelationship.SAME_DAY_PM else TwoDResearchRelationship.NEXT_DRAW,
-        sourceCriterion = source,
-        targetCriterion = target,
-    )
+    submitted = query
     evidenceFilter = "all"
     evidenceLimit = 25
     frequencyExpanded = false
     frequencyMode = "matched"
+    guideVisible = false
     resultVisible = true
 }
 
@@ -298,6 +291,7 @@ private fun LabCriterionPicker(
 @Composable
 private fun LabHero(
     en: Boolean, p: ResearchLabPalette, verifiedCount: Int,
+    onOpenGuide: () -> Unit,
 ) {
     Surface(shape = RoundedCornerShape(21.dp), color = p.hero) {
         Box(Modifier.fillMaxWidth().background(
@@ -311,8 +305,18 @@ private fun LabHero(
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold),
                         color = Color(0xFF9CE7D9))
-                    Icon(Icons.Default.TravelExplore, null,
-                        tint = p.heroText, modifier = Modifier.size(24.dp))
+                    IconButton(
+                        onClick = onOpenGuide,
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.HelpOutline,
+                            contentDescription = lab(en,
+                                "Research အသုံးပြုနည်းလမ်းညွှန်", "Open Research Guide"),
+                            tint = Color(0xFF9CE7D9),
+                            modifier = Modifier.size(25.dp),
+                        )
+                    }
                 }
                 Text(lab(en,
                         "2D သမိုင်းဆက်စပ်မှု လေ့လာရန်",
@@ -513,11 +517,23 @@ internal fun TwoDResearchLabScreen(
     val resultVisible = session.resultVisible && session.submitted != null
 
     Column(modifier.fillMaxSize().background(p.background)) {
-        if (!resultVisible) {
+        if (session.guideVisible) {
+            TwoDResearchGuideScreen(
+                en = en,
+                p = p,
+                ready = ready,
+                onClose = { session.guideVisible = false },
+                onTryExample = { example -> if (ready) session.openPreset(example) },
+                modifier = Modifier.weight(1f),
+            )
+        } else if (!resultVisible) {
             LazyColumn(Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                item { LabHero(en, p, verifiedCount) }
+                item {
+                    LabHero(en, p, verifiedCount,
+                        onOpenGuide = { session.guideVisible = true })
+                }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         LabText(lab(en, "အမြန်စစ်ဆေးရန် · နှိပ်လိုက်ပါ",
@@ -525,26 +541,18 @@ internal fun TwoDResearchLabScreen(
                             color = p.muted)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            LabChoice("12 → 21", false, p, enabled = ready) {
-                                session.openPreset(
-                                    TwoDResearchCriterion(TwoDResearchCriterionKind.PAIR, "12"),
-                                    TwoDResearchCriterion(TwoDResearchCriterionKind.PAIR, "21"),
-                                    "same", TwoDResearchScope.AM,
-                                )
-                            }
-                            LabChoice(lab(en, "အပူးနောက်", "After doubles"), false, p,
-                                enabled = ready) {
-                                session.openPreset(
-                                    TwoDResearchCriterion(TwoDResearchCriterionKind.DOUBLE),
-                                    null, "next", TwoDResearchScope.ALL,
-                                )
-                            }
-                            LabChoice(lab(en, "မမနောက်", "After odd/odd"), false, p,
-                                enabled = ready) {
-                                session.openPreset(
-                                    TwoDResearchCriterion(TwoDResearchCriterionKind.PARITY, "OO"),
-                                    null, "next", TwoDResearchScope.ALL,
-                                )
+                            ResearchGuideCatalog.examples.take(4).forEach { example ->
+                                if (example.id != "digit-7-3") {
+                                    LabChoice(
+                                        if (example.id == "reverse-12") "12 → 21"
+                                        else if (example.id == "double-discovery")
+                                            lab(en, "အပူးနောက်", "After doubles")
+                                        else lab(en, "မမနောက်", "After odd/odd"),
+                                        false, p, enabled = ready,
+                                    ) {
+                                        session.openPreset(example)
+                                    }
+                                }
                             }
                         }
                     }
@@ -718,10 +726,25 @@ internal fun TwoDResearchLabScreen(
                         Column(Modifier.fillMaxWidth().background(
                             Brush.horizontalGradient(listOf(p.hero, p.heroLight)))
                             .padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text("RESEARCH ATLAS  /  EVIDENCE",
-                                color = Color(0xFF9CE7D9),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold))
+                            Row(Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("RESEARCH ATLAS  /  EVIDENCE",
+                                    color = Color(0xFF9CE7D9),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold))
+                                IconButton(
+                                    onClick = { session.guideVisible = true },
+                                    modifier = Modifier.size(40.dp),
+                                ) {
+                                    Icon(Icons.Default.HelpOutline,
+                                        contentDescription = lab(en,
+                                            "Research အသုံးပြုနည်းလမ်းညွှန်",
+                                            "Open Research Guide"),
+                                        tint = Color(0xFF9CE7D9),
+                                        modifier = Modifier.size(24.dp))
+                                }
+                            }
                             Text(labelOf(source, en) + "   →   " +
                                 (target?.let { labelOf(it, en) } ?: lab(en, "ဘာဆက်ထွက်လဲ", "What followed?")),
                                 color = p.heroText,
