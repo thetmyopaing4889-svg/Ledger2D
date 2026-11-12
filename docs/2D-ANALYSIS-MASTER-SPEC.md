@@ -1539,3 +1539,33 @@ its real Evidence results.
 Reference: `docs/2D-RESEARCH-WORKSPACE-SPEC.md` §9, plus
 `ResearchAtlasGuideTest.kt`. Main remains unchanged; Research draft PR #30
 requires Android CI and phone UI acceptance before merge.
+
+---
+
+# Part XXIX — Research History Data Integrity (2026-11-12)
+
+Upon acceptance of the interactive Research Academy, the next phase is a
+read-only, evidence-oriented historical coverage audit before expanding
+Research pattern formulas.
+
+`TwoDResearchHistoryAuditor` reports verified usable date/session slots,
+invalid pairs, verified-closed/weekend inputs, cutoff/future inputs,
+duplicated and conflicting same-slot rows (where visible after reconciliation),
+and unverified expected open slots within the available history horizon.
+The audit cannot infer that an unknown slot was truly held or that an
+upstream source/result was lost. No date before the first verified history
+date is assumed to be complete. The existing Research hero now provides a
+discreet FactCheck entry point without changing the approved query editor.
+Android/toolbar Back dismisses the audit first.
+
+**Data lineage limitation:** only `Historic2DDataSource.resolve`'s
+reconciled stream is available to this diagnostic, not every raw provider
+row, winner override or deletion-lock conflict. The older 1862 vs 1860
+count difference requires separate raw-record provenance; two missing
+records are *not* inferred from a count change. Formula and historical
+probability statements remain unchanged.
+
+Tests: `TwoDResearchHistoryAuditTest`. Detailed semantics in
+`docs/2D-RESEARCH-WORKSPACE-SPEC.md` §10. Keep Research draft PR #30
+isolated; require latest Android CI and real-phone user acceptance
+before merger.
