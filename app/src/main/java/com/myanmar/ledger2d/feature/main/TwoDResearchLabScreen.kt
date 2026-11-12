@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -118,7 +119,9 @@ internal data class ResearchLabPalette(
 
 @Composable
 internal fun researchLabPalette(): ResearchLabPalette {
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    // Respect LedgerTheme's explicit in-app Light/Dark setting, which may
+    // deliberately differ from Android's system appearance.
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     return if (dark) ResearchLabPalette(
         background = Color(0xFF0D1922),
         card = Color(0xFF152733),
@@ -493,10 +496,8 @@ internal fun TwoDResearchLabScreen(
         "custom" -> TwoDHistoryRange(start, end)
         else -> TwoDHistoryRange()
     }
-    val verifiedCount = draws.count { row ->
-        row.date !in closedDates && (
-            row.date.isBefore(cutoff.date) ||
-                (row.date == cutoff.date && row.session.ordinal < cutoff.session.ordinal))
+    val verifiedCount = remember(draws, closedDates, cutoff) {
+        TwoDResearchEngine.eligibleHistoryCount(draws, cutoff, closedDates)
     }
 
     val report by produceState<TwoDResearchReport?>(
