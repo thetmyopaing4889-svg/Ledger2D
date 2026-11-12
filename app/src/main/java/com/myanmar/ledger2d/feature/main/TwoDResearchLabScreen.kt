@@ -58,6 +58,9 @@ internal class ResearchLabSessionState(date: LocalDate) {
     var evidenceFilter by mutableStateOf("all")
     var evidenceLimit by mutableIntStateOf(25)
     var frequencyExpanded by mutableStateOf(false)
+    // When a target exists, show matching outcomes first; preserve all-outcome
+    // discovery as a separate, explicitly labeled tab.
+    var frequencyMode by mutableStateOf("matched")
     var compactEvidence by mutableStateOf(false)
 }
 
@@ -95,6 +98,7 @@ private fun ResearchLabSessionState.openPreset(
     evidenceFilter = "all"
     evidenceLimit = 25
     frequencyExpanded = false
+    frequencyMode = "matched"
     resultVisible = true
 }
 
@@ -662,6 +666,7 @@ internal fun TwoDResearchLabScreen(
                         session.evidenceFilter = "all"
                         session.evidenceLimit = 25
                         session.frequencyExpanded = false
+                        session.frequencyMode = "matched"
                     },
                     enabled = eligible,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp)
@@ -807,12 +812,59 @@ internal fun TwoDResearchLabScreen(
                                 LabText(lab(en, "ဆက်ထွက်ခဲ့သည့် ဂဏန်းတွဲများ",
                                     "What actually followed"), en, p,
                                     LedgerTextRole.CARD_TITLE, weight = FontWeight.SemiBold)
-                                val compact = useCompactFrequencyGrid(result.followingFrequency)
+                                if (target != null) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        LabChoice(
+                                            lab(en, "ကိုက်ညီသောဂဏန်းတွဲ", "Matches"),
+                                            session.frequencyMode == "matched", p,
+                                            Modifier.weight(1f),
+                                        ) {
+                                            session.frequencyMode = "matched"
+                                            session.frequencyExpanded = false
+                                        }
+                                        LabChoice(
+                                            lab(en, "နောက်ထွက်သမျှ", "All outcomes"),
+                                            session.frequencyMode == "all", p,
+                                            Modifier.weight(1f),
+                                        ) {
+                                            session.frequencyMode = "all"
+                                            session.frequencyExpanded = false
+                                        }
+                                    }
+                                }
+                                val matchingView = target != null &&
+                                    session.frequencyMode == "matched"
+                                val shownFrequencies = if (matchingView)
+                                    result.matchedFollowingFrequency
+                                else result.followingFrequency
+                                LabText(
+                                    if (matchingView)
+                                        lab(en, "Target ကိုက်ညီသော နောက်ထွက်ဂဏန်းတွဲ ",
+                                            "Matching outcomes ") + result.matchCount +
+                                            " / " + result.observedCount
+                                    else
+                                        lab(en, "နောက်ထွက်ခဲ့သမျှ ",
+                                            "All recorded following results ") +
+                                            result.observedCount +
+                                            lab(en, " ကြိမ်", " occasions"),
+                                    en, p, LedgerTextRole.HELPER, color = p.muted,
+                                )
+                                val compact = useCompactFrequencyGrid(shownFrequencies)
                                 val limit = if (compact) 12 else 6
                                 val frequencies = if (session.frequencyExpanded)
-                                    result.followingFrequency
-                                else result.followingFrequency.take(limit)
-                                if (compact) {
+                                    shownFrequencies
+                                else shownFrequencies.take(limit)
+                                if (matchingView && shownFrequencies.isEmpty()) {
+                                    LabText(
+                                        lab(en,
+                                            "ရွေးထားသော Target ကိုက်ညီသည့် နောက်ထွက်ဂဏန်းတွဲ မတွေ့ပါ။ နောက်ထွက်သမျှကို ပြောင်းကြည့်နိုင်သည်။",
+                                            "No matching following pairs in this history. Select All outcomes to inspect other recorded results."),
+                                        en, p, LedgerTextRole.BODY, color = p.muted,
+                                    )
+                                } else if (compact) {
                                     LabText(lab(en,
                                         "အကြိမ်ရေတူသော ဂဏန်းတွဲများ",
                                         "Pairs with equal observed frequency"),
@@ -845,7 +897,7 @@ internal fun TwoDResearchLabScreen(
                                         }
                                     }
                                 } else {
-                                    val most = result.followingFrequency.first().count
+                                    val most = shownFrequencies.first().count
                                         .coerceAtLeast(1)
                                     frequencies.forEach { entry ->
                                         Row(Modifier.fillMaxWidth(),
@@ -868,13 +920,13 @@ internal fun TwoDResearchLabScreen(
                                     }
                                 }
                                 if (!session.frequencyExpanded &&
-                                    result.followingFrequency.size > limit) {
+                                    shownFrequencies.size > limit) {
                                     TextButton(onClick = {
                                         session.frequencyExpanded = true
                                     }, colors = ButtonDefaults.textButtonColors(
                                         contentColor = p.accent)) {
                                         Text(lab(en, "ဂဏန်းတွဲအားလုံးကြည့်ရန်", "View all pairs") +
-                                            " (" + result.followingFrequency.size + ")")
+                                            " (" + shownFrequencies.size + ")")
                                     }
                                 }
                             }
