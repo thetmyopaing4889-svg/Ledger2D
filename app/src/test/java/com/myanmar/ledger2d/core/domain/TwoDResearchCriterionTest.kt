@@ -120,4 +120,93 @@ class TwoDResearchCriterionTest {
                 cutoff("2026-11-05"))
         }
     }
+    @Test fun digitSevenToDigitThreeShowsOnlyMatchingFollowingPairs() {
+        // Rows mirror the user's question, not their confidential device history.
+        val rows = listOf(
+            row("2026-11-02", am, "17"), row("2026-11-02", pm, "03"),
+            row("2026-11-03", am, "74"), row("2026-11-03", pm, "13"),
+            row("2026-11-04", am, "77"), row("2026-11-04", pm, "30"),
+            row("2026-11-05", am, "67"), row("2026-11-05", pm, "04"),
+            row("2026-11-06", am, "97"), row("2026-11-06", pm, "15"),
+            row("2026-11-09", am, "70"), // missing PM: not a non-match
+        )
+        val report = TwoDResearchEngine.search(
+            rows,
+            TwoDResearchQuery(
+                sourcePair = "",
+                scope = TwoDResearchScope.AM,
+                relationship = TwoDResearchRelationship.SAME_DAY_PM,
+                sourceCriterion = c(TwoDResearchCriterionKind.DIGIT, "7"),
+                targetCriterion = c(TwoDResearchCriterionKind.DIGIT, "3"),
+            ),
+            cutoff("2026-11-10"),
+        )
+        assertEquals(6, report.sourceCount)
+        assertEquals(5, report.observedCount)
+        assertEquals(3, report.matchCount)
+        assertEquals(2, report.otherCount)
+        assertEquals(1, report.missingCount)
+        assertEquals(listOf("03", "13", "30"),
+            report.matchedFollowingFrequency.map { it.digit })
+        assertEquals(3, report.matchedFollowingFrequency.sumOf { it.count })
+        assertTrue(report.matchedFollowingFrequency.all { "3" in it.digit })
+        assertEquals(setOf("03", "04", "13", "15", "30"),
+            report.followingFrequency.map { it.digit }.toSet())
+        assertEquals(5, report.followingFrequency.sumOf { it.count })
+        // A double such as "77" creates one source draw, not two.
+        assertEquals(6, report.evidence.size)
+    }
+
+    @Test fun zeroMatchingTargetsDoNotHideOtherObservedOutcomes() {
+        val rows = listOf(
+            row("2026-11-02", am, "17"), row("2026-11-02", pm, "04"),
+            row("2026-11-03", am, "70"), row("2026-11-03", pm, "15"),
+        )
+        val report = TwoDResearchEngine.search(
+            rows,
+            TwoDResearchQuery(
+                sourcePair = "",
+                scope = TwoDResearchScope.AM,
+                relationship = TwoDResearchRelationship.SAME_DAY_PM,
+                sourceCriterion = c(TwoDResearchCriterionKind.DIGIT, "7"),
+                targetCriterion = c(TwoDResearchCriterionKind.DIGIT, "3"),
+            ),
+            cutoff("2026-11-04"),
+        )
+        assertEquals(0, report.matchCount)
+        assertTrue(report.matchedFollowingFrequency.isEmpty())
+        assertEquals(2, report.observedCount)
+        assertEquals(setOf("04", "15"),
+            report.followingFrequency.map { it.digit }.toSet())
+    }
+
+    @Test fun repeatedMatchingPairsRetainTrueFrequenciesAndDiscoveryHasNoMatches() {
+        val rows = listOf(
+            row("2026-11-02", am, "72"), row("2026-11-02", pm, "03"),
+            row("2026-11-03", am, "74"), row("2026-11-03", pm, "03"),
+            row("2026-11-04", am, "77"), row("2026-11-04", pm, "13"),
+            row("2026-11-05", am, "17"), row("2026-11-05", pm, "04"),
+        )
+        val base = TwoDResearchQuery(
+            sourcePair = "",
+            scope = TwoDResearchScope.AM,
+            relationship = TwoDResearchRelationship.SAME_DAY_PM,
+            sourceCriterion = c(TwoDResearchCriterionKind.DIGIT, "7"),
+        )
+        val compared = TwoDResearchEngine.search(
+            rows, base.copy(targetCriterion = c(TwoDResearchCriterionKind.DIGIT, "3")),
+            cutoff("2026-11-06"),
+        )
+        assertEquals(3, compared.matchCount)
+        assertEquals(listOf("03", "13"),
+            compared.matchedFollowingFrequency.map { it.digit })
+        assertEquals(listOf(2, 1),
+            compared.matchedFollowingFrequency.map { it.count })
+        assertEquals(4, compared.followingFrequency.sumOf { it.count })
+        val discovery = TwoDResearchEngine.search(rows, base, cutoff("2026-11-06"))
+        assertTrue(discovery.matchedFollowingFrequency.isEmpty())
+        assertEquals(4, discovery.observedCount)
+        assertEquals(4, discovery.followingFrequency.sumOf { it.count })
+    }
+
 }
