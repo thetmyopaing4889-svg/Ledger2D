@@ -120,6 +120,30 @@ object TwoDResearchEngine {
         date.isBefore(cutoff.date) ||
             (date == cutoff.date && session.ordinal < cutoff.session.ordinal)
 
+    /**
+     * Keep the Atlas header and every Research query on exactly the same
+     * eligibility policy. A confirmed source has a real two-digit value,
+     * occupies one open slot and is strictly earlier than the live cutoff.
+     */
+    private fun eligibleDraws(
+        draws: List<HistoricDraw>,
+        cutoffExclusive: DrawIdentity,
+        verifiedClosedDays: Set<LocalDate>,
+    ): List<HistoricDraw> = draws.asSequence()
+        .filter { validPair(it.digit) }
+        .filter { DrawSchedule.isWorkingDate(it.date, verifiedClosedDays) }
+        .filter { isBefore(it.date, it.session, cutoffExclusive) }
+        .distinctBy { it.date to it.session }
+        .sortedWith(chronological)
+        .toList()
+
+    /** Number of verified, usable historical slots shown in the Atlas hero. */
+    fun eligibleHistoryCount(
+        draws: List<HistoricDraw>,
+        cutoffExclusive: DrawIdentity,
+        verifiedClosedDays: Set<LocalDate> = emptySet(),
+    ): Int = eligibleDraws(draws, cutoffExclusive, verifiedClosedDays).size
+
     private fun nextOpenDate(date: LocalDate, closed: Set<LocalDate>): LocalDate {
         var candidate = date.plusDays(1)
         while (!DrawSchedule.isWorkingDate(candidate, closed)) {
@@ -177,13 +201,7 @@ object TwoDResearchEngine {
 
         // The caller passes the app's already reconciled verified result stream.
         // Preserve its authoritative per-slot row while filtering invalid or future data.
-        val valid = draws.asSequence()
-            .filter { validPair(it.digit) }
-            .filter { DrawSchedule.isWorkingDate(it.date, verifiedClosedDays) }
-            .filter { isBefore(it.date, it.session, cutoffExclusive) }
-            .distinctBy { it.date to it.session }
-            .sortedWith(chronological)
-            .toList()
+        val valid = eligibleDraws(draws, cutoffExclusive, verifiedClosedDays)
         val bySlot = valid.associateBy { it.date to it.session }
         val sources = valid.filter { row ->
             sourceRule.matches(row.digit) && query.range.includes(row.date) &&
