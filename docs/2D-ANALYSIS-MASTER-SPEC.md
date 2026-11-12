@@ -1379,3 +1379,193 @@ The entire 4–2–2 overview, the eight approved formulas, the user-provided me
 
 The user approves the A-05 frame and keeping the weekly **remaining unseen digits** at the top. The detailed chronological flow must visually prioritize the **new/old class**, NOT the raw 2D value. There are exactly three approved, position-independent classes: **အသစ် + အသစ်**, **အသစ် + အဟောင်း**, **အဟောင်း + အဟောင်း**. A mixed outcome such as historical 7 (old) and 4 (new) in pair 74 belongs to **အသစ် + အဟောင်း**, with the individual new digit 4 and old digit 7 named accurately. Use prominent separated semantic status surfaces, smaller original outcome/date/session context and secondary remaining-digits information. If earlier known data is incomplete, honor classificationVerified: show the recorded result but do not assert a verified new/old pattern. Preserve the one-distinct-new-digit semantics of doubles such as 11.
 
+
+
+---
+
+# Part XXIV — Research Workspace V1 implementation initiated (2026-11-11)
+
+The user entrusted implementation/design leadership of Research to the assistant and
+explicitly authorized starting work. Research remains **a separate user-directed
+feature**, not A-09, not the automatic eight checks and not the unchanged Rules
+destination. This is a **work-in-progress implementation note**, not a claim
+that the APK has passed CI or phone acceptance.
+
+Detailed first-version contract and tests:
+[`docs/2D-RESEARCH-WORKSPACE-SPEC.md`](2D-RESEARCH-WORKSPACE-SPEC.md).
+
+**V1 scope:** exact 2D pair (00–99) source; AM, PM or ALL scopes for
+next-draw searches; same-day AM→PM; optional exact following pair or
+following-pair discovery; all/week/month/custom evidence ranges; counts and
+dated evidence for observed, matching, other, missing, pending, and
+range-boundary outcomes. A reverse-pair shortcut fills the chosen exact
+target; it is not a new probability formula.
+
+**Work branch:** `feature/2d-research-workspace`, based on
+`feature/2d-analysis-timeline-redesign`. Research has its own read-only
+domain engine, independent guided Compose screen and unit tests; the
+bottom Research tab is wired into the new screen. The existing
+`Historic2DDataSource.resolve` is reused for verified reconciliation,
+manual overrides, deletion locks and final-result time boundaries.
+
+**Acceptance not granted yet:** CI/unit tests, lint/APK verification, real
+historical-result audit and handset MM/EN UI inspection are all required.
+Do not merge to main or describe the feature as released until those gates
+are satisfied. Later candidate research operators (tens/ones, groups,
+multi-draw sequences, weekly conditions, AND/OR and saving queries) remain
+unapproved implementation extensions, not confirmed V1 features.
+
+**Earlier confirmed constraints remain in force:** no changes to
+A-01–A-08 business formulas, Summary contract, ledger, LIVE or Rules.
+
+
+---
+
+# Part XXV — Research Atlas creative redesign and typed research conditions (2026-11-12)
+
+**User authorization:** The user expressly delegated Research Workspace feature,
+layout, identity and UI design decisions to the assistant, with no obligation to
+retain the Cherry-pink brand theme. This delegation is specific to Research.
+Existing Analysis A-01–A-08, Summary, Rules, ledger, LIVE and verified-history
+business rules remain protected.
+
+**New implementation direction:** Research Atlas is a separate, navy/teal
+evidence-oriented mini-laboratory, using a compact guided query editor with
+always-accessible action, a **separate result-focused view**, editable queries,
+quick-start question templates and preserved state across Analysis/Summary
+tab switches. A second unrelated research form is not retained. Support both
+light and dark system appearance.
+
+**Typed conditions:** Source and optional Target can independently select
+an exact 00–99 pair, 0–9 digit in either position, tens digit, ones digit,
+double pair or tens/ones even-odd class. Source AM/PM/ALL controls,
+same-date morning→evening or next scheduled draw relationship, reverse-pair
+shortcut, source/target historic evidence and selected history range remain.
+All counts are observed historical records, not estimated future probabilities.
+
+**Auditable result contract:** Source cases, known eligible following results,
+matched exact/typed target cases, other recorded outcomes, missing expected
+records, not-yet-due outcomes and range-truncated cases remain distinct.
+The default result pane shows major counts, actual following-pair frequencies,
+and a filterable dated evidence list. Sample quick-start queries do **not**
+contain fictional results.
+
+**Implementation:** `feature/2d-research-workspace`, draft PR #30 targeting
+the existing isolated Analysis redesign branch. New
+`TwoDResearchLabScreen.kt` replaces the earlier long-form
+`TwoDResearchWorkspace.kt` design. Source code and typed-condition unit
+tests exist; **Android CI / Kotlin compilation / APK and phone acceptance
+are not yet verified as of this document update.** Main is not merged.
+
+---
+
+# Part XXVI — Research Atlas evidence-frequency clarification (2026-11-12)
+
+The existing green comparison bars are **intentional for unequal frequencies**;
+they were replaced by compact number tiles only when multiple following pairs
+have identical counts. This is a presentation choice, not a removal of bars.
+
+For a Research query with a Target condition, the result frequency panel
+now defaults to **Matching pairs** (counting only target-matched following
+results), with a separate **All following outcomes** tab preserving the
+original histogram. An example `any digit 7 → any digit 3` must not imply
+that the most common *all* outcomes (e.g. 04, 15, 68) matched digit 3.
+With zero target matches, the matching view says so and the user can switch
+to all observed outcomes. Discovery-only queries continue showing all
+recorded following pairs.
+
+The displayed matched histogram sums to `matchCount`; the full histogram
+sums to `observedCount`. Neither histogram includes missing, pending or
+history-window-truncated target rows. The research evidence and original
+A-01–A-08 algorithms are unchanged. See
+[`docs/2D-RESEARCH-WORKSPACE-SPEC.md`](2D-RESEARCH-WORKSPACE-SPEC.md)
+§7 for detailed behavior and regression tests.
+
+Implementation is isolated to `feature/2d-research-workspace` and remains
+a draft PR until CI and device acceptance. This is a design record, not
+an assertion that historical device data has been independently audited.
+
+
+---
+
+# Part XXVII — Research Atlas independent quality review (2026-11-12)
+
+**Assessment:** Research Atlas V1 input/results/compact evidence visual workflow
+has been accepted from handset screenshots, but the feature must not be
+called fully validated on real data until a full provenance audit is performed.
+Code and tests are confined to `feature/2d-research-workspace` (draft PR #30).
+
+The 2026-11-12 review checked: source and target typed conditions; AM/PM/ALL
+slot semantics; missing versus pending versus out-of-range outcomes; Friday PM
+to next working AM; 7-/30-day range endpoints; the default Target-matched
+frequency view and separate All-outcomes view; record counts; evidence filters;
+the user-approved Research Atlas palette and native back navigation.
+
+**Additional corrections from review:** The Atlas visual palette is derived
+from the **application MaterialTheme** instead of Android system dark mode,
+because users can choose their in-app theme independently. The header's
+Verified Results count now calls a shared engine eligibility function, so
+its valid open-slot, two-digit, cutoff and deduplication rules cannot silently
+diverge from the actual study. New tests cover cross-cutoff/closure eligibility,
+and all six target-condition kinds' matched-versus-observed histogram sums.
+
+**Acceptance gate:** Android CI green on the latest head, then real phone
+light/dark theme and result verification, plus an independent audit of historic
+source records. No merger into main or release before those checks.
+
+---
+
+# Part XXVIII — Research Academy interactive usage guide (2026-11-12)
+
+The user authorized a user-facing in-app usage guide for Research Atlas,
+delegating detailed design and implementation to the assistant. This is a
+separate optional Research Academy screen—not a change to A-01–A-08,
+Summary, Rules or historic formulas.
+
+The Research editor's hero and Evidence hero each expose a help (?) button;
+Quick Start has a visible Guide link. The same bilingual, expandable
+six-lesson guide explains query construction; exact pair/any digit/tens/
+ones/double/ordered parity conditions; same-day and next scheduled AM/PM/ALL
+semantics; target comparison, history range, denominator and coverage statuses;
+matched versus all frequencies; and card/compact evidence.
+
+The guide contains six **real, one-tap research examples**, implemented as
+validated typed queries submitted to the existing read-only Research Engine.
+It contains no synthetic draw outcomes. Opening or closing the guide never
+deletes the in-progress study. Android and toolbar Back dismiss guide before
+leaving the result or Research tab. Choosing an example intentionally opens
+its real Evidence results.
+
+Reference: `docs/2D-RESEARCH-WORKSPACE-SPEC.md` §9, plus
+`ResearchAtlasGuideTest.kt`. Main remains unchanged; Research draft PR #30
+requires Android CI and phone UI acceptance before merge.
+
+---
+
+# Part XXIX — Research History Data Integrity (2026-11-12)
+
+Upon acceptance of the interactive Research Academy, the next phase is a
+read-only, evidence-oriented historical coverage audit before expanding
+Research pattern formulas.
+
+`TwoDResearchHistoryAuditor` reports verified usable date/session slots,
+invalid pairs, verified-closed/weekend inputs, cutoff/future inputs,
+duplicated and conflicting same-slot rows (where visible after reconciliation),
+and unverified expected open slots within the available history horizon.
+The audit cannot infer that an unknown slot was truly held or that an
+upstream source/result was lost. No date before the first verified history
+date is assumed to be complete. The existing Research hero now provides a
+discreet FactCheck entry point without changing the approved query editor.
+Android/toolbar Back dismisses the audit first.
+
+**Data lineage limitation:** only `Historic2DDataSource.resolve`'s
+reconciled stream is available to this diagnostic, not every raw provider
+row, winner override or deletion-lock conflict. The older 1862 vs 1860
+count difference requires separate raw-record provenance; two missing
+records are *not* inferred from a count change. Formula and historical
+probability statements remain unchanged.
+
+Tests: `TwoDResearchHistoryAuditTest`. Detailed semantics in
+`docs/2D-RESEARCH-WORKSPACE-SPEC.md` §10. Keep Research draft PR #30
+isolated; require latest Android CI and real-phone user acceptance
+before merger.

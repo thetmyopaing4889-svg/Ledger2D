@@ -147,10 +147,22 @@ fun Historical2DTimelineScreen(
     var openGroup by rememberSaveable { mutableStateOf("1") }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var activeTwoDTab by rememberSaveable { mutableStateOf("analysis") }
+    // Research state belongs to the parent, surviving tab switches within this session.
+    val researchSession = remember { ResearchLabSessionState(defaultTarget.date) }
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
-     BackHandler(enabled = openCheck.isNotEmpty()) { openCheck = "" }
+    BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
+        when {
+            openCheck.isNotEmpty() -> openCheck = ""
+            activeTwoDTab == "research" && researchSession.auditVisible ->
+                researchSession.auditVisible = false
+            activeTwoDTab == "research" && researchSession.guideVisible ->
+                researchSession.guideVisible = false
+            researchSession.resultVisible -> researchSession.resultVisible = false
+            else -> activeTwoDTab = "analysis"
+        }
+    }
     var rulesOpen by remember { mutableStateOf(false) }
 
 
@@ -197,29 +209,48 @@ fun Historical2DTimelineScreen(
     )
     val currentMethod = sections.flatMap { it.methods }.firstOrNull { it.key == openCheck }
     val scheme = MaterialTheme.colorScheme
+    val researchChrome = activeTwoDTab == "research" && openCheck.isEmpty()
+    val researchInk = Color(0xFF112D3A)
     Scaffold(
-        containerColor = scheme.background,
+        containerColor = if (researchChrome) researchInk else scheme.background,
 
         topBar = {
             Row(
-                Modifier.fillMaxWidth().background(scheme.background)
+                Modifier.fillMaxWidth()
+                    .background(if (researchChrome) researchInk else scheme.background)
                     .statusBarsPadding().heightIn(min = 58.dp)
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(onClick = {
-                    if (openCheck.isNotEmpty()) openCheck = "" else onBack()
+                    when {
+                        openCheck.isNotEmpty() -> openCheck = ""
+                        researchChrome && researchSession.auditVisible ->
+                            researchSession.auditVisible = false
+                        researchChrome && researchSession.guideVisible ->
+                            researchSession.guideVisible = false
+                        researchChrome && researchSession.resultVisible ->
+                            researchSession.resultVisible = false
+                        researchChrome -> activeTwoDTab = "analysis"
+                        else -> onBack()
+                    }
                 }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = tr("ပြန်ရန်", "Back"))
+                        contentDescription = tr("ပြန်ရန်", "Back"),
+                        tint = if (researchChrome) Color.White else scheme.onSurface)
                 }
-                Text(if (activeTwoDTab == "summary" && openCheck.isEmpty())
+                Text(when {
+                    activeTwoDTab == "research" && openCheck.isEmpty() ->
+                        tr("2D လေ့လာရန်", "2D Research")
+                    activeTwoDTab == "summary" && openCheck.isEmpty() ->
                         tr("2D အနှစ်ချုပ်", "2D Summary")
-                    else tr("2D စစ်ဆေးမှု", "2D Analysis"),
+                    else -> tr("2D စစ်ဆေးမှု", "2D Analysis")
+                },
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, maxLines = 1,
+                    color = if (researchChrome) Color.White else scheme.onSurface,
                     overflow = TextOverflow.Ellipsis)
                 if (openCheck.isEmpty() && activeTwoDTab == "summary") {
                     Surface(
@@ -237,7 +268,7 @@ fun Historical2DTimelineScreen(
         bottomBar = {
             if (openCheck.isEmpty()) {
                 Surface(
-                    color = scheme.surface,
+                    color = if (researchChrome) researchInk else scheme.surface,
                     tonalElevation = 4.dp,
                     shadowElevation = 7.dp,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -248,23 +279,29 @@ fun Historical2DTimelineScreen(
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         TwoDNavAction(
                             modifier = Modifier.weight(1f), active = activeTwoDTab == "analysis",
+                            researchChrome = researchChrome,
                             label = tr("စစ်ဆေးမှု", "Analysis"),
                             icon = Icons.Default.Analytics,
                             onClick = { activeTwoDTab = "analysis"; openCheck = "" },
                         )
                         TwoDNavAction(
                             modifier = Modifier.weight(1f), active = activeTwoDTab == "summary",
+                            researchChrome = researchChrome,
                             label = tr("အနှစ်ချုပ်", "Summary"),
                             icon = Icons.Default.Summarize,
                             onClick = { activeTwoDTab = "summary"; openCheck = "" },
                         )
                         TwoDNavAction(
-                            modifier = Modifier.weight(1f), active = false,
+                            modifier = Modifier.weight(1f),
+                            active = activeTwoDTab == "research",
+                            researchChrome = researchChrome,
                             label = tr("လေ့လာရန်", "Research"),
-                            icon = Icons.Default.MenuBook, onClick = onLegacy,
+                            icon = Icons.Default.MenuBook,
+                            onClick = { activeTwoDTab = "research"; openCheck = "" },
                         )
                         TwoDNavAction(
                             modifier = Modifier.weight(1f), active = false,
+                            researchChrome = researchChrome,
                             label = tr("မူ", "Rules"),
                             icon = Icons.Default.Rule, onClick = { rulesOpen = true },
                         )
@@ -293,6 +330,16 @@ fun Historical2DTimelineScreen(
                     userChosen = true
                 },
                 onOpenDetail = { openCheck = it },
+            )
+        } else if (openCheck.isEmpty() && activeTwoDTab == "research") {
+            TwoDResearchLabScreen(
+                draws = merged.draws,
+                closedDates = closedDates,
+                cutoff = defaultTarget,
+                en = en,
+                ready = inputsReady,
+                session = researchSession,
+                modifier = Modifier.fillMaxSize().padding(inset),
             )
         } else if (openCheck.isEmpty()) {
             val selectedSection = sections.first { it.key == openGroup }
@@ -1050,12 +1097,15 @@ private fun TwoDNavAction(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
+    researchChrome: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val mint = Color(0xFF78E4D2)
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(17.dp),
-        color = if (active) scheme.primaryContainer else Color.Transparent,
+        color = if (active && researchChrome) Color(0xFF27515A)
+            else if (active) scheme.primaryContainer else Color.Transparent,
         shadowElevation = if (active) 3.dp else 0.dp,
         onClick = onClick,
     ) {
@@ -1064,11 +1114,13 @@ private fun TwoDNavAction(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
             Icon(icon, null, modifier = Modifier.size(21.dp),
-                tint = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
+                tint = if (researchChrome) (if (active) mint else Color(0xFFB4C8CE))
+                    else if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
             Text(label, style = MaterialTheme.typography.labelMedium,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                color = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
+                color = if (researchChrome) (if (active) mint else Color(0xFFB4C8CE))
+                    else if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
         }
     }
 }
