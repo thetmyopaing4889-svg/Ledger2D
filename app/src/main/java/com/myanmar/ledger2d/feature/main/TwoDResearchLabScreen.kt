@@ -58,7 +58,13 @@ internal class ResearchLabSessionState(date: LocalDate) {
     var evidenceFilter by mutableStateOf("all")
     var evidenceLimit by mutableIntStateOf(25)
     var frequencyExpanded by mutableStateOf(false)
+    var compactEvidence by mutableStateOf(false)
 }
+
+/** Equal-frequency results are more legible as pair tiles than identical bars. */
+internal fun useCompactFrequencyGrid(frequencies: List<TwoDCount>): Boolean =
+    frequencies.size > 1 && frequencies.all { it.count == frequencies.first().count }
+
 
 /**
  * One-tap templates execute a real query; they never populate fake results.
@@ -393,6 +399,41 @@ private fun LabEvidence(
                             color = p.muted)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+
+@Composable
+private fun LabCompactEvidence(
+    e: TwoDResearchEvidence, en: Boolean, p: ResearchLabPalette,
+) {
+    val stateColor = if (e.status == TwoDResearchStatus.MATCH) p.accent else p.muted
+    Surface(shape = RoundedCornerShape(12.dp), color = p.card,
+        border = BorderStroke(1.dp, p.outline)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                LabText(e.source.date.toString(), en, p, LedgerTextRole.HELPER, color = p.muted)
+                LabText(statusName(e.status, en), en, p, LedgerTextRole.HELPER,
+                    color = stateColor, weight = FontWeight.SemiBold)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LabText(sessionName(e.source.session, en) + "  " + e.source.digit,
+                    en, p, LedgerTextRole.BODY, modifier = Modifier.weight(1f),
+                    weight = FontWeight.SemiBold)
+                Icon(Icons.Default.ArrowForward, null, Modifier.size(16.dp), tint = p.accent)
+                LabText(sessionName(e.expected.session, en) + "  " +
+                    (e.following?.digit ?: "—"), en, p, LedgerTextRole.BODY,
+                    modifier = Modifier.weight(1f), weight = FontWeight.SemiBold)
+            }
+            if (e.source.date != e.expected.date) {
+                LabText(lab(en, "နောက်အကြိမ် ", "Target draw ") + e.expected.date,
+                    en, p, LedgerTextRole.HELPER, color = p.muted)
             }
         }
     }
