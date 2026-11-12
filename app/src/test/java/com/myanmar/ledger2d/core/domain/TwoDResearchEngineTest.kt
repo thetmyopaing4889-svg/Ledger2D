@@ -204,4 +204,80 @@ class TwoDResearchEngineTest {
         assertEquals(1, report.pendingCount)
     }
 
+    @Test fun atlasHeaderEligibleCountHonorsVerifiedSlotsCutoffAndClosures() {
+        val rows = listOf(
+            row("2026-11-02", am, "07"),
+            row("2026-11-02", am, "07"), // duplicate same slot
+            row("2026-11-02", pm, "31"),
+            row("2026-11-03", am, "17"),
+            row("2026-11-03", pm, "21"), // at exclusive cutoff
+            row("2026-11-04", am, "34"), // future
+            row("2026-10-31", am, "12"), // weekend, not an open draw
+            row("2026-10-30", am, "5X"), // invalid pair
+            row("2026-10-29", am, "55"), // verified closed
+        )
+        val closed = setOf(LocalDate.parse("2026-10-29"))
+        val bound = cutoff("2026-11-03", pm)
+        assertEquals(3, TwoDResearchEngine.eligibleHistoryCount(rows, bound, closed))
+        val report = TwoDResearchEngine.search(
+            rows,
+            TwoDResearchQuery(
+                sourcePair = "",
+                scope = TwoDResearchScope.AM,
+                relationship = TwoDResearchRelationship.NEXT_DRAW,
+                sourceCriterion = TwoDResearchCriterion(
+                    TwoDResearchCriterionKind.DIGIT, "7"),
+            ),
+            bound,
+            closed,
+        )
+        assertEquals(2, report.sourceCount)
+        assertEquals(1, report.observedCount)
+        assertEquals(1, report.pendingCount)
+        assertEquals(listOf("31"), report.followingFrequency.map { it.digit })
+        assertEquals(0, report.matchCount)
+        assertTrue(report.matchedFollowingFrequency.isEmpty())
+    }
+
+    @Test fun researchFrequencyAccountingHoldsAcrossAllTargetKinds() {
+        val rows = listOf(
+            row("2026-11-02", am, "77"), row("2026-11-02", pm, "03"),
+            row("2026-11-03", am, "72"), row("2026-11-03", pm, "33"),
+            row("2026-11-04", am, "17"), row("2026-11-04", pm, "24"),
+            row("2026-11-05", am, "97"), // missing PM
+        )
+        val targets = listOf(
+            TwoDResearchCriterion(TwoDResearchCriterionKind.PAIR, "03"),
+            TwoDResearchCriterion(TwoDResearchCriterionKind.DIGIT, "3"),
+            TwoDResearchCriterion(TwoDResearchCriterionKind.TENS, "3"),
+            TwoDResearchCriterion(TwoDResearchCriterionKind.ONES, "3"),
+            TwoDResearchCriterion(TwoDResearchCriterionKind.DOUBLE),
+            TwoDResearchCriterion(TwoDResearchCriterionKind.PARITY, "OO"),
+        )
+        targets.forEach { target ->
+            val report = TwoDResearchEngine.search(
+                rows,
+                TwoDResearchQuery(
+                    sourcePair = "",
+                    scope = TwoDResearchScope.AM,
+                    relationship = TwoDResearchRelationship.SAME_DAY_PM,
+                    sourceCriterion = TwoDResearchCriterion(
+                        TwoDResearchCriterionKind.DIGIT, "7"),
+                    targetCriterion = target,
+                ),
+                cutoff("2026-11-06"),
+            )
+            assertEquals(4, report.sourceCount)
+            assertEquals(report.sourceCount,
+                report.observedCount + report.missingCount +
+                    report.pendingCount + report.outsideCount)
+            assertEquals(report.observedCount, report.matchCount + report.otherCount)
+            assertEquals(report.matchCount, report.matchedFollowingFrequency.sumOf { it.count })
+            assertEquals(report.observedCount, report.followingFrequency.sumOf { it.count })
+            assertTrue(report.matchedFollowingFrequency.all {
+                target.matches(it.digit)
+            })
+        }
+    }
+
 }
