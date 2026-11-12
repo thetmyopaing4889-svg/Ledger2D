@@ -750,7 +750,7 @@ private fun RulesOpenedBook(
                     )
                     HorizontalDivider(color = colors.border)
                     when (book.kind) {
-                        "digit-table" -> OriginalDigitTable(book, colors)
+                        "digit-column" -> OriginalDigitColumn(book, colors)
                         "double-table" -> OriginalDoubleTable(book, colors)
                         else -> {
                             book.lines.forEach { sourceLine ->
@@ -805,45 +805,42 @@ private fun RulesOpenedBook(
 }
 
 @Composable
-private fun OriginalDigitTable(book: TwoDRulesBook, colors: BookColors) {
-    // The supplied file is a plain-text export of one six-column source table.
-    // Transpose for narrow mobile paper WITHOUT changing the five source titles
-    // or any of its fifty cells.
+private fun OriginalDigitColumn(book: TwoDRulesBook, colors: BookColors) {
+    // This book uses ONE original formula-column title and all ten cells
+    // from the original 0–9 source table. The exact cell wording is unchanged.
     val lines = book.lines.map { it.trim() }
-    if (lines.size != 66) {
+    if (lines.size != 21) {
         book.lines.forEach { line ->
             Text(line, color = colors.ink, fontSize = 17.sp, lineHeight = 28.sp)
         }
         return
     }
-    val columnHeaders = lines.drop(1).take(5)
-    val rows = lines.drop(6).chunked(6)
+    val digitHeading = lines.first()
+    val rows = lines.drop(1).chunked(2)
     rows.forEachIndexed { index, row ->
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        ) {
             Surface(
-                shape = RoundedCornerShape(9.dp),
+                shape = RoundedCornerShape(10.dp),
                 color = colors.panel,
             ) {
                 Text(
-                    lines.first() + "  " + row.first(),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    digitHeading + " " + row.first(),
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 19.sp, color = colors.accent,
+                    fontSize = 17.sp,
+                    color = colors.accent,
                 )
             }
-            columnHeaders.forEachIndexed { col, heading ->
-                Text(
-                    heading,
-                    color = colors.softInk,
-                    style = MaterialTheme.typography.labelMedium,
-                    lineHeight = 23.sp,
-                )
-                Text(
-                    row[col + 1],
-                    color = colors.ink, fontSize = 19.sp, lineHeight = 30.sp,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
+            Text(
+                row[1],
+                modifier = Modifier.weight(1f),
+                fontSize = 19.sp, lineHeight = 31.sp,
+                color = colors.ink,
+            )
         }
         if (index != rows.lastIndex) {
             HorizontalDivider(color = colors.border)
