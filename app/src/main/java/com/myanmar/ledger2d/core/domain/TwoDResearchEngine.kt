@@ -19,12 +19,53 @@ enum class TwoDResearchScope { AM, PM, ALL }
 enum class TwoDResearchRelationship { SAME_DAY_PM, NEXT_DRAW }
 enum class TwoDResearchStatus { OBSERVED, MATCH, OTHER, MISSING, PENDING, OUT_OF_RANGE }
 
+/**
+ * A typed condition instead of an arbitrary string expression.
+ *
+ * PAIR checks an exact 00–99 result. DIGIT checks either position, whereas
+ * TENS and ONES are positional. PARITY uses tens-before-ones E/O classes.
+ * DOUBLE checks 00,11,...,99; its value is deliberately unused.
+ */
+enum class TwoDResearchCriterionKind { PAIR, DIGIT, TENS, ONES, DOUBLE, PARITY }
+
+data class TwoDResearchCriterion(
+    val kind: TwoDResearchCriterionKind,
+    val value: String = "",
+) {
+    fun valid(): Boolean = when (kind) {
+        TwoDResearchCriterionKind.PAIR -> value.length == 2 &&
+            value.all { it in '0'..'9' }
+        TwoDResearchCriterionKind.DIGIT, TwoDResearchCriterionKind.TENS,
+        TwoDResearchCriterionKind.ONES -> value.length == 1 && value[0] in '0'..'9'
+        TwoDResearchCriterionKind.DOUBLE -> value.isEmpty()
+        TwoDResearchCriterionKind.PARITY -> value in setOf("EE", "EO", "OE", "OO")
+    }
+
+    fun matches(pair: String): Boolean {
+        if (!valid() || pair.length != 2 || pair.any { it !in '0'..'9' }) return false
+        return when (kind) {
+            TwoDResearchCriterionKind.PAIR -> pair == value
+            TwoDResearchCriterionKind.DIGIT -> value[0] in pair
+            TwoDResearchCriterionKind.TENS -> pair[0] == value[0]
+            TwoDResearchCriterionKind.ONES -> pair[1] == value[0]
+            TwoDResearchCriterionKind.DOUBLE -> pair[0] == pair[1]
+            TwoDResearchCriterionKind.PARITY -> {
+                val tens = if ((pair[0] - '0') % 2 == 0) 'E' else 'O'
+                val ones = if ((pair[1] - '0') % 2 == 0) 'E' else 'O'
+                value == "$tens$ones"
+            }
+        }
+    }
+}
+
 data class TwoDResearchQuery(
     val sourcePair: String,
     val scope: TwoDResearchScope,
     val relationship: TwoDResearchRelationship,
     val targetPair: String? = null,
     val range: TwoDHistoryRange = TwoDHistoryRange(),
+    val sourceCriterion: TwoDResearchCriterion? = null,
+    val targetCriterion: TwoDResearchCriterion? = null,
 )
 
 data class TwoDResearchEvidence(
@@ -97,9 +138,17 @@ object TwoDResearchEngine {
         cutoffExclusive: DrawIdentity,
         verifiedClosedDays: Set<LocalDate> = emptySet(),
     ): TwoDResearchReport {
-        require(validPair(query.sourcePair)) { "Source must be exactly two digits" }
-        require(query.targetPair == null || validPair(query.targetPair)) {
-            "Target must be exactly two digits"
+        val sourceRule = query.sourceCriterion ?: TwoDResearchCriterion(
+            TwoDResearchCriterionKind.PAIR, query.sourcePair)
+        val targetRule = query.targetCriterion ?: query.targetPair?.let {
+            TwoDResearchCriterion(TwoDResearchCriterionKind.PAIR, it)
+        }
+        require(sourceRule.valid()) { "Invalid source research criterion" }
+        require(query.targetPair == null || query.targetCriterion == null) {
+            "Supply one target criterion only"
+        }
+        require(targetRule == null || targetRule.valid()) {
+            "Invalid target research criterion"
         }
         require(query.range.start == null || query.range.end == null ||
             !query.range.start.isAfter(query.range.end)) {
@@ -121,7 +170,7 @@ object TwoDResearchEngine {
             .toList()
         val bySlot = valid.associateBy { it.date to it.session }
         val sources = valid.filter { row ->
-            row.digit == query.sourcePair && query.range.includes(row.date) &&
+            sourceRule.matches(row.digit) && query.range.includes(row.date) &&
                 when (query.scope) {
                     TwoDResearchScope.AM -> row.session == DrawSession.MORNING
                     TwoDResearchScope.PM -> row.session == DrawSession.EVENING
@@ -138,8 +187,8 @@ object TwoDResearchEngine {
                 !withinRange -> TwoDResearchStatus.OUT_OF_RANGE
                 !arrived -> TwoDResearchStatus.PENDING
                 following == null -> TwoDResearchStatus.MISSING
-                query.targetPair == null -> TwoDResearchStatus.OBSERVED
-                following.digit == query.targetPair -> TwoDResearchStatus.MATCH
+                targetRule == null -> TwoDResearchStatus.OBSERVED
+                targetRule.matches(following.digit) -> TwoDResearchStatus.MATCH
                 else -> TwoDResearchStatus.OTHER
             }
             TwoDResearchEvidence(source, slot, following, status)
