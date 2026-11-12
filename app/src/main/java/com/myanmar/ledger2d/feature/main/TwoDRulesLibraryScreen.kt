@@ -182,7 +182,7 @@ internal fun TwoDRulesLibraryScreen(
                         onClick = { showInfo = true },
                     ) {
                         Icon(
-                            Icons.Default.InfoOutline,
+                            Icons.Default.Info,
                             contentDescription = tr("မူရင်းအကြောင်း", "Source information"),
                             tint = palette.subtle, modifier = Modifier.size(19.dp),
                         )
