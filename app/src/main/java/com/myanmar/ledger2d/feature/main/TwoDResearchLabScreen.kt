@@ -290,8 +290,8 @@ private fun LabPeriodPicker(
         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         listOf(
             "all" to lab(en, "ရှိသမျှမှတ်တမ်း", "All history"),
-            "week" to lab(en, "၁ ပတ်", "1 week"),
-            "month" to lab(en, "၁ လ", "1 month"),
+            "week" to lab(en, "၇ ရက်", "7 days"),
+            "month" to lab(en, "၃၀ ရက်", "30 days"),
             "custom" to lab(en, "စိတ်ကြိုက်", "Custom"),
         ).forEach { (key, label) ->
             LabChoice(label, session.period == key, p) { session.period = key }
@@ -410,8 +410,8 @@ internal fun TwoDResearchLabScreen(
         else -> TwoDResearchScope.ALL
     }
     val range = when (session.period) {
-        "week" -> TwoDHistoryRange(cutoff.date.minusWeeks(1), cutoff.date)
-        "month" -> TwoDHistoryRange(cutoff.date.minusMonths(1), cutoff.date)
+        "week" -> TwoDHistoryRange(cutoff.date.minusDays(6), cutoff.date)
+        "month" -> TwoDHistoryRange(cutoff.date.minusDays(29), cutoff.date)
         "custom" -> TwoDHistoryRange(start, end)
         else -> TwoDHistoryRange()
     }
