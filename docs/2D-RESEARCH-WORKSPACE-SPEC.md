@@ -112,3 +112,26 @@ Before acceptance:
 - Confirm Rules, Analysis A-01–A-08, Summary, LIVE, ledger and winners unchanged.
 
 **No merge to main / release without successful CI and acceptance.**
+
+
+## 6. Evidence readability refinement (2026-11-12)
+
+- For **two or more distinct following pairs with identical observed counts**, show
+  compact four-column number tiles with each pair and its count. Showing
+  multiple identical full-length bars suggests a comparison that is not there.
+- For **unequal counts**, retain scaled comparison bars, sorted by count and pair.
+  One distinct pair also uses the bar presentation. Limit the initial display
+  to 12 tiles or 6 bars, with explicit expand-all control.
+- Preserve the existing high-legibility dated **Card** evidence view. Add
+  an optional **Compact** evidence view for longer studies. Both present
+  source date/session/pair, expected target session/pair, and the same
+  status. Cross-day target dates remain visible.
+- Evidence filters, newest-first ordering and 25-item incremental loading
+  apply to either view. Toggling view never changes source results.
+- Regression fixtures reconstruct the six screenshot entries for
+  `AM 12 → PM 21` and assert 6 source cases, 6 known outcomes,
+  0 matches, 6 other outcomes, and six frequencies of 1. This is a
+  test of computation against provided visible records—not independent
+  verification of the phone's Room database provenance.
+- Gate this change on the feature branch's Android CI compilation,
+  unit tests, lint, debug and release APK tasks. Keep PR #30 a draft.
