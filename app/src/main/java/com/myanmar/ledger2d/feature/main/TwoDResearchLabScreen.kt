@@ -58,6 +58,8 @@ internal class ResearchLabSessionState(date: LocalDate) {
     var resultVisible by mutableStateOf(false)
     // Guide is an optional destination; closing it restores the prior editor/result.
     var guideVisible by mutableStateOf(false)
+    // Read-only data-integrity view; never changes the submitted study.
+    var auditVisible by mutableStateOf(false)
     var evidenceFilter by mutableStateOf("all")
     var evidenceLimit by mutableIntStateOf(25)
     var frequencyExpanded by mutableStateOf(false)
@@ -291,7 +293,7 @@ private fun LabCriterionPicker(
 @Composable
 private fun LabHero(
     en: Boolean, p: ResearchLabPalette, verifiedCount: Int,
-    onOpenGuide: () -> Unit,
+    onOpenGuide: () -> Unit, onOpenAudit: () -> Unit,
 ) {
     Surface(shape = RoundedCornerShape(21.dp), color = p.hero) {
         Box(Modifier.fillMaxWidth().background(
@@ -305,17 +307,30 @@ private fun LabHero(
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold),
                         color = Color(0xFF9CE7D9))
-                    IconButton(
-                        onClick = onOpenGuide,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.HelpOutline,
-                            contentDescription = lab(en,
-                                "Research အသုံးပြုနည်းလမ်းညွှန်", "Open Research Guide"),
-                            tint = Color(0xFF9CE7D9),
-                            modifier = Modifier.size(25.dp),
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                        IconButton(
+                            onClick = onOpenAudit,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(Icons.Default.FactCheck,
+                                contentDescription = lab(en,
+                                    "သမိုင်းမှတ်တမ်း အရည်အသွေးစစ်ရန်",
+                                    "Audit history coverage"),
+                                tint = Color(0xFF9CE7D9),
+                                modifier = Modifier.size(22.dp))
+                        }
+                        IconButton(
+                            onClick = onOpenGuide,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(Icons.Default.HelpOutline,
+                                contentDescription = lab(en,
+                                    "Research အသုံးပြုနည်းလမ်းညွှန်",
+                                    "Open Research Guide"),
+                                tint = Color(0xFF9CE7D9),
+                                modifier = Modifier.size(25.dp))
+                        }
                     }
                 }
                 Text(lab(en,
@@ -500,9 +515,10 @@ internal fun TwoDResearchLabScreen(
         "custom" -> TwoDHistoryRange(start, end)
         else -> TwoDHistoryRange()
     }
-    val verifiedCount = remember(draws, closedDates, cutoff) {
-        TwoDResearchEngine.eligibleHistoryCount(draws, cutoff, closedDates)
+    val audit = remember(draws, closedDates, cutoff) {
+        TwoDResearchHistoryAuditor.inspect(draws, cutoff, closedDates)
     }
+    val verifiedCount = audit.verifiedSlots
 
     val report by produceState<TwoDResearchReport?>(
         initialValue = null, session.submitted, draws, closedDates, cutoff, ready,
@@ -517,7 +533,13 @@ internal fun TwoDResearchLabScreen(
     val resultVisible = session.resultVisible && session.submitted != null
 
     Column(modifier.fillMaxSize().background(p.background)) {
-        if (session.guideVisible) {
+        if (session.auditVisible) {
+            TwoDResearchHistoryAuditScreen(
+                audit = audit, en = en, p = p,
+                onClose = { session.auditVisible = false },
+                modifier = Modifier.weight(1f),
+            )
+        } else if (session.guideVisible) {
             TwoDResearchGuideScreen(
                 en = en,
                 p = p,
@@ -532,7 +554,8 @@ internal fun TwoDResearchLabScreen(
                 verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 item {
                     LabHero(en, p, verifiedCount,
-                        onOpenGuide = { session.guideVisible = true })
+                        onOpenGuide = { session.guideVisible = true },
+                        onOpenAudit = { session.auditVisible = true })
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
