@@ -66,10 +66,10 @@ internal object TwoDRulesBookLibrary {
                     subsection = 0
                 }
                 section == 0 -> Unit
-                subsectionHeader.containsMatchIn(line) -> {
+                subsectionHeader.containsMatchIn(line.trimStart()) -> {
                     flush()
                     subsection++
-                    title = line
+                    title = line.trimStart()
                 }
                 line.trim().matches(Regex("_+")) -> Unit
                 else -> body += line
