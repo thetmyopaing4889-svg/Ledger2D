@@ -128,14 +128,15 @@ internal fun TwoDResearchHistoryAuditScreen(
                             AuditMetric(auditLabel(en, "အတည်မပြုရသေး", "Unknown"),
                                 audit.unverifiedCount.toString(), en, p, Modifier.weight(1f))
                         }
+                        val ratio = audit.coverageRatio
                         AuditText(
-                            if (audit.coverageRatio == null)
+                            if (ratio == null)
                                 auditLabel(en, "သမိုင်းအစမှတ်တမ်းမရှိသေးပါ။",
                                     "No baseline verified history is available.")
                             else auditLabel(en, "မှတ်တမ်းပြည့်စုံမှု ",
                                     "Observed slot coverage ") +
                                 String.format(Locale.US, "%.1f%%",
-                                    audit.coverageRatio * 100.0),
+                                    ratio * 100.0),
                             en, p, LedgerTextRole.BODY, bold = true,
                         )
                         AuditText(auditLabel(en,
