@@ -152,7 +152,7 @@ fun Historical2DTimelineScreen(
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
-     BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
+    BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
         when {
             openCheck.isNotEmpty() -> openCheck = ""
             researchSession.resultVisible -> researchSession.resultVisible = false
@@ -207,7 +207,6 @@ fun Historical2DTimelineScreen(
     val scheme = MaterialTheme.colorScheme
     val researchChrome = activeTwoDTab == "research" && openCheck.isEmpty()
     val researchInk = Color(0xFF112D3A)
-    val researchMint = Color(0xFF78E4D2)
     Scaffold(
         containerColor = if (researchChrome) researchInk else scheme.background,
 
