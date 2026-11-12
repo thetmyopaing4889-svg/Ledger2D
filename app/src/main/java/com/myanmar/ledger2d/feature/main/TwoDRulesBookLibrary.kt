@@ -37,18 +37,35 @@ internal object TwoDRulesBookLibrary {
             if (section == 0 || title.isEmpty()) return
             val lines = body.dropWhile { it.isBlank() }.dropLastWhile { it.isBlank() }
             if (lines.isNotEmpty()) {
-                books += TwoDRulesBook(
-                    id = "source-$section-$subsection",
-                    title = title,
-                    sectionTitle = sectionTitle,
-                    section = section,
-                    lines = lines,
-                    kind = when {
-                        section == 2 -> "digit-table"
-                        section == 4 && subsection == 1 -> "double-table"
-                        else -> "text"
-                    },
-                )
+                if (section == 2 && subsection == 0 && lines.size == 66) {
+                    // The original single 0–9 source table has five explicitly
+                    // named formula columns. Each is a book containing ALL
+                    // ten original digit cells, in source order and wording.
+                    val headings = lines.drop(1).take(5)
+                    val rows = lines.drop(6).chunked(6)
+                    headings.forEachIndexed { column, heading ->
+                        books += TwoDRulesBook(
+                            id = "source-2-column-$column",
+                            title = heading.trim(),
+                            sectionTitle = sectionTitle,
+                            section = 2,
+                            lines = listOf(lines.first()) + rows.flatMap { row ->
+                                listOf(row.first(), row[column + 1])
+                            },
+                            kind = "digit-column",
+                        )
+                    }
+                } else {
+                    books += TwoDRulesBook(
+                        id = "source-$section-$subsection",
+                        title = title,
+                        sectionTitle = sectionTitle,
+                        section = section,
+                        lines = lines,
+                        kind = if (section == 4 && subsection == 1)
+                            "double-table" else "text",
+                    )
+                }
             }
             body = mutableListOf()
         }
