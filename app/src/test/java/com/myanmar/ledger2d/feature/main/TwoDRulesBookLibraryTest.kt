@@ -10,7 +10,7 @@ class TwoDRulesBookLibraryTest {
 
     @Test fun booksKeepDocumentHeadingsAndWholeContents() {
         val books = TwoDRulesBookLibrary.fromSource(source)
-        assertEquals(16, books.size)
+        assertEquals(20, books.size)
         assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), books.map { it.section }.toSet())
         assertTrue(books.none { it.section == 7 })
         assertEquals("(က) မနက် (နတ်) နှင့် ညနေ (မော်) တူညီမှုမူများ", books.first().title)
@@ -21,13 +21,17 @@ class TwoDRulesBookLibraryTest {
     }
 
     @Test fun digitTableRemainsTogetherWithOriginalColumnWording() {
-        val table = TwoDRulesBookLibrary.fromSource(source).single { it.section == 2 }
-        assertEquals("digit-table", table.kind)
+        val books = TwoDRulesBookLibrary.fromSource(source).filter { it.section == 2 }
+        assertEquals(5, books.size)
+        assertTrue(books.all { it.kind == "digit-column" && it.lines.size == 21 })
+        val table = books.single {
+            it.title == "တည်ဘောနှင့် ထိပ်စီးများ (၁၀ ကြိမ်တွင် ၇ ကြိမ်ကျ)"
+        }
         assertTrue(table.lines.contains("ဂဏန်း"))
-        assertTrue(table.lines.contains("\tတည်ဘောနှင့် ထိပ်စီးများ (၁၀ ကြိမ်တွင် ၇ ကြိမ်ကျ)"))
         assertTrue(table.lines.contains("\t5 - 6 - 7 - 8 ထိပ်"))
-        assertTrue(table.lines.contains("\t4 - 7 လိုက်ပါ"))
         assertTrue(table.lines.contains("\t9"))
+        val follow = books.single { it.title == "တစ်လုံးချင်းလာပြီး လိုက်ရမည့်အတွဲ" }
+        assertTrue(follow.lines.contains("\t4 - 7 လိုက်ပါ"))
         assertTrue(table.originalText.contains("0 မှ 9"))
     }
 
