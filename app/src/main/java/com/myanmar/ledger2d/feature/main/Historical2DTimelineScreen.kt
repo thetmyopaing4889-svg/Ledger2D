@@ -153,8 +153,11 @@ fun Historical2DTimelineScreen(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
      BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
-        if (openCheck.isNotEmpty()) openCheck = ""
-        else activeTwoDTab = "analysis"
+        when {
+            openCheck.isNotEmpty() -> openCheck = ""
+            researchSession.resultVisible -> researchSession.resultVisible = false
+            else -> activeTwoDTab = "analysis"
+        }
     }
     var rulesOpen by remember { mutableStateOf(false) }
 
@@ -220,6 +223,8 @@ fun Historical2DTimelineScreen(
                 IconButton(onClick = {
                     when {
                         openCheck.isNotEmpty() -> openCheck = ""
+                        researchChrome && researchSession.resultVisible ->
+                            researchSession.resultVisible = false
                         researchChrome -> activeTwoDTab = "analysis"
                         else -> onBack()
                     }
