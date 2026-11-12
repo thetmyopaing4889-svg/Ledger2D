@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Branch-local preview label; main/release manifest remains unchanged. -->
+    <application android:label="Cherry 2D • Rules Preview"/>
+</manifest>
