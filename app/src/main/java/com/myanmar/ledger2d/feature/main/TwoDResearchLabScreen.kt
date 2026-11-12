@@ -131,8 +131,8 @@ private fun LabCard(
         shape = RoundedCornerShape(20.dp), color = p.card,
         border = BorderStroke(1.dp, p.outline.copy(alpha = .8f)),
         shadowElevation = 2.dp) {
-        Column(Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp), content = content)
+        Column(Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
     }
 }
 
@@ -178,15 +178,15 @@ private fun researchScopeName(s: TwoDResearchScope) = s.name
 @Composable
 private fun LabChoice(
     label: String, selected: Boolean, p: ResearchLabPalette,
-    modifier: Modifier = Modifier, onClick: () -> Unit,
+    modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit,
 ) {
-    Surface(modifier = modifier, onClick = onClick,
-        shape = RoundedCornerShape(13.dp),
+    Surface(modifier = modifier, onClick = onClick, enabled = enabled,
+        shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, if (selected) p.accent else p.outline),
         color = if (selected) p.accentWash else p.card) {
-        Box(Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+        Box(Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
             contentAlignment = Alignment.Center) {
-            Text(label, color = if (selected) p.accent else p.ink,
+            Text(label, color = if (!enabled) p.muted else if (selected) p.accent else p.ink,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 maxLines = 2, textAlign = TextAlign.Center)
         }
@@ -199,14 +199,17 @@ private fun LabCriterionPicker(
     value: String, onKind: (TwoDResearchCriterionKind) -> Unit,
     onValue: (String) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        TwoDResearchCriterionKind.entries.forEach { candidate ->
-            LabChoice(kindName(candidate, en), candidate == kind, p,
-                onClick = {
-                    onKind(candidate)
-                    onValue(if (candidate == TwoDResearchCriterionKind.PARITY) "EE" else "")
-                })
+    // All six research operators remain visible; none is clipped offscreen.
+    TwoDResearchCriterionKind.entries.toList().chunked(3).forEach { choices ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            choices.forEach { candidate ->
+                LabChoice(kindName(candidate, en), candidate == kind, p,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        onKind(candidate)
+                        onValue(if (candidate == TwoDResearchCriterionKind.PARITY) "EE" else "")
+                    })
+            }
         }
     }
     if (kind == TwoDResearchCriterionKind.PARITY) {
@@ -254,8 +257,8 @@ private fun LabHero(
     Surface(shape = RoundedCornerShape(21.dp), color = p.hero) {
         Box(Modifier.fillMaxWidth().background(
             Brush.linearGradient(listOf(p.hero, p.heroLight)))) {
-            Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Column(Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween) {
@@ -267,8 +270,8 @@ private fun LabHero(
                         tint = p.heroText, modifier = Modifier.size(24.dp))
                 }
                 Text(lab(en,
-                        "မှတ်တမ်းတွေထဲက ဆက်စပ်မှုကို ရှာဖွေပါ",
-                        "Explore what history actually shows"),
+                        "2D သမိုင်းဆက်စပ်မှု လေ့လာရန်",
+                        "Explore 2D history"),
                     style = LedgerTypographyStandard.style(
                         LedgerTextRole.CARD_TITLE, if (en) "en" else "my"),
                     color = p.heroText)
@@ -436,8 +439,8 @@ internal fun TwoDResearchLabScreen(
     Column(modifier.fillMaxSize().background(p.background)) {
         if (!resultVisible) {
             LazyColumn(Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 13.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 item { LabHero(en, p, verifiedCount) }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -513,10 +516,18 @@ internal fun TwoDResearchLabScreen(
                             horizontalArrangement = Arrangement.SpaceBetween) {
                             LabText(lab(en, "နောက်ရလဒ်ကို တိုက်စစ်မလား", "Compare a target?"),
                                 en, p, LedgerTextRole.BODY, modifier = Modifier.weight(1f))
-                            Switch(checked = session.compare,
+                            Switch(
+                                checked = session.compare,
                                 onCheckedChange = { session.compare = it },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = p.card, checkedTrackColor = p.accent))
+                                    checkedThumbColor = p.hero,
+                                    checkedTrackColor = p.accent,
+                                    checkedBorderColor = p.accent,
+                                    uncheckedThumbColor = p.muted,
+                                    uncheckedTrackColor = p.mutedSurface,
+                                    uncheckedBorderColor = p.outline,
+                                ),
+                            )
                         }
                         if (session.compare) {
                             LabText(lab(en, "တိုက်စစ်မည့်အခြေအနေ", "TARGET CONDITION"),
@@ -594,7 +605,15 @@ internal fun TwoDResearchLabScreen(
                 ) {
                     Icon(Icons.Default.Search, null, Modifier.size(19.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(lab(en, "သမိုင်းလေ့လာရန်", "Run historical research"),
+                    Text(
+                        when {
+                            !ready -> lab(en, "မှတ်တမ်းဖတ်နေသည်", "Loading history")
+                            !sourceRule.valid() -> lab(en, "အခြေခံဂဏန်း ရွေးပါ", "Choose a source")
+                            session.compare && !targetRule.valid() ->
+                                lab(en, "တိုက်စစ်မည့်ဂဏန်း ရွေးပါ", "Choose a target")
+                            !rangeValid -> lab(en, "ရက်စွဲ ပြန်ရွေးပါ", "Fix date range")
+                            else -> lab(en, "သမိုင်းလေ့လာရန်", "Run historical research")
+                        },
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold)
                 }
@@ -617,8 +636,8 @@ internal fun TwoDResearchLabScreen(
                 }
             }
             LazyColumn(Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 13.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 item {
                     Surface(color = p.hero, shape = RoundedCornerShape(20.dp)) {
                         Column(Modifier.fillMaxWidth().background(
