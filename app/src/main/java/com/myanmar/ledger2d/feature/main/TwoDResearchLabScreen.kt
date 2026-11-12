@@ -60,6 +60,38 @@ internal class ResearchLabSessionState(date: LocalDate) {
     var frequencyExpanded by mutableStateOf(false)
 }
 
+/**
+ * One-tap templates execute a real query; they never populate fake results.
+ * Preserve the editable fields so Back from the evidence view is intuitive.
+ */
+private fun ResearchLabSessionState.openPreset(
+    source: TwoDResearchCriterion,
+    target: TwoDResearchCriterion?,
+    relationshipKey: String,
+    sourceScope: TwoDResearchScope,
+) {
+    relationship = relationshipKey
+    scope = sourceScope.name.lowercase(Locale.US)
+    sourceKind = source.kind
+    sourceValue = source.value
+    compare = target != null
+    targetKind = target?.kind ?: TwoDResearchCriterionKind.PAIR
+    targetValue = target?.value.orEmpty()
+    period = "all"
+    submitted = TwoDResearchQuery(
+        sourcePair = if (source.kind == TwoDResearchCriterionKind.PAIR) source.value else "",
+        scope = if (relationshipKey == "same") TwoDResearchScope.AM else sourceScope,
+        relationship = if (relationshipKey == "same")
+            TwoDResearchRelationship.SAME_DAY_PM else TwoDResearchRelationship.NEXT_DRAW,
+        sourceCriterion = source,
+        targetCriterion = target,
+    )
+    evidenceFilter = "all"
+    evidenceLimit = 25
+    frequencyExpanded = false
+    resultVisible = true
+}
+
 internal data class ResearchLabPalette(
     val background: Color,
     val card: Color,
@@ -444,33 +476,31 @@ internal fun TwoDResearchLabScreen(
                 item { LabHero(en, p, verifiedCount) }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        LabText(lab(en, "အမြန်စမ်းရန် · ဥပမာများ",
-                            "QUICK START  /  EXAMPLES"), en, p, LedgerTextRole.HELPER,
+                        LabText(lab(en, "အမြန်စစ်ဆေးရန် · နှိပ်လိုက်ပါ",
+                            "ONE-TAP RESEARCH  /  TAP TO RUN"), en, p, LedgerTextRole.HELPER,
                             color = p.muted)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            LabChoice("12 → 21", false, p) {
-                                session.relationship = "same"
-                                session.scope = "am"
-                                session.sourceKind = TwoDResearchCriterionKind.PAIR
-                                session.sourceValue = "12"
-                                session.compare = true
-                                session.targetKind = TwoDResearchCriterionKind.PAIR
-                                session.targetValue = "21"
+                            LabChoice("12 → 21", false, p, enabled = ready) {
+                                session.openPreset(
+                                    TwoDResearchCriterion(TwoDResearchCriterionKind.PAIR, "12"),
+                                    TwoDResearchCriterion(TwoDResearchCriterionKind.PAIR, "21"),
+                                    "same", TwoDResearchScope.AM,
+                                )
                             }
-                            LabChoice(lab(en, "အပူးနောက်", "After doubles"), false, p) {
-                                session.relationship = "next"
-                                session.scope = "all"
-                                session.sourceKind = TwoDResearchCriterionKind.DOUBLE
-                                session.sourceValue = ""
-                                session.compare = false
+                            LabChoice(lab(en, "အပူးနောက်", "After doubles"), false, p,
+                                enabled = ready) {
+                                session.openPreset(
+                                    TwoDResearchCriterion(TwoDResearchCriterionKind.DOUBLE),
+                                    null, "next", TwoDResearchScope.ALL,
+                                )
                             }
-                            LabChoice(lab(en, "မမနောက်", "After odd/odd"), false, p) {
-                                session.relationship = "next"
-                                session.scope = "all"
-                                session.sourceKind = TwoDResearchCriterionKind.PARITY
-                                session.sourceValue = "OO"
-                                session.compare = false
+                            LabChoice(lab(en, "မမနောက်", "After odd/odd"), false, p,
+                                enabled = ready) {
+                                session.openPreset(
+                                    TwoDResearchCriterion(TwoDResearchCriterionKind.PARITY, "OO"),
+                                    null, "next", TwoDResearchScope.ALL,
+                                )
                             }
                         }
                     }
