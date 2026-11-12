@@ -200,7 +200,7 @@ internal class TwoDRulesCatalog private constructor(
                             groupIndex++
                             heading = line
                         }
-                        part == 4 && groupIndex == 0 -> Unit // table handled above
+                        part == 4 && groupIndex <= 1 -> Unit // the ten double rows are indexed above
                         else -> {
                             if (heading.isEmpty()) heading = "အပိုင်း (" + part + ")"
                             val continuation = line.startsWith("1.") ||
