@@ -440,6 +440,39 @@ internal fun TwoDResearchLabScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { LabHero(en, p, verifiedCount) }
                 item {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        LabText(lab(en, "အမြန်စမ်းရန် · ဥပမာများ",
+                            "QUICK START  /  EXAMPLES"), en, p, LedgerTextRole.HELPER,
+                            color = p.muted)
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            LabChoice("12 → 21", false, p) {
+                                session.relationship = "same"
+                                session.scope = "am"
+                                session.sourceKind = TwoDResearchCriterionKind.PAIR
+                                session.sourceValue = "12"
+                                session.compare = true
+                                session.targetKind = TwoDResearchCriterionKind.PAIR
+                                session.targetValue = "21"
+                            }
+                            LabChoice(lab(en, "အပူးနောက်", "After doubles"), false, p) {
+                                session.relationship = "next"
+                                session.scope = "all"
+                                session.sourceKind = TwoDResearchCriterionKind.DOUBLE
+                                session.sourceValue = ""
+                                session.compare = false
+                            }
+                            LabChoice(lab(en, "မမနောက်", "After odd/odd"), false, p) {
+                                session.relationship = "next"
+                                session.scope = "all"
+                                session.sourceKind = TwoDResearchCriterionKind.PARITY
+                                session.sourceValue = "OO"
+                                session.compare = false
+                            }
+                        }
+                    }
+                }
+                item {
                     LabCard(p) {
                         LabText(lab(en, "၁  ·  ဆက်စပ်မှုရွေးချယ်ရန်", "01  /  RELATIONSHIP"),
                             en, p, LedgerTextRole.CARD_TITLE, weight = FontWeight.SemiBold)
