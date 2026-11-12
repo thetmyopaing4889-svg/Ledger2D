@@ -155,6 +155,8 @@ fun Historical2DTimelineScreen(
     BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
         when {
             openCheck.isNotEmpty() -> openCheck = ""
+            activeTwoDTab == "research" && researchSession.guideVisible ->
+                researchSession.guideVisible = false
             researchSession.resultVisible -> researchSession.resultVisible = false
             else -> activeTwoDTab = "analysis"
         }
@@ -222,6 +224,8 @@ fun Historical2DTimelineScreen(
                 IconButton(onClick = {
                     when {
                         openCheck.isNotEmpty() -> openCheck = ""
+                        researchChrome && researchSession.guideVisible ->
+                            researchSession.guideVisible = false
                         researchChrome && researchSession.resultVisible ->
                             researchSession.resultVisible = false
                         researchChrome -> activeTwoDTab = "analysis"
