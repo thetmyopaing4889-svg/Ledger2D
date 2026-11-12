@@ -23,7 +23,7 @@ Version 1 permits:
 - Source scope **AM / PM / ALL**, with same-day AM→PM forcing AM.
 - Relationship **same-date morning→evening** or **next scheduled draw**.
 - Optional exact 2D target (match query); blank target means discover all following values.
-- Historical window **all available** (default), **one week**, **one month**, **custom dates**.
+- Historical window **all available** (default), **last 7 inclusive calendar dates**, **last 30 inclusive calendar dates**, or **custom inclusive dates**. The shortcuts are not unannounced rolling calendar-week/month rules.
 - Read-only results: counts, detailed draw evidence, following-pair frequencies, full
   record list with filters and pagination/expand controls.
 - Reverse-pair shortcut sets target to reverse(source); it is not a separate detector.
