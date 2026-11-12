@@ -374,6 +374,7 @@ internal fun TwoDRulesLibraryScreen(
                 )
             }
         } else {
+            val catalog = library.second
             Column(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
