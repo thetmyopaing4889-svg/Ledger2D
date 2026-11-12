@@ -5,9 +5,8 @@ import org.junit.Test
 
 class TwoDRulesBookLibraryTest {
     private val source: String
-        get() = javaClass.classLoader!!.getResourceAsStream("two_d_rules_source.txt")
-            ?.bufferedReader()?.use { it.readText() }
-            ?: throw IllegalStateException("Original Rules source test resource missing")
+        get() = java.io.File("src/main/assets/two_d_rules_source.txt")
+            .readText(Charsets.UTF_8)
 
     @Test fun booksKeepDocumentHeadingsAndWholeContents() {
         val books = TwoDRulesBookLibrary.fromSource(source)
