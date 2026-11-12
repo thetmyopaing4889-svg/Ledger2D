@@ -809,30 +809,68 @@ internal fun TwoDResearchLabScreen(
                                 LabText(lab(en, "ဆက်ထွက်ခဲ့သည့် ဂဏန်းတွဲများ",
                                     "What actually followed"), en, p,
                                     LedgerTextRole.CARD_TITLE, weight = FontWeight.SemiBold)
+                                val compact = useCompactFrequencyGrid(result.followingFrequency)
+                                val limit = if (compact) 12 else 6
                                 val frequencies = if (session.frequencyExpanded)
                                     result.followingFrequency
-                                else result.followingFrequency.take(6)
-                                val most = result.followingFrequency.first().count.coerceAtLeast(1)
-                                frequencies.forEach { item ->
-                                    Row(Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                                        LabText(item.digit, en, p, LedgerTextRole.BODY,
-                                            weight = FontWeight.SemiBold)
-                                        Box(Modifier.weight(1f).height(9.dp)
-                                            .clip(RoundedCornerShape(5.dp))
-                                            .background(p.mutedSurface)) {
-                                            Box(Modifier.fillMaxWidth(
-                                                item.count.toFloat() / most.toFloat())
-                                                .fillMaxHeight().clip(RoundedCornerShape(5.dp))
-                                                .background(p.accent))
+                                else result.followingFrequency.take(limit)
+                                if (compact) {
+                                    LabText(lab(en,
+                                        "အကြိမ်ရေတူသော ဂဏန်းတွဲများ",
+                                        "Pairs with equal observed frequency"),
+                                        en, p, LedgerTextRole.HELPER, color = p.muted)
+                                    frequencies.chunked(4).forEach { group ->
+                                        Row(Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                            group.forEach { entry ->
+                                                Surface(Modifier.weight(1f),
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    color = p.mutedSurface,
+                                                    border = BorderStroke(1.dp, p.outline)) {
+                                                    Column(
+                                                        Modifier.padding(
+                                                            horizontal = 5.dp, vertical = 9.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                        LabText(entry.digit, en, p,
+                                                            LedgerTextRole.BODY,
+                                                            weight = FontWeight.SemiBold)
+                                                        LabText(entry.count.toString() + "×",
+                                                            en, p, LedgerTextRole.HELPER,
+                                                            color = p.muted)
+                                                    }
+                                                }
+                                            }
+                                            repeat(4 - group.size) {
+                                                Spacer(Modifier.weight(1f))
+                                            }
                                         }
-                                        LabText(item.count.toString() + "×", en, p,
-                                            LedgerTextRole.HELPER, color = p.muted)
+                                    }
+                                } else {
+                                    val most = result.followingFrequency.first().count
+                                        .coerceAtLeast(1)
+                                    frequencies.forEach { entry ->
+                                        Row(Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                                            LabText(entry.digit, en, p, LedgerTextRole.BODY,
+                                                weight = FontWeight.SemiBold)
+                                            Box(Modifier.weight(1f).height(9.dp)
+                                                .clip(RoundedCornerShape(5.dp))
+                                                .background(p.mutedSurface)) {
+                                                Box(Modifier.fillMaxWidth(
+                                                    entry.count.toFloat() / most.toFloat())
+                                                    .fillMaxHeight()
+                                                    .clip(RoundedCornerShape(5.dp))
+                                                    .background(p.accent))
+                                            }
+                                            LabText(entry.count.toString() + "×",
+                                                en, p, LedgerTextRole.HELPER, color = p.muted)
+                                        }
                                     }
                                 }
                                 if (!session.frequencyExpanded &&
-                                    result.followingFrequency.size > 6) {
+                                    result.followingFrequency.size > limit) {
                                     TextButton(onClick = {
                                         session.frequencyExpanded = true
                                     }, colors = ButtonDefaults.textButtonColors(
@@ -845,8 +883,25 @@ internal fun TwoDResearchLabScreen(
                         }
                     }
                     item {
-                        LabText(lab(en, "သမိုင်းအထောက်အထား", "SOURCE EVIDENCE"),
-                            en, p, LedgerTextRole.CARD_TITLE, weight = FontWeight.SemiBold)
+                        Row(Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween) {
+                            LabText(lab(en, "သမိုင်းအထောက်အထား", "SOURCE EVIDENCE"),
+                                en, p, LedgerTextRole.CARD_TITLE,
+                                modifier = Modifier.weight(1f),
+                                weight = FontWeight.SemiBold)
+                            TextButton(onClick = {
+                                session.compactEvidence = !session.compactEvidence
+                            }, colors = ButtonDefaults.textButtonColors(contentColor = p.accent)) {
+                                Icon(if (session.compactEvidence) Icons.Default.ViewAgenda
+                                    else Icons.Default.ViewList, null,
+                                    Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (session.compactEvidence)
+                                    lab(en, "ကတ်ပုံစံ", "Cards")
+                                    else lab(en, "အကျဉ်း", "Compact"))
+                            }
+                        }
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             val filters = if (target == null) listOf(
@@ -880,7 +935,8 @@ internal fun TwoDResearchLabScreen(
                     } else {
                         items(filtered.take(session.evidenceLimit),
                             key = { it.source.date.toString() + it.source.session.name }) {
-                            LabEvidence(it, en, p)
+                            if (session.compactEvidence) LabCompactEvidence(it, en, p)
+                            else LabEvidence(it, en, p)
                         }
                         if (filtered.size > session.evidenceLimit) {
                             item {
