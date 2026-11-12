@@ -1512,3 +1512,30 @@ and all six target-condition kinds' matched-versus-observed histogram sums.
 **Acceptance gate:** Android CI green on the latest head, then real phone
 light/dark theme and result verification, plus an independent audit of historic
 source records. No merger into main or release before those checks.
+
+---
+
+# Part XXVIII — Research Academy interactive usage guide (2026-11-12)
+
+The user authorized a user-facing in-app usage guide for Research Atlas,
+delegating detailed design and implementation to the assistant. This is a
+separate optional Research Academy screen—not a change to A-01–A-08,
+Summary, Rules or historic formulas.
+
+The Research editor's hero and Evidence hero each expose a help (?) button;
+Quick Start has a visible Guide link. The same bilingual, expandable
+six-lesson guide explains query construction; exact pair/any digit/tens/
+ones/double/ordered parity conditions; same-day and next scheduled AM/PM/ALL
+semantics; target comparison, history range, denominator and coverage statuses;
+matched versus all frequencies; and card/compact evidence.
+
+The guide contains six **real, one-tap research examples**, implemented as
+validated typed queries submitted to the existing read-only Research Engine.
+It contains no synthetic draw outcomes. Opening or closing the guide never
+deletes the in-progress study. Android and toolbar Back dismiss guide before
+leaving the result or Research tab. Choosing an example intentionally opens
+its real Evidence results.
+
+Reference: `docs/2D-RESEARCH-WORKSPACE-SPEC.md` §9, plus
+`ResearchAtlasGuideTest.kt`. Main remains unchanged; Research draft PR #30
+requires Android CI and phone UI acceptance before merge.
