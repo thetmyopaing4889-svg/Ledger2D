@@ -96,6 +96,45 @@ class TwoDReaderCatalogTest {
         assertEquals(new, TwoDReaderCatalog.migrateSavedBookIds(new, books))
     }
 
+    @Test fun numericSearchUsesWholeNumberTokensAndReturnsExactBookPosition() {
+        val token = TwoDReaderSearch.pattern("77")!!
+        assertTrue(token.containsMatchIn("77 - 75 / (77)"))
+        assertFalse(token.containsMatchIn("177"))
+        assertFalse(token.containsMatchIn("770"))
+        assertFalse(token.containsMatchIn("၇77"))
+        assertTrue(TwoDReaderSearch.pattern("အသေ")!!.containsMatchIn("အသေပိတ်"))
+
+        val hits = TwoDReaderSearch.find(books, "77")
+        assertTrue(hits.isNotEmpty())
+        assertTrue(hits.any { it.sourceRuleId == "cherry-021" })
+        assertTrue(hits.all { hit ->
+            books.single { it.id == hit.bookId }
+                .rules[hit.entryIndex].id == hit.sourceRuleId
+        })
+        assertTrue(TwoDReaderSearch.find(books, " ".repeat(3)).isEmpty())
+        assertTrue(TwoDReaderSearch.find(books, "missing-xyz-rule").isEmpty())
+    }
+
+    @Test fun titleAndTableSearchFindTheirCategoryWithoutChangingBooks() {
+        assertTrue(TwoDReaderSearch.find(books, "အသေ").any {
+            it.bookId == "category-dead"
+        })
+        assertTrue(TwoDReaderSearch.find(books, "+7").any {
+            it.bookId == "category-dead"
+        })
+        assertEquals(9, books.size)
+        assertEquals(75, rules.size)
+    }
+
+    @Test fun debugPreviewRetainsOriginalLauncherNameAndSeparatePackageId() {
+        val debugManifest = File("src/debug/AndroidManifest.xml").readText()
+        val mainStrings = File("src/main/res/values/strings.xml").readText()
+        val gradle = File("build.gradle.kts").readText()
+        assertTrue(debugManifest.contains("android:label=\"@string/app_name\""))
+        assertTrue(mainStrings.contains("Cherry 2D Ledger"))
+        assertTrue(gradle.contains("applicationIdSuffix = \".rulespreview\""))
+    }
+
     @Test fun selectedExamplesArePreservedAndNoBetterDataIsIncluded() {
         val examples = rules.filter { it.exampleLines.isNotEmpty() }
         assertEquals(7, examples.size)
