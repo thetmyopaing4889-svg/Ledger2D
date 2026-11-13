@@ -121,7 +121,7 @@ internal fun TwoDRulesLibraryScreen(
     }
     val library = remember(source, readerSource) {
         if (source == null || readerSource == null) null else runCatching {
-            Pair(TwoDReaderCatalog.fromJson(readerSource), TwoDRulesCatalog.fromSource(source))
+            Pair(TwoDReaderCatalog.booksFromJson(readerSource), TwoDRulesCatalog.fromSource(source))
         }.getOrNull()
     }
     val books = library?.first.orEmpty()
@@ -639,7 +639,7 @@ internal fun TwoDRulesLibraryScreen(
 
 @Composable
 private fun RulesBookCover(
-    book: TwoDReaderRule,
+    book: TwoDReaderBook,
     colors: BookColors,
     onClick: () -> Unit,
 ) {
@@ -691,7 +691,7 @@ private fun RulesBookCover(
 
 @Composable
 private fun RulesOpenedBook(
-    book: TwoDReaderRule,
+    book: TwoDReaderBook,
     colors: BookColors,
     en: Boolean,
     favorite: Boolean,
@@ -744,17 +744,41 @@ private fun RulesOpenedBook(
                         fontWeight = FontWeight.Bold, color = colors.accent,
                     )
                     HorizontalDivider(color = colors.border)
-                    // Only the rule title, concise rule text, its real source
-                    // table and an optional selected visual example are shown.
-                    Text(
-                        text = book.text,
-                        fontSize = 16.sp,
-                        lineHeight = 27.sp,
-                        color = colors.ink,
-                    )
-                    book.table?.let { ReaderRuleTable(it, colors) }
-                    if (book.exampleLines.isNotEmpty()) {
-                        ReaderRuleExample(book.exampleLines, colors)
+                    // Covers are original topic groups. Keep their individual
+                    // formulas inside one scrollable book, in source order.
+                    book.rules.forEachIndexed { index, rule ->
+                        // When the original line already starts with its rule
+                        // heading, do not repeat that heading on screen.
+                        if (book.rules.size > 1 &&
+                            !rule.text.startsWith(rule.title) &&
+                            !rule.text.startsWith("* " + rule.title)
+                        ) {
+                            Text(
+                                text = rule.title,
+                                fontSize = 16.sp,
+                                lineHeight = 24.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.accent,
+                            )
+                        }
+                        if (rule.text.isNotBlank()) {
+                            Text(
+                                text = rule.text,
+                                fontSize = 16.sp,
+                                lineHeight = 27.sp,
+                                color = colors.ink,
+                            )
+                        }
+                        rule.table?.let { ReaderRuleTable(it, colors) }
+                        if (rule.exampleLines.isNotEmpty()) {
+                            ReaderRuleExample(rule.exampleLines, colors)
+                        }
+                        if (index < book.rules.lastIndex) {
+                            HorizontalDivider(
+                                color = colors.border,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                        }
                     }
                     Spacer(Modifier.height(9.dp))
                 }
