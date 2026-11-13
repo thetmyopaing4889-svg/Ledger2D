@@ -154,6 +154,10 @@ internal fun TwoDRulesLibraryScreen(
     var view by rememberSaveable { mutableStateOf("books") }
     var openedBookId by rememberSaveable { mutableStateOf<String?>(null) }
     var numberCategory by rememberSaveable { mutableStateOf("digits") }
+    // New number-first overview. Keep all older category screens available.
+    var numberExperience by rememberSaveable { mutableStateOf("lookup") }
+    var lookupKind by rememberSaveable { mutableStateOf("digit") }
+    var lookupPairInput by rememberSaveable { mutableStateOf("00") }
     var digit by rememberSaveable { mutableStateOf("0") }
     var doublePair by rememberSaveable { mutableStateOf("00") }
     var bornPair by rememberSaveable { mutableStateOf("01") }
@@ -469,8 +473,58 @@ internal fun TwoDRulesLibraryScreen(
             val catalog = library.second
             Column(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        "lookup" to tr("ဂဏန်းရွေး၍ကြည့်ရန်", "Number lookup"),
+                        "original" to tr("မူရင်းအုပ်စုများ", "Original categories"),
+                    ).forEach { (id, label) ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            onClick = { numberExperience = id },
+                            color = if (numberExperience == id)
+                                colors.accent else colors.panel,
+                            shape = RoundedCornerShape(10.dp),
+                        ) {
+                            Box(
+                                Modifier.height(38.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (numberExperience == id)
+                                        colors.paper else colors.ink,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (numberExperience == "lookup") {
+                    NumberFirstLookupScreen(
+                        catalog = catalog,
+                        en = en,
+                        colors = colors,
+                        selectedDigit = digit,
+                        onDigitSelected = { digit = it },
+                        kind = lookupKind,
+                        onKindSelected = { lookupKind = it },
+                        pairInput = lookupPairInput,
+                        onPairInputChanged = { lookupPairInput = it },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+                } else {
+                    // Preserve the whole prior six-category number reader,
+                    // including its selector state and copy-original action.
+                    Column(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
@@ -717,6 +771,401 @@ internal fun TwoDRulesLibraryScreen(
                         }
                     }
                 }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Primary number-first experience. Every card renders ORIGINAL source text;
+ * inferred mentions are clearly separated from source/trigger conditions.
+ */
+@Composable
+private fun NumberFirstLookupScreen(
+    catalog: TwoDRulesCatalog,
+    en: Boolean,
+    colors: BookColors,
+    selectedDigit: String,
+    onDigitSelected: (String) -> Unit,
+    kind: String,
+    onKindSelected: (String) -> Unit,
+    pairInput: String,
+    onPairInputChanged: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    fun tr(mm: String, english: String) = if (en) english else mm
+    val clipboard = LocalClipboardManager.current
+    val picked = if (kind == "digit") selectedDigit
+        else pairInput.takeIf { it.length == 2 }
+    val result = remember(catalog, picked) {
+        picked?.let { catalog.lookup(it) }
+    }
+    var showMentions by rememberSaveable { mutableStateOf(false) }
+    val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(picked) {
+        showMentions = false
+        scrollState.scrollToItem(0)
+    }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            listOf(
+                "digit" to tr("0–9 တစ်လုံး", "0–9 digits"),
+                "pair" to tr("00–99 နှစ်လုံး", "00–99 pairs"),
+            ).forEach { (id, label) ->
+                Surface(
+                    onClick = { onKindSelected(id) },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (kind == id) colors.accent.copy(alpha = 0.15f)
+                        else colors.panel,
+                    border = BorderStroke(
+                        1.dp, if (kind == id) colors.accent else colors.border,
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = label,
+                        color = colors.ink,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+        }
+
+        if (kind == "digit") {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                (0..1).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        (0..4).forEach { column ->
+                            val number = (row * 5 + column).toString()
+                            Surface(
+                                onClick = { onDigitSelected(number) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(9.dp),
+                                color = if (number == selectedDigit)
+                                    colors.accent else colors.panel,
+                            ) {
+                                Box(
+                                    Modifier.height(43.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        number,
+                                        color = if (number == selectedDigit)
+                                            colors.paper else colors.ink,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            OutlinedTextField(
+                value = pairInput,
+                onValueChange = { value ->
+                    if (value.length <= 2 && value.all { it in '0'..'9' }) {
+                        onPairInputChanged(value)
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+                label = { Text(tr("ဂဏန်းတွဲ ၂ လုံး ရိုက်ရန်", "Enter a two-digit pair")) },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                (0..9).forEach { number ->
+                    val pair = "$"+"number"+"$"+"number"
+                    Surface(
+                        onClick = { onPairInputChanged(pair) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (pairInput == pair) colors.accent else colors.panel,
+                    ) {
+                        Text(
+                            pair,
+                            color = if (pairInput == pair) colors.paper else colors.ink,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(
+                                horizontal = 12.dp, vertical = 9.dp,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        if (result == null) {
+            Text(
+                tr("00 မှ 99 အတွင်း ဂဏန်းတွဲ နှစ်လုံးပြည့်အောင် ရိုက်ပါ။",
+                    "Type exactly two digits between 00 and 99."),
+                color = colors.softInk,
+                modifier = Modifier.padding(12.dp),
+            )
+        } else {
+            Surface(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                color = colors.paper,
+                shape = RoundedCornerShape(15.dp),
+                border = BorderStroke(1.dp, colors.border),
+            ) {
+                LazyColumn(
+                    state = scrollState,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        horizontal = 12.dp, vertical = 13.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    item(key = "selection-header") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    tr("ရွေးထားသော ဂဏန်း", "Selected number"),
+                                    color = colors.softInk,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                                Text(
+                                    result.number,
+                                    color = colors.accent,
+                                    fontSize = 30.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            IconButton(onClick = {
+                                val full = (result.direct + result.mentioned)
+                                    .joinToString("\n\n") {
+                                        it.groupTitle + "\n" + it.rule.original
+                                    }
+                                clipboard.setText(AnnotatedString(full))
+                            }) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    tr("သက်ဆိုင်သော မူရင်းစာသားများကူးရန်", "Copy matched rules"),
+                                    tint = colors.accent,
+                                )
+                            }
+                        }
+                    }
+                    item(key = "direct-title") {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                tr("တိုက်ရိုက်သက်ဆိုင်သော မူများ", "Direct source rules"),
+                                color = colors.accent,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                            )
+                            Text(
+                                tr("ထွက်ခဲ့သည့်ဂဏန်း / ရှေ့ခံဂဏန်းအဖြစ် မူရင်းတွင် ဖော်ပြထားသည်",
+                                    "The original lists this number as an input or trigger"),
+                                color = colors.softInk,
+                                fontSize = 12.sp,
+                                lineHeight = 19.sp,
+                            )
+                        }
+                    }
+                    if (result.direct.isEmpty()) {
+                        item(key = "empty-direct") {
+                            Text(
+                                tr("ဒီဂဏန်းကို ရှေ့ခံအဖြစ် ဖော်ပြထားသော မူ မတွေ့ပါ။",
+                                    "No direct source rule for this number."),
+                                color = colors.softInk,
+                                modifier = Modifier.padding(vertical = 10.dp),
+                            )
+                        }
+                    } else {
+                        listItems(result.direct, key = { "direct:" + it.rule.id }) { entry ->
+                            NumberLookupSourceCard(
+                                entry = entry,
+                                selectedNumber = result.number,
+                                colors = colors,
+                                en = en,
+                            )
+                        }
+                    }
+                    item(key = "related-toggle") {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            HorizontalDivider(color = colors.border)
+                            Surface(
+                                onClick = { showMentions = !showMentions },
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.panel,
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(
+                                        horizontal = 12.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            tr("အခြားမူများတွင် ပါဝင်သောဂဏန်း",
+                                                "Other source mentions"),
+                                            color = colors.ink,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            tr("ဆက်စပ်မှုသာဖြစ်ပြီး ထွက်လာမည့်ရလဒ်ဟု မဆိုလိုပါ",
+                                                "Mentioned in source; not necessarily a result"),
+                                            color = colors.softInk,
+                                            fontSize = 12.sp,
+                                        )
+                                    }
+                                    Text(
+                                        result.mentioned.size.toString(),
+                                        color = colors.accent,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Icon(
+                                        if (showMentions) Icons.Default.ExpandLess
+                                            else Icons.Default.ExpandMore,
+                                        null, tint = colors.accent,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (showMentions) {
+                        if (result.mentioned.isEmpty()) {
+                            item(key = "empty-mentions") {
+                                Text(
+                                    tr("အခြားဆက်စပ်ဖော်ပြချက် မရှိပါ။", "No other source mentions."),
+                                    color = colors.softInk,
+                                    modifier = Modifier.padding(10.dp),
+                                )
+                            }
+                        } else {
+                            listItems(result.mentioned, key = { "related:" + it.rule.id }) { entry ->
+                                NumberLookupSourceCard(
+                                    entry = entry,
+                                    selectedNumber = result.number,
+                                    colors = colors,
+                                    en = en,
+                                )
+                            }
+                        }
+                    }
+                    item(key = "lookup-note") {
+                        Text(
+                            tr("မူရင်းစာတမ်းအရ ဖော်ပြထားခြင်းဖြစ်ပြီး ဂဏန်းထွက်မည် / မထွက်မည်ကို အာမခံခြင်းမဟုတ်ပါ။",
+                                "These are source rules, not guarantees of any future result."),
+                            color = colors.softInk,
+                            fontSize = 11.sp,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(vertical = 7.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumberLookupSourceCard(
+    entry: TwoDNumberLookupEntry,
+    selectedNumber: String,
+    colors: BookColors,
+    en: Boolean,
+) {
+    val rule = entry.rule
+    val title = when (entry.kind) {
+        "digit" -> when (rule.id.substringAfter("s2-").substringBefore("-")) {
+            "0" -> if (en) "Dead ending (+7)" else "နောက်ပိတ်အသေ (+7) မူ"
+            "1" -> if (en) "Follow digit (+4)" else "ပတ်သီး (+4) မူ"
+            "2" -> if (en) "Leading digits" else "တည်ဘော / ထိပ်စီးမူ"
+            "3" -> if (en) "Returning digits" else "ပျောက်ပြီးပြန်လာမူ"
+            else -> if (en) "Following pairs" else "လိုက်ရမည့်အတွဲမူ"
+        }
+        "double" -> if (en) "Double / rotation / born pairs"
+            else "အပူး / အပြီးခွေ / မွေးဂဏန်းမူ"
+        "born" -> if (en) "Born-pair formula" else "မွေးဂဏန်းမူ"
+        else -> when (rule.section) {
+            1 -> if (en) "Morning / evening comparison" else "မနက်၊ ညနေ နှိုင်းယှဉ်မူ"
+            3 -> if (en) "Groups / break" else "အုပ်စုနှင့် ဘရိတ်မူ"
+            5 -> if (en) "Day-based formula" else "နေ့ရက်အလိုက်မူ"
+            8 -> if (en) "Dead / special formula" else "အသေဂဏန်းနှင့် အထူးမူ"
+            9 -> if (en) "Special formula" else "အထူးတွက်နည်းမူ"
+            else -> if (en) "Related original rule" else "ဆက်စပ်မူရင်းမူ"
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = colors.panel.copy(alpha = 0.60f),
+        border = BorderStroke(1.dp, colors.border),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text(
+                title,
+                color = colors.accent,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+            )
+            if (entry.kind == "double" && rule.original.lines().size == 3) {
+                val lines = rule.original.lines()
+                ReaderDigitsText(
+                    value = lines[0],
+                    color = colors.ink,
+                    fontSize = 15.sp,
+                    lineHeight = 24.sp,
+                    highlightQuery = selectedNumber,
+                )
+                Text(
+                    if (en) "4-digit rotation" else "အပြီးခွေ",
+                    fontSize = 12.sp, color = colors.softInk,
+                )
+                ReaderDigitsText(
+                    value = lines[1],
+                    color = colors.ink,
+                    fontSize = 16.sp, lineHeight = 25.sp,
+                    highlightQuery = selectedNumber,
+                )
+                Text(
+                    if (en) "Born pairs" else "မွေးဂဏန်း",
+                    fontSize = 12.sp, color = colors.softInk,
+                )
+                ReaderDigitsText(
+                    value = lines[2],
+                    color = colors.ink,
+                    fontSize = 16.sp, lineHeight = 25.sp,
+                    highlightQuery = selectedNumber,
+                )
+            } else {
+                ReaderDigitsText(
+                    value = rule.original,
+                    color = colors.ink,
+                    fontSize = 16.sp,
+                    lineHeight = 26.sp,
+                    highlightQuery = selectedNumber,
+                )
             }
         }
     }
