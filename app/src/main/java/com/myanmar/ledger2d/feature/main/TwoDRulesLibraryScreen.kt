@@ -202,10 +202,6 @@ internal fun TwoDRulesLibraryScreen(
                                         Text(book.title, color = colors.ink,
                                             fontWeight = FontWeight.SemiBold,
                                             style = MaterialTheme.typography.bodyMedium)
-                                        Text(book.sectionTitle,
-                                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                            color = colors.softInk,
-                                            style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                             }
