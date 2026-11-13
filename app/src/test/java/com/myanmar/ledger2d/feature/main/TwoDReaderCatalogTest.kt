@@ -28,7 +28,7 @@ class TwoDReaderCatalogTest {
         assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), covers.map { it.section }.toSet())
         assertEquals("မနက် / ညနေ တူညီမှုမူများ", covers.first().title)
         assertTrue(covers.none { it.title.startsWith("အပိုင်း (") ||
-            it.title.startsWith("(က)") || it.title.first().isDigit() })
+            it.title.startsWith("(က)") || Regex("""^[0-9]+\.\s""").containsMatchIn(it.title) })
         assertEquals(covers.size, covers.map { it.id }.distinct().size)
         assertEquals(rules.map { it.id }, covers.flatMap { it.rules }.map { it.id })
         assertEquals(26, covers.single { it.section == 6 }.rules.size)
