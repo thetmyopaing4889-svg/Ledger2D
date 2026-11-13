@@ -25,6 +25,25 @@ internal data class TwoDRuleGroup(
     val items: List<TwoDRuleItem>,
 )
 
+/**
+ * A number-first index, derived entirely from the immutable source.
+ *
+ * Source / trigger: the number is explicitly the input to a rule.
+ * Mention: the number also appears in a rule, which must NOT be mistaken
+ * for a prediction, a born pair, or a guaranteed dead number.
+ */
+internal data class TwoDNumberLookupEntry(
+    val rule: TwoDRuleItem,
+    val groupTitle: String,
+    val kind: String,
+)
+
+internal data class TwoDNumberLookup(
+    val number: String,
+    val direct: List<TwoDNumberLookupEntry>,
+    val mentioned: List<TwoDNumberLookupEntry>,
+)
+
 internal class TwoDRulesCatalog private constructor(
     val groups: List<TwoDRuleGroup>,
 ) {
@@ -33,6 +52,61 @@ internal class TwoDRulesCatalog private constructor(
 
     fun groupsIn(category: String): List<TwoDRuleGroup> =
         groups.filter { it.category == category }
+
+    /**
+     * Keep one digit and two digits as separate domains: 0 is NOT 00/07/70.
+     * Include *all* source sections; sections 4 and 6 have explicit trigger
+     * metadata, while the specially phrased rules of section 8 sometimes put
+     * their trigger at the start of their source sentence.
+     */
+    fun lookup(number: String): TwoDNumberLookup {
+        require(number.matches(Regex("""[0-9]{1,2}""")))
+        val direct = mutableListOf<TwoDNumberLookupEntry>()
+        val mentioned = mutableListOf<TwoDNumberLookupEntry>()
+        groups.forEach { group ->
+            group.items.forEach { rule ->
+                val exactTrigger = number in rule.sourceNumbers ||
+                    explicitFirstNumberTrigger(rule.original, number)
+                val item = TwoDNumberLookupEntry(
+                    rule = rule,
+                    groupTitle = group.title,
+                    kind = when {
+                        group.category == "digits" -> "digit"
+                        rule.id.startsWith("s4-") && group.category == "double" ->
+                            "double"
+                        group.category == "born" -> "born"
+                        else -> "source"
+                    },
+                )
+                when {
+                    exactTrigger -> direct += item
+                    number in rule.relatedNumbers -> mentioned += item
+                }
+            }
+        }
+        return TwoDNumberLookup(
+            number = number,
+            direct = direct.distinctBy { it.rule.id },
+            mentioned = mentioned.distinctBy { it.rule.id },
+        )
+    }
+
+    /**
+     * Conservative additional trigger recognition for the original section-8
+     * sentences "* 74 (R) ထွက်လျှင် ...", "* 0 အပိတ် ထွက်လျှင် ...".
+     * Never treat any number buried in a result list as a source trigger.
+     */
+    private fun explicitFirstNumberTrigger(source: String, number: String): Boolean {
+        val firstLine = source.lineSequence().firstOrNull().orEmpty()
+            .trim().removePrefix("*").trim()
+        val leading = Regex("""^([0-9]{1,2})(?![0-9])""").find(firstLine)?.groupValues?.get(1)
+            ?: return false
+        if (leading != number) return false
+        val condition = firstLine.substringBefore(":").take(75)
+        return condition.contains("ထွက်") || condition.contains("အပိတ်") ||
+            condition.contains("ထိပ်") || condition.contains("အပူး") ||
+            condition.contains("ပူး")
+    }
 
     fun byNumber(number: String): List<TwoDRuleItem> {
         if (!number.matches(Regex("[0-9]{1,2}"))) return emptyList()
