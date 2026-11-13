@@ -31,6 +31,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -107,12 +111,18 @@ internal fun TwoDRulesLibraryScreen(
                 .bufferedReader(Charsets.UTF_8).use { it.readText() }
         }.getOrNull()
     }
-    val library = remember(source) {
-        source?.let {
-            runCatching {
-                Pair(TwoDRulesBookLibrary.fromSource(it), TwoDRulesCatalog.fromSource(it))
-            }.getOrNull()
-        }
+    // Source remains immutable and powers the existing number-first catalog.
+    // The curated reader asset only controls book titles, tables and examples.
+    val readerSource = remember(context) {
+        runCatching {
+            context.assets.open("two_d_rules_reader.json")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        }.getOrNull()
+    }
+    val library = remember(source, readerSource) {
+        if (source == null || readerSource == null) null else runCatching {
+            Pair(TwoDReaderCatalog.fromJson(readerSource), TwoDRulesCatalog.fromSource(source))
+        }.getOrNull()
     }
     val books = library?.first.orEmpty()
     val catalog = library?.second
@@ -633,7 +643,7 @@ internal fun TwoDRulesLibraryScreen(
 
 @Composable
 private fun RulesBookCover(
-    book: TwoDRulesBook,
+    book: TwoDReaderRule,
     colors: BookColors,
     onClick: () -> Unit,
 ) {
@@ -649,7 +659,7 @@ private fun RulesBookCover(
         color = colors.paper,
         shadowElevation = 2.dp,
         border = BorderStroke(1.dp, colors.border),
-        modifier = Modifier.fillMaxWidth().height(142.dp),
+        modifier = Modifier.fillMaxWidth().height(158.dp),
     ) {
         Row {
             Box(
@@ -675,7 +685,7 @@ private fun RulesBookCover(
                     lineHeight = 19.sp,
                     color = colors.ink,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    maxLines = 5,
+                    maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -685,7 +695,7 @@ private fun RulesBookCover(
 
 @Composable
 private fun RulesOpenedBook(
-    book: TwoDRulesBook,
+    book: TwoDReaderRule,
     colors: BookColors,
     en: Boolean,
     favorite: Boolean,
@@ -738,26 +748,17 @@ private fun RulesOpenedBook(
                         fontWeight = FontWeight.Bold, color = colors.accent,
                     )
                     HorizontalDivider(color = colors.border)
-                    when (book.kind) {
-                        "digit-column" -> OriginalDigitColumn(book, colors)
-                        "double-table" -> OriginalDoubleTable(book, colors)
-                        else -> {
-                            book.lines.forEach { sourceLine ->
-                                if (sourceLine.isNotBlank()) {
-                                    Text(
-                                        text = sourceLine.trimStart(),
-                                        modifier = Modifier.padding(
-                                            start = if (sourceLine.startsWith("   ")) 14.dp
-                                                else 0.dp),
-                                        fontSize = 16.sp,
-                                        lineHeight = 27.sp,
-                                        color = colors.ink,
-                                    )
-                                } else {
-                                    Spacer(Modifier.height(5.dp))
-                                }
-                            }
-                        }
+                    // Only the rule title, concise rule text, its real source
+                    // table and an optional selected visual example are shown.
+                    Text(
+                        text = book.text,
+                        fontSize = 16.sp,
+                        lineHeight = 27.sp,
+                        color = colors.ink,
+                    )
+                    book.table?.let { ReaderRuleTable(it, colors) }
+                    if (book.exampleLines.isNotEmpty()) {
+                        ReaderRuleExample(book.exampleLines, colors)
                     }
                     Spacer(Modifier.height(9.dp))
                 }
@@ -886,5 +887,100 @@ private fun SourceRuleCell(title: String, body: String, colors: BookColors) {
             fontSize = 19.sp,
             lineHeight = 31.sp,
         )
+    }
+}
+
+/**
+ * Compact vertical source table; keeps every original row and cell without
+ * inventing a formula. A narrow phone can read it without horizontal scroll.
+ */
+@Composable
+private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        table.rows.forEachIndexed { rowIndex, row ->
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = colors.panel,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        row.first(),
+                        color = colors.accent,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                    )
+                    (1 until row.size).forEach { column ->
+                        if (row[column].isNotBlank() && row[column] != "—") {
+                            Text(
+                                table.headings[column],
+                                color = colors.softInk,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                            Text(
+                                row[column],
+                                color = colors.ink,
+                                fontSize = 16.sp,
+                                lineHeight = 25.sp,
+                            )
+                        }
+                    }
+                }
+            }
+            if (rowIndex != table.rows.lastIndex) {
+                Spacer(Modifier.height(2.dp))
+            }
+        }
+    }
+}
+
+/** Markers [[number]] highlight only the key digit in Cherry red. */
+@Composable
+private fun ReaderRuleExample(lines: List<String>, colors: BookColors) {
+    val marker = remember { Regex("""\[\[(.*?)\]\]""") }
+    Surface(
+        shape = RoundedCornerShape(13.dp),
+        color = colors.panel,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 13.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "ဥပမာ",
+                color = colors.softInk,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            lines.forEach { line ->
+                val formatted = remember(line, colors.accent) {
+                    buildAnnotatedString {
+                        var cursor = 0
+                        marker.findAll(line).forEach { match ->
+                            append(line.substring(cursor, match.range.first))
+                            withStyle(SpanStyle(
+                                color = colors.accent,
+                                fontWeight = FontWeight.ExtraBold,
+                            )) { append(match.groupValues[1]) }
+                            cursor = match.range.last + 1
+                        }
+                        append(line.substring(cursor))
+                    }
+                }
+                Text(
+                    text = formatted,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = colors.ink,
+                    fontSize = 16.sp,
+                    lineHeight = 27.sp,
+                )
+            }
+        }
     }
 }
