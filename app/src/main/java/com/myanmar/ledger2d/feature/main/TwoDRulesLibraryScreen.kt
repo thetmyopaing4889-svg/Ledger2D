@@ -898,7 +898,7 @@ private fun NumberFirstLookupScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 (0..9).forEach { number ->
-                    val pair = "$"+"number"+"$"+"number"
+                    val pair = number.toString().repeat(2)
                     Surface(
                         onClick = { onPairInputChanged(pair) },
                         shape = RoundedCornerShape(8.dp),
