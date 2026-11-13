@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed as listItemsIndexed
 import androidx.compose.foundation.lazy.items as listItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -781,10 +783,19 @@ private fun RulesOpenedBook(
     en: Boolean,
     favorite: Boolean,
     onClose: () -> Unit,
+    highlightedQuery: String,
+    focusedRuleIndex: Int?,
     onFavorite: () -> Unit,
     onCopy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val readerListState = rememberLazyListState()
+    // One header item precedes all source formulas in the book.
+    LaunchedEffect(book.id, focusedRuleIndex) {
+        focusedRuleIndex?.takeIf { it in book.rules.indices }?.let { index ->
+            readerListState.scrollToItem(index + 1)
+        }
+    }
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(topStart = 5.dp, topEnd = 18.dp,
@@ -817,55 +828,77 @@ private fun RulesOpenedBook(
                     }
                 }
                 HorizontalDivider(color = colors.border)
-                Column(
-                    modifier = Modifier.weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 15.dp, vertical = 17.dp),
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    state = readerListState,
+                    contentPadding = PaddingValues(
+                        horizontal = 15.dp, vertical = 17.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        book.title,
-                        fontSize = 19.sp, lineHeight = 29.sp,
-                        fontWeight = FontWeight.Bold, color = colors.accent,
-                    )
-                    HorizontalDivider(color = colors.border)
-                    // Covers are original topic groups. Keep their individual
-                    // formulas inside one scrollable book, in source order.
-                    book.rules.forEachIndexed { index, rule ->
-                        // When the original line already starts with its rule
-                        // heading, do not repeat that heading on screen.
-                        if (book.rules.size > 1 &&
-                            !rule.text.startsWith(rule.title) &&
-                            !rule.text.startsWith("* " + rule.title)
-                        ) {
+                    item(key = "book-header") {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
-                                text = rule.title,
-                                fontSize = 16.sp,
-                                lineHeight = 24.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = colors.accent,
+                                book.title,
+                                fontSize = 19.sp, lineHeight = 29.sp,
+                                fontWeight = FontWeight.Bold, color = colors.accent,
                             )
-                        }
-                        if (rule.text.isNotBlank()) {
-                            ReaderDigitsText(
-                                value = rule.text,
-                                color = colors.ink,
-                                fontSize = 16.sp,
-                                lineHeight = 27.sp,
-                            )
-                        }
-                        rule.table?.let { ReaderRuleTable(it, colors) }
-                        if (rule.exampleLines.isNotEmpty()) {
-                            ReaderRuleExample(rule.exampleLines, colors)
-                        }
-                        if (index < book.rules.lastIndex) {
-                            HorizontalDivider(
-                                color = colors.border,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            )
+                            HorizontalDivider(color = colors.border)
                         }
                     }
-                    Spacer(Modifier.height(9.dp))
+                    listItemsIndexed(
+                        book.rules,
+                        key = { index, rule -> "${index}:${rule.id}" },
+                    ) { index, rule ->
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                                .background(
+                                    if (focusedRuleIndex == index)
+                                        colors.accent.copy(alpha = 0.10f)
+                                    else Color.Transparent,
+                                    RoundedCornerShape(9.dp),
+                                )
+                                .padding(horizontal = 5.dp, vertical = 7.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            // Avoid repeating the same heading already in source text.
+                            if (book.rules.size > 1 &&
+                                !rule.text.startsWith(rule.title) &&
+                                !rule.text.startsWith("* " + rule.title)
+                            ) {
+                                ReaderDigitsText(
+                                    value = rule.title,
+                                    fontSize = 16.sp,
+                                    lineHeight = 24.sp,
+                                    color = colors.accent,
+                                    fontWeight = FontWeight.SemiBold,
+                                    highlightQuery = highlightedQuery,
+                                )
+                            }
+                            if (rule.text.isNotBlank()) {
+                                ReaderDigitsText(
+                                    value = rule.text,
+                                    color = colors.ink,
+                                    fontSize = 16.sp,
+                                    lineHeight = 27.sp,
+                                    highlightQuery = highlightedQuery,
+                                )
+                            }
+                            rule.table?.let {
+                                ReaderRuleTable(it, colors, highlightedQuery)
+                            }
+                            if (rule.exampleLines.isNotEmpty()) {
+                                ReaderRuleExample(
+                                    rule.exampleLines, colors, highlightedQuery)
+                            }
+                            if (index < book.rules.lastIndex) {
+                                HorizontalDivider(
+                                    color = colors.border,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                    item(key = "book-end") { Spacer(Modifier.height(9.dp)) }
                 }
                 HorizontalDivider(color = colors.border)
                 Row(
