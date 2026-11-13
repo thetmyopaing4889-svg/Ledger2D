@@ -132,6 +132,17 @@ internal fun TwoDRulesLibraryScreen(
     var favorites by remember {
         mutableStateOf(prefs.getStringSet("ids", emptySet())?.toSet().orEmpty())
     }
+    // Older builds saved the 16 source-topic cover IDs. Convert those IDs to
+    // the nine category shelves rather than silently losing saved references.
+    LaunchedEffect(books) {
+        if (books.isNotEmpty()) {
+            val upgraded = TwoDReaderCatalog.migrateSavedBookIds(favorites, books)
+            if (upgraded != favorites) {
+                favorites = upgraded
+                prefs.edit().putStringSet("ids", upgraded).apply()
+            }
+        }
+    }
     fun toggleFavorite(id: String) {
         val changed = if (id in favorites) favorites - id else favorites + id
         favorites = changed
@@ -652,9 +663,11 @@ private fun RulesBookCover(
             topStart = 5.dp, topEnd = 14.dp,
             bottomStart = 5.dp, bottomEnd = 14.dp,
         ),
-        color = colors.paper,
+        color = remember(book.pastel) {
+            Color(android.graphics.Color.parseColor(book.pastel))
+        },
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, colors.border),
+        border = BorderStroke(1.dp, Color(0x33E11D48)),
         modifier = Modifier.fillMaxWidth().height(158.dp),
     ) {
         Row {
@@ -670,7 +683,7 @@ private fun RulesBookCover(
             ) {
                 Icon(
                     Icons.Default.MenuBook, contentDescription = null,
-                    tint = colors.accent,
+                    tint = AppColors.Accent,
                     modifier = Modifier.size(27.dp),
                 )
                 Spacer(Modifier.height(7.dp))
@@ -679,7 +692,7 @@ private fun RulesBookCover(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
-                    color = colors.ink,
+                    color = Color(0xFF352B39),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
@@ -762,11 +775,11 @@ private fun RulesOpenedBook(
                             )
                         }
                         if (rule.text.isNotBlank()) {
-                            Text(
-                                text = rule.text,
+                            ReaderDigitsText(
+                                value = rule.text,
+                                color = colors.ink,
                                 fontSize = 16.sp,
                                 lineHeight = 27.sp,
-                                color = colors.ink,
                             )
                         }
                         rule.table?.let { ReaderRuleTable(it, colors) }
@@ -910,51 +923,127 @@ private fun SourceRuleCell(title: String, body: String, colors: BookColors) {
     }
 }
 
+/** Bold source digits (including Myanmar numerals) without changing wording. */
+@Composable
+private fun ReaderDigitsText(
+    value: String,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    lineHeight: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+) {
+    val styled = remember(value) {
+        val digitPattern = Regex("""[0-9၀-၉]+""")
+        buildAnnotatedString {
+            var index = 0
+            digitPattern.findAll(value).forEach { match ->
+                append(value.substring(index, match.range.first))
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(match.value)
+                }
+                index = match.range.last + 1
+            }
+            append(value.substring(index))
+        }
+    }
+    Text(
+        text = styled,
+        color = color,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        modifier = modifier,
+    )
+}
+
 /**
- * Compact vertical source table; keeps every original row and cell without
- * inventing a formula. A narrow phone can read it without horizontal scroll.
+ * True compact table: 0–9 is always a two-column, ten-row chart rather than
+ * ten stacked cards. Wider original tables scroll sideways without truncation.
  */
 @Composable
 private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        table.rows.forEachIndexed { rowIndex, row ->
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = colors.panel,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        row.first(),
-                        color = colors.accent,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                    )
-                    (1 until row.size).forEach { column ->
-                        if (row[column].isNotBlank() && row[column] != "—") {
-                            Text(
-                                table.headings[column],
-                                color = colors.softInk,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                            Text(
-                                row[column],
-                                color = colors.ink,
-                                fontSize = 16.sp,
-                                lineHeight = 25.sp,
+    val twoColumns = table.headings.size == 2
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, colors.border),
+        color = colors.paper,
+    ) {
+        if (twoColumns) {
+            Column {
+                Row(Modifier.fillMaxWidth().background(colors.panel)) {
+                    table.headings.forEachIndexed { i, heading ->
+                        ReaderTableCell(
+                            heading, colors.ink, if (i == 0) 0.34f else 0.66f,
+                            true, Modifier.weight(if (i == 0) 0.34f else 0.66f),
+                        )
+                    }
+                }
+                table.rows.forEachIndexed { rowIndex, row ->
+                    HorizontalDivider(color = colors.border)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().background(
+                            if (rowIndex % 2 == 0) colors.paper else colors.panel.copy(alpha = 0.55f),
+                        ),
+                    ) {
+                        row.forEachIndexed { i, value ->
+                            ReaderTableCell(
+                                if (value == "—") "—" else value,
+                                if (i == 0) colors.accent else colors.ink,
+                                if (i == 0) 0.34f else 0.66f,
+                                i == 0,
+                                Modifier.weight(if (i == 0) 0.34f else 0.66f),
                             )
                         }
                     }
                 }
             }
-            if (rowIndex != table.rows.lastIndex) {
-                Spacer(Modifier.height(2.dp))
+        } else {
+            Column(Modifier.horizontalScroll(rememberScrollState())) {
+                Row(Modifier.background(colors.panel)) {
+                    table.headings.forEachIndexed { i, heading ->
+                        ReaderTableCell(
+                            heading, colors.ink, 1f, true,
+                            Modifier.width(if (i == 0) 105.dp else 205.dp),
+                        )
+                    }
+                }
+                table.rows.forEachIndexed { rowIndex, row ->
+                    HorizontalDivider(color = colors.border)
+                    Row(
+                        modifier = Modifier.background(
+                            if (rowIndex % 2 == 0) colors.paper else colors.panel.copy(alpha = 0.55f),
+                        ),
+                    ) {
+                        row.forEachIndexed { i, value ->
+                            ReaderTableCell(
+                                value, if (i == 0) colors.accent else colors.ink,
+                                1f, i == 0,
+                                Modifier.width(if (i == 0) 105.dp else 205.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ReaderTableCell(
+    text: String,
+    color: Color,
+    weight: Float,
+    emphasized: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    // Layout weight belongs to the parent Row; no source value is dropped.
+    ReaderDigitsText(
+        value = text,
+        color = color,
+        fontSize = if (emphasized) 14.sp else 15.sp,
+        lineHeight = 23.sp,
+        modifier = modifier.padding(horizontal = 9.dp, vertical = 9.dp),
+    )
 }
 
 /** Markers [[number]] highlight only the key digit in Cherry red. */
