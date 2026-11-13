@@ -16,13 +16,23 @@ class TwoDReaderCatalogTest {
             File("src/main/assets/two_d_rules_reader.json").readText(Charsets.UTF_8)
         )
 
-    @Test fun everyCoverHasOnlyItsRuleNameAndExcludesBetterData() {
-        val books = rules
-        assertEquals(75, books.size)
-        assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), books.map { it.section }.toSet())
-        assertEquals("ထိပ်တူ / ပိတ်တူမူ", books.first().title)
-        assertTrue(books.none { it.title.startsWith("အပိုင်း (") || it.title.startsWith("(က)") })
-        assertEquals(books.size, books.map { it.id }.distinct().size)
+    private val books: List<TwoDReaderBook>
+        get() = TwoDReaderCatalog.booksFromJson(
+            File("src/main/assets/two_d_rules_reader.json").readText(Charsets.UTF_8)
+        )
+
+    @Test fun everyCoverHasOnlyItsTopicNameAndExcludesBetterData() {
+        val covers = books
+        assertEquals(16, covers.size)
+        assertEquals(75, rules.size)
+        assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), covers.map { it.section }.toSet())
+        assertEquals("မနက် / ညနေ တူညီမှုမူများ", covers.first().title)
+        assertTrue(covers.none { it.title.startsWith("အပိုင်း (") ||
+            it.title.startsWith("(က)") || it.title.first().isDigit() })
+        assertEquals(covers.size, covers.map { it.id }.distinct().size)
+        assertEquals(rules.map { it.id }, covers.flatMap { it.rules }.map { it.id })
+        assertEquals(26, covers.single { it.section == 6 }.rules.size)
+        assertEquals(7, covers.flatMap { it.rules }.count { it.exampleLines.isNotEmpty() })
     }
 
     @Test fun examplesAreOnlyOnSelectedCalculationAndComparisonRules() {
