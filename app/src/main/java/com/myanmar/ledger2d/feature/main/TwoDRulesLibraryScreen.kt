@@ -1028,7 +1028,7 @@ private fun SourceRuleCell(title: String, body: String, colors: BookColors) {
     }
 }
 
-/** Bold source digits (including Myanmar numerals) without changing wording. */
+/** Bold all source digits; search terms also receive a readable warm highlight. */
 @Composable
 private fun ReaderDigitsText(
     value: String,
@@ -1036,19 +1036,28 @@ private fun ReaderDigitsText(
     fontSize: androidx.compose.ui.unit.TextUnit,
     lineHeight: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier,
+    fontWeight: FontWeight? = null,
+    highlightQuery: String = "",
 ) {
-    val styled = remember(value) {
-        val digitPattern = Regex("""[0-9၀-၉]+""")
+    val styled = remember(value, highlightQuery) {
         buildAnnotatedString {
-            var index = 0
-            digitPattern.findAll(value).forEach { match ->
-                append(value.substring(index, match.range.first))
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append(match.value)
-                }
-                index = match.range.last + 1
+            append(value)
+            Regex("""[0-9၀-၉]+""").findAll(value).forEach { match ->
+                addStyle(
+                    SpanStyle(fontWeight = FontWeight.Bold),
+                    match.range.first, match.range.last + 1,
+                )
             }
-            append(value.substring(index))
+            TwoDReaderSearch.pattern(highlightQuery)?.findAll(value)?.forEach { match ->
+                addStyle(
+                    SpanStyle(
+                        background = Color(0xFFFFDA8A),
+                        color = Color(0xFF30202A),
+                        fontWeight = FontWeight.ExtraBold,
+                    ),
+                    match.range.first, match.range.last + 1,
+                )
+            }
         }
     }
     Text(
@@ -1056,6 +1065,7 @@ private fun ReaderDigitsText(
         color = color,
         fontSize = fontSize,
         lineHeight = lineHeight,
+        fontWeight = fontWeight,
         modifier = modifier,
     )
 }
@@ -1065,7 +1075,7 @@ private fun ReaderDigitsText(
  * ten stacked cards. Wider original tables scroll sideways without truncation.
  */
 @Composable
-private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
+private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors, highlightQuery: String = "") {
     val twoColumns = table.headings.size == 2
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1079,7 +1089,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                     table.headings.forEachIndexed { i, heading ->
                         ReaderTableCell(
                             heading, colors.ink,
-                            true, Modifier.weight(if (i == 0) 0.34f else 0.66f),
+                            true, Modifier.weight(if (i == 0) 0.34f else 0.66f), highlightQuery,
                         )
                     }
                 }
@@ -1095,7 +1105,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                                 if (value == "—") "—" else value,
                                 if (i == 0) colors.accent else colors.ink,
                                 i == 0,
-                                Modifier.weight(if (i == 0) 0.34f else 0.66f),
+                                Modifier.weight(if (i == 0) 0.34f else 0.66f), highlightQuery,
                             )
                         }
                     }
@@ -1107,7 +1117,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                     table.headings.forEachIndexed { i, heading ->
                         ReaderTableCell(
                             heading, colors.ink, true,
-                            Modifier.width(if (i == 0) 105.dp else 205.dp),
+                            Modifier.width(if (i == 0) 105.dp else 205.dp), highlightQuery,
                         )
                     }
                 }
@@ -1122,7 +1132,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                             ReaderTableCell(
                                 value, if (i == 0) colors.accent else colors.ink,
                                 i == 0,
-                                Modifier.width(if (i == 0) 105.dp else 205.dp),
+                                Modifier.width(if (i == 0) 105.dp else 205.dp), highlightQuery,
                             )
                         }
                     }
@@ -1138,6 +1148,7 @@ private fun ReaderTableCell(
     color: Color,
     emphasized: Boolean,
     modifier: Modifier = Modifier,
+    highlightQuery: String = "",
 ) {
     // Layout weight belongs to the parent Row; no source value is dropped.
     ReaderDigitsText(
@@ -1146,12 +1157,13 @@ private fun ReaderTableCell(
         fontSize = if (emphasized) 14.sp else 15.sp,
         lineHeight = 23.sp,
         modifier = modifier.padding(horizontal = 9.dp, vertical = 9.dp),
+        highlightQuery = highlightQuery,
     )
 }
 
 /** Markers [[number]] highlight only the key digit in Cherry red. */
 @Composable
-private fun ReaderRuleExample(lines: List<String>, colors: BookColors) {
+private fun ReaderRuleExample(lines: List<String>, colors: BookColors, highlightQuery: String = "") {
     val marker = remember { Regex("""\[\[(.*?)\]\]""") }
     Surface(
         shape = RoundedCornerShape(13.dp),
@@ -1170,7 +1182,7 @@ private fun ReaderRuleExample(lines: List<String>, colors: BookColors) {
                 fontWeight = FontWeight.SemiBold,
             )
             lines.forEach { line ->
-                val formatted = remember(line, colors.accent) {
+                val formatted = remember(line, colors.accent, highlightQuery) {
                     buildAnnotatedString {
                         var cursor = 0
                         marker.findAll(line).forEach { match ->
@@ -1182,6 +1194,18 @@ private fun ReaderRuleExample(lines: List<String>, colors: BookColors) {
                             cursor = match.range.last + 1
                         }
                         append(line.substring(cursor))
+                        val plain = line.replace("[[", "").replace("]]", "")
+                        TwoDReaderSearch.pattern(highlightQuery)?.findAll(plain)
+                            ?.forEach { match ->
+                                addStyle(
+                                    SpanStyle(
+                                        background = Color(0xFFFFDA8A),
+                                        color = Color(0xFF30202A),
+                                        fontWeight = FontWeight.ExtraBold,
+                                    ),
+                                    match.range.first, match.range.last + 1,
+                                )
+                            }
                     }
                 }
                 Text(
