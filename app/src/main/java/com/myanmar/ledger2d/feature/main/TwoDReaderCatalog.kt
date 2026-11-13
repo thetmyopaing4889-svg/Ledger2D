@@ -70,7 +70,6 @@ internal data class TwoDReaderBookEntry(
 internal data class TwoDReaderBook(
     val id: String,
     val title: String,
-    val section: Int,
     val pastel: String,
     val legacyBookIds: List<String>,
     val rules: List<TwoDReaderBookEntry>,
@@ -86,7 +85,6 @@ internal object TwoDReaderCatalog {
         val rows = JSONObject(source).getJSONArray("books")
         val books = (0 until rows.length()).map { index ->
             val node = rows.getJSONObject(index)
-            val section = node.getInt("section")
             val title = node.getString("title").trim()
             require(title.isNotBlank() && !title.startsWith("အပိုင်း ("))
             require(!Regex("""^\([ကခဂဃင]\)""").containsMatchIn(title))
@@ -98,7 +96,6 @@ internal object TwoDReaderCatalog {
                 val entry = entries.getJSONObject(entryIndex)
                 val id = entry.getString("id")
                 val rule = requireNotNull(lookup[id]) { "Unknown source rule id: $id" }
-                require(rule.section == section)
                 val projectedTable = rule.table?.let { sourceTable ->
                     val requested = entry.optJSONArray("tableColumns")?.ints()
                         ?: sourceTable.headings.indices.toList()
@@ -128,7 +125,6 @@ internal object TwoDReaderCatalog {
             TwoDReaderBook(
                 id = node.getString("id"),
                 title = title,
-                section = section,
                 pastel = color,
                 legacyBookIds = node.getJSONArray("legacyBookIds").strings(),
                 rules = members,
