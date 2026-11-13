@@ -3,6 +3,7 @@
 package com.myanmar.ledger2d.feature.main
 
 import android.content.Context
+import com.myanmar.ledger2d.core.design.AppColors
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -61,23 +62,23 @@ private data class BookColors(
 @Composable
 private fun readerColors(): BookColors =
     if (MaterialTheme.colorScheme.background.luminance() < 0.5f) BookColors(
-        page = Color(0xFF171A20),
-        paper = Color(0xFF29262B),
-        panel = Color(0xFF343139),
-        ink = Color(0xFFF8F0E8),
-        softInk = Color(0xFFCDC0B9),
-        accent = Color(0xFFE6B98B),
-        border = Color(0xFF514850),
-        spine = Color(0xFF825C58),
+        page = Color(0xFF181114),
+        paper = Color(0xFF24191E),
+        panel = Color(0xFF3B252E),
+        ink = Color(0xFFFFF5F7),
+        softInk = Color(0xFFD8BFC7),
+        accent = Color(0xFFFF9CB3),
+        border = Color(0xFF6E394B),
+        spine = AppColors.Primary,
     ) else BookColors(
-        page = Color(0xFFF5F1EA),
-        paper = Color(0xFFFFFCF6),
-        panel = Color(0xFFECE3D9),
-        ink = Color(0xFF30282A),
-        softInk = Color(0xFF786A6B),
-        accent = Color(0xFF773B4C),
-        border = Color(0xFFDDD0C3),
-        spine = Color(0xFF995D62),
+        page = Color(0xFFFFF6F8),
+        paper = Color.White,
+        panel = AppColors.Blush,
+        ink = AppColors.Ink,
+        softInk = Color(0xFF6D5D64),
+        accent = AppColors.Accent,
+        border = Color(0xFFF3D2DE),
+        spine = AppColors.Primary,
     )
 
 /**
@@ -636,44 +637,46 @@ private fun RulesBookCover(
     colors: BookColors,
     onClick: () -> Unit,
 ) {
+    // The SOURCE rule title is always displayed on the cover. Never use the
+    // section number as its stand-in. The earlier weighted title could collapse
+    // to zero height inside the two-column grid on small-screen devices.
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(topStart = 5.dp, topEnd = 15.dp,
-            bottomStart = 5.dp, bottomEnd = 15.dp),
+        shape = RoundedCornerShape(
+            topStart = 5.dp, topEnd = 14.dp,
+            bottomStart = 5.dp, bottomEnd = 14.dp,
+        ),
         color = colors.paper,
-        shadowElevation = 4.dp,
+        shadowElevation = 2.dp,
         border = BorderStroke(1.dp, colors.border),
-        modifier = Modifier.fillMaxWidth().heightIn(min = 158.dp),
+        modifier = Modifier.fillMaxWidth().height(142.dp),
     ) {
         Row {
             Box(
-                modifier = Modifier.width(8.dp).fillMaxHeight()
+                modifier = Modifier.width(6.dp).fillMaxHeight()
                     .background(colors.spine),
             )
             Column(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                modifier = Modifier.fillMaxSize()
+                    .padding(horizontal = 9.dp, vertical = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
-                    Icons.Default.MenuBook, null, tint = colors.accent,
-                    modifier = Modifier.size(35.dp),
+                    Icons.Default.MenuBook, contentDescription = null,
+                    tint = colors.accent,
+                    modifier = Modifier.size(27.dp),
                 )
+                Spacer(Modifier.height(7.dp))
                 Text(
-                    book.title,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = book.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
                     color = colors.ink,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    lineHeight = 22.sp,
-                    maxLines = 4,
+                    maxLines = 5,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Text(
-                    "အပိုင်း (" + "၁၂၃၄၅၆၇၈၉".getOrNull(book.section - 1) + ")",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.softInk,
                 )
             }
         }
@@ -707,24 +710,19 @@ private fun RulesOpenedBook(
             Column(Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(start = 11.dp, end = 8.dp, top = 5.dp, bottom = 3.dp),
+                        .height(44.dp).padding(start = 12.dp, end = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.AutoStories, null,
-                        tint = colors.accent, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(9.dp))
-                    Text(
-                        if (en) "Open book" else "ဖွင့်ထားသော စာအုပ်",
-                        color = colors.softInk,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, null,
-                            modifier = Modifier.size(18.dp), tint = colors.accent)
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (en) "Close" else "ပိတ်ရန်",
-                            color = colors.accent)
+                    Icon(Icons.Default.MenuBook, null,
+                        tint = colors.accent, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            Icons.Default.Close,
+                            if (en) "Close book" else "စာအုပ်ပိတ်ရန်",
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
                 }
                 HorizontalDivider(color = colors.border)
@@ -732,20 +730,11 @@ private fun RulesOpenedBook(
                     modifier = Modifier.weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 15.dp, vertical = 17.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        if (book.title == book.sectionTitle) {
-                            if (en) "Original source · Section ${book.section}"
-                            else "မူရင်းစာတမ်း · အပိုင်း (${book.section})"
-                        } else book.sectionTitle,
-                        color = colors.softInk,
-                        style = MaterialTheme.typography.labelMedium,
-                        lineHeight = 21.sp,
-                    )
-                    Text(
                         book.title,
-                        fontSize = 21.sp, lineHeight = 32.sp,
+                        fontSize = 19.sp, lineHeight = 29.sp,
                         fontWeight = FontWeight.Bold, color = colors.accent,
                     )
                     HorizontalDivider(color = colors.border)
@@ -760,8 +749,8 @@ private fun RulesOpenedBook(
                                         modifier = Modifier.padding(
                                             start = if (sourceLine.startsWith("   ")) 14.dp
                                                 else 0.dp),
-                                        fontSize = 17.sp,
-                                        lineHeight = 29.sp,
+                                        fontSize = 16.sp,
+                                        lineHeight = 27.sp,
                                         color = colors.ink,
                                     )
                                 } else {
@@ -778,12 +767,7 @@ private fun RulesOpenedBook(
                         .padding(start = 14.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        if (en) "Original document" else "မူရင်း DOC အတိုင်း",
-                        color = colors.softInk,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.weight(1f),
-                    )
+                    Spacer(Modifier.weight(1f))
                     IconButton(onClick = onFavorite) {
                         Icon(
                             if (favorite) Icons.Default.Bookmark
