@@ -196,3 +196,82 @@ internal object TwoDReaderCatalog {
     private fun JSONArray.ints(): List<Int> =
         (0 until length()).map { getInt(it) }
 }
+
+/** Searches the exact text shown to the reader, never invented source data. */
+internal data class TwoDReaderSearchHit(
+    val bookId: String,
+    val bookTitle: String,
+    val entryIndex: Int,
+    val sourceRuleId: String,
+    val ruleTitle: String,
+    val excerpt: String,
+    val priority: Int,
+)
+
+internal object TwoDReaderSearch {
+    /** Numeric lookarounds avoid treating 77 as a hit inside 177 or 770. */
+    fun pattern(query: String): Regex? {
+        val value = query.trim().take(80)
+        if (value.isEmpty()) return null
+        val escaped = Regex.escape(value)
+        val isDigits = value.all { it in '0'..'9' || it in '၀'..'၉' }
+        val expression = if (isDigits) "(?<![0-9၀-၉])$escaped(?![0-9၀-၉])"
+            else escaped
+        return Regex(expression, RegexOption.IGNORE_CASE)
+    }
+
+    fun find(books: List<TwoDReaderBook>, query: String): List<TwoDReaderSearchHit> {
+        val expression = pattern(query) ?: return emptyList()
+        val matches = mutableListOf<TwoDReaderSearchHit>()
+        books.forEach { book ->
+            book.rules.forEachIndexed { index, rule ->
+                val matchingTitle = expression.containsMatchIn(rule.title)
+                val matchingText = expression.find(rule.text)
+                val matchingTable = rule.table?.rows?.firstOrNull { row ->
+                    row.any { expression.containsMatchIn(it) }
+                }
+                val matchingHeading = rule.table?.headings?.any {
+                    expression.containsMatchIn(it)
+                } == true
+                val matchingExample = rule.exampleLines.firstOrNull {
+                    expression.containsMatchIn(it.replace("[[", "").replace("]]", ""))
+                }
+                val matchingBook = expression.containsMatchIn(book.title)
+                if (!matchingTitle && matchingText == null && matchingTable == null &&
+                    !matchingHeading && matchingExample == null && !matchingBook) {
+                    return@forEachIndexed
+                }
+                val excerpt = when {
+                    matchingText != null -> extractExcerpt(rule.text, matchingText.range.first)
+                    matchingTable != null -> matchingTable.joinToString("  |  ")
+                    matchingExample != null ->
+                        matchingExample.replace("[[", "").replace("]]", "")
+                    matchingTitle -> rule.text.take(125)
+                    matchingHeading -> rule.table?.headings?.joinToString("  |  ").orEmpty()
+                    else -> rule.text.take(125)
+                }
+                val priority = when {
+                    matchingTitle -> 0
+                    matchingText != null -> 1
+                    matchingTable != null -> 2
+                    matchingExample != null -> 3
+                    matchingHeading -> 4
+                    else -> 5
+                }
+                matches += TwoDReaderSearchHit(
+                    book.id, book.title, index, rule.id, rule.title,
+                    excerpt, priority,
+                )
+            }
+        }
+        return matches.sortedWith(compareBy({ it.priority }, { it.bookTitle }, { it.entryIndex }))
+    }
+
+    private fun extractExcerpt(text: String, hitAt: Int): String {
+        val start = (hitAt - 42).coerceAtLeast(0)
+        val end = (hitAt + 105).coerceAtMost(text.length)
+        return (if (start > 0) "…" else "") +
+            text.substring(start, end).replace('\n', ' ') +
+            (if (end < text.length) "…" else "")
+    }
+}
