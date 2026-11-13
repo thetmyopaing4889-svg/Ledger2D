@@ -157,6 +157,9 @@ internal fun TwoDRulesLibraryScreen(
     var bornPair by rememberSaveable { mutableStateOf("01") }
     var bornInput by rememberSaveable { mutableStateOf("01") }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    // Only an explicit search navigation highlights/scrolls the opened book.
+    var focusedRuleIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    var highlightedQuery by rememberSaveable { mutableStateOf("") }
     var sheet by remember { mutableStateOf<String?>(null) }
     val openedBook = books.firstOrNull { it.id == openedBookId }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -178,51 +181,108 @@ internal fun TwoDRulesLibraryScreen(
                     )
                     OutlinedTextField(
                         value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        onValueChange = { searchQuery = it.take(80) },
                         label = { Text(tr("မူခေါင်းစဉ်၊ စာသား သို့မဟုတ် ဂဏန်း",
-                            "Title, source text, or number")) },
+                            "Rule title, content, or number")) },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close,
+                                        tr("ရှာဖွေမှုရှင်းရန်", "Clear search"))
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     )
-                    val matches = if (searchQuery.isBlank()) books else books.filter {
-                        it.originalText.contains(searchQuery.trim(), ignoreCase = true)
+                    val matches = remember(books, searchQuery) {
+                        TwoDReaderSearch.find(books, searchQuery)
+                    }
+                    if (searchQuery.isNotBlank()) {
+                        Text(
+                            tr("တွေ့ရှိသော မူ ${matches.size} ခု",
+                                "${matches.size} matching rules"),
+                            color = colors.softInk,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
                     }
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp),
                         contentPadding = PaddingValues(vertical = 10.dp),
                     ) {
-                        listItems(matches, key = { it.id }) { book ->
-                            Surface(
-                                onClick = {
-                                    view = "books"
-                                    openedBookId = book.id
-                                    sheet = null
-                                    keyboard?.hide()
-                                },
-                                color = Color.Transparent,
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 13.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        if (searchQuery.isBlank()) {
+                            item {
+                                Text(
+                                    tr("မူခေါင်းစဉ်၊ စာသား သို့မဟုတ် 77 ကဲ့သို့ ဂဏန်းတစ်ခု ရိုက်ရှာပါ။",
+                                        "Type a rule title, phrase, or a number such as 77."),
+                                    modifier = Modifier.padding(20.dp),
+                                    color = colors.softInk,
+                                )
+                            }
+                        } else {
+                            listItems(matches, key = { "${it.bookId}:${it.entryIndex}" }) { hit ->
+                                Surface(
+                                    onClick = {
+                                        view = "books"
+                                        openedBookId = hit.bookId
+                                        focusedRuleIndex = hit.entryIndex
+                                        highlightedQuery = searchQuery.trim()
+                                        sheet = null
+                                        keyboard?.hide()
+                                    },
+                                    color = Color.Transparent,
                                 ) {
-                                    Icon(Icons.Default.MenuBook, null, tint = colors.accent)
-                                    Column(Modifier.weight(1f)) {
-                                        Text(book.title, color = colors.ink,
-                                            fontWeight = FontWeight.SemiBold,
-                                            style = MaterialTheme.typography.bodyMedium)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(
+                                            horizontal = 20.dp, vertical = 12.dp,
+                                        ),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Default.MenuBook, null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(20.dp))
+                                        Column(
+                                            Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                                        ) {
+                                            Text(
+                                                hit.bookTitle,
+                                                color = colors.accent,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                            ReaderDigitsText(
+                                                value = hit.ruleTitle,
+                                                color = colors.ink,
+                                                fontSize = 16.sp,
+                                                lineHeight = 24.sp,
+                                                highlightQuery = searchQuery,
+                                            )
+                                            if (hit.excerpt.isNotBlank()) {
+                                                ReaderDigitsText(
+                                                    value = hit.excerpt,
+                                                    color = colors.softInk,
+                                                    fontSize = 14.sp,
+                                                    lineHeight = 22.sp,
+                                                    highlightQuery = searchQuery,
+                                                )
+                                            }
+                                        }
+                                        Icon(Icons.Default.ChevronRight, null,
+                                            tint = colors.softInk)
                                     }
                                 }
+                                HorizontalDivider(color = colors.border)
                             }
-                            HorizontalDivider(color = colors.border)
-                        }
-                        if (matches.isEmpty()) {
-                            item {
-                                Text(tr("မူမတွေ့ပါ။", "No matching book."),
-                                    modifier = Modifier.padding(20.dp),
-                                    color = colors.softInk)
+                            if (matches.isEmpty()) {
+                                item {
+                                    Text(tr("သက်ဆိုင်သော မူ မတွေ့ပါ။", "No matching rule."),
+                                        modifier = Modifier.padding(20.dp),
+                                        color = colors.softInk)
+                                }
                             }
                         }
                     }
@@ -252,6 +312,8 @@ internal fun TwoDRulesLibraryScreen(
                                 onClick = {
                                     view = "books"
                                     openedBookId = book.id
+                                    focusedRuleIndex = null
+                                    highlightedQuery = ""
                                     sheet = null
                                 }, color = Color.Transparent,
                             ) {
@@ -374,7 +436,11 @@ internal fun TwoDRulesLibraryScreen(
                     gridItems(books, key = { it.id }) { book ->
                         RulesBookCover(
                             book = book, colors = colors,
-                            onClick = { openedBookId = book.id },
+                            onClick = {
+                                openedBookId = book.id
+                                focusedRuleIndex = null
+                                highlightedQuery = ""
+                            },
                         )
                     }
                 }
@@ -385,7 +451,13 @@ internal fun TwoDRulesLibraryScreen(
                     colors = colors,
                     en = en,
                     favorite = "book:" + openedBook.id in favorites,
-                    onClose = { openedBookId = null },
+                    onClose = {
+                        openedBookId = null
+                        focusedRuleIndex = null
+                        highlightedQuery = ""
+                    },
+                    highlightedQuery = highlightedQuery,
+                    focusedRuleIndex = focusedRuleIndex,
                     onFavorite = { toggleFavorite("book:" + openedBook.id) },
                     onCopy = { clipboard.setText(AnnotatedString(openedBook.originalText)) },
                     modifier = Modifier.fillMaxWidth().weight(1f),
