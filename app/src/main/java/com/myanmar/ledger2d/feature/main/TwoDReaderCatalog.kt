@@ -40,7 +40,51 @@ internal data class TwoDReaderRule(
         }
 }
 
+/**
+ * A shelf cover represents one original topic/subsection, not one bullet.
+ * Every original reader rule stays accessible inside its appropriate book.
+ */
+internal data class TwoDReaderBook(
+    val id: String,
+    val title: String,
+    val section: Int,
+    val rules: List<TwoDReaderRule>,
+) {
+    val originalText: String
+        get() = title + "\n" + rules.joinToString("\n\n") { it.originalText }
+}
+
 internal object TwoDReaderCatalog {
+    fun booksFromJson(source: String): List<TwoDReaderBook> {
+        val rules = fromJson(source)
+        val lookup = rules.associateBy { it.id }
+        val rows = JSONObject(source).getJSONArray("books")
+        val books = (0 until rows.length()).map { index ->
+            val node = rows.getJSONObject(index)
+            val members = node.getJSONArray("ruleIds").strings().map { id ->
+                requireNotNull(lookup[id]) { "Unknown reader rule id: $id" }
+            }
+            val title = node.getString("title").trim()
+            val section = node.getInt("section")
+            require(title.isNotBlank())
+            require(!title.startsWith("အပိုင်း ("))
+            require(!Regex("""^\\([ကခဂဃင]\\)""").containsMatchIn(title))
+            require(!Regex("""^[0-9]+\\.\\s""").containsMatchIn(title))
+            require(members.isNotEmpty() && members.all { it.section == section })
+            TwoDReaderBook(
+                id = node.getString("id"),
+                title = title,
+                section = section,
+                rules = members,
+            )
+        }
+        require(books.map { it.id }.distinct().size == books.size)
+        require(books.flatMap { it.rules }.map { it.id } == rules.map { it.id }) {
+            "Book order must preserve every reader rule once, without omissions"
+        }
+        return books
+    }
+
     fun fromJson(source: String): List<TwoDReaderRule> {
         val root = JSONObject(source)
         require(root.getInt("schemaVersion") == 1)
