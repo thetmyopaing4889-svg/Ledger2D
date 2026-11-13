@@ -657,7 +657,7 @@ private fun RulesBookCover(
                     .background(colors.spine),
             )
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.weight(1f).fillMaxHeight()
                     .padding(horizontal = 9.dp, vertical = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
