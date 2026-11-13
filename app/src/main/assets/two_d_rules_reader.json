@@ -916,5 +916,194 @@
         ]
       }
     }
+  ],
+  "books": [
+    {
+      "id": "cherry-book-01",
+      "title": "မနက် / ညနေ တူညီမှုမူများ",
+      "section": 1,
+      "ruleIds": [
+        "cherry-001",
+        "cherry-002",
+        "cherry-003"
+      ]
+    },
+    {
+      "id": "cherry-book-02",
+      "title": "Modern / Internet တူညီမှုမူများ",
+      "section": 1,
+      "ruleIds": [
+        "cherry-004",
+        "cherry-005"
+      ]
+    },
+    {
+      "id": "cherry-book-03",
+      "title": "အလယ်သတ်ကွင်း",
+      "section": 1,
+      "ruleIds": [
+        "cherry-006",
+        "cherry-007"
+      ]
+    },
+    {
+      "id": "cherry-book-04",
+      "title": "ဂဏန်း 0–9 ပတ်သီး၊ အသေ၊ တည်ဘောဇယား",
+      "section": 2,
+      "ruleIds": [
+        "cherry-008"
+      ]
+    },
+    {
+      "id": "cherry-book-05",
+      "title": "ပါဝါ၊ ညီအစ်ကို၊ နက္ခတ် ဆက်စပ်မူများ",
+      "section": 3,
+      "ruleIds": [
+        "cherry-009",
+        "cherry-010",
+        "cherry-011",
+        "cherry-012",
+        "cherry-013"
+      ]
+    },
+    {
+      "id": "cherry-book-06",
+      "title": "အုပ်စုလိုက် အလိုက်မူများနှင့် ဘရိတ်",
+      "section": 3,
+      "ruleIds": [
+        "cherry-014",
+        "cherry-015",
+        "cherry-016",
+        "cherry-017",
+        "cherry-018",
+        "cherry-019",
+        "cherry-020"
+      ]
+    },
+    {
+      "id": "cherry-book-07",
+      "title": "အပူး 00–99 အပြီးခွေနှင့် မွေးဂဏန်းဇယား",
+      "section": 4,
+      "ruleIds": [
+        "cherry-021"
+      ]
+    },
+    {
+      "id": "cherry-book-08",
+      "title": "အပူးဆက်စပ် အထူးမူများ",
+      "section": 4,
+      "ruleIds": [
+        "cherry-022",
+        "cherry-023"
+      ]
+    },
+    {
+      "id": "cherry-book-09",
+      "title": "တနင်္လာနေ့ အထူးမူများနှင့် ဘရိတ်ဇယား",
+      "section": 5,
+      "ruleIds": [
+        "cherry-024",
+        "cherry-025",
+        "cherry-026",
+        "cherry-027",
+        "cherry-028"
+      ]
+    },
+    {
+      "id": "cherry-book-10",
+      "title": "ဗုဒ္ဓဟူး၊ သောကြာနှင့် ရက်တိုအပတ်မူများ",
+      "section": 5,
+      "ruleIds": [
+        "cherry-029",
+        "cherry-030",
+        "cherry-031"
+      ]
+    },
+    {
+      "id": "cherry-book-11",
+      "title": "ထွက်ဂဏန်းအလိုက် မွေးဂဏန်းများ",
+      "section": 6,
+      "ruleIds": [
+        "cherry-032",
+        "cherry-033",
+        "cherry-034",
+        "cherry-035",
+        "cherry-036",
+        "cherry-037",
+        "cherry-038",
+        "cherry-039",
+        "cherry-040",
+        "cherry-041",
+        "cherry-042",
+        "cherry-043",
+        "cherry-044",
+        "cherry-045",
+        "cherry-046",
+        "cherry-047",
+        "cherry-048",
+        "cherry-049",
+        "cherry-050",
+        "cherry-051",
+        "cherry-052",
+        "cherry-053",
+        "cherry-054",
+        "cherry-055",
+        "cherry-056",
+        "cherry-057"
+      ]
+    },
+    {
+      "id": "cherry-book-12",
+      "title": "နောက်ပိတ်အလိုက် အသေတွဲဇယား",
+      "section": 8,
+      "ruleIds": [
+        "cherry-073"
+      ]
+    },
+    {
+      "id": "cherry-book-13",
+      "title": "2D ကိုပိုင် အထူးမူများ",
+      "section": 8,
+      "ruleIds": [
+        "cherry-074",
+        "cherry-075",
+        "cherry-076",
+        "cherry-077",
+        "cherry-078",
+        "cherry-079",
+        "cherry-080",
+        "cherry-081",
+        "cherry-082",
+        "cherry-083",
+        "cherry-084",
+        "cherry-085",
+        "cherry-086",
+        "cherry-087"
+      ]
+    },
+    {
+      "id": "cherry-book-14",
+      "title": "တနင်္လာ–သောကြာ ပါဝါမူ",
+      "section": 9,
+      "ruleIds": [
+        "cherry-088"
+      ]
+    },
+    {
+      "id": "cherry-book-15",
+      "title": "WaiLin 2D နေ့စဉ် တစ်လုံးပိုင်မူ",
+      "section": 9,
+      "ruleIds": [
+        "cherry-089"
+      ]
+    },
+    {
+      "id": "cherry-book-16",
+      "title": "ဂဏန်း 1–5 တွဲဖက်ပတ်သီးမူ",
+      "section": 9,
+      "ruleIds": [
+        "cherry-090"
+      ]
+    }
   ]
 }
