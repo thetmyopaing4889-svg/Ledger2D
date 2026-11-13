@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.AppContainer
+import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.design.LedgerTextRole
 import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
@@ -255,17 +256,8 @@ fun Historical2DTimelineScreen(
                     fontWeight = FontWeight.Bold, maxLines = 1,
                     color = if (researchChrome) Color.White else scheme.onSurface,
                     overflow = TextOverflow.Ellipsis)
-                if (openCheck.isEmpty() && activeTwoDTab == "summary") {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = scheme.primaryContainer.copy(alpha = 0.75f),
-                    ) {
-                        IconButton(onClick = onSettings) {
-                            Icon(Icons.Default.Tune, contentDescription = tr("ဆက်တင်", "Settings"),
-                                tint = scheme.onPrimaryContainer)
-                        }
-                    }
-                }
+                // The Summary title bar intentionally has no Settings action.
+                // Keep the signature/navigation contracts unchanged.
             }
         },
         bottomBar = {
@@ -512,13 +504,23 @@ fun Historical2DTimelineScreen(
                     // fabricate results; show the user-approved text instead.
                     if (report != null &&
                         (openGroup == "2" || lookback != "custom" || customValid)) {
-                        TwoDAnalysisLiveGrid(
-                            group = selectedSection.key,
-                            report = report,
-                            en = en,
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            onOpenDetail = { openCheck = it },
+                        // Scope Cherry's bright red to the Analysis result cards.
+                        // Never alter the shared theme or Research's separate chrome.
+                        val analysisCardColors = scheme.copy(
+                            secondary = AppColors.Primary,
+                            onSecondary = Color.White,
+                            secondaryContainer = AppColors.Blush,
+                            onSecondaryContainer = AppColors.PrimaryDeep,
                         )
+                        MaterialTheme(colorScheme = analysisCardColors) {
+                            TwoDAnalysisLiveGrid(
+                                group = selectedSection.key,
+                                report = report,
+                                en = en,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                onOpenDetail = { openCheck = it },
+                            )
+                        }
                     } else {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
