@@ -63,6 +63,67 @@ class TwoDRulesCatalogTest {
         assertTrue(rules.byNumber("8").any { it.section == 2 })
     }
 
+    @Test fun newLookupSeparatesZeroAndDoubleZeroAndKeepsAllDigitTableCells() {
+        val rules = catalog()
+        for (digit in 0..9) {
+            val number = digit.toString()
+            val lookup = rules.lookup(number)
+            assertEquals(number, lookup.number)
+            assertEquals(5, lookup.direct.count { it.kind == "digit" })
+            assertEquals(
+                setOf("s2-0-$number", "s2-1-$number",
+                    "s2-2-$number", "s2-3-$number", "s2-4-$number"),
+                lookup.direct.filter { it.kind == "digit" }.map { it.rule.id }.toSet(),
+            )
+            assertTrue(lookup.direct.none { it.rule.id == "s4-00" })
+            assertEquals(lookup.direct.size, lookup.direct.map { it.rule.id }.distinct().size)
+        }
+        val doubleZero = rules.lookup("00")
+        assertTrue(doubleZero.direct.any { it.rule.id == "s4-00" })
+        assertTrue(doubleZero.direct.none { it.kind == "digit" })
+        assertTrue(doubleZero.direct.none { "0" in it.rule.sourceNumbers })
+    }
+
+    @Test fun pairLookupSeparatesDirectTriggersFromResultMentions() {
+        val rules = catalog()
+        val seventySeven = rules.lookup("77")
+        val double = seventySeven.direct.single { it.rule.id == "s4-77" }
+        assertEquals("double", double.kind)
+        assertTrue(double.rule.original.contains("0358 အပြီးခွေ"))
+        assertTrue(double.rule.original.contains("09 - 02 - 29 - 22"))
+        assertTrue(seventySeven.direct.none { it.rule.id == "s4-00" })
+        assertTrue(seventySeven.direct.none { it.rule.id == "s4-11" })
+        assertTrue(seventySeven.mentioned.all { it.rule.id !in
+            seventySeven.direct.map { direct -> direct.rule.id }.toSet() })
+
+        val one = rules.lookup("01")
+        assertTrue(one.direct.any { it.kind == "born" &&
+            it.rule.original.contains("(68) မွေးပါ") })
+        assertTrue(rules.lookup("74").direct.any {
+            it.rule.section == 8 && it.rule.original.contains("74 (R) ထွက်လျှင်")
+        })
+        assertTrue(rules.lookup("0").direct.any {
+            it.rule.section == 8 && it.rule.original.contains("0 အပိတ် ထွက်လျှင်")
+        })
+    }
+
+    @Test fun allHundredPairLookupsUseValidOriginalSourceWithoutDuplicates() {
+        val rules = catalog()
+        for (pair in 0..99) {
+            val number = pair.toString().padStart(2, '0')
+            val result = rules.lookup(number)
+            val ids = (result.direct + result.mentioned).map { it.rule.id }
+            assertEquals(ids.size, ids.distinct().size)
+            assertTrue((result.direct + result.mentioned).all {
+                it.rule.section in setOf(1, 2, 3, 4, 5, 6, 8, 9)
+            })
+        }
+        assertEquals(0, rules.lookup("99").direct.count { it.kind == "digit" })
+        assertTrue(runCatching { rules.lookup("000") }.isFailure)
+        assertTrue(runCatching { rules.lookup("7a") }.isFailure)
+        assertTrue(runCatching { rules.lookup("") }.isFailure)
+    }
+
     @Test fun searchAndValidationAreReadOnlyAndExactForPairs() {
         val rules = catalog()
         assertTrue(rules.search("ပတ်သီး").isNotEmpty())
