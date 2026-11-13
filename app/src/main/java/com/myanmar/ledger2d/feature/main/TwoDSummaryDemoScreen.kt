@@ -54,6 +54,7 @@ import java.time.LocalDate
  * Current date/session only affect demo reference results and their explanations.
  */
 private val ReportWine = AppColors.Primary
+private val ReportLabelInk = AppColors.PrimaryDeep // Readable small text on pale cards
 private val ReportPale = Color(0xFFFFEDF2)
 private val ReportLine = Color(0xFFE8CED8)
 private val ReportDataInk = Color(0xFF164F6C) // High-contrast answer ink
@@ -594,7 +595,7 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
         if(missing) Text(
             words("Result မတွေ့တဲ့အကြိမ်နောက်ပိုင်း အသစ်/အဟောင်းကို အတည်မပြုနိုင်ပါ။",
                 "New/old labels after an unknown draw are unverified.").display(en),
-            fontSize = 11.sp, lineHeight = 16.sp, color = ReportWine)
+            fontSize = 11.sp, lineHeight = 16.sp, color = ReportLabelInk)
     }
 }
 
@@ -1271,11 +1272,11 @@ internal fun TwoDSummaryScreen(
                         horizontalAlignment=Alignment.CenterHorizontally,
                         verticalArrangement=Arrangement.spacedBy(1.dp)) {
                         Text(t.display(en),fontWeight=FontWeight.SemiBold,
-                            fontSize=11.sp,color=if(active)Color.White else ReportWine,
+                            fontSize=11.sp,color=if(active)Color.White else ReportLabelInk,
                             maxLines=1)
                         Text(if(index==0)"4" else "2",
                             fontSize=10.sp,color=if(active)Color.White.copy(alpha=.84f)
-                            else ReportWine.copy(alpha=.72f))
+                            else ReportLabelInk.copy(alpha=.72f))
                     }
                 }
             }
@@ -1602,7 +1603,7 @@ private fun DemoAlignedMethod(
             verticalAlignment=Alignment.Top,
             horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             Text(ordinal.toString()+".", fontSize=13.sp,
-                fontWeight=FontWeight.Bold,color=ReportWine,
+                fontWeight=FontWeight.Bold,color=ReportLabelInk,
                 modifier=Modifier.width(22.dp))
             if(method.id=="05") {
                 Text(words("ယခုအပတ် အသစ်/အဟောင်း အခြေအနေ",
@@ -1616,7 +1617,7 @@ private fun DemoAlignedMethod(
                 }
             }
             Text(if(expanded)"−" else "+",fontSize=16.sp,
-                color=ReportWine,modifier=Modifier.width(15.dp))
+                color=ReportLabelInk,modifier=Modifier.width(15.dp))
         }
         if(method.id=="05") {
             RealWeekFlow(weekFlow,target,closedDates,en)
@@ -1648,7 +1649,7 @@ private fun DemoAlignedMethod(
                     modifier=Modifier.align(Alignment.End).heightIn(min=40.dp)) {
                     Text(words("စစ်ဆေးမှုအသေးစိတ် ကြည့်ရန်",
                         "Open analysis details").display(en),
-                        fontSize=11.sp,color=ReportWine)
+                        fontSize=11.sp,color=ReportLabelInk)
                 }
             }
         }
