@@ -68,8 +68,8 @@ internal object TwoDReaderCatalog {
             val section = node.getInt("section")
             require(title.isNotBlank())
             require(!title.startsWith("အပိုင်း ("))
-            require(!Regex("""^\\([ကခဂဃင]\\)""").containsMatchIn(title))
-            require(!Regex("""^[0-9]+\\.\\s""").containsMatchIn(title))
+            require(!Regex("""^\([ကခဂဃင]\)""").containsMatchIn(title))
+            require(!Regex("""^[0-9]+\.\s""").containsMatchIn(title))
             require(members.isNotEmpty() && members.all { it.section == section })
             TwoDReaderBook(
                 id = node.getString("id"),
