@@ -11,45 +11,98 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE, application = Application::class)
 class TwoDReaderCatalogTest {
+    private val source: String
+        get() = File("src/main/assets/two_d_rules_reader.json")
+            .readText(Charsets.UTF_8)
+
     private val rules: List<TwoDReaderRule>
-        get() = TwoDReaderCatalog.fromJson(
-            File("src/main/assets/two_d_rules_reader.json").readText(Charsets.UTF_8)
-        )
+        get() = TwoDReaderCatalog.fromJson(source)
 
     private val books: List<TwoDReaderBook>
-        get() = TwoDReaderCatalog.booksFromJson(
-            File("src/main/assets/two_d_rules_reader.json").readText(Charsets.UTF_8)
-        )
+        get() = TwoDReaderCatalog.booksFromJson(source)
 
-    @Test fun everyCoverHasOnlyItsTopicNameAndExcludesBetterData() {
+    @Test fun allSeventyFiveSourceRulesSurviveNineFunctionalBooks() {
         val covers = books
-        assertEquals(16, covers.size)
+        val expectedTitles = listOf(
+            "အသေဂဏန်းမူ",
+            "မွေးဂဏန်းမူ",
+            "ပတ်သီးနှင့် တည်ဘောမူ",
+            "အပူးနှင့် အပြီးခွေမူ",
+            "ဘရိတ်မူ",
+            "ပါဝါ၊ ညီအစ်ကိုနှင့် နက္ခတ်မူ",
+            "မနက်၊ ညနေ နှိုင်းယှဉ်မူ",
+            "နေ့ရက်အလိုက်မူ",
+            "အထူးတွက်နည်းမူ",
+        )
+        assertEquals(expectedTitles, covers.map { it.title })
+        assertEquals(9, covers.size)
         assertEquals(75, rules.size)
-        assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), covers.map { it.section }.toSet())
-        assertEquals("မနက် / ညနေ တူညီမှုမူများ", covers.first().title)
+        assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), rules.map { it.section }.toSet())
         assertTrue(covers.none { it.title.startsWith("အပိုင်း (") ||
             it.title.startsWith("(က)") || Regex("""^[0-9]+\.\s""").containsMatchIn(it.title) })
         assertEquals(covers.size, covers.map { it.id }.distinct().size)
-        assertEquals(rules.map { it.id }, covers.flatMap { it.rules }.map { it.id })
-        assertEquals(26, covers.single { it.section == 6 }.rules.size)
-        assertEquals(7, covers.flatMap { it.rules }.count { it.exampleLines.isNotEmpty() })
+        assertEquals(9, covers.map { it.pastel }.distinct().size)
+        assertEquals(rules.map { it.id }.toSet(),
+            covers.flatMap { it.rules }.map { it.id }.toSet())
+        val born = covers.single { it.id == "category-born" }
+        assertEquals(26, born.rules.count { it.source.section == 6 })
     }
 
-    @Test fun examplesAreOnlyOnSelectedCalculationAndComparisonRules() {
+    @Test fun sourceTablesAreProjectedWithoutAlteringCanonicalCells() {
+        val dead = books.single { it.id == "category-dead" }.rules
+            .first { it.id == "cherry-008" }
+        assertEquals(listOf("ဂဏန်း", "+7 အသေ"), dead.table!!.headings)
+        assertEquals(10, dead.table!!.rows.size)
+        assertEquals(listOf("0", "7 ပိတ် သေ"), dead.table!!.rows.first())
+        assertEquals(listOf("9", "6 ပိတ် သေ"), dead.table!!.rows.last())
+        assertEquals(1, dead.exampleLines.size)
+
+        val follows = books.single { it.id == "category-follow" }.rules
+        val plusFour = follows.first { it.title == "+4 ပတ်သီးမူ" }
+        assertEquals(listOf("ဂဏန်း", "+4 ပတ်သီး"), plusFour.table!!.headings)
+        assertEquals(listOf("0", "4 ပတ်သီး"), plusFour.table!!.rows.first())
+        assertEquals(listOf("9", "3 ပတ်သီး"), plusFour.table!!.rows.last())
+        assertEquals(1, plusFour.exampleLines.size)
+
+        val bornDoubles = books.single { it.id == "category-born" }.rules
+            .single { it.id == "cherry-021" }
+        val fourDigitDoubles = books.single { it.id == "category-double" }.rules
+            .single { it.id == "cherry-021" }
+        assertEquals(listOf("အပူး", "မွေးဂဏန်း"), bornDoubles.table!!.headings)
+        assertEquals("77 - 75 - 55", bornDoubles.table!!.rows.first()[1])
+        assertEquals(listOf("အပူး", "အပြီးခွေ"), fourDigitDoubles.table!!.headings)
+        assertEquals("0457 (သို့) 0459 အပြီးခွေ",
+            fourDigitDoubles.table!!.rows.first()[1])
+        assertEquals(10, fourDigitDoubles.table!!.rows.size)
+
+        // The old six-column table and full three-column double source
+        // are still present, byte-for-byte, in the canonical reader asset.
+        assertEquals(6, rules.single { it.id == "cherry-008" }.table!!.headings.size)
+        assertEquals(3, rules.single { it.id == "cherry-021" }.table!!.headings.size)
+    }
+
+    @Test fun oldSavedCoversMigrateAndNumberFavoritesRemainUnchanged() {
+        val old = setOf(
+            "book:cherry-book-11",
+            "book:cherry-book-04",
+            "s2-0-8",
+        )
+        val new = TwoDReaderCatalog.migrateSavedBookIds(old, books)
+        assertTrue("book:category-born" in new)
+        assertTrue("book:category-dead" in new)
+        assertTrue("book:category-follow" in new)
+        assertTrue("s2-0-8" in new)
+        assertTrue(new.none { it.startsWith("book:cherry-book-") })
+        assertEquals(new, TwoDReaderCatalog.migrateSavedBookIds(new, books))
+    }
+
+    @Test fun selectedExamplesArePreservedAndNoBetterDataIsIncluded() {
         val examples = rules.filter { it.exampleLines.isNotEmpty() }
         assertEquals(7, examples.size)
         assertTrue(examples.any { it.title == "ထိပ်တူ / ပိတ်တူမူ" })
-        assertTrue(examples.none { it.title.startsWith("Modern / Internet") })
         assertTrue(examples.none { it.section == 6 || it.section == 8 })
         assertTrue(examples.flatMap { it.exampleLines }.any { it.contains("[[4]]") })
-    }
-
-    @Test fun digitAndDoublesTablesKeepAllSourceRows() {
-        val digits = rules.single { it.section == 2 }
-        assertEquals(10, digits.table!!.rows.size)
-        assertEquals("7 ပိတ် သေ", digits.table.rows.first()[1])
-        val doubles = rules.single { it.section == 4 && it.table != null }
-        assertEquals(10, doubles.table!!.rows.size)
-        assertEquals("0457 (သို့) 0459 အပြီးခွေ", doubles.table.rows.first()[1])
+        assertTrue(books.all { it.rules.isNotEmpty() })
+        assertTrue(rules.none { it.section == 7 })
     }
 }
