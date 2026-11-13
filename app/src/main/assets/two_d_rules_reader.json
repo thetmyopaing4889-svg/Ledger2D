@@ -919,190 +919,414 @@
   ],
   "books": [
     {
-      "id": "cherry-book-01",
-      "title": "မနက် / ညနေ တူညီမှုမူများ",
-      "section": 1,
-      "ruleIds": [
-        "cherry-001",
-        "cherry-002",
-        "cherry-003"
+      "id": "category-dead",
+      "title": "အသေဂဏန်းမူ",
+      "pastel": "#FCE5EA",
+      "entries": [
+        {
+          "id": "cherry-008",
+          "title": "နောက်ပိတ်အသေ (+7) မူ",
+          "text": "နောက်ပိတ်ဂဏန်းအလိုက် +7 အသေပိတ်ယူနည်းကို မူရင်းဇယားအတိုင်း ဖော်ပြထားသည်။",
+          "tableColumns": [
+            0,
+            1
+          ],
+          "exampleIndexes": [
+            0
+          ]
+        },
+        {
+          "id": "cherry-073"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-04",
+        "cherry-book-12"
       ]
     },
     {
-      "id": "cherry-book-02",
-      "title": "Modern / Internet တူညီမှုမူများ",
-      "section": 1,
-      "ruleIds": [
-        "cherry-004",
-        "cherry-005"
+      "id": "category-born",
+      "title": "မွေးဂဏန်းမူ",
+      "pastel": "#E1F3E9",
+      "entries": [
+        {
+          "id": "cherry-021",
+          "title": "အပူးအလိုက် မွေးဂဏန်းဇယား",
+          "text": "00 မှ 99 အပူးထွက်ဂဏန်းအလိုက် မွေးဂဏန်းများကို မူရင်းဇယားမှ ဖော်ပြထားသည်။",
+          "tableColumns": [
+            0,
+            2
+          ],
+          "exampleIndexes": []
+        },
+        {
+          "id": "cherry-032"
+        },
+        {
+          "id": "cherry-033"
+        },
+        {
+          "id": "cherry-034"
+        },
+        {
+          "id": "cherry-035"
+        },
+        {
+          "id": "cherry-036"
+        },
+        {
+          "id": "cherry-037"
+        },
+        {
+          "id": "cherry-038"
+        },
+        {
+          "id": "cherry-039"
+        },
+        {
+          "id": "cherry-040"
+        },
+        {
+          "id": "cherry-041"
+        },
+        {
+          "id": "cherry-042"
+        },
+        {
+          "id": "cherry-043"
+        },
+        {
+          "id": "cherry-044"
+        },
+        {
+          "id": "cherry-045"
+        },
+        {
+          "id": "cherry-046"
+        },
+        {
+          "id": "cherry-047"
+        },
+        {
+          "id": "cherry-048"
+        },
+        {
+          "id": "cherry-049"
+        },
+        {
+          "id": "cherry-050"
+        },
+        {
+          "id": "cherry-051"
+        },
+        {
+          "id": "cherry-052"
+        },
+        {
+          "id": "cherry-053"
+        },
+        {
+          "id": "cherry-054"
+        },
+        {
+          "id": "cherry-055"
+        },
+        {
+          "id": "cherry-056"
+        },
+        {
+          "id": "cherry-057"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-07",
+        "cherry-book-11"
       ]
     },
     {
-      "id": "cherry-book-03",
-      "title": "အလယ်သတ်ကွင်း",
-      "section": 1,
-      "ruleIds": [
-        "cherry-006",
-        "cherry-007"
+      "id": "category-follow",
+      "title": "ပတ်သီးနှင့် တည်ဘောမူ",
+      "pastel": "#FFF0CE",
+      "entries": [
+        {
+          "id": "cherry-008",
+          "title": "+4 ပတ်သီးမူ",
+          "text": "ဂဏန်းတစ်လုံးချင်းအလိုက် +4 ပတ်သီးဇယား။",
+          "tableColumns": [
+            0,
+            2
+          ],
+          "exampleIndexes": [
+            1
+          ]
+        },
+        {
+          "id": "cherry-008",
+          "title": "တည်ဘောနှင့် ထိပ်စီးမူ",
+          "text": "ဂဏန်းတစ်လုံးချင်းအလိုက် တည်ဘောနှင့် ထိပ်စီးဇယား။",
+          "tableColumns": [
+            0,
+            3
+          ],
+          "exampleIndexes": []
+        },
+        {
+          "id": "cherry-008",
+          "title": "ပျောက်ပြီးပြန်လာမည့် ဂဏန်းမူ",
+          "text": "ပျောက်ပြီးပြန်လာသောဂဏန်းများကို မူရင်းဇယားအတိုင်း ဖော်ပြထားသည်။",
+          "tableColumns": [
+            0,
+            4
+          ],
+          "exampleIndexes": []
+        },
+        {
+          "id": "cherry-008",
+          "title": "တစ်လုံးချင်းလာပြီး လိုက်ရမည့်အတွဲမူ",
+          "text": "တစ်လုံးချင်းအလိုက် လိုက်ရမည့်အတွဲများကို မူရင်းဇယားအတိုင်း ဖော်ပြထားသည်။",
+          "tableColumns": [
+            0,
+            5
+          ],
+          "exampleIndexes": []
+        },
+        {
+          "id": "cherry-078"
+        },
+        {
+          "id": "cherry-079"
+        },
+        {
+          "id": "cherry-080"
+        },
+        {
+          "id": "cherry-081"
+        },
+        {
+          "id": "cherry-082"
+        },
+        {
+          "id": "cherry-083"
+        },
+        {
+          "id": "cherry-084"
+        },
+        {
+          "id": "cherry-090"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-04",
+        "cherry-book-13",
+        "cherry-book-16"
       ]
     },
     {
-      "id": "cherry-book-04",
-      "title": "ဂဏန်း 0–9 ပတ်သီး၊ အသေ၊ တည်ဘောဇယား",
-      "section": 2,
-      "ruleIds": [
-        "cherry-008"
+      "id": "category-double",
+      "title": "အပူးနှင့် အပြီးခွေမူ",
+      "pastel": "#EAE5FA",
+      "entries": [
+        {
+          "id": "cherry-021",
+          "title": "အပူး 00–99 အပြီးခွေဇယား",
+          "text": "အပူး 00 မှ 99 အလိုက် အပြီးခွေများကို မူရင်းဇယားမှ ဖော်ပြထားသည်။",
+          "tableColumns": [
+            0,
+            1
+          ],
+          "exampleIndexes": []
+        },
+        {
+          "id": "cherry-022"
+        },
+        {
+          "id": "cherry-023"
+        },
+        {
+          "id": "cherry-074"
+        },
+        {
+          "id": "cherry-076"
+        },
+        {
+          "id": "cherry-077"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-07",
+        "cherry-book-08",
+        "cherry-book-13"
       ]
     },
     {
-      "id": "cherry-book-05",
-      "title": "ပါဝါ၊ ညီအစ်ကို၊ နက္ခတ် ဆက်စပ်မူများ",
-      "section": 3,
-      "ruleIds": [
-        "cherry-009",
-        "cherry-010",
-        "cherry-011",
-        "cherry-012",
-        "cherry-013"
+      "id": "category-bk",
+      "title": "ဘရိတ်မူ",
+      "pastel": "#DFEFFB",
+      "entries": [
+        {
+          "id": "cherry-002"
+        },
+        {
+          "id": "cherry-003"
+        },
+        {
+          "id": "cherry-005"
+        },
+        {
+          "id": "cherry-017"
+        },
+        {
+          "id": "cherry-028"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-01",
+        "cherry-book-02",
+        "cherry-book-06",
+        "cherry-book-09"
       ]
     },
     {
-      "id": "cherry-book-06",
-      "title": "အုပ်စုလိုက် အလိုက်မူများနှင့် ဘရိတ်",
-      "section": 3,
-      "ruleIds": [
-        "cherry-014",
-        "cherry-015",
-        "cherry-016",
-        "cherry-017",
-        "cherry-018",
-        "cherry-019",
-        "cherry-020"
+      "id": "category-groups",
+      "title": "ပါဝါ၊ ညီအစ်ကိုနှင့် နက္ခတ်မူ",
+      "pastel": "#FCE6DB",
+      "entries": [
+        {
+          "id": "cherry-009"
+        },
+        {
+          "id": "cherry-010"
+        },
+        {
+          "id": "cherry-011"
+        },
+        {
+          "id": "cherry-012"
+        },
+        {
+          "id": "cherry-013"
+        },
+        {
+          "id": "cherry-014"
+        },
+        {
+          "id": "cherry-015"
+        },
+        {
+          "id": "cherry-016"
+        },
+        {
+          "id": "cherry-018"
+        },
+        {
+          "id": "cherry-019"
+        },
+        {
+          "id": "cherry-020"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-05",
+        "cherry-book-06"
       ]
     },
     {
-      "id": "cherry-book-07",
-      "title": "အပူး 00–99 အပြီးခွေနှင့် မွေးဂဏန်းဇယား",
-      "section": 4,
-      "ruleIds": [
-        "cherry-021"
+      "id": "category-sessions",
+      "title": "မနက်၊ ညနေ နှိုင်းယှဉ်မူ",
+      "pastel": "#E2F4F2",
+      "entries": [
+        {
+          "id": "cherry-001"
+        },
+        {
+          "id": "cherry-002"
+        },
+        {
+          "id": "cherry-003"
+        },
+        {
+          "id": "cherry-004"
+        },
+        {
+          "id": "cherry-005"
+        },
+        {
+          "id": "cherry-006"
+        },
+        {
+          "id": "cherry-007"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-01",
+        "cherry-book-02",
+        "cherry-book-03"
       ]
     },
     {
-      "id": "cherry-book-08",
-      "title": "အပူးဆက်စပ် အထူးမူများ",
-      "section": 4,
-      "ruleIds": [
-        "cherry-022",
-        "cherry-023"
+      "id": "category-days",
+      "title": "နေ့ရက်အလိုက်မူ",
+      "pastel": "#F8E6F5",
+      "entries": [
+        {
+          "id": "cherry-024"
+        },
+        {
+          "id": "cherry-025"
+        },
+        {
+          "id": "cherry-026"
+        },
+        {
+          "id": "cherry-027"
+        },
+        {
+          "id": "cherry-028"
+        },
+        {
+          "id": "cherry-029"
+        },
+        {
+          "id": "cherry-030"
+        },
+        {
+          "id": "cherry-031"
+        },
+        {
+          "id": "cherry-085"
+        },
+        {
+          "id": "cherry-086"
+        },
+        {
+          "id": "cherry-087"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-09",
+        "cherry-book-10",
+        "cherry-book-13"
       ]
     },
     {
-      "id": "cherry-book-09",
-      "title": "တနင်္လာနေ့ အထူးမူများနှင့် ဘရိတ်ဇယား",
-      "section": 5,
-      "ruleIds": [
-        "cherry-024",
-        "cherry-025",
-        "cherry-026",
-        "cherry-027",
-        "cherry-028"
-      ]
-    },
-    {
-      "id": "cherry-book-10",
-      "title": "ဗုဒ္ဓဟူး၊ သောကြာနှင့် ရက်တိုအပတ်မူများ",
-      "section": 5,
-      "ruleIds": [
-        "cherry-029",
-        "cherry-030",
-        "cherry-031"
-      ]
-    },
-    {
-      "id": "cherry-book-11",
-      "title": "ထွက်ဂဏန်းအလိုက် မွေးဂဏန်းများ",
-      "section": 6,
-      "ruleIds": [
-        "cherry-032",
-        "cherry-033",
-        "cherry-034",
-        "cherry-035",
-        "cherry-036",
-        "cherry-037",
-        "cherry-038",
-        "cherry-039",
-        "cherry-040",
-        "cherry-041",
-        "cherry-042",
-        "cherry-043",
-        "cherry-044",
-        "cherry-045",
-        "cherry-046",
-        "cherry-047",
-        "cherry-048",
-        "cherry-049",
-        "cherry-050",
-        "cherry-051",
-        "cherry-052",
-        "cherry-053",
-        "cherry-054",
-        "cherry-055",
-        "cherry-056",
-        "cherry-057"
-      ]
-    },
-    {
-      "id": "cherry-book-12",
-      "title": "နောက်ပိတ်အလိုက် အသေတွဲဇယား",
-      "section": 8,
-      "ruleIds": [
-        "cherry-073"
-      ]
-    },
-    {
-      "id": "cherry-book-13",
-      "title": "2D ကိုပိုင် အထူးမူများ",
-      "section": 8,
-      "ruleIds": [
-        "cherry-074",
-        "cherry-075",
-        "cherry-076",
-        "cherry-077",
-        "cherry-078",
-        "cherry-079",
-        "cherry-080",
-        "cherry-081",
-        "cherry-082",
-        "cherry-083",
-        "cherry-084",
-        "cherry-085",
-        "cherry-086",
-        "cherry-087"
-      ]
-    },
-    {
-      "id": "cherry-book-14",
-      "title": "တနင်္လာ–သောကြာ ပါဝါမူ",
-      "section": 9,
-      "ruleIds": [
-        "cherry-088"
-      ]
-    },
-    {
-      "id": "cherry-book-15",
-      "title": "WaiLin 2D နေ့စဉ် တစ်လုံးပိုင်မူ",
-      "section": 9,
-      "ruleIds": [
-        "cherry-089"
-      ]
-    },
-    {
-      "id": "cherry-book-16",
-      "title": "ဂဏန်း 1–5 တွဲဖက်ပတ်သီးမူ",
-      "section": 9,
-      "ruleIds": [
-        "cherry-090"
+      "id": "category-special",
+      "title": "အထူးတွက်နည်းမူ",
+      "pastel": "#F0ECE5",
+      "entries": [
+        {
+          "id": "cherry-075"
+        },
+        {
+          "id": "cherry-088"
+        },
+        {
+          "id": "cherry-089"
+        }
+      ],
+      "legacyBookIds": [
+        "cherry-book-13",
+        "cherry-book-14",
+        "cherry-book-15"
       ]
     }
   ]
