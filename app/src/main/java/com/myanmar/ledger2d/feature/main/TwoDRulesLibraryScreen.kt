@@ -597,8 +597,8 @@ internal fun TwoDRulesLibraryScreen(
                                         color = colors.accent,
                                     )
                                     group.items.forEach { entry ->
-                                        Text(
-                                            entry.original,
+                                        ReaderDigitsText(
+                                            value = entry.original,
                                             fontSize = 17.sp, lineHeight = 29.sp,
                                             color = colors.ink,
                                         )
@@ -914,8 +914,8 @@ private fun SourceRuleCell(title: String, body: String, colors: BookColors) {
             style = MaterialTheme.typography.bodyMedium,
             lineHeight = 24.sp,
         )
-        Text(
-            body,
+        ReaderDigitsText(
+            value = body,
             color = colors.ink,
             fontSize = 19.sp,
             lineHeight = 31.sp,
@@ -973,7 +973,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                 Row(Modifier.fillMaxWidth().background(colors.panel)) {
                     table.headings.forEachIndexed { i, heading ->
                         ReaderTableCell(
-                            heading, colors.ink, if (i == 0) 0.34f else 0.66f,
+                            heading, colors.ink,
                             true, Modifier.weight(if (i == 0) 0.34f else 0.66f),
                         )
                     }
@@ -989,7 +989,6 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                             ReaderTableCell(
                                 if (value == "—") "—" else value,
                                 if (i == 0) colors.accent else colors.ink,
-                                if (i == 0) 0.34f else 0.66f,
                                 i == 0,
                                 Modifier.weight(if (i == 0) 0.34f else 0.66f),
                             )
@@ -1002,7 +1001,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                 Row(Modifier.background(colors.panel)) {
                     table.headings.forEachIndexed { i, heading ->
                         ReaderTableCell(
-                            heading, colors.ink, 1f, true,
+                            heading, colors.ink, true,
                             Modifier.width(if (i == 0) 105.dp else 205.dp),
                         )
                     }
@@ -1017,7 +1016,7 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
                         row.forEachIndexed { i, value ->
                             ReaderTableCell(
                                 value, if (i == 0) colors.accent else colors.ink,
-                                1f, i == 0,
+                                i == 0,
                                 Modifier.width(if (i == 0) 105.dp else 205.dp),
                             )
                         }
@@ -1032,7 +1031,6 @@ private fun ReaderRuleTable(table: TwoDReaderTable, colors: BookColors) {
 private fun ReaderTableCell(
     text: String,
     color: Color,
-    weight: Float,
     emphasized: Boolean,
     modifier: Modifier = Modifier,
 ) {
