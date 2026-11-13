@@ -890,6 +890,14 @@ private fun NumberFirstLookupScreen(
                 ),
                 label = { Text(tr("ဂဏန်းတွဲ ၂ လုံး ရိုက်ရန်", "Enter a two-digit pair")) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = {
+                    if (pairInput.isNotEmpty()) {
+                        IconButton(onClick = { onPairInputChanged("") }) {
+                            Icon(Icons.Default.Close,
+                                tr("ဂဏန်းတွဲရှင်းရန်", "Clear pair"))
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(
