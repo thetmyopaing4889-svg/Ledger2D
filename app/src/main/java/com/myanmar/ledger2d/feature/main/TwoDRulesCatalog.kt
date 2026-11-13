@@ -66,7 +66,7 @@ internal class TwoDRulesCatalog private constructor(
         groups.forEach { group ->
             group.items.forEach { rule ->
                 val exactTrigger = number in rule.sourceNumbers ||
-                    explicitFirstNumberTrigger(rule.original, number)
+                    (rule.section == 8 && explicitFirstNumberTrigger(rule.original, number))
                 val item = TwoDNumberLookupEntry(
                     rule = rule,
                     groupTitle = group.title,
