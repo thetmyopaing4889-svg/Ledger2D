@@ -49,6 +49,7 @@ data class CherryReport(
     val born: List<CherryPick>,
     val math: List<CherryPick>,
     val summary: List<CherryPick>,
+    val ranked: List<CherryPick>,
     val activeRules: List<CherryBirth>,
     val singles: List<CherryValue>,
     val breaks: List<CherryValue>,
@@ -401,13 +402,14 @@ object CherryBetterDataEngine {
         val bornPicks=group(born)
         val mathPicks=group(math)
         val distinct=mutableSetOf<String>()
-        val summary=group(current+born+math).filter{it.cuts.isEmpty()}.filter{p->
+        val ranked=group(current+born+math).filter{it.cuts.isEmpty()}.filter{p->
             val reverse=p.pair.reversed()
             val key=if(p.pair<reverse)p.pair else reverse
             distinct.add(key)
-        }.take(3)
+        }
+        val summary=ranked.take(3)
         return CherryReport(target,rows.size,rows.lastOrNull(),currentPicks,bornPicks,
-            mathPicks,summary,births,singles,breaks,cut.mapValues{it.value.distinct()},
+            mathPicks,summary,ranked,births,singles,breaks,cut.mapValues{it.value.distinct()},
             target.session==DrawSession.MORNING&&modern?.matches(Regex("[0-9]{2}"))==true&&
                 internet?.matches(Regex("[0-9]{2}"))==true)
     }
