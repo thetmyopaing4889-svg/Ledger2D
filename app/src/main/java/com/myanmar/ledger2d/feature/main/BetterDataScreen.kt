@@ -94,25 +94,32 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         if (ready) BetterDataQuantEngine.calculate(merged, target, modern, internet) else null
     }
     var strategy by rememberSaveable { mutableStateOf(BetterStrategy.CURRENT) }
-    var mode by rememberSaveable { mutableStateOf(BetterMode.OVERLAP) }
+    // Until the user chooses a mode, open the first mode which actually has results.
+    // Never silently relabel a formula output as an overlap.
+    var selectedMode by rememberSaveable { mutableStateOf<BetterMode?>(null) }
+    val suggestedMode = when {
+        report?.select(strategy, BetterMode.OVERLAP)?.isNotEmpty() == true -> BetterMode.OVERLAP
+        report?.select(strategy, BetterMode.RULES)?.isNotEmpty() == true -> BetterMode.RULES
+        else -> BetterMode.FORMULAS
+    }
+    val mode = selectedMode ?: suggestedMode
     var detail by remember { mutableStateOf<BetterPick?>(null) }
     var showTickets by remember { mutableStateOf(false) }
+    var show930 by rememberSaveable { mutableStateOf(false) }
+    var showDetails by rememberSaveable { mutableStateOf(false) }
+    var savedNotice by remember { mutableStateOf(false) }
     val picks = report?.select(strategy, mode).orEmpty()
     val pickLabel = when (mode) {
-        BetterMode.OVERLAP -> tr("ဘုံဆုံမှတ်", "Confluence")
-        BetterMode.RULES -> tr("မူအရ", "Rules")
-        BetterMode.FORMULAS -> tr("တွက်နည်းအရ", "Formulas")
+        BetterMode.OVERLAP -> tr("မူနဲ့တွက်နည်း ဘုံတူ", "Rule & formula overlap")
+        BetterMode.RULES -> tr("မူအရ", "From rules")
+        BetterMode.FORMULAS -> tr("တွက်နည်းအရ", "From formulas")
     }
     Scaffold(
         containerColor = Color(0xFFFFF7F9),
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("BETTER DATA", fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep)
-                        Text("Cherry Quant Preview", style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text("BETTER DATA", fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep)
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
                 actions = { IconButton(onClick = { showTickets = true }) {
@@ -124,218 +131,332 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Surface(color = AppColors.PrimaryDeep, shape = RoundedCornerShape(22.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AutoGraph, null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
+                Surface(
+                    color = AppColors.PrimaryDeep,
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(tr("လာမယ့် 2D အကြိမ်", "Next 2D draw"),
-                                color = Color.White, fontWeight = FontWeight.Bold)
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.9f))
+                            Text("\${target.date}  •  " + tr(
+                                if (target.session == DrawSession.MORNING) "မနက်" else "ညနေ",
+                                if (target.session == DrawSession.MORNING) "AM" else "PM"
+                            ), style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black, color = Color.White)
                         }
-                        Text("${target.date}  •  " + tr(
-                            if (target.session == DrawSession.MORNING) "မနက်" else "ညနေ",
-                            if (target.session == DrawSession.MORNING) "AM" else "PM",
-                        ), color = Color.White, style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold)
-                        Text(tr("မြန်မာစံတော်ချိန် • အတည်ပြုရလဒ်အခြေခံ",
-                            "Myanmar time • verified result inputs only"),
-                            color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.bodySmall)
+                        Icon(Icons.Default.CalendarToday, null, tint = Color.White,
+                            modifier = Modifier.size(24.dp))
                     }
                 }
             }
             item {
-                Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, AppColors.Stone)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(tr("9:30 Modern / Internet (ထပ်မံတွက်ချက်ရန်)",
-                            "9:30 Modern / Internet (recalculate)"), fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDeep)
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedTextField(
-                                value = modernOverride,
-                                onValueChange = { modernOverride = it.filter(Char::isDigit).take(2) },
-                                label = { Text("Modern") },
-                                placeholder = { Text(sourceModern ?: "00") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
+                Surface(
+                    color = Color.White,
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, AppColors.Stone)
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(15.dp),
+                        verticalArrangement = Arrangement.spacedBy(11.dp)
+                    ) {
+                        Text(tr("ဒီအကြိမ်အတွက် ရွေးထားသောဂဏန်း", "Selected numbers for this draw"),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+                        Text(tr("တွက်ချက်နည်းလမ်း", "Calculation approach"),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilterChip(
+                                selected = strategy == BetterStrategy.CURRENT,
+                                onClick = { strategy = BetterStrategy.CURRENT; selectedMode = null; savedNotice = false },
+                                label = { Text(tr("လက်ရှိအကြိမ်", "Current draw")) }
                             )
-                            OutlinedTextField(
-                                value = internetOverride,
-                                onValueChange = { internetOverride = it.filter(Char::isDigit).take(2) },
-                                label = { Text("Internet") },
-                                placeholder = { Text(sourceInternet ?: "00") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
+                            FilterChip(
+                                selected = strategy == BetterStrategy.ALIVE,
+                                onClick = { strategy = BetterStrategy.ALIVE; selectedMode = null; savedNotice = false },
+                                label = { Text(tr("ဆက်တိုက်ကိုက်ညီမူ", "Alive rules")) }
                             )
                         }
-                        Text(
-                            if (report?.has930 == true)
-                                tr("9:30 ဒေတာပါဝင်ပြီး ပြန်တွက်ထားသည်။", "9:30 data included.")
-                            else tr("9:30 ဒေတာမပြည့်စုံပါ။ သက်ဆိုင်ရာမူကို မတွက်ထားပါ။",
-                                "9:30 inputs incomplete; dependent rules remain inactive."),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilterChip(
+                                selected = mode == BetterMode.OVERLAP,
+                                onClick = { selectedMode = BetterMode.OVERLAP; savedNotice = false },
+                                label = { Text(tr("ဘုံတူ", "Overlap")) }
+                            )
+                            FilterChip(
+                                selected = mode == BetterMode.RULES,
+                                onClick = { selectedMode = BetterMode.RULES; savedNotice = false },
+                                label = { Text(tr("မူအရ", "Rules")) }
+                            )
+                            FilterChip(
+                                selected = mode == BetterMode.FORMULAS,
+                                onClick = { selectedMode = BetterMode.FORMULAS; savedNotice = false },
+                                label = { Text(tr("တွက်နည်းအရ", "Formulas")) }
+                            )
+                        }
+                        Text(pickLabel,
                             style = MaterialTheme.typography.bodySmall,
-                        )
-                        if (modernOverride.isNotEmpty() || internetOverride.isNotEmpty()) {
-                            TextButton(onClick = { modernOverride = ""; internetOverride = "" }) {
-                                Text(tr("အလိုအလျောက်ဒေတာပြန်သုံးရန်", "Use saved data"))
+                            color = AppColors.PrimaryDeep,
+                            fontWeight = FontWeight.SemiBold)
+                        if (!ready) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                        } else if (picks.isEmpty()) {
+                            Surface(color = AppColors.Blush, shape = RoundedCornerShape(15.dp)) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                                ) {
+                                    Text(
+                                        if (strategy == BetterStrategy.ALIVE)
+                                            tr("လက်ရှိ ဆက်တိုက်ကိုက်ညီမူ မတွေ့သေးပါ။",
+                                                "No qualifying alive rules yet.")
+                                        else if (mode == BetterMode.OVERLAP)
+                                            tr("နှစ်ဖက်လုံးမှာ တူတဲ့ဂဏန်း မတွေ့ပါ။",
+                                                "No shared pair between rules and formulas.")
+                                        else tr("ဒီနည်းနဲ့ ဂဏန်းမတွေ့သေးပါ။",
+                                            "No pair found with this method."),
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AppColors.PrimaryDeep
+                                    )
+                                    Text(
+                                        tr("အခြားနည်းလမ်းကို ပြောင်းကြည့်နိုင်ပါတယ်။",
+                                            "You can switch to another method."),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (strategy == BetterStrategy.ALIVE &&
+                                        report?.current?.isNotEmpty() == true) {
+                                        TextButton(onClick = {
+                                            strategy = BetterStrategy.CURRENT
+                                            selectedMode = null
+                                        }) { Text(tr("လက်ရှိအကြိမ်ရလဒ် ကြည့်ရန်", "Show current draw")) }
+                                    }
+                                }
                             }
-                        }
-                    }
-                }
-            }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tr("ခန့်မှန်းနည်းလမ်း", "Prediction strategy"),
-                        fontWeight = FontWeight.Bold, color = AppColors.Ink)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = strategy == BetterStrategy.CURRENT,
-                            onClick = { strategy = BetterStrategy.CURRENT },
-                            label = { Text(tr("လက်ရှိအကြိမ်", "Current draw")) },
-                        )
-                        FilterChip(
-                            selected = strategy == BetterStrategy.ALIVE,
-                            onClick = { strategy = BetterStrategy.ALIVE },
-                            label = { Text(tr("Alive Top 5", "Alive Top 5")) },
-                        )
-                    }
-                    Text(tr("ရလဒ်အမျိုးအစား", "Result mode"),
-                        fontWeight = FontWeight.Bold, color = AppColors.Ink)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilterChip(selected = mode == BetterMode.OVERLAP,
-                            onClick = { mode = BetterMode.OVERLAP },
-                            label = { Text(tr("ဘုံဆုံမှတ်", "Overlap")) })
-                        FilterChip(selected = mode == BetterMode.RULES,
-                            onClick = { mode = BetterMode.RULES },
-                            label = { Text(tr("မူအရ", "Rules")) })
-                        FilterChip(selected = mode == BetterMode.FORMULAS,
-                            onClick = { mode = BetterMode.FORMULAS },
-                            label = { Text(tr("တွက်နည်းအရ", "Formulas")) })
-                    }
-                }
-            }
-            item {
-                if (!ready) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                } else {
-                    Surface(color = Color.White, shape = RoundedCornerShape(22.dp),
-                        border = BorderStroke(1.dp, AppColors.Stone)) {
-                        Column(Modifier.fillMaxWidth().padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.TrackChanges, null, tint = AppColors.Primary)
-                                Spacer(Modifier.width(8.dp))
-                                Text(pickLabel + " • " + tr("အများဆုံး ၃ တွဲ", "up to 3 pairs"),
-                                    color = AppColors.PrimaryDeep, fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium)
-                            }
-                            if (picks.isEmpty()) {
-                                Text(tr("ဒီနည်းလမ်းမှာ စည်းကမ်းကိုက်ညီတဲ့ ဂဏန်းတွဲ မတွေ့ပါ။ အခြား Mode ကို စမ်းကြည့်နိုင်သည်။",
-                                    "No matching pair for this strategy and mode. Try another mode."),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            } else {
+                        } else {
+                            Text(
+                                tr("ဂဏန်းကိုနှိပ်ပြီး ဘာကြောင့်ရွေးထားသလဲ ကြည့်နိုင်တယ်။",
+                                    "Tap a number to see why it was selected."),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 picks.forEachIndexed { index, pick ->
-                                    Surface(onClick = { detail = pick },
-                                        color = if (index == 0) AppColors.Blush else Color.White,
-                                        shape = RoundedCornerShape(14.dp),
-                                        border = BorderStroke(1.dp, AppColors.Stone)) {
-                                        Row(Modifier.fillMaxWidth().padding(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically) {
-                                            Surface(shape = RoundedCornerShape(12.dp),
-                                                color = if (index == 0) AppColors.Primary else AppColors.PrimaryDeep) {
-                                                Text(pick.number, Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-                                                    color = Color.White, fontWeight = FontWeight.Black,
-                                                    fontSize = 26.sp)
-                                            }
-                                            Spacer(Modifier.width(12.dp))
-                                            Column(Modifier.weight(1f)) {
-                                                Text(if (index == 0) tr("အဓိက ရွေးချယ်မှု", "Main selection")
-                                                    else tr("အရံ ရွေးချယ်မှု", "Reserve"),
-                                                    fontWeight = FontWeight.Bold)
-                                                Text(tr("မူ/တွက်နည်း ${pick.traces.size} ချက်",
-                                                    "${pick.traces.size} rule/formula traces"),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                Text(tr("တွက်နည်းကြည့်ရန်", "View winning DNA"),
-                                                    color = AppColors.PrimaryDeep,
-                                                    style = MaterialTheme.typography.labelMedium)
-                                            }
-                                            Icon(Icons.Default.ChevronRight, null, tint = AppColors.PrimaryDeep)
+                                    Surface(
+                                        onClick = { detail = pick },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = if (index == 0) AppColors.Primary else AppColors.Blush,
+                                        border = if (index == 0) null else
+                                            BorderStroke(1.dp, AppColors.Stone)
+                                    ) {
+                                        Column(
+                                            Modifier.padding(vertical = 15.dp, horizontal = 4.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(if (index == 0) tr("အဓိက", "Main")
+                                                else tr("အရံ", "Other"),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (index == 0) Color.White else AppColors.PrimaryDeep)
+                                            Text(
+                                                pick.number,
+                                                fontSize = 30.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = if (index == 0) Color.White else AppColors.PrimaryDeep
+                                            )
                                         }
                                     }
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = {
-                                        clipboard.setText(AnnotatedString(picks.joinToString(" • ") { it.number }))
-                                    }) { Icon(Icons.Default.ContentCopy, null, Modifier.size(16.dp))
-                                        Spacer(Modifier.width(4.dp)); Text(tr("ကူးမည်", "Copy")) }
-                                    Button(onClick = {
-                                        val record = "${target.date} ${target.session.name} | ${strategy.name}/${mode.name} | " +
-                                            picks.joinToString(",") { it.number } + " | inputs=${modern ?: "-"}/${internet ?: "-"}"
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { clipboard.setText(
+                                        AnnotatedString(picks.joinToString(" • ") { it.number })
+                                    ) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.ContentCopy, null, Modifier.size(15.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(tr("ကူးမည်", "Copy"))
+                                }
+                                Button(
+                                    onClick = {
+                                        val record = "\${target.date} \${target.session.name} | \${strategy.name}/\${mode.name} | " +
+                                            picks.joinToString(",") { it.number } + " | inputs=\${modern ?: "-"}/\${internet ?: "-"}"
                                         val next = (listOf(record) + tickets.lines().filter { it.isNotBlank() })
                                             .distinct().take(30).joinToString("\n")
-                                        prefs.edit().putString("tickets", next).apply()
-                                        tickets = next
-                                    }) { Text(tr("ခန့်မှန်းချက် သိမ်းရန်", "Save ticket")) }
+                                        val written = prefs.edit().putString("tickets", next).commit()
+                                        if (written) { tickets = next; savedNotice = true }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.BookmarkBorder, null, Modifier.size(15.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(tr("သိမ်းမည်", "Save"))
                                 }
                             }
-                            Text(tr("ဂဏန်းအနည်းငယ်သာ ပြထားသည်။ ခန့်မှန်းချက်သည် အာမခံချက်မဟုတ်ပါ။",
-                                "Minimal selection only. These are rule outputs, not guaranteed outcomes."),
+                            if (savedNotice) {
+                                Text(tr("ရွေးချယ်မှုကို မှတ်တမ်းသိမ်းပြီးပါပြီ။",
+                                        "Selection saved to history."),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = AppColors.Success)
+                            }
+                        }
+                        Text(
+                            tr("မူနှင့်တွက်နည်းအရ ရွေးထားခြင်းဖြစ်ပြီး ထွက်မည့်ဂဏန်းကို အာမခံခြင်းမဟုတ်ပါ။",
+                                "Rule-based selections, not guaranteed results."),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            item {
+                Surface(
+                    color = Color.White, shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, AppColors.Stone)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp)) {
+                        TextButton(
+                            onClick = { show930 = !show930 },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Tune, null, tint = AppColors.PrimaryDeep)
+                            Spacer(Modifier.width(8.dp))
+                            Text(tr("9:30 အချက်အလက်ထည့်ရန်", "Add 9:30 inputs"),
+                                color = AppColors.PrimaryDeep, modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Start)
+                            Icon(if (show930) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                null, tint = AppColors.PrimaryDeep)
+                        }
+                        if (show930) {
+                            Text(tr("Modern / Internet ဂဏန်းရရှိမှ ထည့်ပါ။ မရှိလည်း တွက်ချက်နိုင်ပါတယ်။",
+                                "Enter Modern / Internet values only when available."),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = modernOverride,
+                                    onValueChange = {
+                                        modernOverride = it.filter { c -> c in '0'..'9' }.take(2)
+                                    },
+                                    label = { Text("Modern") },
+                                    placeholder = { Text(sourceModern ?: "—") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = internetOverride,
+                                    onValueChange = {
+                                        internetOverride = it.filter { c -> c in '0'..'9' }.take(2)
+                                    },
+                                    label = { Text("Internet") },
+                                    placeholder = { Text(sourceInternet ?: "—") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Text(
+                                if (report?.has930 == true)
+                                    tr("9:30 အချက်အလက် ပါဝင်ပြီးဖြစ်ပါတယ်။", "9:30 inputs included.")
+                                else tr("9:30 ဒေတာ မပြည့်စုံသေးပါ။", "9:30 data not yet complete."),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (modernOverride.isNotEmpty() || internetOverride.isNotEmpty()) {
+                                TextButton(onClick = { modernOverride = ""; internetOverride = "" }) {
+                                    Text(tr("သိမ်းထားသောဒေတာကို ပြန်သုံးမည်", "Use saved data"))
+                                }
+                            }
                         }
                     }
                 }
             }
             if (report != null) {
                 item {
-                    Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, AppColors.Stone)) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(tr("Engine အခြေအနေ", "Engine status"),
-                                fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-                            Text(tr("အတည်ပြုသမိုင်း ${report.observedDraws} ကြိမ် • Current ${report.current.size} တွဲ • Alive ${report.alive.size} တွဲ",
-                                "${report.observedDraws} confirmed draws • ${report.current.size} current pairs • ${report.alive.size} alive pairs"),
-                                style = MaterialTheme.typography.bodySmall)
-                            Text(tr("Alive မူ ${report.aliveIds.size} ခု • ဖြတ်မူဆန့်ကျင် ${report.cuts().size} တွဲ",
-                                "${report.aliveIds.size} alive rules • ${report.cuts().size} conflicts"),
-                                style = MaterialTheme.typography.bodySmall)
-                            if (report.aliveIds.isEmpty()) Text(
-                                tr("ဆက်တိုက်ကိုက်ညီမှု စမ်းသပ်ချက် မလုံလောက်သေးပါ။",
-                                    "No qualifying unbroken-streak rule in available history."),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-                if (report.hints.isNotEmpty()) {
-                    item {
-                        Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, AppColors.Stone)) {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(tr("တစ်လုံး / ဘရိတ် တွက်ချက်ရလဒ်", "Single-digit & break calculations"),
-                                    fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-                                Text(tr("မူရင်းတွဲစပ်စည်းကမ်း မရှင်းသေးသဖြင့် 2D အတွဲအဖြစ် အတင်းမထုတ်ထားပါ။",
-                                    "Unspecified pair conversions are not fabricated."),
+                    Surface(
+                        color = Color.White, shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, AppColors.Stone)
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp)) {
+                            TextButton(onClick = { showDetails = !showDetails },
+                                modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Info, null, tint = AppColors.PrimaryDeep)
+                                Spacer(Modifier.width(8.dp))
+                                Text(tr("အသေးစိတ်တွက်ချက်မှုများ", "Calculation details"),
+                                    color = AppColors.PrimaryDeep,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.Start)
+                                Icon(if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    null, tint = AppColors.PrimaryDeep)
+                            }
+                            if (showDetails) {
+                                Text(
+                                    tr("သမိုင်းရလဒ် \${report.observedDraws} ကြိမ်ကို အခြေခံထားသည်။",
+                                        "Using \${report.observedDraws} earlier result records."),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                report.hints.take(8).forEach { hint -> HintRow(hint) }
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    tr("လက်ရှိမူရလဒ် \${report.current.size} တွဲ • ဆက်တိုက်ကိုက်ညီမူ \${report.aliveIds.size} ခု",
+                                        "\${report.current.size} current pairs • \${report.aliveIds.size} alive rules"),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                if (report.aliveIds.isEmpty()) {
+                                    Text(
+                                        tr("ဆက်တိုက်ကိုက်ညီမူ သက်သေမလုံလောက်သေးပါ။",
+                                            "No qualifying alive rules in the available history."),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (report.hints.isNotEmpty()) {
+                                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                                    Text(tr("ဝမ်းချိန်း / လုံးပိုင် / ဘရိတ်ရလဒ်များ",
+                                        "Single-digit and break results"),
+                                        fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+                                    Text(tr("2D အတွဲပြောင်းနည်း မရှင်းသေးသော တွက်ချက်ချက်များကို ဒီနေရာမှာသာ ပြထားသည်။",
+                                        "Unspecified pair conversions are not invented."),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    report.hints.take(10).forEach { hint ->
+                                        Spacer(Modifier.height(8.dp))
+                                        HintRow(hint)
+                                    }
+                                }
+                                if (report.cuts().isNotEmpty()) {
+                                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                                    Text(
+                                        tr("မူအရ ဖြတ်မူဆန့်ကျင်နေသောဂဏန်း \${report.cuts().size} တွဲရှိသည်။",
+                                            "\${report.cuts().size} pairs have cut-rule conflicts."),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
                 }
                 item {
-                    Text(tr("စမ်းသပ်ဗားရှင်း • အပိုင်း ၄/၆/၇/၈/၉ ထဲက တိကျသောမူအချို့ကိုသာ အသက်သွင်းထားသည်။ မူအားလုံးမပါသေးပါ။",
-                        "Preview: selected explicit rules from sections 4/6/7/8/9; not the full rule library."),
+                    Text(
+                        tr("စမ်းသပ်ဗားရှင်း • မူအချို့ကိုသာ ထည့်သွင်းထားသေးသည်။",
+                            "Preview • only selected rules are implemented so far."),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 18.dp))
+                        modifier = Modifier.padding(bottom = 14.dp)
+                    )
                 }
             }
         }
