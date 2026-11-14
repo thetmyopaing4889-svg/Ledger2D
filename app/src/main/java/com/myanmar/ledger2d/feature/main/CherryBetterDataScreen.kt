@@ -498,6 +498,42 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             text={
                 Column(Modifier.heightIn(max=420.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement=Arrangement.spacedBy(10.dp)){
+                    if(tab==CherryTab.CURRENT||tab==CherryTab.BORN){
+                        val pool=if(tab==CherryTab.CURRENT)report?.current.orEmpty()
+                            else report?.born.orEmpty()
+                        val eligible=pool.filter{it.cuts.isEmpty()}
+                        val rank=eligible.indexOfFirst{it.pair==p.pair}
+                        val special=p.evidence.count{ev->
+                            ev.id.startsWith("cross-")||ev.id.startsWith("gold-")||
+                                ev.id.startsWith("s6-")||ev.id.startsWith("s4-")
+                        }
+                        if(p.cuts.isNotEmpty()){
+                            Text(tr("ဖြတ်မူငြိနေ၍ ဦးစားပေးစာရင်းတွင် မပါဝင်သောအတွဲ",
+                                "Excluded from priority picks due to a cut-rule conflict"),
+                                color=MaterialTheme.colorScheme.error,
+                                fontWeight=FontWeight.SemiBold)
+                        } else if(rank>=0){
+                            Text(tr("ဦးစားပေးအဆင့် ${rank+1} / ${eligible.size}",
+                                "Priority rank ${rank+1} / ${eligible.size}"),
+                                color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
+                        }
+                        Text(tr("ထောက်ခံမူအုပ်စု ${p.familyCount} ခု • ကဏ္ဍ ${p.sourceCount} ခု",
+                            "${p.familyCount} rule families • ${p.sourceCount} categories"),
+                            style=MaterialTheme.typography.bodyMedium)
+                        Text(tr("အမှတ် ${p.score} = (${p.familyCount} မူ × 10) + " +
+                                "(${p.sourceCount} ကဏ္ဍ × 15) + (${special} သီးသန့်မူ × 2)",
+                            "Score ${p.score} = ${p.familyCount} families × 10 + " +
+                                "${p.sourceCount} categories × 15 + ${special} specific rules × 2"),
+                            style=MaterialTheme.typography.bodySmall,
+                            color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("ဖြတ်မူမငြိသူကို အရင်ထားပြီး ကဏ္ဍ၊ မူအုပ်စု၊ အမှတ်နှင့် " +
+                                "ဂဏန်းအစဉ်လိုက် စီထားသည်။ အမှတ်သည် ထွက်နိုင်ခြေရာခိုင်နှုန်းမဟုတ်ပါ။",
+                            "Ordered by cut conflicts, categories, families, score, then number. " +
+                                "The score is not a probability."),
+                            style=MaterialTheme.typography.bodySmall,
+                            color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        HorizontalDivider(color=AppColors.Blush)
+                    }
                     p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
                         Text("• ${ev.name}",fontWeight=FontWeight.Bold,
                             style=MaterialTheme.typography.bodyMedium)
