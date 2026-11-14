@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.domain.*
 
@@ -86,15 +87,17 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
     onOriginal:(CherryOriginalReference)->Unit
 ){
     var expanded by rememberSaveable(f.id){mutableStateOf(false)}
-    Surface(color=Color(0xFFFCFBFB),shape=RoundedCornerShape(10.dp),
-        border=BorderStroke(1.dp,Color(0xFFECE5E6))){
+    // Match CURRENT/BORN rule-card surface and typography.
+    Surface(color=Color.White,shape=RoundedCornerShape(16.dp),
+        border=BorderStroke(1.dp,mathEdge)){
         Column{
             Surface(onClick={expanded=!expanded},color=Color.Transparent){
-                Row(Modifier.fillMaxWidth().padding(9.dp),
-                    horizontalArrangement=Arrangement.spacedBy(7.dp),
+                Row(Modifier.fillMaxWidth().padding(13.dp),
+                    horizontalArrangement=Arrangement.spacedBy(8.dp),
                     verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-                        Text(f.name,color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
+                        Text(f.name,color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
+                            style=MaterialTheme.typography.bodyMedium)
                         Text(if(champion){
                             if(en)"Qualified · ${f.streak} consecutive"
                             else "စစ်ချက်ပြည့် · ${f.streak} ပွဲဆက်"
@@ -104,9 +107,10 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                         },style=MaterialTheme.typography.labelSmall,
                             color=MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Text(f.result?.toString()?:"—",fontWeight=FontWeight.Black,
+                    Text(f.result?.toString()?:"—",fontWeight=FontWeight.Bold,
                         style=MaterialTheme.typography.titleLarge,color=AppColors.PrimaryDeep)
-                    Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
+                    Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        null,tint=AppColors.PrimaryDeep)
                 }
             }
             if(expanded){
@@ -154,10 +158,11 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
 ){
     // Show the actual selected pairs immediately on opening the Math tab:
     // a single, compact row instead of a generic count or stacked cards.
-    Surface(color=Color.White,shape=RoundedCornerShape(16.dp),
+    // Same overview frame geometry as CURRENT and BORN.
+    Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
         border=BorderStroke(1.dp,mathEdge)){
-        Column(Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Column(Modifier.fillMaxWidth().padding(13.dp),
+            verticalArrangement=Arrangement.spacedBy(11.dp)){
             Text(if(en)"Selected math pairs" else "သင်္ချာနည်း ရွေးကွက်",
                 color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
                 style=MaterialTheme.typography.titleMedium)
@@ -183,12 +188,13 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                         val isMain=index==0
                         Surface(onClick={onPick(pick)},
                             modifier=Modifier.weight(1f),
-                            color=if(isMain)AppColors.PrimaryDeep
-                                else Color(0xFFFFEBF1),
-                            shape=RoundedCornerShape(12.dp),
-                            border=if(isMain)null else BorderStroke(1.dp,mathEdge)){
+                            color=if(isMain)AppColors.Primary
+                                else Color(0xFFFFE7EF),
+                            shape=RoundedCornerShape(13.dp),
+                            border=if(isMain)null else
+                                BorderStroke(1.dp,Color(0xFFF4C6D4))){
                             Column(Modifier.fillMaxWidth().padding(
-                                horizontal=4.dp,vertical=9.dp),
+                                horizontal=2.dp,vertical=10.dp),
                                 horizontalAlignment=Alignment.CenterHorizontally,
                                 verticalArrangement=Arrangement.spacedBy(3.dp)){
                                 Text(if(selection.reverseOf!=null){
@@ -201,8 +207,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                     fontWeight=FontWeight.Bold,
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
-                                Text(pick.pair,
-                                    style=MaterialTheme.typography.headlineMedium,
+                                Text(pick.pair,fontSize=25.sp,
                                     fontWeight=FontWeight.Black,
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
@@ -268,11 +273,12 @@ internal fun CherryMathFrame(
         MathSelectionHero(selections,en,onPick)
 
         // Champion is a decision/status panel, NOT another formula result card.
+        // Champion keeps its gold emblem for role recognition, but the card
+        // surface/border and Myanmar text stay consistent with sibling tabs.
         Surface(
-            color=if(overall==null)Color(0xFFF6F3F2) else Color(0xFFFFF5DF),
+            color=Color.White,
             shape=RoundedCornerShape(16.dp),
-            border=BorderStroke(1.dp,
-                if(overall==null)Color(0xFFE6DFDE) else Color(0xFFE5C98B))
+            border=BorderStroke(1.dp,mathEdge)
         ){
             Column(Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement=Arrangement.spacedBy(7.dp)){
@@ -282,8 +288,8 @@ internal fun CherryMathFrame(
                         style=MaterialTheme.typography.headlineMedium)
                     Column(Modifier.weight(1f)){
                         Text(if(en)"CHAMPION" else "CHAMPION · အကောင်းဆုံးနည်း",
-                            fontWeight=FontWeight.Black,color=Color(0xFF8A651C),
-                            style=MaterialTheme.typography.labelLarge)
+                            fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
+                            style=MaterialTheme.typography.bodyMedium)
                         Text(overall?.name ?: if(en)"Not selected yet"
                             else "အတည်ပြုမရသေး",
                             color=AppColors.PrimaryDeep,
@@ -307,7 +313,7 @@ internal fun CherryMathFrame(
                     }
                 }
                 if(championOpen){
-                    HorizontalDivider(color=Color(0xFFE5C98B))
+                    HorizontalDivider(color=mathEdge)
                     listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်",
                         "BREAK" to "ဘရိတ်").forEach{(kind,title)->
                         val winner=analysis.champion(kind)
