@@ -27,6 +27,19 @@ data class CherryPick(
     val sourceCount: Int get() = evidence.map { it.tab }.distinct().size
     val familyCount: Int get() = evidence.map { it.family }.distinct().size
 }
+/**
+ * Grades describe strength of the available historical checks, NOT a forecast
+ * probability. A = 3-step qualification, B/C = experimental fallback.
+ */
+enum class CherryMathSelectionMode { STRICT, FALLBACK }
+enum class CherryMathGrade { A, B, C }
+data class CherryMathSelection(
+    val pick: CherryPick,
+    val rank: Int,
+    val mode: CherryMathSelectionMode,
+    val grade: CherryMathGrade,
+    val reason: String
+)
 data class CherryBirth(
     val id: String,
     val name: String,
@@ -64,12 +77,79 @@ data class CherryReport(
         CherryTab.SUMMARY -> summary
     }.filter { it.cuts.isEmpty() }.take(limit)
     /**
-     * Math is a narrow decision, not a catalogue of all generated combinations.
-     * Keep at most one primary and two reserves; research alone and formulas
-     * without an unbroken three-draw streak cannot enter this shortlist.
-     * The full math list remains available for explanation and audit.
+     * One MAIN, at most two RESERVES. Strict 3-step results take precedence.
+     * A soft fallback is allowed only from calculable DOC methods, not the
+     * research pool's 210 fitted variants. All cut conflicts stay excluded.
      */
-    fun mathShortlist(): List<CherryPick> {
+    fun mathShortlist(): List<CherryPick> = mathSelections().map{it.pick}
+
+    fun mathSelections(): List<CherryMathSelection> {
+        val strict=mathStrictShortlist()
+        if(strict.isNotEmpty())return strict.mapIndexed{i,p->
+            CherryMathSelection(p,i+1,CherryMathSelectionMode.STRICT,
+                CherryMathGrade.A,"3-Step စစ်ချက်ပြည့်")
+        }
+        // Compare historical hit rates WITHIN each method role; WAM, LONE,
+        // and BREAK have different hit definitions and base frequencies.
+        fun best(kind:String):CherryMathFormula? =
+            mathAnalysis.formulas.filter{it.kind==kind&&it.result!=null}
+                .sortedWith(compareByDescending<CherryMathFormula>{
+                    if(it.checked>=5)it.hits*100/it.checked else -1
+                }.thenByDescending{it.streak}
+                    .thenByDescending{it.checked}
+                    .thenBy{it.id})
+                .firstOrNull()
+        val wam=best("WAM")
+        val lone=best("LONE")
+        val br=best("BREAK")
+        if(wam==null&&lone==null&&br==null)return emptyList()
+        val goldId=wam?.let{"gold-${it.id}"}
+        val crossId=if(lone!=null&&br!=null)
+            "cross-${lone.id}-${br.id}" else null
+        val powerId=if(br?.id=="b1"||br?.id=="b2")crossId?.plus("-power")
+            else null
+        val direct=if(lone?.result!=null&&br?.result!=null)
+            "${lone.result}"+Math.floorMod(br.result-lone.result,10) else null
+        val researchAgrees=mathAnalysis.confluence.singleOrNull()==wam?.result
+        val eligible=math.filter{p->p.cuts.isEmpty()&&p.evidence.any{e->
+            e.id==goldId||(crossId!=null&&e.id==crossId)||
+                (powerId!=null&&e.id==powerId)
+        }}
+        // Count distinct original roles, not the number of combinations.
+        // The research overlap can corroborate, never generate a candidate.
+        val ranked=eligible.map{p->
+            val gold=p.evidence.any{it.id==goldId&&goldId!=null}
+            val cross=p.evidence.any{it.id==crossId&&crossId!=null}
+            val power=p.evidence.any{it.id==powerId&&powerId!=null}
+            val overlap=gold&&researchAgrees
+            val supporting=buildList{
+                if(gold)wam?.let{add(it)}
+                if(cross||power){
+                    lone?.let{add(it)}
+                    br?.let{add(it)}
+                }
+            }
+            val recent=supporting.count{it.streak>=1}
+            val checked=supporting.maxOfOrNull{it.checked}?:0
+            val hits=supporting.maxOfOrNull{it.hits}?:0
+            val score=(if(gold)4 else 0)+(if(cross)5 else 0)+
+                (if(power)2 else 0)+(if(overlap)2 else 0)+
+                (if(cross&&p.pair==direct)2 else 0)+
+                recent*2+(if(checked>=8&&hits>=3)2 else 0)
+            val grade=if(checked>=8&&hits>=3&&recent>0)
+                CherryMathGrade.B else CherryMathGrade.C
+            Triple(p,score,grade)
+        }.sortedWith(compareByDescending<Triple<CherryPick,Int,CherryMathGrade>>{
+            it.second
+        }.thenByDescending{it.first.familyCount}.thenBy{it.first.pair})
+        return ranked.take(3).mapIndexed{i,(pick,_,grade)->
+            CherryMathSelection(pick,i+1,CherryMathSelectionMode.FALLBACK,grade,
+                if(grade==CherryMathGrade.B)"သမိုင်းစစ်ချက်အထောက်အထားရှိ · စမ်းသပ်ရွေး"
+                else "အထောက်အထားနည်းသေး · စမ်းသပ်ရွေး")
+        }
+    }
+
+    private fun mathStrictShortlist(): List<CherryPick> {
         val wam=mathAnalysis.champion("WAM")
         val lone=mathAnalysis.champion("LONE")?.takeIf{
             it.result==mathAnalysis.loneConsensus
