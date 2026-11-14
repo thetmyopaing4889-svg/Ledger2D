@@ -26,10 +26,14 @@ data class CherryMathAnalysis(
     val research:List<CherryMathFormula>,
     val confluence:List<Int>,
     val watches:List<CherryMathWatch>,
-    val testedDraws:Int
+    val testedDraws:Int,
+    val primaryChampionId:String?=null,
+    val loneConsensus:Int?=null
 ){
     fun champion(kind:String):CherryMathFormula?=
         formulas.firstOrNull{it.id==champions[kind]}
+    fun primaryChampion():CherryMathFormula?=
+        formulas.firstOrNull{it.id==primaryChampionId}
     fun byId(id:String)=formulas.firstOrNull{it.id==id}
 }
 
@@ -141,6 +145,23 @@ object CherryMathStreakEngine {
                     .thenByDescending{it.hits}.thenBy{it.id})
                 .firstOrNull()?.let{kind to it.id}
         }.toMap()
+    /**
+     * The original document asks for three independent lone methods to narrow
+     * the winning WAM pair to one digit.  Do not invent a deciding digit when
+     * the three documented lone methods disagree or lack three clean checks.
+     */
+    internal fun confirmedLone(
+        formulas:List<CherryMathFormula>,wamDigit:Int?
+    ):Int?{
+        if(wamDigit==null)return null
+        val three=listOf("l1","l2","wl").map{id->
+            formulas.firstOrNull{it.id==id&&it.kind=="LONE"&&
+                it.result!=null&&it.streak>=3}?:return null
+        }
+        val digits=three.mapNotNull{it.result}.distinct()
+        val digit=digits.singleOrNull()?:return null
+        return digit.takeIf{it==wamDigit||it==mod(wamDigit+5)}
+    }
     private fun research(
         type:String,a:Int,b:Int,k:Int,rows:List<HistoricDraw>,
         target:DrawIdentity,closed:Set<LocalDate>
@@ -216,6 +237,12 @@ object CherryMathStreakEngine {
             e.copy(result=current[id]?.digit,explanation=current[id]?.formula.orEmpty())
         }
         val champions=select(formulas)
+        val primaryChampionId=formulas.filter{it.result!=null&&it.streak>=3}
+            .sortedWith(compareByDescending<CherryMathFormula>{it.streak}
+                .thenByDescending{it.hits}.thenBy{it.id})
+            .firstOrNull()?.id
+        val loneConsensus=confirmedLone(formulas,
+            formulas.firstOrNull{it.id==champions["WAM"]}?.result)
         val previousTarget=prior.lastOrNull()?.let{DrawIdentity(it.date,it.session)}
         val prevChampion=if(previousTarget==null)emptyMap() else {
             val priorBefore=prior.filter{before(it,previousTarget)}
@@ -257,7 +284,8 @@ object CherryMathStreakEngine {
             formulas,champions,prevChampion,
             pool.sortedWith(compareByDescending<CherryMathFormula>{it.streak}
                 .thenByDescending{it.hits}.thenBy{it.id}),
-            confluence,watches(prior,target,closed),prior.takeLast(20).size
+            confluence,watches(prior,target,closed),prior.takeLast(20).size,
+            primaryChampionId,loneConsensus
         )
     }
 }
