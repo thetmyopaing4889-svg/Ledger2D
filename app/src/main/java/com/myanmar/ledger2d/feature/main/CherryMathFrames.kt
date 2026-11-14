@@ -146,196 +146,263 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
     }
 }
 
+
+@Composable private fun MathSelectionHero(
+    picks:List<CherryPick>,en:Boolean,onPick:(CherryPick)->Unit
+){
+    Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
+        border=BorderStroke(1.dp,mathEdge)){
+        Column(Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement=Arrangement.spacedBy(10.dp)){
+            MathTitle(if(en)"Selected math pairs" else "သင်္ချာနည်း ရွေးကွက်")
+            if(picks.isEmpty()){
+                Text(if(en)"No pair passes the selection checks yet."
+                    else "စစ်ချက်ပြည့်သော ဂဏန်းတွဲ မရှိသေးပါ။",
+                    style=MaterialTheme.typography.bodyMedium)
+                Text(if(en)"No extra pairs are added just to fill the slots."
+                    else "အကွက်ပြည့်ဖို့ အတင်းထပ်မရွေးထားပါ။",
+                    style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }else{
+                val main=picks.first()
+                Surface(onClick={onPick(main)},color=AppColors.PrimaryDeep,
+                    shape=RoundedCornerShape(14.dp)){
+                    Row(Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                        Column(Modifier.weight(1f),
+                            verticalArrangement=Arrangement.spacedBy(3.dp)){
+                            Text(if(en)"MAIN" else "မိန်း",
+                                color=Color.White,fontWeight=FontWeight.Black,
+                                style=MaterialTheme.typography.titleMedium)
+                            Text(if(en)"Priority selection" else "ဦးစားပေး ရွေးကွက်",
+                                color=Color.White.copy(alpha=0.85f),
+                                style=MaterialTheme.typography.labelSmall)
+                        }
+                        Text(main.pair,color=Color.White,fontWeight=FontWeight.Black,
+                            style=MaterialTheme.typography.displayMedium)
+                    }
+                }
+                val reserves=picks.drop(1)
+                if(reserves.isNotEmpty()){
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        reserves.forEachIndexed{index,p->
+                            Surface(onClick={onPick(p)},modifier=Modifier.weight(1f),
+                                color=Color(0xFFFFF0F4),
+                                shape=RoundedCornerShape(12.dp),
+                                border=BorderStroke(1.dp,mathEdge)){
+                                Row(Modifier.padding(11.dp),
+                                    verticalAlignment=Alignment.CenterVertically,
+                                    horizontalArrangement=Arrangement.SpaceBetween){
+                                    Text(if(en)"Reserve ${index+1}"
+                                        else "အရံ ${index+1}",
+                                        color=AppColors.PrimaryDeep,
+                                        style=MaterialTheme.typography.labelSmall)
+                                    Text(p.pair,fontWeight=FontWeight.Black,
+                                        color=AppColors.PrimaryDeep,
+                                        style=MaterialTheme.typography.titleLarge)
+                                }
+                            }
+                        }
+                    }
+                }
+                Text(if(en)"Tap a pair to view its calculation."
+                    else "ဂဏန်းကိုနှိပ်၍ တွက်ချက်ပုံ ကြည့်နိုင်သည်။",
+                    style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
 @Composable
 internal fun CherryMathFrame(
     report:CherryReport,originalSource:String?,en:Boolean,
     onPick:(CherryPick)->Unit,onOriginal:(CherryOriginalReference)->Unit
 ){
-    var allOpen by rememberSaveable{mutableStateOf(false)}
+    var championOpen by rememberSaveable{mutableStateOf(false)}
+    var formulasOpen by rememberSaveable{mutableStateOf(false)}
+    var detailsOpen by rememberSaveable{mutableStateOf(false)}
+    var researchOpen by rememberSaveable{mutableStateOf(false)}
     var poolOpen by rememberSaveable{mutableStateOf(false)}
-    var crossOpen by rememberSaveable{mutableStateOf(false)}
-    var diagnosticOpen by rememberSaveable{mutableStateOf(false)}
     val analysis=report.mathAnalysis
-    val wam=analysis.champion("WAM")
-    // A lone digit is only verified when all three documented lone methods
-    // pass the three-step check, agree, and belong to the champion WAM pair.
-    val lone=analysis.champion("LONE")?.takeIf{
-        it.result==analysis.loneConsensus
-    }
-    val br=analysis.champion("BREAK")
-    val crossId=if(lone!=null&&br!=null)"cross-${lone.id}-${br.id}" else null
-    val verifiedCrossIds=crossId?.let{setOf(it,it+"-power")}.orEmpty()
-    val goldenId=wam?.let{"gold-${it.id}"}
-    val confirmedResearch=analysis.confluence.isNotEmpty()&&
-        analysis.confluence.singleOrNull()==wam?.result
-    val allowed=(listOfNotNull(goldenId)+verifiedCrossIds+
-        (if(confirmedResearch)listOf("research-confluence")else emptyList())).toSet()
-    val eligible=report.math.filter{p->
-        p.cuts.isEmpty()&&p.evidence.any{it.id in allowed}
-    }
-    val main=if(lone?.result!=null&&br?.result!=null&&crossId!=null){
-        val digit=lone.result
-        val b=br.result
-        val pair=digit.toString()+Math.floorMod(b-digit,10)
-        eligible.firstOrNull{p->p.pair==pair&&
-            p.evidence.any{it.id==crossId}&&
-            report.current.any{q->q.pair==pair&&
-                q.evidence.any{it.id.startsWith("s2-h-")}}
-        }
-    }else null
-    val golden=report.math.filter{p->
-        goldenId!=null&&p.evidence.any{it.id==goldenId}
-    }
-    val conflictedGolden=golden.filter{it.cuts.isNotEmpty()}
-    val priority=(listOfNotNull(main)+golden.filter{it.cuts.isEmpty()}+eligible)
-        .distinctBy{it.pair}
-    val labels=main?.let{
-        val direct=it.pair to (if(en)"Main direct" else "မိန်းဒဲ့")
-        val reverse=it.pair.reversed() to (if(en)"Reserve R" else "အရံ R")
-        if(it.pair==it.pair.reversed())mapOf(direct)
-        else mapOf(direct,reverse)
-    }?:emptyMap()
-    Column(verticalArrangement=Arrangement.spacedBy(13.dp)){
-        MathTitle(if(en)"🧮 Math & Longest Streak" else "🧮 သင်္ချာနည်း")
-        CherryRuleFrameOverview(
-            heading=if(en)"Verified priority calculated pairs" else "စစ်ဆေးအောင်မြင်သော ဦးစားပေးဂဏန်းများ",
-            all=priority,topLimit=4,en=en,expanded=allOpen,
-            onToggle={allOpen=!allOpen},onPick=onPick,labels=labels
-        )
-        if(priority.isEmpty())Text(
-            if(en)"No Math pair has passed the complete selection checks yet."
-            else "သင်္ချာနည်းထဲမှ ရွေးချယ်မှုစစ်ချက် ပြည့်စုံသောအတွဲ မရှိသေးပါ။",
-            style=MaterialTheme.typography.bodySmall)
-        if(conflictedGolden.isNotEmpty())MathBox{
-            MathTitle(if(en)"Golden Rule: cut conflicts"
-                else "Golden Rule · ရှောင်ရန်မူနှင့် ငြိနေသောအတွဲ")
-            Text(if(en)"These original Golden pairs are visible for review, " +
-                "but excluded from recommendations because a cut rule also applies."
-            else "မူရင်းပါဝါတွဲများကို မဖျောက်ထားပါ။ ရှောင်ရန်မူနှင့် ငြိနေသောကြောင့် " +
-                "ဦးစားပေးစာရင်းထဲ မထည့်ထားပါ။",
-                style=MaterialTheme.typography.bodySmall)
-            MathPairGrid(conflictedGolden,en,onPick)
-        }
-        MathBox{
-            MathTitle(if(en)"All calculated pairs (review only)"
-                else "တွက်ထွက်သော အတွဲအားလုံး (စစ်ဆေးကြည့်ရန်သာ)")
-            Text(if(en)"Unverified formulas and rule-watch pairs stay visible " +
-                "for inspection, but do not automatically become priority picks."
-            else "၃ ပွဲဆက်စစ်ချက် မပြည့်သောတွက်နည်းနှင့် စောင့်ကြည့်မူအတွဲများကို " +
-                "ကြည့်နိုင်ပေမဲ့ ဦးစားပေးဂဏန်းအဖြစ် မသတ်မှတ်ပါ။",
-                style=MaterialTheme.typography.bodySmall)
-            TextButton(onClick={diagnosticOpen=!diagnosticOpen}){
-                Text(if(diagnosticOpen){
-                    if(en)"Hide all pair calculations" else "အတွဲအားလုံး ပိတ်ရန်"
-                }else{
-                    if(en)"View all pair calculations" else "အတွဲအားလုံး ကြည့်ရန်"
-                })
-            }
-            if(diagnosticOpen)MathPairGrid(report.math,en,onPick)
-        }
-        MathBox{
-            MathTitle(if(en)"Champion Formula & Auto-Switch"
-                else "Champion Formula နှင့် Auto-Switch")
-            Text(if(en)"Champions are chosen from completed historical draws."
-            else "အတည်ပြုပြီးသား ပွဲရလဒ်တွေကို ပြန်စစ်ပြီး " +
-                "အုပ်စုအလိုက် ဆက်တိုက်ကိုက်ညီမှုအရှည်ဆုံးနည်းကို ရွေးထားပါတယ်။",
-                style=MaterialTheme.typography.bodySmall)
-            analysis.primaryChampion()?.let{overall->
-                Text((if(en)"Overall longest: " else "အရှည်ဆုံး Champion: ")+
-                    overall.name+" · "+overall.streak+" ပွဲဆက်",
-                    color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
-            }
-            if(analysis.loneConsensus==null)Text(
-                if(en)"No final single digit: three verified lone methods " +
-                    "must agree within the champion WAM pair."
-                else "အဓိကလုံးပိုင် မအတည်ပြုရသေးပါ။ လုံးပိုင်တွက်နည်း ၃ မျိုး " +
-                    "ဆက်တိုက်ကိုက်ညီပြီး ဝမ်းချိန်းပါဝါတွဲထဲက တစ်လုံးတည်း တူရပါမယ်။",
-                style=MaterialTheme.typography.bodySmall)
-            else Text((if(en)"Verified single digit: " else "စစ်ဆေးအောင်မြင်သော လုံးပိုင်: ")+
-                analysis.loneConsensus,fontWeight=FontWeight.Bold)
-            listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်","BREAK" to "ဘရိတ်")
-                .forEach{(kind,title)->
-                    Text(title,fontWeight=FontWeight.SemiBold)
-                    val now=analysis.champion(kind)
-                    if(now!=null){
-                        Text(now.name+" · "+now.streak+" ပွဲဆက်",
-                            color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
-                        val prior=analysis.previousChampions[kind]
-                        if(prior!=null&&prior!=now.id)
-                            Text((analysis.byId(prior)?.name?:prior)+
-                                " မှ အလိုအလျောက်ပြောင်းရွေးထားပါတယ်။",
-                                style=MaterialTheme.typography.bodySmall)
-                    }else Text(if(en)"No eligible streak of three consecutive matches."
-                        else "ဆက်တိုက် ၃ ပွဲ ကိုက်ညီတဲ့နည်း မရှိသေးပါ။",
-                        style=MaterialTheme.typography.bodySmall)
-                    HorizontalDivider(color=mathEdge)
-                }
-            Text(if(en)"Past streaks do not guarantee future results."
-                else "အရင်ပွဲတွေရဲ့ Streak က နောက်ပွဲရလဒ်ကို အာမခံတာ မဟုတ်ပါ။",
-                style=MaterialTheme.typography.labelSmall)
-        }
-        MathTitle(if(en)"Individual formula cards" else "ပုံသေနည်းတစ်ခုချင်းစီ")
-        listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်","BREAK" to "ဘရိတ်")
-            .forEach{(kind,title)->
-                Text(title,color=AppColors.PrimaryDeep,fontWeight=FontWeight.SemiBold)
-                analysis.formulas.filter{it.kind==kind}.forEach{f->
-                    MathFormulaCard(f,report.math,analysis.champions[kind]==f.id,
-                        originalSource,en,onPick,onOriginal)
-                }
-            }
-        MathBox{
-            MathTitle(if(en)"Single × direct/power break"
-                else "လုံးပိုင် × ဒဲ့ဘရိတ် / ပါဝါဘရိတ်")
-            TextButton(onClick={crossOpen=!crossOpen}){
-                Text(if(crossOpen){if(en)"Hide pairings" else "တွဲစပ်ချက်များ ပိတ်ရန်"}
-                    else{if(en)"View every combination" else "တွဲစပ်ချက်အားလုံး ကြည့်ရန်"})
-            }
-            if(crossOpen){
-                report.math.flatMap{it.evidence}.filter{it.id.startsWith("cross-")}
-                    .distinctBy{it.id}.forEach{ev->
-                        Text(ev.name,fontWeight=FontWeight.SemiBold)
-                        Text(ev.detail,style=MaterialTheme.typography.bodySmall)
-                        MathPairGrid(report.math.filter{p->p.evidence.any{
-                            it.id==ev.id}},en,onPick)
-                        HorizontalDivider(color=mathEdge)
+    val picks=report.mathShortlist()
+    val overall=analysis.primaryChampion()
+    Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+        MathSelectionHero(picks,en,onPick)
+
+        // Champion is a decision/status panel, NOT another formula result card.
+        Surface(
+            color=if(overall==null)Color(0xFFF6F3F2) else Color(0xFFFFF5DF),
+            shape=RoundedCornerShape(16.dp),
+            border=BorderStroke(1.dp,
+                if(overall==null)Color(0xFFE6DFDE) else Color(0xFFE5C98B))
+        ){
+            Column(Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement=Arrangement.spacedBy(7.dp)){
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                    horizontalArrangement=Arrangement.spacedBy(9.dp)){
+                    Text("★",color=Color(0xFFA87A24),
+                        style=MaterialTheme.typography.headlineMedium)
+                    Column(Modifier.weight(1f)){
+                        Text(if(en)"CHAMPION" else "CHAMPION · အကောင်းဆုံးနည်း",
+                            fontWeight=FontWeight.Black,color=Color(0xFF8A651C),
+                            style=MaterialTheme.typography.labelLarge)
+                        Text(overall?.name ?: if(en)"Not selected yet"
+                            else "အတည်ပြုမရသေး",
+                            color=AppColors.PrimaryDeep,
+                            fontWeight=FontWeight.Bold,
+                            style=MaterialTheme.typography.titleMedium)
                     }
+                    if(overall!=null){
+                        Column(horizontalAlignment=Alignment.End){
+                            Text("${overall.streak}",
+                                color=Color(0xFF8A651C),fontWeight=FontWeight.Black,
+                                style=MaterialTheme.typography.headlineMedium)
+                            Text(if(en)"consecutive" else "ပွဲဆက်",
+                                style=MaterialTheme.typography.labelSmall,
+                                color=Color(0xFF8A651C))
+                        }
+                    }
+                    IconButton(onClick={championOpen=!championOpen}){
+                        Icon(if(championOpen)Icons.Default.ExpandLess
+                            else Icons.Default.ExpandMore,null,
+                            tint=AppColors.PrimaryDeep)
+                    }
+                }
+                if(championOpen){
+                    HorizontalDivider(color=Color(0xFFE5C98B))
+                    listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်",
+                        "BREAK" to "ဘရိတ်").forEach{(kind,title)->
+                        val winner=analysis.champion(kind)
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement=Arrangement.SpaceBetween){
+                            Text(if(en)kind else title,
+                                style=MaterialTheme.typography.bodySmall)
+                            Text(winner?.let{"${it.name} · ${it.streak}"}?:
+                                (if(en)"Not qualified" else "စစ်ချက်မပြည့်"),
+                                style=MaterialTheme.typography.bodySmall,
+                                fontWeight=FontWeight.SemiBold)
+                        }
+                        val previous=analysis.previousChampions[kind]
+                        if(previous!=null&&previous!=winner?.id)
+                            Text(if(en)"Switched from $previous"
+                                else "$previous မှ ပြောင်းရွေးထားသည်",
+                                color=MaterialTheme.colorScheme.onSurfaceVariant,
+                                style=MaterialTheme.typography.labelSmall)
+                    }
+                    Text(analysis.loneConsensus?.let{
+                        if(en)"Verified single: $it" else "စစ်ဆေးရရှိသော လုံးပိုင်: $it"
+                    }?:if(en)"Single-digit consensus not confirmed."
+                        else "လုံးပိုင် ဘုံတူရလဒ် မရသေးပါ။",
+                        style=MaterialTheme.typography.bodySmall)
+                    Text(if(en)"Historical streaks are not a guarantee."
+                        else "သမိုင်း Streak က နောက်ပွဲကို အာမမခံပါ။",
+                        style=MaterialTheme.typography.labelSmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
+
+        // Original formulas are compact, neutral evidence rows, opened on demand.
         MathBox{
-            MathTitle(if(en)"Gemini research formula pool"
-                else "Gemini သုတေသန Formula Pool")
-            Text(if(en)"210 experimental variants: sum, nine-transform and " +
-                "absolute difference with coefficients 1..3 and constants 0..9. Not original DOC formulas."
-            else "ထိပ်ပိတ်ပေါင်း၊ ၉ နှုတ်ဓာတ်ပြောင်း၊ ထိပ်ပိတ်ခြားနားနည်း ၃ မျိုးကို " +
-                "ကိန်းရှင်အလေးချိန် 1 မှ 3 နဲ့ k=0 မှ 9 အထိ စမ်းထားတဲ့ နည်း ၂၁၀ ပါ။ မူရင်း DOC က ဒီကိန်းသေတွေ မပေးထားပါ။",
-                style=MaterialTheme.typography.bodySmall)
-            if(analysis.confluence.isNotEmpty())Text(
-                "စမ်းသပ်သုံးနည်း ဘုံဆုံမှတ်: "+analysis.confluence.joinToString(),
-                color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
-            TextButton(onClick={poolOpen=!poolOpen}){
-                Text(if(poolOpen){if(en)"Hide variants" else "စမ်းသပ်နည်းများ ပိတ်ရန်"}
-                     else{if(en)"View all 210 variants" else "စမ်းသပ်နည်း ၂၁၀ ကြည့်ရန်"})
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    MathTitle(if(en)"Original formulas · 8"
+                        else "မူရင်းတွက်နည်း · ၈ ခု")
+                    Text(if(en)"Individual calculations"
+                        else "တစ်နည်းချင်း တွက်ချက်ချက်များ",
+                        style=MaterialTheme.typography.labelSmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick={formulasOpen=!formulasOpen}){
+                    Icon(if(formulasOpen)Icons.Default.ExpandLess
+                        else Icons.Default.ExpandMore,null)
+                }
             }
-            if(poolOpen)analysis.research.forEach{f->
-                Text(f.name+" → "+(f.result?.toString()?:"—")+
-                    " · "+f.streak+" ပွဲဆက် ("+f.hits+"/"+f.checked+")",
-                    style=MaterialTheme.typography.bodySmall)
-            }
-            Text(if(en)"Research methods are never promoted as original DOC champions."
-                else "စမ်းသပ်နည်းတွေကို မူရင်း Champion အဖြစ် မရောရွေးပါ။",
-                style=MaterialTheme.typography.labelSmall)
-        }
-        if(analysis.watches.isNotEmpty()){
-            MathBox{
-                MathTitle(if(en)"Other source-backed math rules"
-                    else "မူရင်းစာတမ်းပါ အခြေအနေလိုက်မူများ")
-                analysis.watches.forEach{w->
-                    Text(w.title,color=AppColors.PrimaryDeep,fontWeight=FontWeight.SemiBold)
-                    Text(w.description,style=MaterialTheme.typography.bodySmall)
-                    if(w.pairs.isNotEmpty())MathPairGrid(report.math.filter{p->
-                        p.evidence.any{it.id=="watch-"+w.id}},en,onPick)
-                    MathLink(w.id,originalSource,en,onOriginal)
+            if(formulasOpen){
+                listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်",
+                    "BREAK" to "ဘရိတ်").forEach{(kind,title)->
                     HorizontalDivider(color=mathEdge)
+                    Text(if(en)kind else title,color=AppColors.PrimaryDeep,
+                        fontWeight=FontWeight.SemiBold)
+                    analysis.formulas.filter{it.kind==kind}.forEach{f->
+                        MathFormulaCard(f,report.math,analysis.champions[kind]==f.id,
+                            originalSource,en,onPick,onOriginal)
+                    }
+                }
+            }
+        }
+
+        MathBox{
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    MathTitle(if(en)"All pair calculations"
+                        else "တွဲစပ်တွက်ချက်မှုအားလုံး")
+                    Text(if(en)"For review, not extra picks"
+                        else "စစ်ဆေးကြည့်ရန်သာ",
+                        style=MaterialTheme.typography.labelSmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick={detailsOpen=!detailsOpen}){
+                    Icon(if(detailsOpen)Icons.Default.ExpandLess
+                        else Icons.Default.ExpandMore,null)
+                }
+            }
+            if(detailsOpen){
+                MathPairGrid(report.math,en,onPick)
+                if(analysis.watches.isNotEmpty()){
+                    HorizontalDivider(color=mathEdge)
+                    MathTitle(if(en)"Conditional source rules"
+                        else "အခြေအနေလိုက် မူရင်းမူများ")
+                    analysis.watches.forEach{w->
+                        Text(w.title,fontWeight=FontWeight.SemiBold)
+                        Text(w.description,style=MaterialTheme.typography.bodySmall)
+                        if(w.pairs.isNotEmpty())
+                            MathPairGrid(report.math.filter{p->p.evidence.any{
+                                it.id=="watch-${w.id}"
+                            }},en,onPick)
+                        MathLink(w.id,originalSource,en,onOriginal)
+                    }
+                }
+            }
+        }
+
+        MathBox{
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    MathTitle(if(en)"Research · 210 variants"
+                        else "စမ်းသပ်တွက်နည်း · ၂၁၀")
+                    Text(if(en)"Experimental; separate from DOC"
+                        else "မူရင်း DOC နှင့် သီးခြား",
+                        style=MaterialTheme.typography.labelSmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick={researchOpen=!researchOpen}){
+                    Icon(if(researchOpen)Icons.Default.ExpandLess
+                        else Icons.Default.ExpandMore,null)
+                }
+            }
+            if(researchOpen){
+                if(analysis.confluence.isNotEmpty())
+                    Text((if(en)"Research overlap: "
+                        else "စမ်းသပ်နည်း ဘုံဆုံမှတ်: ")+
+                        analysis.confluence.joinToString(),
+                        color=AppColors.PrimaryDeep,fontWeight=FontWeight.SemiBold)
+                Text(if(en)"Calculated for research, never promoted to DOC formulas."
+                    else "စမ်းသပ်ရလဒ်များကို မူရင်းတွက်နည်းအဖြစ် မရောထားပါ။",
+                    style=MaterialTheme.typography.bodySmall)
+                TextButton(onClick={poolOpen=!poolOpen}){
+                    Text(if(poolOpen){
+                        if(en)"Hide all variants" else "နည်းကွဲများ ပိတ်ရန်"
+                    }else{
+                        if(en)"View 210 variants" else "နည်းကွဲ ၂၁၀ ကြည့်ရန်"
+                    })
+                }
+                if(poolOpen)analysis.research.forEach{f->
+                    Text(f.name+" → "+(f.result?.toString()?:"—")+
+                        " · ${f.streak} (${f.hits}/${f.checked})",
+                        style=MaterialTheme.typography.bodySmall)
                 }
             }
         }
