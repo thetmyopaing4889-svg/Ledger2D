@@ -100,8 +100,8 @@ internal fun CherryRuleFrameOverview(
             if(expanded){
                 HorizontalDivider(color=AppColors.Blush)
                 Text(if(en)"${eligible.size} eligible • $conflicted cut-rule conflicts"
-                    else "စုစုပေါင်း ${all.size} တွဲ • ${eligible.size} တွဲ မူအရမငြိ • " +
-                        "$conflicted တွဲ ဖြတ်မူငြိ",
+                    else "တွက်ထွက်သမျှ ${all.size} တွဲ • ရှောင်ရန်မူမငြိ ${eligible.size} တွဲ • " +
+                        "ရှောင်ရန် $conflicted တွဲ",
                     color=MaterialTheme.colorScheme.onSurfaceVariant,
                     style=MaterialTheme.typography.bodySmall)
                 CherryRulePairGrid(all,en,onPick)
@@ -167,7 +167,7 @@ internal fun CherryRuleFrameCard(
                     verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f),
                         verticalArrangement=Arrangement.spacedBy(4.dp)){
-                        Text(rule.name,color=AppColors.PrimaryDeep,
+                        Text(CherryRuleWording.title(rule.id,rule.name),color=AppColors.PrimaryDeep,
                             fontWeight=FontWeight.Bold,style=MaterialTheme.typography.bodyMedium)
                         Text(if(en)"${rule.pairs.size} pairs"
                              else "${rule.pairs.size} တွဲ ထုတ်ပေးထားသည်",
@@ -184,7 +184,8 @@ internal fun CherryRuleFrameCard(
                     verticalArrangement=Arrangement.spacedBy(9.dp)){
                     Text(if(en)"Why this rule is applicable" else "ဘာကြောင့် အကျုံးဝင်သလဲ",
                         fontWeight=FontWeight.SemiBold,color=AppColors.PrimaryDeep)
-                    Text(rule.detail,style=MaterialTheme.typography.bodyMedium)
+                    Text(CherryRuleWording.why(rule.id,rule.name,rule.detail),
+                        style=MaterialTheme.typography.bodyMedium)
                     rule.origin?.let { source ->
                         Text(if(en)"Trigger: ${source.date} • ${source.session.name}"
                             else "အစပြုအကြိမ်: ${source.date} • ${source.session.label}",
@@ -198,7 +199,8 @@ internal fun CherryRuleFrameCard(
                     }
                     Text(if(en)"How the pairs are calculated" else "ဂဏန်းအတွဲ ချဲ့တွက်ပုံ",
                         fontWeight=FontWeight.SemiBold,color=AppColors.PrimaryDeep)
-                    Text(cherryRuleExpansionDescription(rule),style=MaterialTheme.typography.bodySmall,
+                    Text(CherryRuleWording.how(rule.id,rule.name,rule.pairs),
+                        style=MaterialTheme.typography.bodySmall,
                         color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(if(en)"All ${rule.pairs.size} pairs from this rule"
                         else "ဒီမူမှထွက်သမျှ ${rule.pairs.size} တွဲ",
@@ -209,40 +211,4 @@ internal fun CherryRuleFrameCard(
             }
         }
     }
-}
-
-private fun cherryRuleExpansionDescription(rule:CherryRuleGroup):String=when{
-    rule.id.startsWith("s5-mon@") ->
-        "မူရင်း တနင်္လာမနက် ဘရိတ်ဇယားအရ ဘရိတ် ၃ ခုကို ရွေးပြီး " +
-        "ဘရိတ်တစ်ခုစီအတွက် (ထိပ် + ပိတ်) mod 10 = B ဖြစ်သော ၁၀ တွဲစီ ချဲ့သည်။"
-    rule.id.startsWith("s8-00-bk@") ->
-        "00 အပူးထွက်ပြီးနောက် မူရင်းအပိုင်း (၈ခ) မှ သတ်မှတ်ထားသော " +
-        "၅ ဘရိတ် ဒဲ့အတွဲ 05, 14, 23, 69, 78 ကို တိုက်ရိုက်ယူသည်။"
-    rule.id.startsWith("s1-930") ->
-        "9:30 Modern / Internet ထိပ်၊ ပိတ် သို့မဟုတ် ဘရိတ်တူညီမှုကို စစ်ပြီး " +
-        "မူရင်းအပိုင်း (၁ခ) အလိုက် 0 ပါဝင်သောအတွဲများနှင့် အပူးများကို ချဲ့သည်။"
-    rule.id=="s3-ten" ->
-        "ဆယ်ပြည့်/ဘူအုပ်စုအရ (ထိပ် + ပိတ်) mod 10 = 0 ဖြစ်သော အတွဲ ၁၀ တွဲကို ထုတ်သည်။"
-    rule.id=="s8-48" ->
-        "48 R အပြီး 6 ပိတ်မူအရ 06, 16, 26 ... 96 အထိ ၁၀ တွဲ ချဲ့သည်။"
-    rule.id.startsWith("s2-p-") ->
-        "နောက်ဆုံးထွက်ဂဏန်းထဲက သက်ဆိုင်ရာလုံးကို ၄ ပေါင်း၍ နောက်ဆုံးတစ်လုံးယူသည်။ " +
-        "ရလာသော ပတ်သီးကို ထိပ်နှင့်ပိတ် နှစ်နေရာစလုံးတွင် ချဲ့သည် (၁၉ တွဲ)။"
-    rule.id.startsWith("s2-h-") ->
-        "အပိုင်း (၂) ထိပ်စီးဇယားအရ သက်ဆိုင်ရာထိပ်ကို ရွေး၍ H0 မှ H9 အထိ ၁၀ တွဲ ချဲ့သည်။"
-    rule.name.contains("ခွေ") ->
-        "ခွေဂဏန်းများကို အချင်းချင်း ဒဲ့/R တွဲစပ်သည်။ " +
-        "မူရင်းက အပူးပါဟု သတ်မှတ်လျှင် အပူးများကိုပါ ထည့်တွက်သည်။"
-    rule.name.contains("ဘရိတ်")||rule.name.contains("BK") ->
-        "ဘရိတ် B အတွက် (ထိပ် + ပိတ်) mod 10 = B ဖြစ်သော အတွဲ ၁၀ တွဲ ချဲ့သည်။"
-    rule.name.contains("ပတ်သီး") ->
-        "သတ်မှတ်ပတ်သီး ပါဝင်သော ထိပ်/ပိတ်အတွဲ ၁၉ တွဲကို ချဲ့သည်။"
-    rule.name.contains("ထိပ်") ->
-        "သတ်မှတ်ထိပ်စီး H ကို H0 မှ H9 အထိ ၁၀ တွဲ ချဲ့သည်။"
-    rule.id=="s3-week"||rule.id=="s3-six" ->
-        "ယခုအပတ် ထွက်ပြီးသားဂဏန်းများကို မူရင်းအပတ်စဉ်အုပ်စုမှ ချန်၍ " +
-        "မထွက်ရသေးသောအတွဲများကို ပြသည်။ သက်တမ်းရှိ မွေးမူနှင့် သီးခြားဖြစ်သည်။"
-    else ->
-        "မူရင်းစာတမ်း၏ အလိုက်မူ/ဇယားတွင် သတ်မှတ်ထားသောအတွဲများကို " +
-        "မူအစပြုအကြိမ်နှင့် တိုက်စစ်၍ ထုတ်ထားသည်။"
 }
