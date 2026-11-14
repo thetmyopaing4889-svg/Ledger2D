@@ -50,6 +50,27 @@ class CherryMathStreakEngineTest {
         assertTrue(report.math.any{it.pair=="02"&&it.evidence.any{e->e.id=="cross-l1-b1-power"}})
         assertTrue(report.math.any{it.pair=="27"&&it.evidence.any{e->e.id=="gold-w1"}})
     }
+    @Test fun longestStreakChampionChangesAfterNewMiss(){
+        val history=listOf(
+            draw("2026-11-09",DrawSession.MORNING,"00"),
+            draw("2026-11-09",DrawSession.EVENING,"07"),
+            draw("2026-11-10",DrawSession.MORNING,"04"),
+            draw("2026-11-10",DrawSession.EVENING,"01"),
+            draw("2026-11-11",DrawSession.MORNING,"08"),
+            draw("2026-11-11",DrawSession.EVENING,"05"),
+            draw("2026-11-12",DrawSession.MORNING,"02")
+        )
+        val before=CherryBetterDataEngine.calculate(
+            history,target("2026-11-12",DrawSession.EVENING))
+        assertEquals("cycle",before.mathAnalysis.champions["BREAK"])
+        assertEquals(6,before.mathAnalysis.byId("cycle")?.streak)
+        val after=CherryBetterDataEngine.calculate(
+            history+draw("2026-11-12",DrawSession.EVENING,"55"),
+            target("2026-11-13",DrawSession.MORNING))
+        assertEquals("cycle",after.mathAnalysis.previousChampions["BREAK"])
+        assertNotEquals("cycle",after.mathAnalysis.champions["BREAK"])
+        assertEquals(0,after.mathAnalysis.byId("cycle")?.streak)
+    }
     @Test fun producesOriginalDocConditionalMathWatchWithoutInventingFormula17Pairs(){
         val history=listOf(draw("2026-11-09",DrawSession.MORNING,"05"))
         val report=CherryBetterDataEngine.calculate(history,target("2026-11-09",DrawSession.EVENING))
