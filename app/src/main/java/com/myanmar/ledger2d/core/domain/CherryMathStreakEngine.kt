@@ -142,15 +142,15 @@ object CherryMathStreakEngine {
                 .firstOrNull()?.let{kind to it.id}
         }.toMap()
     private fun research(
-        type:String,k:Int,rows:List<HistoricDraw>,target:DrawIdentity,
-        closed:Set<LocalDate>
+        type:String,a:Int,b:Int,k:Int,rows:List<HistoricDraw>,
+        target:DrawIdentity,closed:Set<LocalDate>
     ):Int?{
         val last=previous(rows,target,1,closed)?.firstOrNull()?.digit?:return null
         val t=last[0].digitToInt();val u=last[1].digitToInt()
         return mod(when(type){
-            "sum"->t+u+k
-            "nine"->(9-t)+(9-u)+k
-            "diff"->abs(t-u)+k
+            "sum"->a*t+b*u+k
+            "nine"->a*(9-t)+b*(9-u)+k
+            "diff"->a*abs(t-u)+k
             else->return null
         })
     }
@@ -209,13 +209,21 @@ object CherryMathStreakEngine {
         }
         val types=listOf("sum" to "ထိပ်ပိတ်ပေါင်း",
             "nine" to "၉ နှုတ်ဓာတ်ပြောင်း","diff" to "ထိပ်ပိတ်ခြားနားချက်")
+        // Experiment ONLY. Coefficients and constants are not in the DOC.
+        // 90 sum + 90 nine-transform + 30 difference = 210 candidates.
         val pool=types.flatMap{(type,name)->
-            (0..9).map{k->
-                val e=evaluate("$name (k=$k)","research-$type-$k",
-                    "WAM",prior,target,closed,"RESEARCH"){data,t->
-                    research(type,k,data,t,closed)
+            (1..3).flatMap{a->
+                (if(type=="diff")listOf(1)else (1..3).toList()).flatMap{b->
+                    (0..9).map{k->
+                        val label="$name (a=$a, b=$b, k=$k)"
+                        val e=evaluate(label,"research-$type-$a-$b-$k",
+                            "WAM",prior,target,closed,"RESEARCH"){data,t->
+                            research(type,a,b,k,data,t,closed)
+                        }
+                        e.copy(explanation="Gemini သုတေသနအလေးချိန် a=$a, b=$b, " +
+                            "ကိန်းသေ k=$k — မူရင်း DOC မဟုတ်ပါ")
+                    }
                 }
-                e.copy(explanation="Gemini စမ်းသပ်ကိန်းသေ k=$k — မူရင်း DOC မဟုတ်ပါ")
             }
         }
         val best=types.mapNotNull{(type,_)->
