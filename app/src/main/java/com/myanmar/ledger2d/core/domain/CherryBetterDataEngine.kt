@@ -46,7 +46,9 @@ data class CherryMathSelection(
     val tiedCandidates: Int = 1,
     val tiesBeyondDisplayed: Boolean = false,
     /** The first displayed pair in the same direct/reverse family. */
-    val reverseOf: String? = null
+    val reverseOf: String? = null,
+    /** A reverse direction exists but did not fit in the 3 visible slots. */
+    val hiddenReverse: Boolean = false
 )
 internal data class CherryMathCandidate(
     val pick: CherryPick,
@@ -128,8 +130,8 @@ internal fun rankCherryMathCandidates(
                 else "အထောက်အထားနည်းသေး · စမ်းသပ်ရွေး"
         }
         CherryMathSelection(candidate.pick,index+1,mode,candidate.grade,
-            reason,firstGroupIndex+1,tiedGroups,unseenTied||unseenReverse,
-            reverseOf)
+            reason,firstGroupIndex+1,tiedGroups,unseenTied,
+            reverseOf,unseenReverse)
     }
 }
 data class CherryBirth(
