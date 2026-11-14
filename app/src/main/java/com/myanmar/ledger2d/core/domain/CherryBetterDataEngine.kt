@@ -35,55 +35,101 @@ enum class CherryMathSelectionMode { STRICT, FALLBACK }
 enum class CherryMathGrade { A, B, C }
 data class CherryMathSelection(
     val pick: CherryPick,
-    /** Display slot (main = 1, reserves = 2/3), not a probability ranking. */
+    /** Display slot (main=1; reserves=2/3), not forecast quality. */
     val rank: Int,
     val mode: CherryMathSelectionMode,
     val grade: CherryMathGrade,
     val reason: String,
-    /** Shared evidence rank among all eligible pairs, including hidden ties. */
+    /** Evidence rank of the PAIR FAMILY, with direct and reverse grouped. */
     val evidenceRank: Int = rank,
+    /** Number of distinct pair families sharing this evidence rank. */
     val tiedCandidates: Int = 1,
-    val tiesBeyondDisplayed: Boolean = false
+    val tiesBeyondDisplayed: Boolean = false,
+    /** The first displayed pair in the same direct/reverse family. */
+    val reverseOf: String? = null
 )
 internal data class CherryMathCandidate(
     val pick: CherryPick,
     val evidenceScore: Int,
-    val grade: CherryMathGrade
+    val grade: CherryMathGrade,
+    /** Presentation order only; never part of evidence score. */
+    val preferDirect: Boolean = false
 )
+private data class CherryMathRankGroup(
+    val key:String,
+    val best:CherryMathCandidate,
+    val members:List<CherryMathCandidate>
+)
+private fun cherryPairFamily(pair:String):String=
+    minOf(pair,pair.reversed())
+
 /**
- * Evidence ties remain ties, even when more than three pairs share a score.
- * Pair text is ONLY a stable presentation order; it is not a quality signal.
+ * Calculate evidence rank by unique direct/reverse families, not by the number
+ * of derived directions. A reverse is still shown as a separate 2D choice
+ * when space allows, but shares evidence rank with the same formula family.
+ * Numeric order is deterministic presentation only, NEVER a win-rate signal.
  */
 internal fun rankCherryMathCandidates(
     candidates: List<CherryMathCandidate>,
     mode: CherryMathSelectionMode
 ): List<CherryMathSelection> {
-    val quality=mapOf(CherryMathGrade.A to 3,CherryMathGrade.B to 2,
+    val strength=mapOf(CherryMathGrade.A to 3,CherryMathGrade.B to 2,
         CherryMathGrade.C to 1)
-    val ordered=candidates.filter{it.pick.cuts.isEmpty()}
-        .groupBy{it.pick.pair}
-        .values.map{same->same.maxWithOrNull(
-            compareBy<CherryMathCandidate>{quality[it.grade]?:0}
-                .thenBy{it.evidenceScore}
-        )!!}
-        .sortedWith(compareByDescending<CherryMathCandidate>{quality[it.grade]?:0}
-            .thenByDescending{it.evidenceScore}
-            .thenBy{it.pick.pair})
-    return ordered.take(3).mapIndexed{index,c->
-        val first=ordered.indexOfFirst{
-            it.grade==c.grade&&it.evidenceScore==c.evidenceScore
+    val byPair=candidates.filter{it.pick.cuts.isEmpty()}
+        .groupBy{it.pick.pair}.values.mapNotNull{same->
+            same.maxWithOrNull(
+                compareBy<CherryMathCandidate>{strength[it.grade]?:0}
+                    .thenBy{it.evidenceScore}
+                    .thenBy{it.preferDirect}
+            )
         }
-        val count=ordered.count{
-            it.grade==c.grade&&it.evidenceScore==c.evidenceScore
+    val groups=byPair.groupBy{cherryPairFamily(it.pick.pair)}
+        .map{(key,items)->
+            val best=items.maxWithOrNull(
+                compareBy<CherryMathCandidate>{strength[it.grade]?:0}
+                    .thenBy{it.evidenceScore}
+            )!!
+            // Direct preference only selects which DIRECTION appears first.
+            val members=items.sortedWith(
+                compareByDescending<CherryMathCandidate>{it.preferDirect}
+                    .thenByDescending{strength[it.grade]?:0}
+                    .thenByDescending{it.evidenceScore}
+                    .thenBy{it.pick.pair}
+            )
+            CherryMathRankGroup(key,best,members)
+        }.sortedWith(
+            compareByDescending<CherryMathRankGroup>{strength[it.best.grade]?:0}
+                .thenByDescending{it.best.evidenceScore}.thenBy{it.key}
+        )
+    val flat=groups.flatMap{g->g.members.map{g to it}}
+    val visible=flat.take(3)
+    val visiblePairs=visible.map{it.second.pick.pair}.toSet()
+    return visible.mapIndexed{index,(group,candidate)->
+        val firstGroupIndex=groups.indexOfFirst{
+            it.best.grade==group.best.grade&&
+                it.best.evidenceScore==group.best.evidenceScore
         }
+        val tiedGroups=groups.count{
+            it.best.grade==group.best.grade&&
+                it.best.evidenceScore==group.best.evidenceScore
+        }
+        val unseenTied=groups.any{g->
+            g.key!=group.key&&g.best.grade==group.best.grade&&
+                g.best.evidenceScore==group.best.evidenceScore&&
+                g.members.none{it.pick.pair in visiblePairs}
+        }
+        val unseenReverse=group.members.any{it.pick.pair !in visiblePairs}
+        val reverseOf=group.members.first().pick.pair
+            .takeIf{it!=candidate.pick.pair}
         val reason=when(mode){
             CherryMathSelectionMode.STRICT->"3-Step စစ်ချက်ပြည့်"
-            CherryMathSelectionMode.FALLBACK->if(c.grade==CherryMathGrade.B)
+            CherryMathSelectionMode.FALLBACK->if(candidate.grade==CherryMathGrade.B)
                 "သမိုင်းစစ်ချက်အထောက်အထားရှိ · စမ်းသပ်ရွေး"
                 else "အထောက်အထားနည်းသေး · စမ်းသပ်ရွေး"
         }
-        CherryMathSelection(c.pick,index+1,mode,c.grade,reason,
-            first+1,count,first+count>3)
+        CherryMathSelection(candidate.pick,index+1,mode,candidate.grade,
+            reason,firstGroupIndex+1,tiedGroups,unseenTied||unseenReverse,
+            reverseOf)
     }
 }
 data class CherryBirth(
@@ -182,11 +228,11 @@ data class CherryReport(
             }
             val score=(if(gold)4 else 0)+(if(cross)5 else 0)+
                 (if(power)2 else 0)+(if(overlap)2 else 0)+
-                (if(cross&&p.pair==direct)2 else 0)+
                 recent*2+(if(recentSupported)2 else 0)
             val grade=if(recentSupported)
                 CherryMathGrade.B else CherryMathGrade.C
-            CherryMathCandidate(p,score,grade)
+            CherryMathCandidate(p,score,grade,
+                preferDirect=cross&&p.pair==direct)
         }
         return rankCherryMathCandidates(ranked,CherryMathSelectionMode.FALLBACK)
     }
@@ -215,11 +261,11 @@ data class CherryReport(
             it.cuts.isEmpty()&&it.evidence.any{ev->ev.id in allowed}
         }.map{p->
             // Different checks determine evidence score, not pair number.
-            val score=(if(directPair==p.pair&&directId!=null&&
-                p.evidence.any{it.id==directId})100 else 0)+
-                p.evidence.count{it.id in allowed}*10+
+            val score=p.evidence.count{it.id in allowed}*10+
                 (if(p.evidence.any{it.id=="research-confluence"})5 else 0)
-            CherryMathCandidate(p,score,CherryMathGrade.A)
+            CherryMathCandidate(p,score,CherryMathGrade.A,
+                preferDirect=directId!=null&&p.pair==directPair&&
+                    p.evidence.any{it.id==directId})
         }
     }
 }
