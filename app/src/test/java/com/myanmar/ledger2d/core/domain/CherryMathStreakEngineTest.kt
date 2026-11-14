@@ -92,6 +92,7 @@ class CherryMathStreakEngineTest {
         assertTrue(report.math.any{p->p.evidence.any{it.id.startsWith("gold-")}})
         assertNull(report.mathAnalysis.primaryChampionId)
         assertNull(report.mathAnalysis.loneConsensus)
+        assertTrue(report.mathShortlist().isEmpty())
         assertFalse(report.ranked.any{p->p.evidence.any{it.tab==CherryTab.MATH}})
         assertFalse(report.summary.any{p->p.evidence.any{it.tab==CherryTab.MATH}})
     }
@@ -107,6 +108,10 @@ class CherryMathStreakEngineTest {
         assertTrue(report.mathAnalysis.champion("WAM")!!.streak>=3)
         assertTrue(report.summary.any{it.pair=="49"&&it.cuts.isEmpty()})
         assertTrue(report.summary.any{it.pair=="94"&&it.cuts.isEmpty()})
+        val mathChoice=report.mathShortlist()
+        assertEquals(setOf("49","94"),mathChoice.map{it.pair}.toSet())
+        assertTrue(mathChoice.size<=3)
+        assertTrue(mathChoice.all{it.cuts.isEmpty()})
         assertTrue(report.ranked.any{it.pair=="49"})
         assertTrue(report.ranked.any{it.pair=="94"})
         assertTrue(report.summary.size<=3)
