@@ -19,10 +19,13 @@ internal object CherryMathSources {
             "formula17"->9 to "* တစ်ပတ်အတွင်း တနင်္လာနေ့ မနက်"
             "m44"->7 to "* ညနေ အပူး (44) အပြီး"
             "m05"->7 to "* မနက် 05 အပြီး"
-            else->return null
+            else->if(id.startsWith("follow-")) {
+                9 to ("* "+id.substringAfterLast('-')+" ထွက်လျှင်")
+            }else return null
         }
         val text=source.lineSequence().map{it.trim()}
             .firstOrNull{it.startsWith(phrase)}?:return null
-        return CherryOriginalReference(section,"အပိုင်း ($section) · မူရင်းတွက်နည်း",text)
+        val myanmar=listOf("၀","၁","၂","၃","၄","၅","၆","၇","၈","၉")
+        return CherryOriginalReference(section,"အပိုင်း ("+myanmar[section]+") · မူရင်းတွက်နည်း",text)
     }
 }
