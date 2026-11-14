@@ -265,45 +265,57 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.BORN->{
-                        item{CherryHeading(tr("🔥 အသက်ဝင်နေသော မွေးမူများ",
-                            "🔥 Active born rules"),
-                            tr("မွေးမူများ၏ ဘုံတူညီမှု","Shared results across active rules"))}
-                        item{
-                            CherryPanel {
-                                Text(tr("မွေးမူအရ ထိပ်တန်း ၅ တွဲ","Top 5 from born rules"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                CherryBalls(report.visible(CherryTab.BORN,5),
-                                    {selectedPick=it},en)
-                            }
+                        item {
+                            CherryHeading(tr("🔥 အသက်ဝင်နေသော မွေးမူများ",
+                                "🔥 Active born rules"),
+                                tr("မွေးမူများ၏ ဘုံတူညီမှု","Shared results across born rules"))
                         }
-                        item{
-                            CherryPanel {
-                                Row(verticalAlignment=Alignment.CenterVertically){
-                                    Text(tr("အသက်ဝင်နေသော မူများ","Active rule events"),
-                                        modifier=Modifier.weight(1f),fontWeight=FontWeight.Bold,
-                                        color=AppColors.PrimaryDeep)
-                                    TextButton(onClick={showBornRules=!showBornRules}){
-                                        Text(if(showBornRules)tr("ပိတ်","Hide") else tr("ကြည့်ရန်","View"))
-                                        Icon(if(showBornRules)Icons.Default.ExpandLess
-                                            else Icons.Default.ExpandMore,null)
-                                    }
-                                }
-                                if(showBornRules) {
-                                    if(report.activeRules.isEmpty())
-                                        Text(tr("ဒီအကြိမ်မှာ အသက်ဝင်နေသော မွေးမူ မတွေ့ပါ။",
-                                            "No active birth events for this draw."))
-                                    report.activeRules.take(20).forEach{event->
-                                        HorizontalDivider(color=AppColors.Blush)
-                                        Text(event.name,fontWeight=FontWeight.SemiBold,
-                                            color=AppColors.PrimaryDeep)
-                                        Text("${event.origin.date} • ${event.origin.session.label}  →  ${event.expires}",
-                                            style=MaterialTheme.typography.bodySmall)
-                                        Text(tr("ချဲ့ထုတ် ${event.produced.size} တွဲ",
-                                            "Expanded to ${event.produced.size} pairs"),
-                                            style=MaterialTheme.typography.bodySmall,
-                                            color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
+                        item {
+                            CherryRuleFrameOverview(
+                                heading=tr("ဦးစားပေး မွေးမူရွေးကွက်များ","Prioritized born pairs"),
+                                all=report.born,topLimit=5,en=en,
+                                expanded=showAllBorn,
+                                onToggle={showAllBorn=!showAllBorn},
+                                onPick={selectedPick=it}
+                            )
+                        }
+                        val groups=cherryRuleGroups(report.born)
+                        val actualBorn=groups.filterNot{
+                            it.id=="s3-week"||it.id=="s3-six"
+                        }
+                        val weekly=groups.filter{
+                            it.id=="s3-week"||it.id=="s3-six"
+                        }
+                        item {
+                            CherryHeading(tr("အကျုံးဝင်နေသော မွေးမူတစ်ခုချင်း","Individual active born rules"),
+                                tr("မူကိုနှိပ်ပြီး စတင်ချိန်၊ သက်တမ်း၊ တွက်ချက်ပုံနှင့် အတွဲအားလုံးကို ကြည့်ရန်",
+                                    "Tap each rule to see its trigger, expiry, method and all pairs"))
+                        }
+                        if(actualBorn.isEmpty())item{CherryEmpty(en)}
+                        items(actualBorn,key={it.id}){rule->
+                            CherryRuleFrameCard(
+                                rule=rule,all=report.born,
+                                bornEvent=report.activeRules.firstOrNull{it.id==rule.id},
+                                en=en,expanded=openedBornRule==rule.id,
+                                onToggle={openedBornRule=
+                                    if(openedBornRule==rule.id)null else rule.id},
+                                onPick={selectedPick=it}
+                            )
+                        }
+                        if(weekly.isNotEmpty()){
+                            item {
+                                CherryHeading(tr("အပတ်စဉ် စောင့်ကြည့်မူများ","Weekly watch groups"),
+                                    tr("သက်တမ်းရှိမွေးမူနှင့် မရောဘဲ သီးခြားပြထားသော အပတ်စဉ်အုပ်စုများ",
+                                        "Weekly groups are distinct from active born rules"))
+                            }
+                            items(weekly,key={it.id}){rule->
+                                CherryRuleFrameCard(
+                                    rule=rule,all=report.born,bornEvent=null,en=en,
+                                    expanded=openedBornRule==rule.id,
+                                    onToggle={openedBornRule=
+                                        if(openedBornRule==rule.id)null else rule.id},
+                                    onPick={selectedPick=it}
+                                )
                             }
                         }
                     }
