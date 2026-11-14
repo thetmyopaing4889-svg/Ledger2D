@@ -63,6 +63,45 @@ data class CherryReport(
         CherryTab.MATH -> math
         CherryTab.SUMMARY -> summary
     }.filter { it.cuts.isEmpty() }.take(limit)
+    /**
+     * Math is a narrow decision, not a catalogue of all generated combinations.
+     * Keep at most one primary and two reserves; research alone and formulas
+     * without an unbroken three-draw streak cannot enter this shortlist.
+     * The full math list remains available for explanation and audit.
+     */
+    fun mathShortlist(): List<CherryPick> {
+        val wam=mathAnalysis.champion("WAM")
+        val lone=mathAnalysis.champion("LONE")?.takeIf{
+            it.result==mathAnalysis.loneConsensus
+        }
+        val br=mathAnalysis.champion("BREAK")
+        val directId=if(lone!=null&&br!=null)
+            "cross-${lone.id}-${br.id}" else null
+        val allowed=mutableSetOf<String>()
+        wam?.let{allowed+="gold-${it.id}"}
+        directId?.let{
+            allowed+=it
+            allowed+=it+"-power"
+        }
+        if(wam!=null&&mathAnalysis.confluence.singleOrNull()==wam.result)
+            allowed+="research-confluence"
+        if(allowed.isEmpty())return emptyList()
+        val directPair=if(lone?.result!=null&&br?.result!=null)
+            lone.result.toString()+
+                Math.floorMod(br.result-lone.result,10) else null
+        return math.asSequence().filter{
+            it.cuts.isEmpty()&&it.evidence.any{ev->ev.id in allowed}
+        }.sortedWith(
+            compareByDescending<CherryPick>{p->
+                // Agreement from current rules is a tie-breaker, not a new
+                // independent math formula or a proof of future reliability.
+                (if(directPair==p.pair&&directId!=null&&
+                    p.evidence.any{it.id==directId})100 else 0)+
+                p.evidence.count{it.id in allowed}*10+
+                (if(p.evidence.any{it.id=="research-confluence"})5 else 0)
+            }.thenByDescending{it.familyCount}.thenBy{it.pair}
+        ).take(3).toList()
+    }
 }
 
 object CherryPairExpander {
