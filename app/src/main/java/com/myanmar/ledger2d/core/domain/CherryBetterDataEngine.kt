@@ -67,7 +67,7 @@ data class CherryReport(
 object CherryPairExpander {
     val all = (0..99).map { it.toString().padStart(2, '0') }
     fun wheel(raw: String, doubles: Boolean = false): List<String> {
-        val ds = raw.filter { it in '0'..'9' }.distinct()
+        val ds = raw.filter { it in '0'..'9' }.toList().distinct()
         return ds.flatMap { a -> ds.mapNotNull { b ->
             if (doubles || a != b) "$a$b" else null
         } }.distinct()
