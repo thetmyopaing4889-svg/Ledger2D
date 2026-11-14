@@ -55,6 +55,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val wFlow=remember(container){container.winners.observeAll()}
     val lFlow=remember(container){container.database.manualWinnerLockDao().observeAll()}
     val cFlow=remember(container){container.closedDays.observeAll()}
+    val aFlow=remember(container){container.agents.observeAll()}
+    val agents by aFlow.collectAsStateWithLifecycle(initialValue=emptyList())
     val history by hFlow.collectAsStateWithLifecycle(initialValue=null)
     val daily by dFlow.collectAsStateWithLifecycle(initialValue=null)
     val winners by wFlow.collectAsStateWithLifecycle(initialValue=null)
@@ -92,6 +94,26 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     var showBornRules by rememberSaveable { mutableStateOf(false) }
     var selectedDigit by rememberSaveable { mutableStateOf<Int?>(null) }
     var savedOk by remember { mutableStateOf(false) }
+    var ledgerRevision by remember { mutableIntStateOf(0) }
+    val ledgerPayouts by produceState<Map<String, Long>>(
+        initialValue=emptyMap(),target,agents,tab,ledgerRevision
+    ) {
+        if(tab != CherryTab.SUMMARY) {
+            value=emptyMap()
+        } else {
+            val byDigit=mutableMapOf<String,Long>()
+            agents.forEach{agent->
+                runCatching {
+                    container.bets.getAgentScenarioPayouts(agent.id,target.date,target.session)
+                }.getOrNull()?.forEach{(pair,payout)->
+                    byDigit[pair]=runCatching {
+                        Math.addExact(byDigit[pair]?:0L,payout)
+                    }.getOrDefault(Long.MAX_VALUE)
+                }
+            }
+            value=byDigit
+        }
+    }
     val subtitle="${target.date} • "+tr(
         if(target.session==DrawSession.MORNING)"မနက်" else "ညနေ",
         if(target.session==DrawSession.MORNING)"AM" else "PM")
@@ -380,6 +402,44 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                     "Choose a digit to filter the ranked list."),
                                     style=MaterialTheme.typography.bodySmall,
                                     color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        item {
+                            CherryPanel {
+                                Row(verticalAlignment=Alignment.CenterVertically){
+                                    Text(tr("🛡️ ဒိုင်စာရင်းနှင့် နှိုင်းယှဉ်မှု",
+                                        "🛡️ Ledger payout exposure"),
+                                        fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
+                                        modifier=Modifier.weight(1f))
+                                    IconButton(onClick={ledgerRevision++}) {
+                                        Icon(Icons.Default.Refresh,null,
+                                            tint=AppColors.PrimaryDeep)
+                                    }
+                                }
+                                val selected=report.summary.filter{
+                                    (ledgerPayouts[it.pair]?:0L)>0L
+                                }
+                                if(ledgerPayouts.isEmpty()) {
+                                    Text(tr("ဒီအကြိမ်အတွက် ဒိုင်စာရင်းထိုးငွေ မရှိသေးပါ။",
+                                        "No ledger stake entries for this draw."),
+                                        style=MaterialTheme.typography.bodySmall,
+                                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else if(selected.isEmpty()) {
+                                    Text(tr("ရွေးထားသောဂဏန်းများပေါ် ထိုးငွေမရှိသေးပါ။",
+                                        "No stakes on selected numbers."),
+                                        style=MaterialTheme.typography.bodySmall)
+                                } else {
+                                    selected.forEach{p->
+                                        Row(Modifier.fillMaxWidth()){
+                                            Text(p.pair,fontWeight=FontWeight.Black,
+                                                color=AppColors.PrimaryDeep,
+                                                modifier=Modifier.weight(1f))
+                                            Text(tr("ပေါက်လျှင်ပေးရန် ","Payout if drawn ") +
+                                                String.format("%,d",ledgerPayouts[p.pair]?:0L),
+                                                style=MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
