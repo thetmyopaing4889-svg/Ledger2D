@@ -187,6 +187,37 @@ class CherryMathStreakEngineTest {
         assertTrue(chosen.none{it.grade==CherryMathGrade.A})
     }
 
+    @Test fun lowEvidenceCrossPairDoesNotOutrankGoldenByArbitraryCategoryBonus(){
+        // The UI once ranked 14 above 38 solely because CROSS got an
+        // undocumented category bonus (and put 41 in a different rank).
+        val formulas=listOf(
+            CherryMathFormula("w1","WAM","WAM",8,0,8,0,emptyList()),
+            CherryMathFormula("wl","WaiLin","LONE",1,0,8,0,emptyList()),
+            CherryMathFormula("cycle","3-less","BREAK",5,0,8,0,emptyList())
+        )
+        val analysis=CherryMathAnalysis(formulas,emptyMap(),emptyMap(),
+            emptyList(),emptyList(),emptyList(),8)
+        fun pick(pair:String,id:String)=CherryPick(pair,
+            listOf(CherryEvidence(id,id,id,"",pair,CherryTab.MATH)),
+            emptyList(),0)
+        val report=CherryReport(
+            target=target("2026-11-16",DrawSession.MORNING),
+            observed=8,last=null,current=emptyList(),born=emptyList(),
+            math=listOf(pick("14","cross-wl-cycle"),
+                pick("41","cross-wl-cycle"),
+                pick("38","gold-w1"),pick("83","gold-w1")),
+            summary=emptyList(),ranked=emptyList(),activeRules=emptyList(),
+            singles=emptyList(),breaks=emptyList(),cuts=emptyMap(),
+            has930=false,mathAnalysis=analysis)
+        val selected=report.mathSelections()
+        assertEquals(listOf("14","41","38"),selected.map{it.pick.pair})
+        assertTrue(selected.all{it.mode==CherryMathSelectionMode.FALLBACK})
+        assertTrue(selected.all{it.grade==CherryMathGrade.C})
+        assertTrue(selected.all{it.evidenceRank==1})
+        assertTrue(selected.all{it.tiedCandidates==2})
+        assertEquals("14",selected[1].reverseOf)
+    }
+
     @Test fun differentEvidenceScoresBreakTiesBeforeDisplayOrder(){
         val candidates=listOf("78" to 4,"93" to 12,"24" to 8,"21" to 8)
             .map{(pair,score)->
