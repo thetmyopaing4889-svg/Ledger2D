@@ -93,6 +93,7 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val report = remember(merged, target, modern, internet, ready) {
         if (ready) BetterDataQuantEngine.calculate(merged, target, modern, internet) else null
     }
+    var bottomTab by rememberSaveable { mutableStateOf("predict") }
     var strategy by rememberSaveable { mutableStateOf(BetterStrategy.CURRENT) }
     // Until the user chooses a mode, open the first mode which actually has results.
     // Never silently relabel a formula output as an overlap.
@@ -122,11 +123,45 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                     Text("BETTER DATA", fontWeight = FontWeight.Black, color = AppColors.PrimaryDeep)
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
-                actions = { IconButton(onClick = { showTickets = true }) {
-                    Icon(Icons.Default.History, tr("ခန့်မှန်းမှတ်တမ်း", "Saved tickets"))
-                } },
+
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
             )
+        },
+        bottomBar = {
+            NavigationBar(containerColor = Color.White, tonalElevation = 4.dp) {
+                NavigationBarItem(
+                    selected = bottomTab == "predict",
+                    onClick = { bottomTab = "predict"; strategy = BetterStrategy.CURRENT; selectedMode = null },
+                    icon = { Icon(Icons.Default.TrackChanges, null) },
+                    label = { Text(tr("ခန့်မှန်း", "Picks"), maxLines = 1) },
+                    colors = NavigationBarItemDefaults.colors(selectedIconColor = AppColors.PrimaryDeep,
+                        selectedTextColor = AppColors.PrimaryDeep, indicatorColor = AppColors.Blush)
+                )
+                NavigationBarItem(
+                    selected = bottomTab == "alive",
+                    onClick = { bottomTab = "alive"; strategy = BetterStrategy.ALIVE; selectedMode = null },
+                    icon = { Icon(Icons.Default.AutoGraph, null) },
+                    label = { Text(tr("Alive မူ", "Alive"), maxLines = 1) },
+                    colors = NavigationBarItemDefaults.colors(selectedIconColor = AppColors.PrimaryDeep,
+                        selectedTextColor = AppColors.PrimaryDeep, indicatorColor = AppColors.Blush)
+                )
+                NavigationBarItem(
+                    selected = bottomTab == "calc",
+                    onClick = { bottomTab = "calc"; strategy = BetterStrategy.CURRENT; selectedMode = BetterMode.RULES },
+                    icon = { Icon(Icons.Default.Calculate, null) },
+                    label = { Text(tr("တွက်ချက်", "Methods"), maxLines = 1) },
+                    colors = NavigationBarItemDefaults.colors(selectedIconColor = AppColors.PrimaryDeep,
+                        selectedTextColor = AppColors.PrimaryDeep, indicatorColor = AppColors.Blush)
+                )
+                NavigationBarItem(
+                    selected = bottomTab == "history",
+                    onClick = { bottomTab = "history" },
+                    icon = { Icon(Icons.Default.History, null) },
+                    label = { Text(tr("မှတ်တမ်း", "History"), maxLines = 1) },
+                    colors = NavigationBarItemDefaults.colors(selectedIconColor = AppColors.PrimaryDeep,
+                        selectedTextColor = AppColors.PrimaryDeep, indicatorColor = AppColors.Blush)
+                )
+            }
         }
     ) { padding ->
         LazyColumn(
@@ -134,6 +169,33 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (bottomTab == "history") {
+                item {
+                    Text(tr("သိမ်းထားသော ခန့်မှန်းချက်များ", "Saved prediction history"),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+                }
+                val entries = tickets.lines().filter { it.isNotBlank() }
+                if (entries.isEmpty()) {
+                    item {
+                        Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, AppColors.Stone)) {
+                            Text(tr("ခန့်မှန်းချက် မသိမ်းရသေးပါ။",
+                                "No predictions saved yet."),
+                                modifier = Modifier.padding(20.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    items(entries) { entry ->
+                        Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
+                            border = BorderStroke(1.dp, AppColors.Stone)) {
+                            Text(entry, modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            } else {
             item {
                 Surface(
                     color = AppColors.PrimaryDeep,
@@ -169,24 +231,17 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         Modifier.fillMaxWidth().padding(15.dp),
                         verticalArrangement = Arrangement.spacedBy(11.dp)
                     ) {
-                        Text(tr("ဒီအကြိမ်အတွက် ရွေးထားသောဂဏန်း", "Selected numbers for this draw"),
+                        Text(
+                            when (bottomTab) {
+                                "alive" -> tr("ဆက်တိုက်ကိုက်ညီနေသောမူများ", "Alive rule selections")
+                                "calc" -> tr("မူနှင့် တွက်နည်းရလဒ်", "Rules and formula results")
+                                else -> tr("လက်ရှိအကြိမ် ခန့်မှန်းဂဏန်း", "Next draw selections")
+                            },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-                        Text(tr("တွက်ချက်နည်းလမ်း", "Calculation approach"),
+                        Text(tr("ရလဒ်ကြည့်ရန်", "Show results by"),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            FilterChip(
-                                selected = strategy == BetterStrategy.CURRENT,
-                                onClick = { strategy = BetterStrategy.CURRENT; selectedMode = null; savedNotice = false },
-                                label = { Text(tr("လက်ရှိအကြိမ်", "Current draw")) }
-                            )
-                            FilterChip(
-                                selected = strategy == BetterStrategy.ALIVE,
-                                onClick = { strategy = BetterStrategy.ALIVE; selectedMode = null; savedNotice = false },
-                                label = { Text(tr("ဆက်တိုက်ကိုက်ညီမူ", "Alive rules")) }
-                            )
-                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             FilterChip(
                                 selected = mode == BetterMode.OVERLAP,
@@ -237,9 +292,10 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                     if (strategy == BetterStrategy.ALIVE &&
                                         report?.current?.isNotEmpty() == true) {
                                         TextButton(onClick = {
+                                            bottomTab = "predict"
                                             strategy = BetterStrategy.CURRENT
                                             selectedMode = null
-                                        }) { Text(tr("လက်ရှိအကြိမ်ရလဒ် ကြည့်ရန်", "Show current draw")) }
+                                        }) { Text(tr("ခန့်မှန်းစာမျက်နှာသို့", "Go to predictions")) }
                                     }
                                 }
                             }
@@ -322,7 +378,7 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            if (bottomTab == "predict") item {
                 Surface(
                     color = Color.White, shape = RoundedCornerShape(18.dp),
                     border = BorderStroke(1.dp, AppColors.Stone)
@@ -384,7 +440,7 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                     }
                 }
             }
-            if (report != null) {
+            if (report != null && bottomTab == "calc") {
                 item {
                     Surface(
                         color = Color.White, shape = RoundedCornerShape(18.dp),
@@ -402,7 +458,7 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 Icon(if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                     null, tint = AppColors.PrimaryDeep)
                             }
-                            if (showDetails) {
+                            if (showDetails || bottomTab == "calc") {
                                 Text(
                                     tr("သမိုင်းရလဒ် ${report.observedDraws} ကြိမ်ကို အခြေခံထားသည်။",
                                         "Using ${report.observedDraws} earlier result records."),
@@ -458,6 +514,7 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         modifier = Modifier.padding(bottom = 14.dp)
                     )
                 }
+            }
             }
         }
     }
