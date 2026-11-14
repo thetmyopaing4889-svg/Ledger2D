@@ -38,7 +38,8 @@ class CherryDiscoveryWalkForwardTest {
             assertEquals(24, stats.targetCount)
             assertEquals(stats.targetCount, stats.checked + stats.noSelection)
             assertTrue(stats.hits in 0..stats.checked)
-            assertTrue(stats.rate == null || stats.rate in 0.0..1.0)
+            val observedRate = stats.rate
+            assertTrue(observedRate == null || observedRate in 0.0..1.0)
             assertTrue(report.checks.filter { it.kind == kind }.all {
                 it.historicalFitStreak == null ||
                     it.historicalFitStreak >= CherryFormulaDiscoveryEngine.MIN_STREAK
