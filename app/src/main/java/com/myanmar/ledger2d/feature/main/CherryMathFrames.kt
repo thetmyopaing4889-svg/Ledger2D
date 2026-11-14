@@ -191,7 +191,9 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                 horizontal=4.dp,vertical=9.dp),
                                 horizontalAlignment=Alignment.CenterHorizontally,
                                 verticalArrangement=Arrangement.spacedBy(3.dp)){
-                                Text(if(isMain){
+                                Text(if(selection.reverseOf!=null){
+                                    if(en)"REVERSE (R)" else "အရံ R"
+                                }else if(isMain){
                                     if(en)"MAIN" else "မိန်း"
                                 }else{
                                     if(en)"RESERVE ${index}" else "အရံ ${index}"
@@ -209,8 +211,8 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
                                 if(selection.tiedCandidates>1)Text(
-                                    if(en)"Tie ×${selection.tiedCandidates}"
-                                    else "တူ ×${selection.tiedCandidates}",
+                                    if(en)"${selection.tiedCandidates} tied families"
+                                    else "မူအုပ်စု ${selection.tiedCandidates} စု တူ",
                                     style=MaterialTheme.typography.labelSmall,
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
@@ -221,13 +223,29 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                 if(selections.any{it.tiesBeyondDisplayed}){
                     val count=selections.filter{it.tiesBeyondDisplayed}
                         .maxOf{it.tiedCandidates}
-                    Text(if(en)"${count} pairs share the same evidence rank. "+
-                        "Shown pairs use a stable display order, not a higher win chance."
-                    else "အထောက်အထားအဆင့်တူ ${count} ကွက်ရှိသည်။ ပြထားသောဂဏန်း "+
-                        "၃ ကွက်က အစဉ်တကျ ပြသထားခြင်းသာဖြစ်ပြီး ပိုမှန်နိုင်သည်ဟု မဆိုလိုပါ။",
+                    Text(if(en)"${count} distinct formula-pair families have tied evidence. "+
+                        "The displayed order does not imply a higher win chance."
+                    else "တွက်နည်းအထောက်အထားတူညီသော အတွဲမူအုပ်စု ${count} စုရှိသည်။ "+
+                        "ပြထားသည့်အစဉ်က ပိုမှန်နိုင်သည်ဟု မဆိုလိုပါ။",
                         style=MaterialTheme.typography.labelSmall,
                         color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if(selections.any{it.hiddenReverse})Text(
+                    if(en)"Additional reverse directions are in the full calculations, "+
+                        "not separate evidence."
+                    else "အကွက်ကန့်သတ်ချက်ကြောင့် မပြထားသော R အတွဲများကို "+
+                        "တွက်ချက်မှုအားလုံးထဲမှာ ကြည့်နိုင်သည်။ R က သီးခြားထောက်ခံချက်မဟုတ်ပါ။",
+                    style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                if(mode==CherryMathSelectionMode.FALLBACK&&
+                    selections.all{it.grade==CherryMathGrade.C})Text(
+                    if(en)"Grade C: limited historical evidence — these are exploratory "+
+                        "selections, not verified champions."
+                    else "Grade C = သမိုင်းစစ်ချက်အထောက်အထားနည်းသော စမ်းသပ်ရွေးကွက်သာ။ "+
+                        "Champion အတည်ပြုချက် မဟုတ်ပါ။",
+                    style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                
             }
         }
     }
@@ -437,8 +455,35 @@ internal fun CherryMathFrame(
 
 @Composable internal fun CherryMathPairDetail(
     pair:CherryPick,source:String?,en:Boolean,
-    onOriginal:(CherryOriginalReference)->Unit
+    onOriginal:(CherryOriginalReference)->Unit,
+    selection:CherryMathSelection?=null
 ){
+    selection?.let{item->
+        Text((if(item.mode==CherryMathSelectionMode.STRICT){
+            if(en)"3-Step verified" else "3-Step စစ်ချက်ပြည့်"
+        }else{
+            if(en)"Smart Fallback · experimental" else "Smart Fallback · စမ်းသပ်ရွေး"
+        })+" · Grade ${item.grade} · #${item.evidenceRank}",
+            fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+        Text(item.reason,style=MaterialTheme.typography.bodySmall)
+        if(item.reverseOf!=null)
+            Text(if(en)"Reverse (R) of ${item.reverseOf}. Both directions share "+
+                "the same formula-family evidence rank."
+            else "${item.reverseOf} ၏ R အတွဲဖြစ်သည်။ တူညီသောတွက်နည်းအထောက်အထားကို "+
+                "သုံးထားသဖြင့် အဆင့်တူဖြစ်သည်။",
+                style=MaterialTheme.typography.bodySmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+        if(item.tiedCandidates>1)Text(
+            if(en)"Tied evidence across ${item.tiedCandidates} independent pair families."
+            else "မူအုပ်စု ${item.tiedCandidates} စုမှာ အထောက်အထားအဆင့်တူနေသည်။",
+            style=MaterialTheme.typography.bodySmall,
+            color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(if(en)"This grade is not a validated chance of winning."
+            else "Grade အဆင့်သည် အနိုင်ရနိုင်ခြေရာခိုင်နှုန်း မဟုတ်ပါ။",
+            style=MaterialTheme.typography.labelSmall,
+            color=MaterialTheme.colorScheme.onSurfaceVariant)
+        HorizontalDivider(color=mathEdge)
+    }
     MathTitle(if(en)"How this pair was calculated"
         else "ဒီဂဏန်းကို ဘယ်လိုတွက်ထားသလဲ")
     pair.evidence.distinctBy{it.id}.forEach{ev->
