@@ -174,13 +174,17 @@ data class CherryReport(
                 }
             }
             val recent=supporting.count{it.streak>=1}
-            val checked=supporting.maxOfOrNull{it.checked}?:0
-            val hits=supporting.maxOfOrNull{it.hits}?:0
+            // B requires that ONE supporting formula meets all historical
+            // conditions. Do not combine checked/hits from one method with
+            // another method's streak to manufacture a stronger grade.
+            val recentSupported=supporting.any{
+                it.checked>=8&&it.hits>=3&&it.streak>=1
+            }
             val score=(if(gold)4 else 0)+(if(cross)5 else 0)+
                 (if(power)2 else 0)+(if(overlap)2 else 0)+
                 (if(cross&&p.pair==direct)2 else 0)+
-                recent*2+(if(checked>=8&&hits>=3)2 else 0)
-            val grade=if(checked>=8&&hits>=3&&recent>0)
+                recent*2+(if(recentSupported)2 else 0)
+            val grade=if(recentSupported)
                 CherryMathGrade.B else CherryMathGrade.C
             CherryMathCandidate(p,score,grade)
         }
