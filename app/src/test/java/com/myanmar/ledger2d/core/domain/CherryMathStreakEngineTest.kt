@@ -92,7 +92,14 @@ class CherryMathStreakEngineTest {
         assertTrue(report.math.any{p->p.evidence.any{it.id.startsWith("gold-")}})
         assertNull(report.mathAnalysis.primaryChampionId)
         assertNull(report.mathAnalysis.loneConsensus)
-        assertTrue(report.mathShortlist().isEmpty())
+        // No Champion is legitimate, but calculable DOC methods can still
+        // provide a clearly labelled experimental fallback (not a 3-step win).
+        val fallback=report.mathSelections()
+        assertTrue(fallback.isNotEmpty())
+        assertTrue(fallback.size<=3)
+        assertTrue(fallback.all{it.mode==CherryMathSelectionMode.FALLBACK})
+        assertTrue(fallback.all{it.grade!=CherryMathGrade.A})
+        assertTrue(fallback.all{it.pick.cuts.isEmpty()})
         assertFalse(report.ranked.any{p->p.evidence.any{it.tab==CherryTab.MATH}})
         assertFalse(report.summary.any{p->p.evidence.any{it.tab==CherryTab.MATH}})
     }
@@ -110,6 +117,8 @@ class CherryMathStreakEngineTest {
         assertTrue(report.summary.any{it.pair=="94"&&it.cuts.isEmpty()})
         val mathChoice=report.mathShortlist()
         assertEquals(setOf("49","94"),mathChoice.map{it.pair}.toSet())
+        assertTrue(report.mathSelections().all{it.mode==CherryMathSelectionMode.STRICT})
+        assertTrue(report.mathSelections().all{it.grade==CherryMathGrade.A})
         assertTrue(mathChoice.size<=3)
         assertTrue(mathChoice.all{it.cuts.isEmpty()})
         assertTrue(report.ranked.any{it.pair=="49"})
@@ -119,6 +128,44 @@ class CherryMathStreakEngineTest {
         assertFalse(report.ranked.any{p->p.evidence.any{
             it.id.startsWith("cross-")
         }})
+    }
+
+    @Test fun fallbackTiesOverTenStayVisibleWithoutFalseRanking(){
+        val twelve=(0 until 12).map{i->
+            CherryMathCandidate(
+                CherryPick(i.toString().padStart(2,'0'),
+                    emptyList(),emptyList(),0),
+                12,CherryMathGrade.B)
+        }
+        val cut=CherryMathCandidate(
+            CherryPick("99",emptyList(),listOf("documented cut"),0),
+            99,CherryMathGrade.A)
+        val selections=rankCherryMathCandidates(
+            twelve+cut,CherryMathSelectionMode.FALLBACK)
+        assertEquals(listOf("00","01","02"),selections.map{it.pick.pair})
+        assertEquals(listOf(1,2,3),selections.map{it.rank})
+        assertTrue(selections.all{it.grade==CherryMathGrade.B})
+        assertTrue(selections.all{it.evidenceRank==1})
+        assertTrue(selections.all{it.tiedCandidates==12})
+        assertTrue(selections.all{it.tiesBeyondDisplayed})
+    }
+    @Test fun differentEvidenceScoresBreakTiesBeforeDisplayOrder(){
+        val candidates=listOf("78" to 4,"93" to 12,"24" to 8,"21" to 8)
+            .map{(pair,score)->
+                CherryMathCandidate(CherryPick(pair,emptyList(),emptyList(),0),
+                    score,CherryMathGrade.B)
+            }
+        val selections=rankCherryMathCandidates(
+            candidates,CherryMathSelectionMode.FALLBACK)
+        assertEquals(listOf("93","21","24"),selections.map{it.pick.pair})
+        assertEquals(listOf(1,2,2),selections.map{it.evidenceRank})
+        assertTrue(selections[1].tiedCandidates==2)
+        assertTrue(selections.all{it.rank in 1..3})
+    }
+    @Test fun noInputDoesNotInventFallback(){
+        val report=CherryBetterDataEngine.calculate(
+            emptyList(),target("2026-11-10",DrawSession.MORNING))
+        assertTrue(report.mathSelections().isEmpty())
     }
 
     @Test fun waiLinUsesActualPreviousWorkingDayAndRejectsStaleHistory(){
