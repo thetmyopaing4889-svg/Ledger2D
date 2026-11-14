@@ -148,7 +148,7 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White.copy(alpha = 0.9f))
-                            Text("\${target.date}  •  " + tr(
+                            Text("${target.date}  •  " + tr(
                                 if (target.session == DrawSession.MORNING) "မနက်" else "ညနေ",
                                 if (target.session == DrawSession.MORNING) "AM" else "PM"
                             ), style = MaterialTheme.typography.titleLarge,
@@ -292,8 +292,8 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 }
                                 Button(
                                     onClick = {
-                                        val record = "\${target.date} \${target.session.name} | \${strategy.name}/\${mode.name} | " +
-                                            picks.joinToString(",") { it.number } + " | inputs=\${modern ?: "-"}/\${internet ?: "-"}"
+                                        val record = "${target.date} ${target.session.name} | ${strategy.name}/${mode.name} | " +
+                                            picks.joinToString(",") { it.number } + " | inputs=${modern ?: "-"}/${internet ?: "-"}"
                                         val next = (listOf(record) + tickets.lines().filter { it.isNotBlank() })
                                             .distinct().take(30).joinToString("\n")
                                         val written = prefs.edit().putString("tickets", next).commit()
@@ -404,14 +404,14 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             }
                             if (showDetails) {
                                 Text(
-                                    tr("သမိုင်းရလဒ် \${report.observedDraws} ကြိမ်ကို အခြေခံထားသည်။",
-                                        "Using \${report.observedDraws} earlier result records."),
+                                    tr("သမိုင်းရလဒ် ${report.observedDraws} ကြိမ်ကို အခြေခံထားသည်။",
+                                        "Using ${report.observedDraws} earlier result records."),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    tr("လက်ရှိမူရလဒ် \${report.current.size} တွဲ • ဆက်တိုက်ကိုက်ညီမူ \${report.aliveIds.size} ခု",
-                                        "\${report.current.size} current pairs • \${report.aliveIds.size} alive rules"),
+                                    tr("လက်ရှိမူရလဒ် ${report.current.size} တွဲ • ဆက်တိုက်ကိုက်ညီမူ ${report.aliveIds.size} ခု",
+                                        "${report.current.size} current pairs • ${report.aliveIds.size} alive rules"),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 if (report.aliveIds.isEmpty()) {
@@ -439,8 +439,8 @@ fun BetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 if (report.cuts().isNotEmpty()) {
                                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                                     Text(
-                                        tr("မူအရ ဖြတ်မူဆန့်ကျင်နေသောဂဏန်း \${report.cuts().size} တွဲရှိသည်။",
-                                            "\${report.cuts().size} pairs have cut-rule conflicts."),
+                                        tr("မူအရ ဖြတ်မူဆန့်ကျင်နေသောဂဏန်း ${report.cuts().size} တွဲရှိသည်။",
+                                            "${report.cuts().size} pairs have cut-rule conflicts."),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
