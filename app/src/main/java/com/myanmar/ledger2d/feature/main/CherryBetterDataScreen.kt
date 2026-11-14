@@ -557,7 +557,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }else if(tab==CherryTab.MATH){
                         CherryMathPairDetail(p,originalSource,en,
-                            onOriginal={selectedPick=null;selectedOriginal=it})
+                            onOriginal={selectedPick=null;selectedOriginal=it},
+                            selection=report?.mathSelections()
+                                ?.firstOrNull{it.pick.pair==p.pair})
                     }else{
                         p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
                             Text("• ${ev.name}",fontWeight=FontWeight.Bold,
