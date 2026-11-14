@@ -334,37 +334,14 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.MATH->{
-                        item{CherryHeading(tr("🧮 သင်္ချာနည်းဖြင့် တွက်ချက်မှု",
-                            "🧮 Math combinations"),
-                            tr("ဝမ်းချိန်း၊ လုံးပိုင်၊ ဘရိတ်",
-                                "Wamchain • single digits • breaks"))}
-                        item {
-                            CherryPanel {
-                                Text(tr("တွဲစပ်ထားသော 2D ဂဏန်းများ","Calculated 2D pairs"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                val seen=mutableSetOf<String>()
-                                val mathTop=report.visible(CherryTab.MATH,100).filter{p->
-                                    val k=listOf(p.pair,p.pair.reversed()).minOrNull().orEmpty()
-                                    seen.add(k)
-                                }.take(4)
-                                CherryBalls(mathTop,{selectedPick=it},en)
-                            }
-                        }
                         item{
-                            CherryPanel {
-                                Text(tr("ဝမ်းချိန်းနှင့် လုံးပိုင်","Wamchain and singles"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                if(report.singles.isEmpty()) CherryEmpty(en)
-                                report.singles.forEach{v->CherryFormulaRow(v)}
-                            }
-                        }
-                        item{
-                            CherryPanel {
-                                Text(tr("ဘရိတ်တွက်ချက်မှု","Break calculations"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                if(report.breaks.isEmpty()) CherryEmpty(en)
-                                report.breaks.forEach{v->CherryFormulaRow(v)}
-                            }
+                            CherryMathFrame(
+                                report=report,
+                                originalSource=originalSource,
+                                en=en,
+                                onPick={selectedPick=it},
+                                onOriginal={selectedOriginal=it}
+                            )
                         }
                     }
                     CherryTab.SUMMARY->{
@@ -578,6 +555,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                     style=MaterialTheme.typography.bodySmall)
                             }
                         }
+                    }else if(tab==CherryTab.MATH){
+                        CherryMathPairDetail(p,originalSource,en,
+                            onOriginal={selectedPick=null;selectedOriginal=it})
                     }else{
                         p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
                             Text("• ${ev.name}",fontWeight=FontWeight.Bold,
