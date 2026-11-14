@@ -202,7 +202,6 @@ data class CherryReport(
             else null
         val direct=if(lone?.result!=null&&br?.result!=null)
             "${lone.result}"+Math.floorMod(br.result-lone.result,10) else null
-        val researchAgrees=mathAnalysis.confluence.singleOrNull()==wam?.result
         val eligible=math.filter{p->p.cuts.isEmpty()&&p.evidence.any{e->
             e.id==goldId||(crossId!=null&&e.id==crossId)||
                 (powerId!=null&&e.id==powerId)
@@ -213,7 +212,6 @@ data class CherryReport(
             val gold=p.evidence.any{it.id==goldId&&goldId!=null}
             val cross=p.evidence.any{it.id==crossId&&crossId!=null}
             val power=p.evidence.any{it.id==powerId&&powerId!=null}
-            val overlap=gold&&researchAgrees
             val supporting=buildList{
                 if(gold)wam?.let{add(it)}
                 if(cross||power){
@@ -228,9 +226,10 @@ data class CherryReport(
             val recentSupported=supporting.any{
                 it.checked>=8&&it.hits>=3&&it.streak>=1
             }
-            val score=(if(gold)4 else 0)+(if(cross)5 else 0)+
-                (if(power)2 else 0)+(if(overlap)2 else 0)+
-                recent*2+(if(recentSupported)2 else 0)
+            // No invented role bonus: a CROSS is not intrinsically more
+            // predictive than a GOLD pair, nor is an in-sample research
+            // overlap proof. Only observable recent checks add evidence.
+            val score=recent*2+(if(recentSupported)2 else 0)
             val grade=if(recentSupported)
                 CherryMathGrade.B else CherryMathGrade.C
             CherryMathCandidate(p,score,grade,
