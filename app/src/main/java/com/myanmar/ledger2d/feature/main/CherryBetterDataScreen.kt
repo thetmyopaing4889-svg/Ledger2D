@@ -250,7 +250,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                     val triple=report.cuts.filter{(_,v)->
                                         v.any{it.contains("အပိုင်း (၈)")}}.keys.sorted()
                                     if(triple.isNotEmpty())
-                                        Text(tr("အပိုင်း (၈) ဒဲ့/R: ","Section (8) Direct/R: ")+
+                                        Text(tr("နောက်ပိတ်အလိုက် ရှောင်ရန် ဒဲ့/ပြန်: ",
+                                            "Ending-based direct/reverse cuts: ")+
                                             triple.joinToString("  •  "),
                                             style=MaterialTheme.typography.bodyMedium)
                                     Text(tr("ဖြတ်မူငြိနေသောအတွဲများကိုလည်း ဂဏန်းအားလုံးစာရင်းထဲတွင် ခွဲပြထားသည်။",
@@ -493,8 +494,12 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     selectedPick?.let{p->
         AlertDialog(
             onDismissRequest={selectedPick=null},
-            title={Text(tr("${p.pair} • ရွေးချယ်ရသည့်အကြောင်း",
-                "${p.pair} • Why this pair"),color=AppColors.PrimaryDeep)},
+            title={Text(
+                if(tab==CherryTab.CURRENT||tab==CherryTab.BORN)
+                    tr("${p.pair} အတွဲအကြောင်း","${p.pair} • Pair details")
+                else tr("${p.pair} • ရွေးချယ်ရသည့်အကြောင်း",
+                    "${p.pair} • Why this pair"),
+                color=AppColors.PrimaryDeep)},
             text={
                 Column(Modifier.heightIn(max=420.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -503,45 +508,58 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             else report?.born.orEmpty()
                         val eligible=pool.filter{it.cuts.isEmpty()}
                         val rank=eligible.indexOfFirst{it.pair==p.pair}
-                        val special=p.evidence.count{ev->
-                            ev.id.startsWith("cross-")||ev.id.startsWith("gold-")||
-                                ev.id.startsWith("s6-")||ev.id.startsWith("s4-")
-                        }
                         if(p.cuts.isNotEmpty()){
-                            Text(tr("ဖြတ်မူငြိနေ၍ ဦးစားပေးစာရင်းတွင် မပါဝင်သောအတွဲ",
-                                "Excluded from priority picks due to a cut-rule conflict"),
+                            Text(tr("ဒီအတွဲကို ရှောင်ရန်မူက ဖြတ်ထားလို့ " +
+                                    "ဦးစားပေးစာရင်းမှာ မထည့်ထားပါ။",
+                                "A rule excludes this pair from the priority list."),
                                 color=MaterialTheme.colorScheme.error,
                                 fontWeight=FontWeight.SemiBold)
-                        } else if(rank>=0){
-                            Text(tr("ဦးစားပေးအဆင့် ${rank+1} / ${eligible.size}",
-                                "Priority rank ${rank+1} / ${eligible.size}"),
-                                color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
+                        }else if(rank>=0){
+                            Text(tr("ဦးစားပေး အဆင့် ${rank+1}",
+                                "Priority rank ${rank+1}"),
+                                color=AppColors.PrimaryDeep,
+                                fontWeight=FontWeight.Bold)
                         }
-                        Text(tr("ထောက်ခံမူအုပ်စု ${p.familyCount} ခု • ကဏ္ဍ ${p.sourceCount} ခု",
-                            "${p.familyCount} rule families • ${p.sourceCount} categories"),
+                        Text(tr("ဒီဂဏန်းကို မူ ${p.familyCount} ခုက ထောက်ခံထားပါတယ်။",
+                            "Supported by ${p.familyCount} rules."),
                             style=MaterialTheme.typography.bodyMedium)
-                        Text(tr("အမှတ် ${p.score} = (${p.familyCount} မူ × 10) + " +
-                                "(${p.sourceCount} ကဏ္ဍ × 15) + (${special} သီးသန့်မူ × 2)",
-                            "Score ${p.score} = ${p.familyCount} families × 10 + " +
-                                "${p.sourceCount} categories × 15 + ${special} specific rules × 2"),
-                            style=MaterialTheme.typography.bodySmall,
-                            color=MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(tr("ဖြတ်မူမငြိသူကို အရင်ထားပြီး ကဏ္ဍ၊ မူအုပ်စု၊ အမှတ်နှင့် " +
-                                "ဂဏန်းအစဉ်လိုက် စီထားသည်။ အမှတ်သည် ထွက်နိုင်ခြေရာခိုင်နှုန်းမဟုတ်ပါ။",
-                            "Ordered by cut conflicts, categories, families, score, then number. " +
-                                "The score is not a probability."),
+                        Text(tr("ကိုက်ညီတဲ့မူတွေ ပိုများတဲ့ဂဏန်းကို ဦးစားပေးထားပြီး " +
+                                "ရှောင်ရန်မူနဲ့ ငြိတဲ့အတွဲတွေကို ချန်ထားပါတယ်။",
+                            "More matching rules rank higher; cut-rule conflicts are excluded."),
                             style=MaterialTheme.typography.bodySmall,
                             color=MaterialTheme.colorScheme.onSurfaceVariant)
                         HorizontalDivider(color=AppColors.Blush)
+                        Text(tr("ဘယ်မူတွေကြောင့် ပါလာသလဲ","Supporting rules"),
+                            color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
+                        p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
+                            Text("• "+CherryRuleWording.title(ev.id,ev.name),
+                                fontWeight=FontWeight.SemiBold,
+                                style=MaterialTheme.typography.bodyMedium)
+                            Text(CherryRuleWording.pairReason(ev,p.pair),
+                                style=MaterialTheme.typography.bodySmall,
+                                color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if(p.cuts.isNotEmpty()){
+                            HorizontalDivider(color=AppColors.Blush)
+                            Text(tr("ရှောင်ရန်မူနှင့် ငြိနေသောအကြောင်း","Cut-rule conflicts"),
+                                color=MaterialTheme.colorScheme.error,
+                                fontWeight=FontWeight.SemiBold)
+                            p.cuts.forEach{reason->
+                                Text(CherryRuleWording.cutReason(reason),
+                                    color=MaterialTheme.colorScheme.error,
+                                    style=MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }else{
+                        p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
+                            Text("• ${ev.name}",fontWeight=FontWeight.Bold,
+                                style=MaterialTheme.typography.bodyMedium)
+                            Text(ev.detail,style=MaterialTheme.typography.bodySmall,
+                                color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if(p.cuts.isNotEmpty())Text(p.cuts.joinToString("\n"),
+                            color=MaterialTheme.colorScheme.error)
                     }
-                    p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
-                        Text("• ${ev.name}",fontWeight=FontWeight.Bold,
-                            style=MaterialTheme.typography.bodyMedium)
-                        Text(ev.detail,style=MaterialTheme.typography.bodySmall,
-                            color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if(p.cuts.isNotEmpty())Text(p.cuts.joinToString("\n"),
-                        color=MaterialTheme.colorScheme.error)
                 }
             },
             confirmButton={TextButton(onClick={selectedPick=null}){Text(tr("ပိတ်","Close"))}}
