@@ -209,8 +209,8 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
                                 if(selection.tiedCandidates>1)Text(
-                                    if(en)"Tied ×${selection.tiedCandidates}"
-                                    else "အဆင့်တူ ${selection.tiedCandidates} ကွက်",
+                                    if(en)"Tie ×${selection.tiedCandidates}"
+                                    else "တူ ×${selection.tiedCandidates}",
                                     style=MaterialTheme.typography.labelSmall,
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
@@ -368,6 +368,14 @@ internal fun CherryMathFrame(
                 }
             }
             if(detailsOpen){
+                Text(if(en)"Grade A: passed 3 consecutive draws. Grade B: "+
+                    "a supporting method has at least 8 checks, 3 hits and a recent hit. "+
+                    "Grade C: less evidence. These are not win probabilities."
+                else "Grade A = ၃ ပွဲဆက် စစ်ချက်ပြည့်။ Grade B = ထောက်ခံတွက်နည်းတစ်ခုမှာ "+
+                    "စစ်နိုင် ၈ ပွဲ၊ ကိုက်ညီ ၃ ပွဲနှင့် လတ်တလောကိုက်ညီမှုရှိ။ "+
+                    "Grade C = အထောက်အထားနည်းသေး။ အနိုင်ရာခိုင်နှုန်း မဟုတ်ပါ။",
+                    style=MaterialTheme.typography.bodySmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
                 MathPairGrid(report.math,en,onPick)
                 if(analysis.watches.isNotEmpty()){
                     HorizontalDivider(color=mathEdge)
