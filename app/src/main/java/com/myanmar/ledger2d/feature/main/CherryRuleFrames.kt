@@ -48,6 +48,7 @@ internal fun CherryRuleFrameOverview(
     expanded:Boolean,
     onToggle:()->Unit,
     onPick:(CherryPick)->Unit,
+    labels:Map<String,String> = emptyMap(),
 ){
     val eligible=all.filter { it.cuts.isEmpty() }
     val conflicted=all.size-eligible.size
@@ -73,7 +74,7 @@ internal fun CherryRuleFrameOverview(
                             Column(Modifier.padding(vertical=10.dp,horizontal=2.dp),
                                 horizontalAlignment=Alignment.CenterHorizontally,
                                 verticalArrangement=Arrangement.spacedBy(3.dp)){
-                                Text(if(en)"Rank $rank" else "အဆင့် $rank",
+                                Text(labels[pick.pair] ?: if(en)"Rank $rank" else "အဆင့် $rank",
                                     style=MaterialTheme.typography.labelSmall,
                                     color=if(rank==1)Color.White else AppColors.PrimaryDeep)
                                 Text(pick.pair,fontWeight=FontWeight.Black,fontSize=25.sp,
