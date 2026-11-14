@@ -157,6 +157,8 @@ internal fun CherryRuleFrameCard(
     expanded:Boolean,
     onToggle:()->Unit,
     onPick:(CherryPick)->Unit,
+    sourceText:String?,
+    onOriginal:(CherryOriginalReference)->Unit,
 ){
     Surface(color=Color.White,shape=RoundedCornerShape(16.dp),
         border=BorderStroke(1.dp,Color(0xFFF4CFDA))){
@@ -207,6 +209,24 @@ internal fun CherryRuleFrameCard(
                         fontWeight=FontWeight.SemiBold,color=AppColors.PrimaryDeep)
                     val lookup=all.associateBy { it.pair }
                     CherryRulePairGrid(rule.pairs.mapNotNull{lookup[it]},en,onPick)
+                    val reference=CherryRuleSources.lookup(sourceText,rule.id,rule.detail)
+                    if(reference!=null){
+                        HorizontalDivider(color=Color(0xFFF4CFDA))
+                        TextButton(
+                            onClick={onOriginal(reference)},
+                            modifier=Modifier.align(Alignment.End),
+                            contentPadding=PaddingValues(horizontal=2.dp,vertical=2.dp)
+                        ){
+                            Icon(androidx.compose.material.icons.Icons.Default.MenuBook,
+                                null,modifier=Modifier.size(15.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                if(en)"Original • ${reference.label} · Read"
+                                else "မူရင်း • ${reference.label} · ကြည့်ရန်",
+                                style=MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
                 }
             }
         }
