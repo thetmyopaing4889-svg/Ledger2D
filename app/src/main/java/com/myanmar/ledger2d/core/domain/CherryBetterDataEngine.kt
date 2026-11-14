@@ -363,16 +363,23 @@ object CherryBetterDataEngine {
             singles+=CherryValue("l2","လုံးပိုင် (၂)",l,
                 "(${a[1]}×၂) + (${b[0]}×၄) + (${c[0]}×၂) + (${c[1]}×၃) + ၁","LONE")
         }
-        val yesterday=rows.lastOrNull{it.date<target.date}?.date
-        if(yesterday!=null){
-            val am=rows.firstOrNull{it.date==yesterday&&it.session==DrawSession.MORNING}
-            val pm=rows.firstOrNull{it.date==yesterday&&it.session==DrawSession.EVENING}
-            if(am!=null&&pm!=null){
-                val l=(am.digit[0].digitToInt()+pm.digit[0].digitToInt()+
-                    pm.digit[1].digitToInt())%10
-                singles+=CherryValue("wl","WaiLin လုံးပိုင်",l,
-                    "${am.digit[0]} + ${pm.digit[0]} + ${pm.digit[1]}","LONE")
-            }
+        // Require the immediately previous working day's two completed
+        // sessions; a missing day must not become a stale WaiLin signal.
+        val previousWorkingDay=immediate(
+            DrawIdentity(target.date,DrawSession.MORNING),closed).date
+        val waiLinAm=rows.firstOrNull{
+            it.date==previousWorkingDay&&it.session==DrawSession.MORNING
+        }
+        val waiLinPm=rows.firstOrNull{
+            it.date==previousWorkingDay&&it.session==DrawSession.EVENING
+        }
+        if(waiLinAm!=null&&waiLinPm!=null){
+            val l=(waiLinAm.digit[0].digitToInt()+
+                waiLinPm.digit[0].digitToInt()+
+                waiLinPm.digit[1].digitToInt())%10
+            singles+=CherryValue("wl","WaiLin လုံးပိုင်",l,
+                "${waiLinAm.digit[0]} + ${waiLinPm.digit[0]} + "+
+                "${waiLinPm.digit[1]}","LONE")
         }
         if(prev!=null){
             val b=Math.floorMod(bk(prev.digit)-3,10)
@@ -456,11 +463,20 @@ object CherryBetterDataEngine {
                     mathAnalysis.confluence.singleOrNull()==wamChampion?.result)
         }
         val candidates=group(current+born+verifiedMath)
+        val goldenPairKeys=if(wamChampion==null)emptySet()else
+            candidates.filter{p->p.cuts.isEmpty()&&p.evidence.any{e->
+                e.id=="gold-${wamChampion.id}"
+            }}.map{it.pair}.toSet()
         val distinct=mutableSetOf<String>()
         val ranked=candidates.filter{it.cuts.isEmpty()}.filter{p->
-            val reverse=p.pair.reversed()
-            val key=if(p.pair<reverse)p.pair else reverse
-            distinct.add(key)
+            // The Golden Rule explicitly retains direct and reverse. Other
+            // pair recommendations may collapse reverse duplicates.
+            if(p.pair in goldenPairKeys)true
+            else{
+                val reverse=p.pair.reversed()
+                val key=if(p.pair<reverse)p.pair else reverse
+                distinct.add(key)
+            }
         }
         // Reserve both original Golden Rule directions in the short summary.
         // Never silently override a documented cut: conflicted pairs stay
