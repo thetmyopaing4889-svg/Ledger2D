@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.AppContainer
+import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.design.LedgerTextRole
 import com.myanmar.ledger2d.core.design.LedgerTypographyStandard
@@ -152,7 +153,8 @@ fun Historical2DTimelineScreen(
     var streakStream by remember(target.session) { mutableStateOf(
         if (target.session == DrawSession.MORNING) "morning" else "evening"
     ) }
-    BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research") {
+    BackHandler(enabled = openCheck.isNotEmpty() || activeTwoDTab == "research" ||
+        activeTwoDTab == "rules") {
         when {
             openCheck.isNotEmpty() -> openCheck = ""
             activeTwoDTab == "research" && researchSession.auditVisible ->
@@ -163,7 +165,6 @@ fun Historical2DTimelineScreen(
             else -> activeTwoDTab = "analysis"
         }
     }
-    var rulesOpen by remember { mutableStateOf(false) }
 
 
     // Group overview previews come from actual confirmed analysis data.
@@ -233,6 +234,7 @@ fun Historical2DTimelineScreen(
                         researchChrome && researchSession.resultVisible ->
                             researchSession.resultVisible = false
                         researchChrome -> activeTwoDTab = "analysis"
+                        activeTwoDTab == "rules" -> activeTwoDTab = "analysis"
                         else -> onBack()
                     }
                 }) {
@@ -245,6 +247,8 @@ fun Historical2DTimelineScreen(
                         tr("2D လေ့လာရန်", "2D Research")
                     activeTwoDTab == "summary" && openCheck.isEmpty() ->
                         tr("2D အနှစ်ချုပ်", "2D Summary")
+                    activeTwoDTab == "rules" && openCheck.isEmpty() ->
+                        tr("2D မူဝါဒ", "2D Rules")
                     else -> tr("2D စစ်ဆေးမှု", "2D Analysis")
                 },
                     modifier = Modifier.weight(1f),
@@ -252,17 +256,8 @@ fun Historical2DTimelineScreen(
                     fontWeight = FontWeight.Bold, maxLines = 1,
                     color = if (researchChrome) Color.White else scheme.onSurface,
                     overflow = TextOverflow.Ellipsis)
-                if (openCheck.isEmpty() && activeTwoDTab == "summary") {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = scheme.primaryContainer.copy(alpha = 0.75f),
-                    ) {
-                        IconButton(onClick = onSettings) {
-                            Icon(Icons.Default.Tune, contentDescription = tr("ဆက်တင်", "Settings"),
-                                tint = scheme.onPrimaryContainer)
-                        }
-                    }
-                }
+                // The Summary title bar intentionally has no Settings action.
+                // Keep the signature/navigation contracts unchanged.
             }
         },
         bottomBar = {
@@ -300,10 +295,11 @@ fun Historical2DTimelineScreen(
                             onClick = { activeTwoDTab = "research"; openCheck = "" },
                         )
                         TwoDNavAction(
-                            modifier = Modifier.weight(1f), active = false,
+                            modifier = Modifier.weight(1f), active = activeTwoDTab == "rules",
                             researchChrome = researchChrome,
                             label = tr("မူ", "Rules"),
-                            icon = Icons.Default.Rule, onClick = { rulesOpen = true },
+                            icon = Icons.Default.Rule,
+                            onClick = { activeTwoDTab = "rules"; openCheck = "" },
                         )
                     }
                 }
@@ -330,6 +326,11 @@ fun Historical2DTimelineScreen(
                     userChosen = true
                 },
                 onOpenDetail = { openCheck = it },
+            )
+        } else if (openCheck.isEmpty() && activeTwoDTab == "rules") {
+            TwoDRulesLibraryScreen(
+                en = en,
+                modifier = Modifier.fillMaxSize().padding(inset),
             )
         } else if (openCheck.isEmpty() && activeTwoDTab == "research") {
             TwoDResearchLabScreen(
@@ -503,13 +504,23 @@ fun Historical2DTimelineScreen(
                     // fabricate results; show the user-approved text instead.
                     if (report != null &&
                         (openGroup == "2" || lookback != "custom" || customValid)) {
-                        TwoDAnalysisLiveGrid(
-                            group = selectedSection.key,
-                            report = report,
-                            en = en,
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            onOpenDetail = { openCheck = it },
+                        // Scope Cherry's bright red to the Analysis result cards.
+                        // Never alter the shared theme or Research's separate chrome.
+                        val analysisCardColors = scheme.copy(
+                            secondary = AppColors.Primary,
+                            onSecondary = Color.White,
+                            secondaryContainer = AppColors.Blush,
+                            onSecondaryContainer = AppColors.PrimaryDeep,
                         )
+                        MaterialTheme(colorScheme = analysisCardColors) {
+                            TwoDAnalysisLiveGrid(
+                                group = selectedSection.key,
+                                report = report,
+                                en = en,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                onOpenDetail = { openCheck = it },
+                            )
+                        }
                     } else {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -584,19 +595,6 @@ fun Historical2DTimelineScreen(
         }
     }
 
-    if (rulesOpen) {
-        AlertDialog(
-            onDismissRequest = { rulesOpen = false },
-            title = { Text(tr("မူဝါဒနှင့် ဖော်မြူလာများ", "Rules and formulas")) },
-            text = { Text(tr(
-                "မူဝါဒစာကြည့်တိုက်အတွက် နေရာကို ပြင်ဆင်ထားသည်။ မူဝါဒအစစ်များကို နောက်မှ ထည့်သွင်းမည်။ ခန့်မှန်းဂဏန်းအတု မပြပါ။",
-                "The rules library is reserved for verified user-supplied content. No sample rules or invented predictions are shown.",
-            )) },
-            confirmButton = { TextButton(onClick = { rulesOpen = false }) {
-                Text(tr("ပိတ်မည်", "Close"))
-            } },
-        )
-    }
 
     datePickerMode?.let { mode ->
         val current = when (mode) {
