@@ -107,11 +107,28 @@ class CherryMathStreakEngineTest {
         assertTrue(report.mathAnalysis.champion("WAM")!!.streak>=3)
         assertTrue(report.summary.any{it.pair=="49"&&it.cuts.isEmpty()})
         assertTrue(report.summary.any{it.pair=="94"&&it.cuts.isEmpty()})
+        assertTrue(report.ranked.any{it.pair=="49"})
+        assertTrue(report.ranked.any{it.pair=="94"})
         assertTrue(report.summary.size<=3)
         assertNull(report.mathAnalysis.loneConsensus)
         assertFalse(report.ranked.any{p->p.evidence.any{
             it.id.startsWith("cross-")
         }})
+    }
+
+    @Test fun waiLinUsesActualPreviousWorkingDayAndRejectsStaleHistory(){
+        val friday=listOf(
+            draw("2026-11-06",DrawSession.MORNING,"42"),
+            draw("2026-11-06",DrawSession.EVENING,"13")
+        )
+        assertEquals(8,CherryMathStreakEngine.predict(
+            "wl",friday,target("2026-11-09",DrawSession.MORNING)))
+        assertNull(CherryMathStreakEngine.predict(
+            "wl",friday,target("2026-11-10",DrawSession.MORNING)))
+        val stale=CherryBetterDataEngine.calculate(
+            friday,target("2026-11-10",DrawSession.MORNING))
+        assertFalse(stale.singles.any{it.id=="wl"})
+        assertNull(stale.mathAnalysis.byId("wl")?.result)
     }
 
     @Test fun producesOriginalDocConditionalMathWatchWithoutInventingFormula17Pairs(){
