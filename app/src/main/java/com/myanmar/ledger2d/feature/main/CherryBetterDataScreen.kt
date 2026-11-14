@@ -44,6 +44,12 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     fun tr(mm: String, english: String) = if(en) english else mm
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    val originalSource=remember(context){
+        runCatching {
+            context.assets.open("two_d_rules_source.txt")
+                .bufferedReader(Charsets.UTF_8).use{it.readText()}
+        }.getOrNull()
+    }
     val prefs = remember(context) { context.getSharedPreferences("cherry_better_data_tickets",0) }
     var saved by remember { mutableStateOf(prefs.getString("tickets","").orEmpty()) }
     var now by remember { mutableStateOf(LocalDateTime.now(cherryYangon)) }
@@ -90,6 +96,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     }
     var tab by rememberSaveable{mutableStateOf(CherryTab.SUMMARY)}
     var selectedPick by remember { mutableStateOf<CherryPick?>(null) }
+    var selectedOriginal by remember { mutableStateOf<CherryOriginalReference?>(null) }
     var showHistory by remember { mutableStateOf(false) }
     var showAllCurrent by rememberSaveable { mutableStateOf(false) }
     var showAllBorn by rememberSaveable { mutableStateOf(false) }
@@ -230,6 +237,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             CherryRuleFrameCard(
                                 rule=rule,all=report.current,
                                 bornEvent=null,en=en,
+                                sourceText=originalSource,
+                                onOriginal={selectedOriginal=it},
                                 expanded=openedCurrentRule==rule.id,
                                 onToggle={openedCurrentRule=
                                     if(openedCurrentRule==rule.id)null else rule.id},
@@ -297,7 +306,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             CherryRuleFrameCard(
                                 rule=rule,all=report.born,
                                 bornEvent=report.activeRules.firstOrNull{it.id==rule.id},
-                                en=en,expanded=openedBornRule==rule.id,
+                                en=en,sourceText=originalSource,
+                                onOriginal={selectedOriginal=it},
+                                expanded=openedBornRule==rule.id,
                                 onToggle={openedBornRule=
                                     if(openedBornRule==rule.id)null else rule.id},
                                 onPick={selectedPick=it}
@@ -312,6 +323,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             items(weekly,key={it.id}){rule->
                                 CherryRuleFrameCard(
                                     rule=rule,all=report.born,bornEvent=null,en=en,
+                                    sourceText=originalSource,
+                                    onOriginal={selectedOriginal=it},
                                     expanded=openedBornRule==rule.id,
                                     onToggle={openedBornRule=
                                         if(openedBornRule==rule.id)null else rule.id},
@@ -538,6 +551,21 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             Text(CherryRuleWording.pairReason(ev,p.pair),
                                 style=MaterialTheme.typography.bodySmall,
                                 color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            CherryRuleSources.lookup(originalSource,ev.id,ev.detail)?.let{ref->
+                                TextButton(
+                                    onClick={
+                                        selectedPick=null
+                                        selectedOriginal=ref
+                                    },
+                                    contentPadding=PaddingValues(horizontal=0.dp,vertical=0.dp)
+                                ){
+                                    Icon(Icons.Default.MenuBook,null,Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(tr("မူရင်း • ${ref.label} · ကြည့်ရန်",
+                                        "Original • ${ref.label} · Read"),
+                                        style=MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
                         if(p.cuts.isNotEmpty()){
                             HorizontalDivider(color=AppColors.Blush)
@@ -563,6 +591,25 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                 }
             },
             confirmButton={TextButton(onClick={selectedPick=null}){Text(tr("ပိတ်","Close"))}}
+        )
+    }
+    selectedOriginal?.let{ref->
+        AlertDialog(
+            onDismissRequest={selectedOriginal=null},
+            title={Text(tr("မူရင်းမူကို ဖတ်ရန်","Read original rule"),
+                color=AppColors.PrimaryDeep)},
+            text={
+                Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    Text(ref.label,color=AppColors.PrimaryDeep,
+                        style=MaterialTheme.typography.labelMedium,
+                        fontWeight=FontWeight.SemiBold)
+                    Text(ref.quote,style=MaterialTheme.typography.bodyMedium)
+                }
+            },
+            confirmButton={
+                TextButton(onClick={selectedOriginal=null}){Text(tr("ပိတ်","Close"))}
+            }
         )
     }
     if(showHistory){
