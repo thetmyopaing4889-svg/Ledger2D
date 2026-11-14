@@ -150,7 +150,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
 
 
 @Composable private fun MathSelectionHero(
-    picks:List<CherryPick>,en:Boolean,onPick:(CherryPick)->Unit
+    selections:List<CherryMathSelection>,en:Boolean,onPick:(CherryPick)->Unit
 ){
     // Show the actual selected pairs immediately on opening the Math tab:
     // a single, compact row instead of a generic count or stacked cards.
@@ -161,15 +161,25 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
             Text(if(en)"Selected math pairs" else "သင်္ချာနည်း ရွေးကွက်",
                 color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
                 style=MaterialTheme.typography.titleMedium)
-            if(picks.isEmpty()){
-                Text(if(en)"—  No verified pair yet"
-                    else "—  စစ်ချက်ပြည့်သော ရွေးကွက် မရှိသေးပါ။",
+            if(selections.isEmpty()){
+                Text(if(en)"—  Not enough eligible calculated pairs"
+                    else "—  ရွေးနိုင်သော တွက်ချက်အတွဲ မရှိသေးပါ။",
                     style=MaterialTheme.typography.bodyMedium,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }else{
+                val mode=selections.first().mode
+                Text(if(mode==CherryMathSelectionMode.STRICT){
+                    if(en)"3-Step verified · Grade A"
+                    else "3-Step စစ်ချက်ပြည့် · Grade A"
+                }else{
+                    if(en)"Smart Fallback · experimental selection"
+                    else "Smart Fallback · စမ်းသပ်ရွေးကွက်"
+                },style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(),
                     horizontalArrangement=Arrangement.spacedBy(7.dp)){
-                    picks.take(3).forEachIndexed{index,pick->
+                    selections.take(3).forEachIndexed{index,selection->
+                        val pick=selection.pick
                         val isMain=index==0
                         Surface(onClick={onPick(pick)},
                             modifier=Modifier.weight(1f),
@@ -178,7 +188,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                             shape=RoundedCornerShape(12.dp),
                             border=if(isMain)null else BorderStroke(1.dp,mathEdge)){
                             Column(Modifier.fillMaxWidth().padding(
-                                horizontal=4.dp,vertical=10.dp),
+                                horizontal=4.dp,vertical=9.dp),
                                 horizontalAlignment=Alignment.CenterHorizontally,
                                 verticalArrangement=Arrangement.spacedBy(3.dp)){
                                 Text(if(isMain){
@@ -194,9 +204,29 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                     fontWeight=FontWeight.Black,
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
+                                Text("Grade ${selection.grade} · #${selection.evidenceRank}",
+                                    style=MaterialTheme.typography.labelSmall,
+                                    color=if(isMain)Color.White
+                                        else AppColors.PrimaryDeep)
+                                if(selection.tiedCandidates>1)Text(
+                                    if(en)"Tied ×${selection.tiedCandidates}"
+                                    else "အဆင့်တူ ${selection.tiedCandidates} ကွက်",
+                                    style=MaterialTheme.typography.labelSmall,
+                                    color=if(isMain)Color.White
+                                        else AppColors.PrimaryDeep)
                             }
                         }
                     }
+                }
+                if(selections.any{it.tiesBeyondDisplayed}){
+                    val count=selections.filter{it.tiesBeyondDisplayed}
+                        .maxOf{it.tiedCandidates}
+                    Text(if(en)"${count} pairs share the same evidence rank. "+
+                        "Shown pairs use a stable display order, not a higher win chance."
+                    else "အထောက်အထားအဆင့်တူ ${count} ကွက်ရှိသည်။ ပြထားသောဂဏန်း "+
+                        "၃ ကွက်က အစဉ်တကျ ပြသထားခြင်းသာဖြစ်ပြီး ပိုမှန်နိုင်သည်ဟု မဆိုလိုပါ။",
+                        style=MaterialTheme.typography.labelSmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -214,10 +244,10 @@ internal fun CherryMathFrame(
     var researchOpen by rememberSaveable{mutableStateOf(false)}
     var poolOpen by rememberSaveable{mutableStateOf(false)}
     val analysis=report.mathAnalysis
-    val picks=report.mathShortlist()
+    val selections=report.mathSelections()
     val overall=analysis.primaryChampion()
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
-        MathSelectionHero(picks,en,onPick)
+        MathSelectionHero(selections,en,onPick)
 
         // Champion is a decision/status panel, NOT another formula result card.
         Surface(
