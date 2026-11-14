@@ -71,6 +71,49 @@ class CherryMathStreakEngineTest {
         assertNotEquals("cycle",after.mathAnalysis.champions["BREAK"])
         assertEquals(0,after.mathAnalysis.byId("cycle")?.streak)
     }
+    @Test fun loneConsensusNeedsThreeConfirmedMethodsAndSameWamPair(){
+        fun lone(id:String,digit:Int,streak:Int=3)=CherryMathFormula(
+            id,id,"LONE",digit,streak,streak,streak,emptyList())
+        val agreeing=listOf(lone("l1",2),lone("l2",2),lone("wl",2))
+        assertEquals(2,CherryMathStreakEngine.confirmedLone(agreeing,7))
+        assertNull(CherryMathStreakEngine.confirmedLone(agreeing,1))
+        assertNull(CherryMathStreakEngine.confirmedLone(
+            listOf(lone("l1",2),lone("l2",2),lone("wl",8)),7))
+        assertNull(CherryMathStreakEngine.confirmedLone(
+            listOf(lone("l1",2),lone("l2",2,2),lone("wl",2)),7))
+    }
+    @Test fun unverifiedMathSignalsStayInDetailsButOutOfRankedPicks(){
+        val history=listOf(
+            draw("2026-11-09",DrawSession.MORNING,"12"),
+            draw("2026-11-09",DrawSession.EVENING,"34")
+        )
+        val report=CherryBetterDataEngine.calculate(
+            history,target("2026-11-10",DrawSession.MORNING))
+        assertTrue(report.math.any{p->p.evidence.any{it.id.startsWith("gold-")}})
+        assertNull(report.mathAnalysis.primaryChampionId)
+        assertNull(report.mathAnalysis.loneConsensus)
+        assertFalse(report.ranked.any{p->p.evidence.any{it.tab==CherryTab.MATH}})
+        assertFalse(report.summary.any{p->p.evidence.any{it.tab==CherryTab.MATH}})
+    }
+    @Test fun qualifiedGoldenPairReservesBothDirectionsInShortSummary(){
+        val history=(0 until 8).map{i->
+            val day=LocalDate.parse("2026-11-09").plusDays((i/2).toLong())
+            HistoricDraw(day,if(i%2==0)DrawSession.MORNING
+                else DrawSession.EVENING,"90",HistoricSource.WINNER)
+        }
+        val report=CherryBetterDataEngine.calculate(
+            history,target("2026-11-13",DrawSession.MORNING))
+        assertEquals("w1",report.mathAnalysis.champions["WAM"])
+        assertTrue(report.mathAnalysis.champion("WAM")!!.streak>=3)
+        assertTrue(report.summary.any{it.pair=="49"&&it.cuts.isEmpty()})
+        assertTrue(report.summary.any{it.pair=="94"&&it.cuts.isEmpty()})
+        assertTrue(report.summary.size<=3)
+        assertNull(report.mathAnalysis.loneConsensus)
+        assertFalse(report.ranked.any{p->p.evidence.any{
+            it.id.startsWith("cross-")
+        }})
+    }
+
     @Test fun producesOriginalDocConditionalMathWatchWithoutInventingFormula17Pairs(){
         val history=listOf(draw("2026-11-09",DrawSession.MORNING,"05"))
         val report=CherryBetterDataEngine.calculate(history,target("2026-11-09",DrawSession.EVENING))
