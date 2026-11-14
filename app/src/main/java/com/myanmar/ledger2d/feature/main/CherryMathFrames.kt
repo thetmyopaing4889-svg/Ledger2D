@@ -211,8 +211,8 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
                                 if(selection.tiedCandidates>1)Text(
-                                    if(en)"${selection.tiedCandidates} tied families"
-                                    else "မူအုပ်စု ${selection.tiedCandidates} စု တူ",
+                                    if(en)"Group tie ×${selection.tiedCandidates}"
+                                    else "မူတူ ×${selection.tiedCandidates}",
                                     style=MaterialTheme.typography.labelSmall,
                                     color=if(isMain)Color.White
                                         else AppColors.PrimaryDeep)
