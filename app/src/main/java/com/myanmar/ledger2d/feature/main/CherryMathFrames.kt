@@ -154,26 +154,41 @@ internal fun CherryMathFrame(
     var allOpen by rememberSaveable{mutableStateOf(false)}
     var poolOpen by rememberSaveable{mutableStateOf(false)}
     var crossOpen by rememberSaveable{mutableStateOf(false)}
+    var diagnosticOpen by rememberSaveable{mutableStateOf(false)}
     val analysis=report.mathAnalysis
-    val eligible=report.math.filter{it.cuts.isEmpty()}
-    val lone=analysis.champion("LONE")
+    val wam=analysis.champion("WAM")
+    // A lone digit is only verified when all three documented lone methods
+    // pass the three-step check, agree, and belong to the champion WAM pair.
+    val lone=analysis.champion("LONE")?.takeIf{
+        it.result==analysis.loneConsensus
+    }
     val br=analysis.champion("BREAK")
-    val main=if(lone?.result!=null&&br?.result!=null){
+    val crossId=if(lone!=null&&br!=null)"cross-${lone.id}-${br.id}" else null
+    val verifiedCrossIds=crossId?.let{setOf(it,it+"-power")}.orEmpty()
+    val goldenId=wam?.let{"gold-${it.id}"}
+    val confirmedResearch=analysis.confluence.isNotEmpty()&&
+        analysis.confluence.singleOrNull()==wam?.result
+    val allowed=(listOfNotNull(goldenId)+verifiedCrossIds+
+        (if(confirmedResearch)listOf("research-confluence")else emptyList())).toSet()
+    val eligible=report.math.filter{p->
+        p.cuts.isEmpty()&&p.evidence.any{it.id in allowed}
+    }
+    val main=if(lone?.result!=null&&br?.result!=null&&crossId!=null){
         val digit=lone.result
         val b=br.result
         val pair=digit.toString()+Math.floorMod(b-digit,10)
         eligible.firstOrNull{p->p.pair==pair&&
-            p.evidence.any{it.id=="cross-"+lone.id+"-"+br.id}&&
+            p.evidence.any{it.id==crossId}&&
             report.current.any{q->q.pair==pair&&
                 q.evidence.any{it.id.startsWith("s2-h-")}}
         }
     }else null
-    val championWam=analysis.champions["WAM"]
-    val golden=eligible.filter{p->
-        p.evidence.any{it.id=="gold-"+championWam}
+    val golden=report.math.filter{p->
+        goldenId!=null&&p.evidence.any{it.id==goldenId}
     }
-    val all=(listOfNotNull(main)+golden+eligible).distinctBy{it.pair}+
-        report.math.filter{it.cuts.isNotEmpty()}
+    val conflictedGolden=golden.filter{it.cuts.isNotEmpty()}
+    val priority=(listOfNotNull(main)+golden.filter{it.cuts.isEmpty()}+eligible)
+        .distinctBy{it.pair}
     val labels=main?.let{
         val direct=it.pair to (if(en)"Main direct" else "မိန်းဒဲ့")
         val reverse=it.pair.reversed() to (if(en)"Reserve R" else "အရံ R")
@@ -183,10 +198,41 @@ internal fun CherryMathFrame(
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)){
         MathTitle(if(en)"🧮 Math & Longest Streak" else "🧮 သင်္ချာနည်း")
         CherryRuleFrameOverview(
-            heading=if(en)"Priority calculated pairs" else "ဦးစားပေး တွက်ချက်ဂဏန်းများ",
-            all=all,topLimit=4,en=en,expanded=allOpen,
+            heading=if(en)"Verified priority calculated pairs" else "စစ်ဆေးအောင်မြင်သော ဦးစားပေးဂဏန်းများ",
+            all=priority,topLimit=4,en=en,expanded=allOpen,
             onToggle={allOpen=!allOpen},onPick=onPick,labels=labels
         )
+        if(priority.isEmpty())Text(
+            if(en)"No Math pair has passed the complete selection checks yet."
+            else "သင်္ချာနည်းထဲမှ ရွေးချယ်မှုစစ်ချက် ပြည့်စုံသောအတွဲ မရှိသေးပါ။",
+            style=MaterialTheme.typography.bodySmall)
+        if(conflictedGolden.isNotEmpty())MathBox{
+            MathTitle(if(en)"Golden Rule: cut conflicts"
+                else "Golden Rule · ရှောင်ရန်မူနှင့် ငြိနေသောအတွဲ")
+            Text(if(en)"These original Golden pairs are visible for review, " +
+                "but excluded from recommendations because a cut rule also applies."
+            else "မူရင်းပါဝါတွဲများကို မဖျောက်ထားပါ။ ရှောင်ရန်မူနှင့် ငြိနေသောကြောင့် " +
+                "ဦးစားပေးစာရင်းထဲ မထည့်ထားပါ။",
+                style=MaterialTheme.typography.bodySmall)
+            MathPairGrid(conflictedGolden,en,onPick)
+        }
+        MathBox{
+            MathTitle(if(en)"All calculated pairs (review only)"
+                else "တွက်ထွက်သော အတွဲအားလုံး (စစ်ဆေးကြည့်ရန်သာ)")
+            Text(if(en)"Unverified formulas and rule-watch pairs stay visible " +
+                "for inspection, but do not automatically become priority picks."
+            else "၃ ပွဲဆက်စစ်ချက် မပြည့်သောတွက်နည်းနှင့် စောင့်ကြည့်မူအတွဲများကို " +
+                "ကြည့်နိုင်ပေမဲ့ ဦးစားပေးဂဏန်းအဖြစ် မသတ်မှတ်ပါ။",
+                style=MaterialTheme.typography.bodySmall)
+            TextButton(onClick={diagnosticOpen=!diagnosticOpen}){
+                Text(if(diagnosticOpen){
+                    if(en)"Hide all pair calculations" else "အတွဲအားလုံး ပိတ်ရန်"
+                }else{
+                    if(en)"View all pair calculations" else "အတွဲအားလုံး ကြည့်ရန်"
+                })
+            }
+            if(diagnosticOpen)MathPairGrid(report.math,en,onPick)
+        }
         MathBox{
             MathTitle(if(en)"Champion Formula & Auto-Switch"
                 else "Champion Formula နှင့် Auto-Switch")
@@ -194,6 +240,19 @@ internal fun CherryMathFrame(
             else "အတည်ပြုပြီးသား ပွဲရလဒ်တွေကို ပြန်စစ်ပြီး " +
                 "အုပ်စုအလိုက် ဆက်တိုက်ကိုက်ညီမှုအရှည်ဆုံးနည်းကို ရွေးထားပါတယ်။",
                 style=MaterialTheme.typography.bodySmall)
+            analysis.primaryChampion()?.let{overall->
+                Text((if(en)"Overall longest: " else "အရှည်ဆုံး Champion: ")+
+                    overall.name+" · "+overall.streak+" ပွဲဆက်",
+                    color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
+            }
+            if(analysis.loneConsensus==null)Text(
+                if(en)"No final single digit: three verified lone methods " +
+                    "must agree within the champion WAM pair."
+                else "အဓိကလုံးပိုင် မအတည်ပြုရသေးပါ။ လုံးပိုင်တွက်နည်း ၃ မျိုး " +
+                    "ဆက်တိုက်ကိုက်ညီပြီး ဝမ်းချိန်းပါဝါတွဲထဲက တစ်လုံးတည်း တူရပါမယ်။",
+                style=MaterialTheme.typography.bodySmall)
+            else Text((if(en)"Verified single digit: " else "စစ်ဆေးအောင်မြင်သော လုံးပိုင်: ")+
+                analysis.loneConsensus,fontWeight=FontWeight.Bold)
             listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်","BREAK" to "ဘရိတ်")
                 .forEach{(kind,title)->
                     Text(title,fontWeight=FontWeight.SemiBold)
