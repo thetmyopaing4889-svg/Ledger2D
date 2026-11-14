@@ -86,19 +86,21 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
     onOriginal:(CherryOriginalReference)->Unit
 ){
     var expanded by rememberSaveable(f.id){mutableStateOf(false)}
-    Surface(color=Color.White,shape=RoundedCornerShape(13.dp),
-        border=BorderStroke(1.dp,mathEdge)){
+    Surface(color=Color(0xFFFCFBFB),shape=RoundedCornerShape(10.dp),
+        border=BorderStroke(1.dp,Color(0xFFECE5E6))){
         Column{
             Surface(onClick={expanded=!expanded},color=Color.Transparent){
-                Row(Modifier.fillMaxWidth().padding(12.dp),
+                Row(Modifier.fillMaxWidth().padding(9.dp),
                     horizontalArrangement=Arrangement.spacedBy(7.dp),
                     verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
                         Text(f.name,color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
                         Text(if(champion){
-                            if(en)"Selected champion" else "လက်ရှိရွေးထားသော Champion"
+                            if(en)"Qualified · ${f.streak} consecutive"
+                            else "စစ်ချက်ပြည့် · ${f.streak} ပွဲဆက်"
                         }else{
-                            if(en)"Formula result" else "ပုံသေနည်းရလဒ်"
+                            if(en)"Calculation only · ${f.streak} consecutive"
+                            else "တွက်ချက်ချက်သာ · ${f.streak} ပွဲဆက်"
                         },style=MaterialTheme.typography.labelSmall,
                             color=MaterialTheme.colorScheme.onSurfaceVariant)
                     }
