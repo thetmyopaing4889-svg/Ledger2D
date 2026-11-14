@@ -46,7 +46,7 @@ class CherryBetterDataEngineTest {
         assertTrue(report.activeRules.any{it.name.contains("1264")})
     }
 
-    @Test fun 80WheelIsExpandedAsActiveBornRule() {
+    @Test fun wheel80IsExpandedAsActiveBornRule() {
         val report=CherryBetterDataEngine.calculate(
             listOf(d("2026-11-09",DrawSession.EVENING,"80")),
             target("2026-11-10",DrawSession.MORNING))
@@ -91,7 +91,7 @@ class CherryBetterDataEngineTest {
         assertTrue(report.summary.size<=3)
     }
 
-    @Test fun 930InputsOnlyActivateForMorning() {
+    @Test fun inputs930OnlyActivateForMorning() {
         val data=listOf(
             d("2026-11-09",DrawSession.EVENING,"80"),
             d("2026-11-10",DrawSession.MORNING,"22"))
