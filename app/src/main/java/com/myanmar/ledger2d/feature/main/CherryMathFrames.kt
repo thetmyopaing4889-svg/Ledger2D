@@ -241,17 +241,17 @@ internal fun CherryMathFrame(
         MathBox{
             MathTitle(if(en)"Gemini research formula pool"
                 else "Gemini သုတေသန Formula Pool")
-            Text(if(en)"30 experimental variants: sum, nine-transform and " +
-                "absolute difference with constants 0..9. These are not DOC formulas."
+            Text(if(en)"210 experimental variants: sum, nine-transform and " +
+                "absolute difference with coefficients 1..3 and constants 0..9. Not original DOC formulas."
             else "ထိပ်ပိတ်ပေါင်း၊ ၉ နှုတ်ဓာတ်ပြောင်း၊ ထိပ်ပိတ်ခြားနားနည်း ၃ မျိုးကို " +
-                "k=0 မှ 9 အထိ စမ်းထားတဲ့ နည်း ၃၀ ပါ။ မူရင်း DOC က ဒီကိန်းသေတွေ မပေးထားပါ။",
+                "ကိန်းရှင်အလေးချိန် 1 မှ 3 နဲ့ k=0 မှ 9 အထိ စမ်းထားတဲ့ နည်း ၂၁၀ ပါ။ မူရင်း DOC က ဒီကိန်းသေတွေ မပေးထားပါ။",
                 style=MaterialTheme.typography.bodySmall)
             if(analysis.confluence.isNotEmpty())Text(
                 "စမ်းသပ်သုံးနည်း ဘုံဆုံမှတ်: "+analysis.confluence.joinToString(),
                 color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
             TextButton(onClick={poolOpen=!poolOpen}){
                 Text(if(poolOpen){if(en)"Hide variants" else "စမ်းသပ်နည်းများ ပိတ်ရန်"}
-                     else{if(en)"View all 30 variants" else "စမ်းသပ်နည်း ၃၀ ကြည့်ရန်"})
+                     else{if(en)"View all 210 variants" else "စမ်းသပ်နည်း ၂၁၀ ကြည့်ရန်"})
             }
             if(poolOpen)analysis.research.forEach{f->
                 Text(f.name+" → "+(f.result?.toString()?:"—")+
