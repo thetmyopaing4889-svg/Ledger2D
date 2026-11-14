@@ -131,10 +131,11 @@ class CherryMathStreakEngineTest {
     }
 
     @Test fun fallbackTiesOverTenStayVisibleWithoutFalseRanking(){
-        val twelve=(0 until 12).map{i->
+        // Deliberately twelve distinct pair FAMILIES, not 01 and 10
+        // (those are the same direct/reverse family).
+        val twelve=((0..9).map{"0${it}"}+listOf("11","22")).map{pair->
             CherryMathCandidate(
-                CherryPick(i.toString().padStart(2,'0'),
-                    emptyList(),emptyList(),0),
+                CherryPick(pair,emptyList(),emptyList(),0),
                 12,CherryMathGrade.B)
         }
         val cut=CherryMathCandidate(
@@ -149,6 +150,43 @@ class CherryMathStreakEngineTest {
         assertTrue(selections.all{it.tiedCandidates==12})
         assertTrue(selections.all{it.tiesBeyondDisplayed})
     }
+    @Test fun directAndReverseShareRankInsteadOfClaimingIndependentEvidence(){
+        val candidates=listOf(
+            CherryMathCandidate(CherryPick("14",emptyList(),emptyList(),0),
+                7,CherryMathGrade.C,preferDirect=true),
+            CherryMathCandidate(CherryPick("41",emptyList(),emptyList(),0),
+                7,CherryMathGrade.C),
+            CherryMathCandidate(CherryPick("38",emptyList(),emptyList(),0),
+                5,CherryMathGrade.C),
+            CherryMathCandidate(CherryPick("83",emptyList(),emptyList(),0),
+                5,CherryMathGrade.C)
+        )
+        val chosen=rankCherryMathCandidates(
+            candidates,CherryMathSelectionMode.FALLBACK)
+        assertEquals(listOf("14","41","38"),chosen.map{it.pick.pair})
+        assertEquals(listOf(1,1,2),chosen.map{it.evidenceRank})
+        assertEquals("14",chosen[1].reverseOf)
+        assertNull(chosen[0].reverseOf)
+        assertTrue(chosen[2].hiddenReverse)
+        assertTrue(chosen.all{it.tiedCandidates==1})
+        assertTrue(chosen.all{!it.tiesBeyondDisplayed})
+    }
+    @Test fun directionsDoNotGetArtificialScoreForBeingDirect(){
+        val samples=listOf(
+            CherryMathCandidate(CherryPick("14",emptyList(),emptyList(),0),
+                5,CherryMathGrade.C,preferDirect=true),
+            CherryMathCandidate(CherryPick("41",emptyList(),emptyList(),0),
+                5,CherryMathGrade.C),
+            CherryMathCandidate(CherryPick("38",emptyList(),emptyList(),0),
+                5,CherryMathGrade.C),
+            CherryMathCandidate(CherryPick("83",emptyList(),emptyList(),0),
+                5,CherryMathGrade.C))
+        val chosen=rankCherryMathCandidates(samples,CherryMathSelectionMode.FALLBACK)
+        assertEquals(setOf(1),chosen.map{it.evidenceRank}.toSet())
+        assertTrue(chosen.all{it.tiedCandidates==2})
+        assertTrue(chosen.none{it.grade==CherryMathGrade.A})
+    }
+
     @Test fun differentEvidenceScoresBreakTiesBeforeDisplayOrder(){
         val candidates=listOf("78" to 4,"93" to 12,"24" to 8,"21" to 8)
             .map{(pair,score)->
