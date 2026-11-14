@@ -218,16 +218,23 @@ object CherryBetterDataEngine {
             CherryPairExpander.wheel(triple).forEach{p->
                 cut.getOrPut(p){mutableListOf()}+="အပိုင်း (၈) ${triple} (ဒဲ့/R) ဖြတ်မူ"
             }
-            fun rule(id:String,name:String,pairs:List<String>,text:String=last)=
-                add(current,id,id,name,"${last} အပြီး $text",pairs,origin,CherryTab.CURRENT)
+            fun rule(id:String,name:String,pairs:List<String>,text:String?=null)=
+                add(current,id,id,name,
+                    "နောက်ဆုံးထွက် ${last} ကြောင့် ${name} အကျုံးဝင်သည်။ " +
+                    (text ?: "မူရင်းဇယား/အလိုက်မူမှ အတွဲ ${pairs.distinct().size} တွဲ ထုတ်ထားသည်။"),
+                    pairs,origin,CherryTab.CURRENT)
             last.toSet().forEach{d->
                 val digit=d.digitToInt()
                 val p=(digit+4)%10
                 rule("s2-p-$digit","အပိုင်း (၂) +4 ပတ်သီး",
-                    CherryPairExpander.any(p),"${digit} မှ ${p} ပတ်သီး")
+                    CherryPairExpander.any(p),
+                    "(${digit} + ၄) mod ၁၀ = ${p} ပတ်သီး။ " +
+                        "${p} ပါဝင်သော ထိပ်/ပိတ် ၁၉ တွဲကို ချဲ့သည်။")
                 topFollowers[digit].orEmpty().forEach{h->
-                    rule("s2-h-$digit","အပိုင်း (၂) ထိပ်စီး",
-                        CherryPairExpander.top(h.digitToInt()),"${digit} မှ ${h} ထိပ်")
+                    rule("s2-h-$digit-$h","အပိုင်း (၂) • ${h} ထိပ်စီး",
+                        CherryPairExpander.top(h.digitToInt()),
+                        "${digit} လုံးက အပိုင်း (၂) ဇယားအရ ${h} ထိပ်စီးကို ညွှန်ပြသည်။ " +
+                            "${h}0 မှ ${h}9 အထိ ချဲ့သည်။")
                 }
                 friendDigits[digit]?.let{friends->
                     rule("s2-f-$digit","အပိုင်း (၂) တွဲဖက်လုံးပိုင်",
