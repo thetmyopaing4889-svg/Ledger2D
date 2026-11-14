@@ -154,9 +154,11 @@ object CherryMathStreakEngine {
             else->return null
         })
     }
-    private fun watches(rows:List<HistoricDraw>,target:DrawIdentity):List<CherryMathWatch>{
+    private fun watches(
+        rows:List<HistoricDraw>,target:DrawIdentity,closed:Set<LocalDate>
+    ):List<CherryMathWatch>{
         val result=mutableListOf<CherryMathWatch>()
-        val last=rows.lastOrNull()
+        val last=previous(rows,target,1,closed)?.firstOrNull()
         if(last?.digit=="44"&&last.session==DrawSession.EVENING&&
             target.session==DrawSession.MORNING)
             result+=CherryMathWatch("m44","44 နောက် မနက်ဝမ်းချိန်း",
@@ -167,6 +169,22 @@ object CherryMathStreakEngine {
             result+=CherryMathWatch("m05","05 နောက် ညနေဝမ်းချိန်း",
                 "မနက် 05 ထွက်ပြီး ညနေ 7–2 ဝမ်းချိန်း စောင့်ကြည့်မူ။",
                 listOf("52","25","27","72"),7)
+        val followers=mapOf(
+            '1' to "6 နှင့် 4",'2' to "7 နှင့် 5",
+            '3' to "8 နှင့် 0",'4' to "9 နှင့် 1",
+            '5' to "0 နှင့် 2"
+        )
+        last?.digit?.toSet()?.forEach{digit->
+            followers[digit]?.let{following->
+                result+=CherryMathWatch(
+                    "follow-"+digit,"$digit လုံး၏ တွဲဖက်ဂဏန်းမူ",
+                    "နောက်ဆုံးထွက် ${last.digit} မှ $digit လုံးအလိုက် " +
+                        "$following လိုက်ကြည့်ရန် မူရင်းမှာရေးထားပါတယ်။ " +
+                        "အတိအကျ 2D အတွဲဖော်နည်း မသတ်မှတ်ထားလို့ အတင်းမချဲ့ထားပါ။",
+                    emptyList(),9
+                )
+            }
+        }
         val monday=target.date.minusDays((target.date.dayOfWeek.value-1).toLong())
         val prevMon=monday.minusWeeks(1);val prevFri=prevMon.plusDays(4)
         val m=rows.firstOrNull{it.date==prevMon&&it.session==DrawSession.MORNING}
@@ -239,7 +257,7 @@ object CherryMathStreakEngine {
             formulas,champions,prevChampion,
             pool.sortedWith(compareByDescending<CherryMathFormula>{it.streak}
                 .thenByDescending{it.hits}.thenBy{it.id}),
-            confluence,watches(prior,target),prior.takeLast(20).size
+            confluence,watches(prior,target,closed),prior.takeLast(20).size
         )
     }
 }
