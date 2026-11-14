@@ -35,11 +35,57 @@ enum class CherryMathSelectionMode { STRICT, FALLBACK }
 enum class CherryMathGrade { A, B, C }
 data class CherryMathSelection(
     val pick: CherryPick,
+    /** Display slot (main = 1, reserves = 2/3), not a probability ranking. */
     val rank: Int,
     val mode: CherryMathSelectionMode,
     val grade: CherryMathGrade,
-    val reason: String
+    val reason: String,
+    /** Shared evidence rank among all eligible pairs, including hidden ties. */
+    val evidenceRank: Int = rank,
+    val tiedCandidates: Int = 1,
+    val tiesBeyondDisplayed: Boolean = false
 )
+internal data class CherryMathCandidate(
+    val pick: CherryPick,
+    val evidenceScore: Int,
+    val grade: CherryMathGrade
+)
+/**
+ * Evidence ties remain ties, even when more than three pairs share a score.
+ * Pair text is ONLY a stable presentation order; it is not a quality signal.
+ */
+internal fun rankCherryMathCandidates(
+    candidates: List<CherryMathCandidate>,
+    mode: CherryMathSelectionMode
+): List<CherryMathSelection> {
+    val quality=mapOf(CherryMathGrade.A to 3,CherryMathGrade.B to 2,
+        CherryMathGrade.C to 1)
+    val ordered=candidates.filter{it.pick.cuts.isEmpty()}
+        .groupBy{it.pick.pair}
+        .values.map{same->same.maxWithOrNull(
+            compareBy<CherryMathCandidate>{quality[it.grade]?:0}
+                .thenBy{it.evidenceScore}
+        )!!}
+        .sortedWith(compareByDescending<CherryMathCandidate>{quality[it.grade]?:0}
+            .thenByDescending{it.evidenceScore}
+            .thenBy{it.pick.pair})
+    return ordered.take(3).mapIndexed{index,c->
+        val first=ordered.indexOfFirst{
+            it.grade==c.grade&&it.evidenceScore==c.evidenceScore
+        }
+        val count=ordered.count{
+            it.grade==c.grade&&it.evidenceScore==c.evidenceScore
+        }
+        val reason=when(mode){
+            CherryMathSelectionMode.STRICT->"3-Step စစ်ချက်ပြည့်"
+            CherryMathSelectionMode.FALLBACK->if(c.grade==CherryMathGrade.B)
+                "သမိုင်းစစ်ချက်အထောက်အထားရှိ · စမ်းသပ်ရွေး"
+                else "အထောက်အထားနည်းသေး · စမ်းသပ်ရွေး"
+        }
+        CherryMathSelection(c.pick,index+1,mode,c.grade,reason,
+            first+1,count,first+count>3)
+    }
+}
 data class CherryBirth(
     val id: String,
     val name: String,
@@ -84,11 +130,9 @@ data class CherryReport(
     fun mathShortlist(): List<CherryPick> = mathSelections().map{it.pick}
 
     fun mathSelections(): List<CherryMathSelection> {
-        val strict=mathStrictShortlist()
-        if(strict.isNotEmpty())return strict.mapIndexed{i,p->
-            CherryMathSelection(p,i+1,CherryMathSelectionMode.STRICT,
-                CherryMathGrade.A,"3-Step စစ်ချက်ပြည့်")
-        }
+        val strict=mathStrictCandidates()
+        if(strict.isNotEmpty())return rankCherryMathCandidates(
+            strict,CherryMathSelectionMode.STRICT)
         // Compare historical hit rates WITHIN each method role; WAM, LONE,
         // and BREAK have different hit definitions and base frequencies.
         fun best(kind:String):CherryMathFormula? =
@@ -138,18 +182,12 @@ data class CherryReport(
                 recent*2+(if(checked>=8&&hits>=3)2 else 0)
             val grade=if(checked>=8&&hits>=3&&recent>0)
                 CherryMathGrade.B else CherryMathGrade.C
-            Triple(p,score,grade)
-        }.sortedWith(compareByDescending<Triple<CherryPick,Int,CherryMathGrade>>{
-            it.second
-        }.thenByDescending{it.first.familyCount}.thenBy{it.first.pair})
-        return ranked.take(3).mapIndexed{i,(pick,_,grade)->
-            CherryMathSelection(pick,i+1,CherryMathSelectionMode.FALLBACK,grade,
-                if(grade==CherryMathGrade.B)"သမိုင်းစစ်ချက်အထောက်အထားရှိ · စမ်းသပ်ရွေး"
-                else "အထောက်အထားနည်းသေး · စမ်းသပ်ရွေး")
+            CherryMathCandidate(p,score,grade)
         }
+        return rankCherryMathCandidates(ranked,CherryMathSelectionMode.FALLBACK)
     }
 
-    private fun mathStrictShortlist(): List<CherryPick> {
+    private fun mathStrictCandidates(): List<CherryMathCandidate> {
         val wam=mathAnalysis.champion("WAM")
         val lone=mathAnalysis.champion("LONE")?.takeIf{
             it.result==mathAnalysis.loneConsensus
@@ -169,18 +207,16 @@ data class CherryReport(
         val directPair=if(lone?.result!=null&&br?.result!=null)
             lone.result.toString()+
                 Math.floorMod(br.result-lone.result,10) else null
-        return math.asSequence().filter{
+        return math.filter{
             it.cuts.isEmpty()&&it.evidence.any{ev->ev.id in allowed}
-        }.sortedWith(
-            compareByDescending<CherryPick>{p->
-                // Agreement from current rules is a tie-breaker, not a new
-                // independent math formula or a proof of future reliability.
-                (if(directPair==p.pair&&directId!=null&&
-                    p.evidence.any{it.id==directId})100 else 0)+
+        }.map{p->
+            // Different checks determine evidence score, not pair number.
+            val score=(if(directPair==p.pair&&directId!=null&&
+                p.evidence.any{it.id==directId})100 else 0)+
                 p.evidence.count{it.id in allowed}*10+
                 (if(p.evidence.any{it.id=="research-confluence"})5 else 0)
-            }.thenByDescending{it.familyCount}.thenBy{it.pair}
-        ).take(3).toList()
+            CherryMathCandidate(p,score,CherryMathGrade.A)
+        }
     }
 }
 
