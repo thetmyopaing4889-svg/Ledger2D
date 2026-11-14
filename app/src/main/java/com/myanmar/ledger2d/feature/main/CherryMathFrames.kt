@@ -174,8 +174,12 @@ internal fun CherryMathFrame(
     }
     val all=(listOfNotNull(main)+golden+eligible).distinctBy{it.pair}+
         report.math.filter{it.cuts.isNotEmpty()}
-    val labels=main?.let{mapOf(it.pair to (if(en)"Main direct" else "မိန်းဒဲ့"))}
-        ?:emptyMap()
+    val labels=main?.let{
+        val direct=it.pair to (if(en)"Main direct" else "မိန်းဒဲ့")
+        val reverse=it.pair.reversed() to (if(en)"Reserve R" else "အရံ R")
+        if(it.pair==it.pair.reversed())mapOf(direct)
+        else mapOf(direct,reverse)
+    }?:emptyMap()
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)){
         MathTitle(if(en)"🧮 Math & Longest Streak" else "🧮 သင်္ချာနည်း")
         CherryRuleFrameOverview(
