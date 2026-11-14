@@ -55,6 +55,7 @@ data class CherryReport(
     val breaks: List<CherryValue>,
     val cuts: Map<String, List<String>>,
     val has930: Boolean,
+    val mathAnalysis: CherryMathAnalysis,
 ) {
     fun visible(tab: CherryTab, limit: Int = 5): List<CherryPick> = when (tab) {
         CherryTab.CURRENT -> current
@@ -378,6 +379,12 @@ object CherryBetterDataEngine {
             breaks+=CherryValue("cycle","၃ လျှော့ ဘရိတ်",b,
                 "${bk(prev.digit)} BK → $b BK","BREAK")
         }
+        val mathAnalysis=CherryMathStreakEngine.analyze(rows,target,singles,breaks,closed)
+        // Keep DOC conditional math watches visible without inventing pairs.
+        mathAnalysis.watches.filter{it.pairs.isNotEmpty()}.forEach{watch->
+            add(math,"watch-${watch.id}","watch-${watch.id}",watch.title,
+                watch.description,watch.pairs,null,CherryTab.MATH)
+        }
         singles.filter{it.kind=="WAM"}.forEach{w->
             add(math,"gold-${w.id}","gold-${w.id}","${w.name} ပါဝါတွဲ",
                 "${w.formula} = ${w.digit} → ${CherryPairExpander.power(w.digit).joinToString(" / ")}",
@@ -386,9 +393,21 @@ object CherryBetterDataEngine {
         singles.filter{it.kind=="LONE"}.forEach{l->
             breaks.forEach{b->
                 add(math,"cross-${l.id}-${b.id}","cross-${l.id}-${b.id}",
-                    "${l.name} × ${b.name}",
-                    "D=${l.digit} • B=${b.digit} • Y=(B−D+10) mod 10",
+                    "${l.name} × ${b.name} (ဒဲ့ဘရိတ်)",
+                    "လုံးပိုင် ${l.digit}၊ ဘရိတ် ${b.digit}။ " +
+                        "တွဲဖက်လုံး = (${b.digit} − ${l.digit} + 10) mod 10။ " +
+                        CherryPairExpander.cross(l.digit,b.digit).joinToString(" / "),
                     CherryPairExpander.cross(l.digit,b.digit),null,CherryTab.MATH)
+                if(b.id=="b1"||b.id=="b2"){
+                    val powerBreak=(b.digit+5)%10
+                    add(math,"cross-${l.id}-${b.id}-power",
+                        "cross-${l.id}-${b.id}-power",
+                        "${l.name} × ${b.name} (ပါဝါဘရိတ်)",
+                        "ဒဲ့ဘရိတ် ${b.digit} + 5 = ${powerBreak} ပါဝါဘရိတ်။ " +
+                            "လုံးပိုင် ${l.digit} နှင့် တွဲစပ် → " +
+                            CherryPairExpander.cross(l.digit,powerBreak).joinToString(" / "),
+                        CherryPairExpander.cross(l.digit,powerBreak),null,CherryTab.MATH)
+                }
             }
         }
         fun group(e:List<CherryEvidence>):List<CherryPick> =
@@ -418,6 +437,6 @@ object CherryBetterDataEngine {
         return CherryReport(target,rows.size,rows.lastOrNull(),currentPicks,bornPicks,
             mathPicks,summary,ranked,births,singles,breaks,cut.mapValues{it.value.distinct()},
             target.session==DrawSession.MORNING&&modern?.matches(Regex("[0-9]{2}"))==true&&
-                internet?.matches(Regex("[0-9]{2}"))==true)
+                internet?.matches(Regex("[0-9]{2}"))==true,mathAnalysis)
     }
 }
