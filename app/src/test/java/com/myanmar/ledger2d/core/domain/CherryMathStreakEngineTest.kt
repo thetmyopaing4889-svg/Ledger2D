@@ -35,7 +35,7 @@ class CherryMathStreakEngineTest {
         assertEquals("34",am.last?.digit)
         assertEquals(2,am.mathAnalysis.testedDraws)
         assertTrue(am.mathAnalysis.formulas.first{it.id=="w1"}.result==2)
-        assertEquals(30,am.mathAnalysis.research.size)
+        assertEquals(210,am.mathAnalysis.research.size)
         assertTrue(am.mathAnalysis.research.all{it.source=="RESEARCH"})
         assertTrue(am.mathAnalysis.formulas.all{it.source=="DOC"})
         assertTrue(am.mathAnalysis.champions.isEmpty())
