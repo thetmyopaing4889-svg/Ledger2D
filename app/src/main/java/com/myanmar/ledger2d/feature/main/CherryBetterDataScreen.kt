@@ -91,7 +91,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     var tab by rememberSaveable{mutableStateOf(CherryTab.SUMMARY)}
     var selectedPick by remember { mutableStateOf<CherryPick?>(null) }
     var showHistory by remember { mutableStateOf(false) }
-    var showBornRules by rememberSaveable { mutableStateOf(false) }
+    var showAllCurrent by rememberSaveable { mutableStateOf(false) }
+    var showAllBorn by rememberSaveable { mutableStateOf(false) }
+    var openedCurrentRule by rememberSaveable { mutableStateOf<String?>(null) }
+    var openedBornRule by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedDigit by rememberSaveable { mutableStateOf<Int?>(null) }
     var savedOk by remember { mutableStateOf(false) }
     var ledgerRevision by remember { mutableIntStateOf(0) }
@@ -175,6 +178,15 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 tr("နောက်ဆုံးအတည်ပြုဂဏန်း: ${report.last?.digit?:"—"}",
                                     "Latest confirmed: ${report.last?.digit?:"—"}"))
                         }
+                        item {
+                            CherryRuleFrameOverview(
+                                heading=tr("ဦးစားပေး ရွေးကွက်များ","Prioritized pairs"),
+                                all=report.current,topLimit=6,en=en,
+                                expanded=showAllCurrent,
+                                onToggle={showAllCurrent=!showAllCurrent},
+                                onPick={selectedPick=it}
+                            )
+                        }
                         if(target.session==DrawSession.MORNING){
                             item {
                                 CherryPanel {
@@ -194,6 +206,12 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                             label={Text("Internet")},placeholder={Text(fromInternet?:"—")}
                                         )
                                     }
+                                    if(!report.has930){
+                                        Text(tr("9:30 ဒေတာမစုံသေး၍ အပေါ်ကရွေးကွက်များသည် ယာယီဖြစ်သည်။",
+                                            "Selections remain provisional until both 9:30 values arrive."),
+                                            color=MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style=MaterialTheme.typography.bodySmall)
+                                    }
                                     if(modernOverride.isNotEmpty()||internetOverride.isNotEmpty()){
                                         TextButton(onClick={modernOverride="";internetOverride=""}){
                                             Text(tr("မူလဒေတာပြန်သုံးရန်","Use saved data"))}
@@ -201,15 +219,24 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 }
                             }
                         }
-                        item{
-                            CherryPanel {
-                                Text(tr("တိုက်ရိုက်မူအရ ရွေးချယ်မှု","Direct rule selections"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                CherryBalls(report.visible(CherryTab.CURRENT,6),
-                                    {selectedPick=it},en)
-                            }
+                        item {
+                            CherryHeading(tr("အကျုံးဝင်သော လက်ရှိမူများ","Applicable current rules"),
+                                tr("မူတစ်ခုကိုနှိပ်ပြီး အကျုံးဝင်ပုံ၊ ချဲ့တွက်နည်းနှင့် အတွဲအားလုံး ကြည့်ရန်",
+                                    "Tap a rule for its trigger, expansion and all generated pairs"))
                         }
-                        item{
+                        val currentRules=cherryRuleGroups(report.current)
+                        if(currentRules.isEmpty())item{CherryEmpty(en)}
+                        items(currentRules,key={it.id}){rule->
+                            CherryRuleFrameCard(
+                                rule=rule,all=report.current,
+                                bornEvent=null,en=en,
+                                expanded=openedCurrentRule==rule.id,
+                                onToggle={openedCurrentRule=
+                                    if(openedCurrentRule==rule.id)null else rule.id},
+                                onPick={selectedPick=it}
+                            )
+                        }
+                        item {
                             CherryPanel {
                                 Text(tr("🚫 မူအရ ဖြတ်ထားသောဂဏန်းများ",
                                     "🚫 Rule-based exclusions"),
@@ -226,6 +253,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                         Text(tr("အပိုင်း (၈) ဒဲ့/R: ","Section (8) Direct/R: ")+
                                             triple.joinToString("  •  "),
                                             style=MaterialTheme.typography.bodyMedium)
+                                    Text(tr("ဖြတ်မူငြိနေသောအတွဲများကိုလည်း ဂဏန်းအားလုံးစာရင်းထဲတွင် ခွဲပြထားသည်။",
+                                        "Conflicted pairs remain visible in the expanded list."),
+                                        style=MaterialTheme.typography.bodySmall,
+                                        color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 }else{
                                     Text(tr("လိုအပ်သောရှေ့အကြိမ်ရလဒ် မပြည့်သေးပါ။",
                                         "Previous draw inputs are unavailable."))
