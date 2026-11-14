@@ -106,10 +106,20 @@ object CherryMathStreakEngine {
                 mod(top(it)+tail(it)-3)
             }
             "wl"->{
-                val date=rows.filter{it.date<target.date}.maxOfOrNull{it.date}
-                val am=rows.firstOrNull{it.date==date&&it.session==DrawSession.MORNING}
-                val pm=rows.firstOrNull{it.date==date&&it.session==DrawSession.EVENING}
-                if(am!=null&&pm!=null)mod(top(am.digit)+top(pm.digit)+tail(pm.digit))else null
+                // The document says yesterday, not the most recent available
+                // historical date. Never silently use older draws if the actual
+                // previous working day's pair is absent.
+                val previousDay=immediatelyBefore(
+                    DrawIdentity(target.date,DrawSession.MORNING),closed).date
+                val am=rows.firstOrNull{
+                    it.date==previousDay&&it.session==DrawSession.MORNING
+                }
+                val pm=rows.firstOrNull{
+                    it.date==previousDay&&it.session==DrawSession.EVENING
+                }
+                if(am!=null&&pm!=null)
+                    mod(top(am.digit)+top(pm.digit)+tail(pm.digit))
+                else null
             }
             else->null
         }
