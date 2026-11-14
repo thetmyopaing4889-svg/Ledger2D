@@ -380,6 +380,15 @@ object CherryBetterDataEngine {
                 "${bk(prev.digit)} BK → $b BK","BREAK")
         }
         val mathAnalysis=CherryMathStreakEngine.analyze(rows,target,singles,breaks,closed)
+        // Research confluence is a separate observable result, never a DOC champion.
+        // No experimental pair is eligible for main picks without DOC agreement.
+        mathAnalysis.confluence.singleOrNull()?.let{digit->
+            add(math,"research-confluence","research-confluence",
+                "သုတေသန ၃ နည်း ဘုံတူဝမ်းချိန်း",
+                "စမ်းသပ်တွက်နည်းအုပ်စု ၃ မျိုးက $digit ကို တူညီစွာညွှန်ပြသည်။ " +
+                    "မူရင်း DOC ပုံသေနည်း မဟုတ်သေးပါ။",
+                CherryPairExpander.power(digit),null,CherryTab.MATH)
+        }
         // Keep DOC conditional math watches visible without inventing pairs.
         mathAnalysis.watches.filter{it.pairs.isNotEmpty()}.forEach{watch->
             add(math,"watch-${watch.id}","watch-${watch.id}",watch.title,
@@ -426,14 +435,42 @@ object CherryBetterDataEngine {
                     .thenByDescending{it.score}.thenBy{it.pair})
         val currentPicks=group(current)
         val bornPicks=group(born)
+        // Individual Math cards remain inspectable, including unverified signals.
+        // Only three-step DOC champions and strictly verified pairings may
+        // influence the general ranked shortlist or summary.
         val mathPicks=group(math)
+        val wamChampion=mathAnalysis.champion("WAM")
+        val loneChampion=mathAnalysis.champion("LONE")
+        val breakChampion=mathAnalysis.champion("BREAK")
+        val verifiedLoneId=loneChampion?.takeIf{
+            it.result==mathAnalysis.loneConsensus
+        }?.id
+        val verifiedCrossIds=if(verifiedLoneId!=null&&breakChampion!=null)
+            setOf("cross-$verifiedLoneId-${breakChampion.id}",
+                "cross-$verifiedLoneId-${breakChampion.id}-power")
+        else emptySet()
+        val verifiedMath=math.filter{e->
+            (wamChampion!=null&&e.id=="gold-${wamChampion.id}")||
+                e.id in verifiedCrossIds||
+                (e.id=="research-confluence"&&
+                    mathAnalysis.confluence.singleOrNull()==wamChampion?.result)
+        }
+        val candidates=group(current+born+verifiedMath)
         val distinct=mutableSetOf<String>()
-        val ranked=group(current+born+math).filter{it.cuts.isEmpty()}.filter{p->
+        val ranked=candidates.filter{it.cuts.isEmpty()}.filter{p->
             val reverse=p.pair.reversed()
             val key=if(p.pair<reverse)p.pair else reverse
             distinct.add(key)
         }
-        val summary=ranked.take(3)
+        // Reserve both original Golden Rule directions in the short summary.
+        // Never silently override a documented cut: conflicted pairs stay
+        // visible with their cut explanation in the Math detail frame.
+        val goldenPairs=if(wamChampion!=null)
+            candidates.filter{it.cuts.isEmpty()&&it.evidence.any{e->
+                e.id=="gold-${wamChampion.id}"
+            }}.sortedBy{it.pair}.take(2)
+        else emptyList()
+        val summary=(goldenPairs+ranked).distinctBy{it.pair}.take(3)
         return CherryReport(target,rows.size,rows.lastOrNull(),currentPicks,bornPicks,
             mathPicks,summary,ranked,births,singles,breaks,cut.mapValues{it.value.distinct()},
             target.session==DrawSession.MORNING&&modern?.matches(Regex("[0-9]{2}"))==true&&
