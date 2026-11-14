@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -217,7 +218,7 @@ internal fun CherryRuleFrameCard(
                             modifier=Modifier.align(Alignment.End),
                             contentPadding=PaddingValues(horizontal=2.dp,vertical=2.dp)
                         ){
-                            Icon(androidx.compose.material.icons.Icons.Default.MenuBook,
+                            Icon(Icons.Default.MenuBook,
                                 null,modifier=Modifier.size(15.dp))
                             Spacer(Modifier.width(5.dp))
                             Text(
