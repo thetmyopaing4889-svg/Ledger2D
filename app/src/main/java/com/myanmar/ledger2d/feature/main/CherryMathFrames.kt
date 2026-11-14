@@ -152,66 +152,52 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
 @Composable private fun MathSelectionHero(
     picks:List<CherryPick>,en:Boolean,onPick:(CherryPick)->Unit
 ){
-    Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
+    // Show the actual selected pairs immediately on opening the Math tab:
+    // a single, compact row instead of a generic count or stacked cards.
+    Surface(color=Color.White,shape=RoundedCornerShape(16.dp),
         border=BorderStroke(1.dp,mathEdge)){
-        Column(Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement=Arrangement.spacedBy(10.dp)){
-            MathTitle(if(en)"Selected math pairs" else "သင်္ချာနည်း ရွေးကွက်")
+        Column(Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement=Arrangement.spacedBy(8.dp)){
+            Text(if(en)"Selected math pairs" else "သင်္ချာနည်း ရွေးကွက်",
+                color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
+                style=MaterialTheme.typography.titleMedium)
             if(picks.isEmpty()){
-                Text(if(en)"No pair passes the selection checks yet."
-                    else "စစ်ချက်ပြည့်သော ဂဏန်းတွဲ မရှိသေးပါ။",
-                    style=MaterialTheme.typography.bodyMedium)
-                Text(if(en)"No extra pairs are added just to fill the slots."
-                    else "အကွက်ပြည့်ဖို့ အတင်းထပ်မရွေးထားပါ။",
-                    style=MaterialTheme.typography.labelSmall,
+                Text(if(en)"—  No verified pair yet"
+                    else "—  စစ်ချက်ပြည့်သော ရွေးကွက် မရှိသေးပါ။",
+                    style=MaterialTheme.typography.bodyMedium,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }else{
-                val main=picks.first()
-                Surface(onClick={onPick(main)},color=AppColors.PrimaryDeep,
-                    shape=RoundedCornerShape(14.dp)){
-                    Row(Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment=Alignment.CenterVertically,
-                        horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                        Column(Modifier.weight(1f),
-                            verticalArrangement=Arrangement.spacedBy(3.dp)){
-                            Text(if(en)"MAIN" else "မိန်း",
-                                color=Color.White,fontWeight=FontWeight.Black,
-                                style=MaterialTheme.typography.titleMedium)
-                            Text(if(en)"Priority selection" else "ဦးစားပေး ရွေးကွက်",
-                                color=Color.White.copy(alpha=0.85f),
-                                style=MaterialTheme.typography.labelSmall)
-                        }
-                        Text(main.pair,color=Color.White,fontWeight=FontWeight.Black,
-                            style=MaterialTheme.typography.displayMedium)
-                    }
-                }
-                val reserves=picks.drop(1)
-                if(reserves.isNotEmpty()){
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                        reserves.forEachIndexed{index,p->
-                            Surface(onClick={onPick(p)},modifier=Modifier.weight(1f),
-                                color=Color(0xFFFFF0F4),
-                                shape=RoundedCornerShape(12.dp),
-                                border=BorderStroke(1.dp,mathEdge)){
-                                Row(Modifier.padding(11.dp),
-                                    verticalAlignment=Alignment.CenterVertically,
-                                    horizontalArrangement=Arrangement.SpaceBetween){
-                                    Text(if(en)"Reserve ${index+1}"
-                                        else "အရံ ${index+1}",
-                                        color=AppColors.PrimaryDeep,
-                                        style=MaterialTheme.typography.labelSmall)
-                                    Text(p.pair,fontWeight=FontWeight.Black,
-                                        color=AppColors.PrimaryDeep,
-                                        style=MaterialTheme.typography.titleLarge)
-                                }
+                Row(Modifier.fillMaxWidth(),
+                    horizontalArrangement=Arrangement.spacedBy(7.dp)){
+                    picks.take(3).forEachIndexed{index,pick->
+                        val isMain=index==0
+                        Surface(onClick={onPick(pick)},
+                            modifier=Modifier.weight(1f),
+                            color=if(isMain)AppColors.PrimaryDeep
+                                else Color(0xFFFFEBF1),
+                            shape=RoundedCornerShape(12.dp),
+                            border=if(isMain)null else BorderStroke(1.dp,mathEdge)){
+                            Column(Modifier.fillMaxWidth().padding(
+                                horizontal=4.dp,vertical=10.dp),
+                                horizontalAlignment=Alignment.CenterHorizontally,
+                                verticalArrangement=Arrangement.spacedBy(3.dp)){
+                                Text(if(isMain){
+                                    if(en)"MAIN" else "မိန်း"
+                                }else{
+                                    if(en)"RESERVE ${index}" else "အရံ ${index}"
+                                },style=MaterialTheme.typography.labelSmall,
+                                    fontWeight=FontWeight.Bold,
+                                    color=if(isMain)Color.White
+                                        else AppColors.PrimaryDeep)
+                                Text(pick.pair,
+                                    style=MaterialTheme.typography.headlineMedium,
+                                    fontWeight=FontWeight.Black,
+                                    color=if(isMain)Color.White
+                                        else AppColors.PrimaryDeep)
                             }
                         }
                     }
                 }
-                Text(if(en)"Tap a pair to view its calculation."
-                    else "ဂဏန်းကိုနှိပ်၍ တွက်ချက်ပုံ ကြည့်နိုင်သည်။",
-                    style=MaterialTheme.typography.labelSmall,
-                    color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
