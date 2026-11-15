@@ -15,6 +15,8 @@ internal data class CherryV2StreakMatch(
     val expression: String,
     val predictedDigit: Int,
     val historicalStreak: Int,
+    /** One unchanged mod-10 offset applied at every checked draw. */
+    val offset: Int = 0,
     val grammarVersion: Int = CherryV2ExpandableGrammar.VERSION,
 ) {
     init {
@@ -22,11 +24,12 @@ internal data class CherryV2StreakMatch(
         require(formulaIndex.signum() >= 0)
         require(expression.isNotBlank())
         require(predictedDigit in 0..9)
+        require(offset in 0..9)
         require(historicalStreak in 0..CherryFormulaDiscoveryEngine.SEARCH_DRAWS)
         require(grammarVersion == CherryV2ExpandableGrammar.VERSION)
     }
 
-    val formulaId: String get() = "v$grammarVersion:$formulaIndex@${kind.name}"
+    val formulaId: String get() = "v$grammarVersion:$formulaIndex+$offset@${kind.name}"
     val evidenceLabel: String get() = "HISTORICAL_FIT"
 }
 
@@ -57,23 +60,36 @@ internal data class CherryV2StreakRegistry(
         })
     }
 
-    /** Advances exactly one expression, including misses and shorter fits. */
-    fun inspected(index: BigInteger, candidate: CherryV2StreakMatch?): CherryV2StreakRegistry {
+    /** Advances exactly one examined expression, including misses. */
+    fun inspected(index: BigInteger, candidate: CherryV2StreakMatch?): CherryV2StreakRegistry =
+        inspectedBatch(index, listOfNotNull(candidate))
+
+    /**
+     * A grammar expression can produce multiple qualifying offset variants.
+     * First-found wins per exact streak length, in deterministic offset order.
+     * All candidates are validated BEFORE making the immutable state transition.
+     */
+    fun inspectedBatch(
+        index: BigInteger,
+        candidates: List<CherryV2StreakMatch>,
+    ): CherryV2StreakRegistry {
         require(index == nextIndex) { "Out-of-order or repeated formula index" }
-        if (candidate != null) {
+        candidates.forEach { candidate ->
             require(candidate.formulaIndex == index)
             require(candidate.target == target && candidate.kind == kind)
             require(candidate.historySignature == historySignature)
+            require(candidate.grammarVersion == CherryV2ExpandableGrammar.VERSION)
         }
-        val newResults = if (candidate == null ||
-            candidate.historicalStreak < CherryFormulaDiscoveryEngine.MIN_STREAK ||
-            firstByStreak.containsKey(candidate.historicalStreak)) {
-            firstByStreak
-        } else {
-            firstByStreak + (candidate.historicalStreak to candidate)
+        val newResults = firstByStreak.toMutableMap()
+        candidates.forEach { candidate ->
+            if (candidate.historicalStreak >= CherryFormulaDiscoveryEngine.MIN_STREAK) {
+                newResults.putIfAbsent(candidate.historicalStreak, candidate)
+            }
         }
-        return copy(nextIndex = CherryV2ExpandableGrammar.next(index),
-            firstByStreak = newResults)
+        return copy(
+            nextIndex = CherryV2ExpandableGrammar.next(index),
+            firstByStreak = newResults.toMap(),
+        )
     }
 
     fun recommended(): CherryV2StreakMatch? =
