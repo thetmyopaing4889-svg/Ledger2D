@@ -160,7 +160,7 @@ class CherryProspectiveTrialTest {
         assertEquals(wanted.id, chosen.formulaId)
         assertEquals(wanted.currentDigit, chosen.outputDigit)
         assertEquals(wanted.offset, chosen.offset)
-        assertEquals(wanted.historicalFitStreak, chosen.historicalFitStreak)
+        assertEquals(wanted.historicalStreak, chosen.historicalFitStreak)
     }
 
     @Test fun refusesSearchMoreLocksFromMixedHistoryOrUnseenIds() {
