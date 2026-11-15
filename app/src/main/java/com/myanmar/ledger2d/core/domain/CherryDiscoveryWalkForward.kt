@@ -77,7 +77,7 @@ object CherryDiscoveryWalkForward {
         require(lastTargets > 0)
         require(stages in 1..CherryFormulaDiscoveryEngine.STAGE_COUNT)
         val rows = historicalDraws.filter {
-            validHistoric2D(it.digit) && it.date !in closedDates
+            validHistoric2D(it.digit) && DrawSchedule.isWorkingDate(it.date, closedDates)
         }.sortedWith(compareBy<HistoricDraw> { it.date }.thenBy { it.session.ordinal })
             .distinctBy { it.date to it.session }
         val selectedTargets = rows.takeLast(lastTargets)
