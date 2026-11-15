@@ -28,6 +28,8 @@ class CherryV2ActualSeedAuditTest {
         val dates: Int,
         val rows: List<HistoricDraw>,
         val offDates: Set<LocalDate>,
+        val conflictDates: Set<LocalDate>,
+        val duplicateDateCount: Int,
         val latest: LocalDate,
     )
 
@@ -39,10 +41,12 @@ class CherryV2ActualSeedAuditTest {
         val raw = JSONArray(jsonText)
         val draws = ArrayList<HistoricDraw>(raw.length() * 2)
         val off = mutableSetOf<LocalDate>()
+        val rowCountsByDate = mutableMapOf<LocalDate, Int>()
         var latest = LocalDate.MIN
         repeat(raw.length()) { index ->
             val day = raw.getJSONObject(index)
             val date = LocalDate.parse(day.getString("date"), dateFormat)
+            rowCountsByDate[date] = (rowCountsByDate[date] ?: 0) + 1
             if (date > latest) latest = date
             val am = day.optString("morning2d")
             val pm = day.optString("evening2d")
@@ -64,8 +68,25 @@ class CherryV2ActualSeedAuditTest {
                     date, DrawSession.EVENING, pm, HistoricSource.HISTORY))
             }
         }
-        return Seed(raw.length(),
-            CherryDiscoveryHistoryNormalizer.normalize(draws), off, latest)
+        // The checked-in import contains a contradictory 2025-06-10:
+        // one row says OFF, another says AM=55 / PM=60. Neither may
+        // automatically win. Quarantine that calendar day as UNKNOWN:
+        // remove its draws, do NOT mark it closed, and allow the evaluator
+        // to stop consecutive history at the missing working-day boundary.
+        // Consistent same-date duplicate records are harmlessly deduped.
+        val conflicting = off.filterTo(mutableSetOf()) { date ->
+            draws.any { it.date == date }
+        }
+        val trustedRows = draws.filterNot { it.date in conflicting }
+        val confirmedOff = off - conflicting
+        return Seed(
+            raw.length(),
+            CherryDiscoveryHistoryNormalizer.normalize(trustedRows),
+            confirmedOff,
+            conflicting,
+            rowCountsByDate.count { it.value > 1 },
+            latest,
+        )
     }
 
     private fun identity(draw: HistoricDraw) = DrawIdentity(draw.date, draw.session)
@@ -116,12 +137,16 @@ class CherryV2ActualSeedAuditTest {
         assertEquals(seed.rows.size, seed.rows.map(::identity).distinct().size)
         assertTrue(seed.rows.all { validHistoric2D(it.digit) })
         assertTrue(seed.rows.none { it.date in seed.offDates })
+        assertTrue(seed.rows.none { it.date in seed.conflictDates })
+        assertTrue(seed.conflictDates.none { it in seed.offDates })
         val selected = sampleTargets(seed, 80)
         assertEquals(80, selected.size)
         assertEquals(80, selected.map(::identity).distinct().size)
         println(
             "CHERRY_V2_SEED_SOURCE rows=${seed.dates} validSlots=${seed.rows.size} " +
-                "explicitOffDates=${seed.offDates.size} latest=${seed.latest} " +
+                "explicitOffDates=${seed.offDates.size} " +
+                "quarantinedContradictoryDates=${seed.conflictDates.size} " +
+                "duplicateDates=${seed.duplicateDateCount} latest=${seed.latest} " +
                 "twoYearSampleTargets=${selected.size} label=IMPORTED_HISTORY_ONLY"
         )
     }
