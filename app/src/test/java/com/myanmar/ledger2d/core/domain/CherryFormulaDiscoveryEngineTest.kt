@@ -152,6 +152,25 @@ class CherryFormulaDiscoveryEngineTest {
             resumed.longest(CherryDiscoveryKind.WAM)?.id)
     }
 
+    @Test fun anomalousWeekendHistoryCannotChangeWorkingDayDiscovery() {
+        val (rows, monday) = history(*Array(10) { "00" })
+        val saturday = LocalDate.parse("2026-11-07")
+        val badWeekendRows = listOf(
+            HistoricDraw(saturday, DrawSession.MORNING, "91", HistoricSource.HISTORY),
+            HistoricDraw(saturday, DrawSession.EVENING, "18", HistoricSource.HISTORY),
+        )
+        val expected = CherryFormulaDiscoveryEngine.nextRound(rows, monday)
+        val contaminated = CherryFormulaDiscoveryEngine.nextRound(
+            rows + badWeekendRows, monday)
+        assertEquals(expected, contaminated)
+        val asOf = rows + HistoricDraw(monday.date,
+            DrawSession.MORNING, "38", HistoricSource.WINNER)
+        val walk1 = CherryDiscoveryWalkForward.replay(asOf, lastTargets = 1)
+        val walk2 = CherryDiscoveryWalkForward.replay(
+            asOf + badWeekendRows, lastTargets = 1)
+        assertEquals(walk1, walk2)
+    }
+
     @Test fun neverReadsTargetOrFutureDrawsWhenSearching() {
         val (rows, target) = history(*Array(10) { "12" })
         val withoutFuture = CherryFormulaDiscoveryEngine.nextRound(rows, target)
