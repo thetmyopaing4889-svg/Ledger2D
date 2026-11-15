@@ -99,14 +99,21 @@ internal object CherryV2OrderBenchmark {
             }
             val trace = CherryV2HistoricalEvaluator.trace(
                 context, expression, ::checkBudget, category)
-            // A candidate is committed only after all its computations.
+            // Evaluate into local variables FIRST. A deadline can arrive
+            // while scoring, so no metrics/dedup keys may be updated until
+            // this whole candidate has completed within its time budget.
+            val isDuplicate = trace != null && trace.behaviorKey in seen
+            val fits = if (trace != null && !isDuplicate) {
+                CherryV2HistoricalEvaluator.evaluateTrace(
+                    context, category, index, trace, ::checkBudget)
+            } else emptyList()
+            checkBudget()
+
             if (trace != null) {
                 scorable++
-                if (trace.behaviorKey in seen) {
+                if (isDuplicate) {
                     duplicates++
                 } else {
-                    val fits = CherryV2HistoricalEvaluator.evaluateTrace(
-                        context, category, index, trace, ::checkBudget)
                     distinct++
                     for (fit in fits) {
                         byStreak.putIfAbsent(fit.historicalStreak, inspected)
@@ -122,7 +129,6 @@ internal object CherryV2OrderBenchmark {
                     }
                 }
             }
-            checkBudget() // never include an unfinished candidate
             inspected++
             } catch (_: TimeBudgetReached) {
                 break
