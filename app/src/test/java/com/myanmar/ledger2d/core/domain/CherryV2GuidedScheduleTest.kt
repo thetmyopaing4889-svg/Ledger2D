@@ -20,8 +20,11 @@ class CherryV2GuidedScheduleTest {
             )
         }
         assertEquals("top4", at(9).structuralKey)
-        assertEquals("tail4", at(12).structuralKey)
-        assertEquals("break4", at(15).structuralKey)
+        // In the original grammar, lag-4 features are seven raw indices
+        // apart; raw indices 10/11 are arithmetic, not tail4/break4.
+        assertEquals("(top1+top1)", at(12).structuralKey)
+        assertEquals("tail4", at(30).structuralKey) // raw index 16
+        assertEquals("break4", at(51).structuralKey) // raw index 23
         assertEquals("top1", at(0).structuralKey)
     }
 
