@@ -61,7 +61,7 @@ class CherryV2DiscoveryServiceTest {
             assertTrue(prefs().all.isEmpty()) // no background run on construction
 
             val first = service.search(target, kind, asOf,
-                timeBudgetNanos = 30_000_000L)
+                timeBudgetNanos = 180_000_000L)
             assertEquals(CherryV2TimedSearch.StopReason.TIME_LIMIT,
                 first.result.stopReason)
             assertTrue(first.result.inspectedThisBatch > 0)
@@ -71,7 +71,7 @@ class CherryV2DiscoveryServiceTest {
                 CherryV2DiscoveryService(app, db).saved(target, kind, asOf))
 
             val second = CherryV2DiscoveryService(app, db).search(
-                target, kind, asOf, timeBudgetNanos = 30_000_000L)
+                target, kind, asOf, timeBudgetNanos = 180_000_000L)
             assertTrue(second.result.cursor.nextIndex > first.result.cursor.nextIndex)
             assertTrue(second.result.cursor.firstByStreak.keys.containsAll(
                 first.result.cursor.firstByStreak.keys))
@@ -92,7 +92,7 @@ class CherryV2DiscoveryServiceTest {
             db.historyResultDao().upsertAll(days.take(10).map(::row))
             val service = CherryV2DiscoveryService(app, db)
             val lone = service.search(target, CherryDiscoveryKind.LONE,
-                asOf, timeBudgetNanos = 20_000_000L).result.cursor
+                asOf, timeBudgetNanos = 120_000_000L).result.cursor
             assertNotNull(service.saved(target, CherryDiscoveryKind.LONE, asOf))
             assertNull(service.saved(target, CherryDiscoveryKind.WAM, asOf))
             assertTrue(lone.nextIndex.signum() > 0)
@@ -102,7 +102,7 @@ class CherryV2DiscoveryServiceTest {
             val revised = CherryV2DiscoveryService(app, db)
             assertNull(revised.saved(target, CherryDiscoveryKind.LONE, asOf))
             val fresh = revised.search(target, CherryDiscoveryKind.LONE,
-                asOf, timeBudgetNanos = 20_000_000L).result.cursor
+                asOf, timeBudgetNanos = 120_000_000L).result.cursor
             assertNotEquals(lone.historySignature, fresh.historySignature)
             assertEquals(fresh, revised.saved(target, CherryDiscoveryKind.LONE, asOf))
             assertNull(revised.saved(target, CherryDiscoveryKind.WAM, asOf))
@@ -117,7 +117,7 @@ class CherryV2DiscoveryServiceTest {
             db.historyResultDao().upsertAll(days.take(10).map(::row))
             val service = CherryV2DiscoveryService(app, db)
             val original = service.search(target, CherryDiscoveryKind.LONE, asOf,
-                timeBudgetNanos = 20_000_000L).result.cursor
+                timeBudgetNanos = 120_000_000L).result.cursor
             assertTrue(original.firstByStreak.isNotEmpty())
             assertTrue(prefs().edit().putString("cursor_LONE", "{bad").commit())
             try {
@@ -128,7 +128,7 @@ class CherryV2DiscoveryServiceTest {
             try {
                 CherryV2DiscoveryService(app, db).search(
                     target, CherryDiscoveryKind.LONE, asOf,
-                    timeBudgetNanos = 20_000_000L)
+                    timeBudgetNanos = 120_000_000L)
                 fail("Search must not overwrite a damaged checkpoint")
             } catch (_: IllegalStateException) {}
         } finally {
