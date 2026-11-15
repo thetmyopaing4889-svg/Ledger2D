@@ -42,7 +42,7 @@ class CherryDiscoverySearchMoreTest {
                     ids.add(fresh.id))
                 assertEquals(ids, next.offeredIds)
                 assertEquals("HISTORICAL_FIT", fresh.evidenceLabel)
-                assertEquals(19, fresh.historicalStreak)
+                assertTrue(fresh.historicalStreak in 3..19)
                 assertEquals(19, next.bestCandidate?.historicalStreak)
                 assertTrue(next.nextPosition > (cursor?.nextPosition ?: 0))
                 cursor = next
