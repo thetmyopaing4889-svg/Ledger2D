@@ -52,10 +52,14 @@ class CherryDiscovery2024And2025HoldoutTest {
                 lastTargets = 80, stages = 1, closedDates = closed)
             val full = CherryDiscoveryWalkForward.replay(draws,
                 lastTargets = 80, stages = 4, closedDates = closed)
+            val simplePolicy = CherryDiscoveryWalkForward.replay(draws,
+                lastTargets = 80, stages = 4, closedDates = closed,
+                policy = CherryDiscoverySelectionPolicy.SIMPLEST)
             assertEquals(240, full.checks.size)
             for (kind in CherryDiscoveryKind.entries) {
                 val simple = one.stats(kind)
                 val stat = full.stats(kind)
+                val simpler = simplePolicy.stats(kind)
                 val records = full.checks.filter { it.kind == kind }
                 assertEquals(80, stat.targetCount)
                 assertEquals(80, stat.checked + stat.noSelection)
@@ -67,6 +71,8 @@ class CherryDiscovery2024And2025HoldoutTest {
                     " oneStageHits=" + simple.hits + " fourStageChecked=" +
                     stat.checked + " fourStageHits=" + stat.hits +
                     " noSelection=" + stat.noSelection +
+                    " simplestChecked=" + simpler.checked +
+                    " simplestHits=" + simpler.hits +
                     " maxHistorical=" + (fits.maxOrNull() ?: 0) +
                     " tenPlus=" + fits.count { it >= 10 })
             }
