@@ -155,7 +155,9 @@ class CherryV2DiscoveryServiceTest {
 
             val metrics = service.auditSearchOrder(
                 target = target, kind = kind, asOf = asOf,
-                candidatesPerMode = 12, budgetPerModeNanos = 1_000_000_000L,
+                // Cap at 12 formulas; allow CI classloading overhead without
+                // confusing cold-start latency with formula throughput.
+                candidatesPerMode = 12, budgetPerModeNanos = 5_000_000_000L,
             )
             assertEquals(12, metrics.raw.inspected)
             assertEquals(12, metrics.guided.inspected)
