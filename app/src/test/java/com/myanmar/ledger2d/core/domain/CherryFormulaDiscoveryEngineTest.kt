@@ -28,6 +28,31 @@ class CherryFormulaDiscoveryEngineTest {
         return draws to next
     }
 
+    @Test fun discoversNonconstantLaggedArithmeticRuleWithoutRetuningEveryDraw() {
+        // Synthetic, nonconstant progression: each new top digit is
+        // (previous top + previous tail) % 10. The tail differs by +3.
+        // This checks the engine can find a real fixed relation instead of
+        // only succeeding on the degenerate all-zero fixture.
+        val sequence = mutableListOf("12", "34")
+        repeat(22) {
+            val previous = sequence.last()
+            val top = (previous[0].digitToInt() +
+                previous[1].digitToInt()) % 10
+            sequence.add("" + top + ((top + 3) % 10))
+        }
+        val (rows, target) = history(*sequence.toTypedArray())
+        val expectedTop = (rows.last().digit[0].digitToInt() +
+            rows.last().digit[1].digitToInt()) % 10
+        val first = CherryFormulaDiscoveryEngine.nextRound(rows, target)
+        val champion = first.longest(CherryDiscoveryKind.LONE)
+        assertNotNull("Nonconstant recurrence should be discovered", champion)
+        assertTrue("One unchanged formula must fit a long suffix",
+            champion!!.historicalStreak >= 20)
+        assertEquals(expectedTop, champion.currentDigit)
+        assertEquals(champion.historicalStreak, champion.matchedDraws.size)
+        assertEquals(1, first.completedStages)
+    }
+
     @Test fun discoversResultsDerivedStreaksForAllThreeKindsWithoutFutureResults() {
         val (rows, target) = history(*Array(12) { "00" })
         val result = CherryFormulaDiscoveryEngine.nextRound(rows, target)
