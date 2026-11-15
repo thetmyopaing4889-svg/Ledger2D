@@ -20,6 +20,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+/**
+ * Reconstructed from exactly the same verified bounded source as discovery.
+ * Includes the actual matched 2D pairs, never just matching date labels.
+ */
+internal data class CherryDiscoveryFormulaEvidence(
+    val formula: CherryDiscoveredFormula,
+    val matched: List<HistoricDraw>,
+)
+
 /** Stable engine-only entry point; no UI, observers, automatic search or jobs. */
 internal data class CherryDiscoverySearchReceipt(
     val cursor: CherryDiscoverySearchCursor,
@@ -49,13 +58,15 @@ internal class CherryDiscoveryEngineService(
         target: DrawIdentity,
         kind: CherryDiscoveryKind,
         asOf: LocalDateTime = LocalDateTime.now(yangon),
+        onProgress: (Int) -> Unit = {},
     ): CherryDiscoverySearchReceipt = mutex.withLock {
         val data = source.latest(target, asOf)
         val previous = withContext(Dispatchers.Default) {
             cursors.resume(kind, target, data.draws, data.closedDates)
         }
         val next = CherryDiscoveryBackgroundRunner.searchMore(
-            data.draws, target, kind, previous, data.closedDates)
+            data.draws, target, kind, previous, data.closedDates,
+            onProgress = onProgress)
         withContext(Dispatchers.IO) { cursors.persist(next) }
         CherryDiscoverySearchReceipt(
             cursor = next,
@@ -87,7 +98,16 @@ internal class CherryDiscoveryEngineService(
         kind: CherryDiscoveryKind,
         formulaId: String,
         asOf: LocalDateTime = LocalDateTime.now(yangon),
-    ): CherryDiscoveredFormula? = mutex.withLock {
+    ): CherryDiscoveredFormula? =
+        previewEvidence(target, kind, formulaId, asOf)?.formula
+
+    /** Verified historical pairs for the exact previously offered formula. */
+    suspend fun previewEvidence(
+        target: DrawIdentity,
+        kind: CherryDiscoveryKind,
+        formulaId: String,
+        asOf: LocalDateTime = LocalDateTime.now(yangon),
+    ): CherryDiscoveryFormulaEvidence? = mutex.withLock {
         val data = source.latest(target, asOf)
         withContext(Dispatchers.Default) {
             val cursor = cursors.resume(kind, target, data.draws, data.closedDates)
@@ -97,12 +117,18 @@ internal class CherryDiscoveryEngineService(
                 ?: return@withContext null
             val scan = CherryFormulaDiscoveryEngine.nextAlternative(
                 data.draws, target, kind, position, data.closedDates)
-            scan.candidate?.takeIf {
+            val formula = scan.candidate?.takeIf {
                 scan.historySignature == cursor.engine.historySignature &&
                     scan.nextPosition == position + 1 &&
                     scan.behaviorKey == cursor.offeredBehaviors[formulaId] &&
                     it.id == formulaId
+            } ?: return@withContext null
+            val bySlot = data.draws.associateBy { it.date to it.session }
+            val matched = formula.matchedDraws.map { identity ->
+                bySlot[identity.date to identity.session]
+                    ?: return@withContext null
             }
+            CherryDiscoveryFormulaEvidence(formula, matched)
         }
     }
 

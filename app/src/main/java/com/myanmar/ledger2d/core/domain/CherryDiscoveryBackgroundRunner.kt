@@ -40,6 +40,7 @@ object CherryDiscoveryBackgroundRunner {
         kind: CherryDiscoveryKind,
         previous: CherryDiscoverySearchCursor? = null,
         closedDates: Set<LocalDate> = emptySet(),
+        onProgress: (Int) -> Unit = {},
     ): CherryDiscoverySearchCursor = withContext(Dispatchers.Default) {
         val jobContext = coroutineContext
         CherryDiscoverySearchMore.next(
@@ -49,6 +50,7 @@ object CherryDiscoveryBackgroundRunner {
             previous = previous,
             closedDates = closedDates,
             checkCancellation = { jobContext.ensureActive() },
+            onProgress = onProgress,
         )
     }
 

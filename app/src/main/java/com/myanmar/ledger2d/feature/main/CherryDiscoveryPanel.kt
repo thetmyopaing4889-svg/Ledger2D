@@ -15,16 +15,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.design.AppColors
-import com.myanmar.ledger2d.core.domain.CherryDiscoveredFormula
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
-import com.myanmar.ledger2d.core.domain.CherryDiscoverySearchCursor
-import com.myanmar.ledger2d.core.domain.CherryFormulaDiscoveryEngine
 import com.myanmar.ledger2d.core.domain.CherryProspectiveTrialClock
 import com.myanmar.ledger2d.core.domain.CherryProspectiveTrialJournal
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 private val discoveryGreen = Color(0xFF16854A)
@@ -53,14 +51,15 @@ internal fun CherryDiscoveryPanel(
     en: Boolean,
 ) {
     var kind by remember(target) { mutableStateOf(CherryDiscoveryKind.LONE) }
-    var cursors by remember(target) {
-        mutableStateOf<Map<CherryDiscoveryKind, CherryDiscoverySearchCursor?>>(emptyMap())
-    }
+    var uiState by remember(target) { mutableStateOf(CherryDiscoveryUiState()) }
     var journal by remember(target) { mutableStateOf(CherryProspectiveTrialJournal.empty()) }
-    var choices by remember(target) {
-        mutableStateOf<Map<CherryDiscoveryKind, String?>>(emptyMap())
+    var currentEvidence by remember(target) {
+        mutableStateOf<CherryDiscoveryFormulaEvidence?>(null)
     }
-    var currentPreview by remember(target) { mutableStateOf<CherryDiscoveredFormula?>(null) }
+    var lockEvidence by remember(target) {
+        mutableStateOf<Map<CherryDiscoveryKind, CherryDiscoveryFormulaEvidence>>(emptyMap())
+    }
+    var liveScanPosition by remember(target) { mutableStateOf<Int?>(null) }
     var previewLoading by remember(target) { mutableStateOf(false) }
     var loading by remember(target) { mutableStateOf(true) }
     var busy by remember(target) { mutableStateOf(false) }
@@ -78,7 +77,7 @@ internal fun CherryDiscoveryPanel(
         loading = true
         try {
             // Only restores an existing search checkpoint; never searches.
-            cursors = service.savedCursors(target)
+            uiState = uiState.restore(service.savedCursors(target))
             journal = service.trials()
             error = null
         } catch (cancelled: CancellationException) {
@@ -90,14 +89,17 @@ internal fun CherryDiscoveryPanel(
         }
     }
 
+    val cursors = uiState.cursors
+    val choices = uiState.selectedIds
     val cursor = cursors[kind]
     val selectedId = choices[kind]
-    LaunchedEffect(service, target, kind, selectedId, cursor?.nextPosition) {
-        currentPreview = null
-        previewLoading = selectedId != null
-        if (selectedId != null) {
+    val displayedId = uiState.displayId(kind)
+    LaunchedEffect(service, target, kind, displayedId, cursor?.nextPosition) {
+        currentEvidence = null
+        previewLoading = displayedId != null
+        if (displayedId != null) {
             try {
-                currentPreview = service.preview(target, kind, selectedId)
+                currentEvidence = service.previewEvidence(target, kind, displayedId)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -159,6 +161,7 @@ internal fun CherryDiscoveryPanel(
                     FilterChip(
                         selected = kind == item,
                         onClick = { kind = item; message = null },
+                        enabled = !busy && !loading,
                         label = { Text(discoveryKindLabel(item, en)) },
                         modifier = Modifier.weight(1f),
                     )
@@ -174,7 +177,8 @@ internal fun CherryDiscoveryPanel(
                 }
             } else {
                 val completedStages = cursor?.completedStages ?: 0
-                val examined = cursor?.nextPosition ?: 0
+                val examined = (liveScanPosition ?: cursor?.nextPosition ?: 0)
+                    .coerceIn(0, 828)
                 Text(
                     if (en) "Stages $completedStages/4 · Scan $examined/828 · Offered ${offered.size}"
                     else "အဆင့် $completedStages/4 · စစ်ပြီး $examined/828 · တွေ့ပြီး ${offered.size} မျိုး",
@@ -207,17 +211,21 @@ internal fun CherryDiscoveryPanel(
                     Button(
                         onClick = {
                             if (busy) return@Button
+                            val requestedKind = kind
                             busy = true
                             error = null
                             message = null
+                            liveScanPosition = cursors[requestedKind]?.nextPosition ?: 0
                             running = scope.launch {
+                                val positions = Channel<Int>(Channel.CONFLATED)
+                                val observing = launch {
+                                    for (position in positions) liveScanPosition = position
+                                }
                                 try {
-                                    val next = service.searchMore(target, kind)
-                                    cursors = cursors + (kind to next.cursor)
-                                    if (next.cursor.newCandidate != null &&
-                                        choices[kind] == null) {
-                                        choices = choices + (kind to next.cursor.newCandidate.id)
-                                    }
+                                    val next = service.searchMore(
+                                        target, requestedKind,
+                                        onProgress = { position -> positions.trySend(position) })
+                                    uiState = uiState.searched(requestedKind, next.cursor)
                                     if (next.cursor.exhausted) {
                                         message = if (en) "All formula alternatives checked."
                                             else "ရှာဖွေစရာ Formula အားလုံး စစ်ပြီးပြီ။"
@@ -229,10 +237,13 @@ internal fun CherryDiscoveryPanel(
                                             else "အလုပ်လုပ်ပုံမတူသော Formula အသစ် ရှာတွေ့ပြီ။"
                                     }
                                 } catch (_: CancellationException) {
-                                    // Cursor is persistent only after a completed search.
+                                    // No checkpoint changes on a cancelled operation.
                                 } catch (failure: Exception) {
                                     error = discoveryError(failure, en)
                                 } finally {
+                                    positions.close()
+                                    observing.cancel()
+                                    liveScanPosition = null
                                     busy = false
                                     running = null
                                 }
@@ -252,7 +263,7 @@ internal fun CherryDiscoveryPanel(
                     }
                     if (cursor != null) {
                         OutlinedButton(
-                            onClick = { choices = choices + (kind to null) },
+                            onClick = { uiState = uiState.select(kind, null) },
                             enabled = !busy && lock == null,
                         ) { Text(if (en) "None" else "မရွေး") }
                     }
@@ -272,17 +283,37 @@ internal fun CherryDiscoveryPanel(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                val active = if (selectedId != null) currentPreview else cursor?.newCandidate
+                val visibleEvidence = currentEvidence?.takeIf {
+                    it.formula.kind == kind && it.formula.id == displayedId
+                }
                 if (previewLoading) {
-                    Text(if (en) "Checking the selected formula…" else "ရွေးထားတဲ့ Formula ကို ပြန်စစ်နေသည်…",
+                    Text(if (en) "Verifying formula and historical pairs…"
+                        else "Formula နှင့် ကိုက်ညီခဲ့သော Result များကို ပြန်စစ်နေသည်…",
                         style = MaterialTheme.typography.bodySmall)
-                } else if (selectedId != null && active == null) {
-                    Text(if (en) "Selection unavailable: history may have changed."
-                        else "ရွေးထားတဲ့ Formula ကို ပြန်မစစ်နိုင်ပါ။ History ပြောင်းသွားနိုင်သည်။",
+                } else if (displayedId != null && visibleEvidence == null) {
+                    Text(if (en) "Formula evidence unavailable: history may have changed."
+                        else "Formula အထောက်အထား ပြန်မစစ်နိုင်ပါ။ History ပြောင်းထားနိုင်သည်။",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall)
-                } else if (active != null) {
-                    CherryDiscoveryFormulaCard(active, en)
+                } else if (visibleEvidence != null) {
+                    val shown = visibleEvidence
+                    CherryDiscoveryFormulaCard(shown, en)
+                    if (lock == null) {
+                        Button(
+                            enabled = !busy && !loading && !previewLoading,
+                            onClick = { uiState = uiState.select(kind, shown.formula.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                if (selectedId == shown.formula.id) {
+                                    if (en) "Selected for lock" else "Lock အတွက် ရွေးထားပြီး"
+                                } else {
+                                    if (en) "Select this formula for lock"
+                                    else "ဒီ Formula ကို Lock အတွက် ရွေးမည်"
+                                },
+                            )
+                        }
+                    }
                 }
 
                 val best = cursor?.bestCandidate
@@ -293,7 +324,7 @@ internal fun CherryDiscoveryPanel(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     TextButton(
-                        onClick = { choices = choices + (kind to best.id) },
+                        onClick = { uiState = uiState.select(kind, best.id) },
                         enabled = !busy && lock == null,
                     ) {
                         Text(if (en) "Select best" else "အကောင်းဆုံး Formula ကို ရွေးမည်")
@@ -318,7 +349,7 @@ internal fun CherryDiscoveryPanel(
                                 shape = RoundedCornerShape(9.dp),
                                 modifier = Modifier.fillMaxWidth().clickable(enabled = !busy &&
                                     lock == null) {
-                                    choices = choices + (kind to id)
+                                    uiState = uiState.select(kind, id)
                                 },
                             ) {
                                 Text(
@@ -369,9 +400,37 @@ internal fun CherryDiscoveryPanel(
                     color = discoveryGreen,
                 )
             } else {
-                Button(onClick = { confirmLock = true }, enabled = selectable,
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text(if (en) "Confirm and Lock" else "အတည်ပြုပြီး Lock လုပ်မည်")
+                Button(
+                    onClick = {
+                        if (busy) return@Button
+                        busy = true
+                        error = null
+                        running = scope.launch {
+                            try {
+                                val details = mutableMapOf<CherryDiscoveryKind,
+                                    CherryDiscoveryFormulaEvidence>()
+                                for (category in CherryDiscoveryKind.entries) {
+                                    val id = picked[category] ?: continue
+                                    details[category] = requireNotNull(
+                                        service.previewEvidence(target, category, id)) {
+                                        "Chosen formula must still match the saved history"
+                                    }
+                                }
+                                lockEvidence = details.toMap()
+                                confirmLock = true
+                            } catch (_: CancellationException) {
+                            } catch (failure: Exception) {
+                                error = discoveryError(failure, en)
+                            } finally {
+                                busy = false
+                                running = null
+                            }
+                        }
+                    },
+                    enabled = selectable,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (en) "Review and Lock" else "Formula စစ်ပြီး Lock လုပ်မည်")
                 }
                 if (!canLockNow) Text(
                     if (en) "The result cutoff has passed. New locks are disabled."
@@ -462,9 +521,22 @@ internal fun CherryDiscoveryPanel(
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text("${target.date} · ${target.session}")
                     CherryDiscoveryKind.entries.forEach { item ->
-                        Text(discoveryKindLabel(item, en) + ": " +
-                            (picked[item] ?: if (en) "Abstain" else "မရွေးထား"),
-                            style = MaterialTheme.typography.bodySmall)
+                        val evidence = lockEvidence[item]?.formula
+                        Text(
+                            discoveryKindLabel(item, en) + ": " +
+                                (evidence?.id ?: if (en) "Abstain" else "မရွေးထား"),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (evidence != null) {
+                            Text(
+                                "${evidence.expression} + ${evidence.offset} (mod 10) = " +
+                                    "${evidence.currentDigit} · " +
+                                    (if (en) "Historical streak " else "သမိုင်းကိုက်ညီမှု ") +
+                                    "${evidence.historicalStreak}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                     Text(if (en)
                         "This local record cannot be edited after the result."
@@ -474,7 +546,10 @@ internal fun CherryDiscoveryPanel(
             },
             confirmButton = {
                 TextButton(
-                    enabled = !busy && canLockNow,
+                    enabled = !busy && canLockNow &&
+                        picked.all { (category, id) ->
+                            id == null || lockEvidence[category]?.formula?.id == id
+                        },
                     onClick = {
                         confirmLock = false
                         busy = true
@@ -505,7 +580,11 @@ internal fun CherryDiscoveryPanel(
 }
 
 @Composable
-private fun CherryDiscoveryFormulaCard(formula: CherryDiscoveredFormula, en: Boolean) {
+private fun CherryDiscoveryFormulaCard(
+    evidence: CherryDiscoveryFormulaEvidence,
+    en: Boolean,
+) {
+    val formula = evidence.formula
     Surface(
         color = Color(0xFFFFF6F8),
         shape = RoundedCornerShape(12.dp),
@@ -531,12 +610,26 @@ private fun CherryDiscoveryFormulaCard(formula: CherryDiscoveredFormula, en: Boo
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                (if (en) "Matched sessions: " else "ကိုက်ညီခဲ့သောပွဲများ: ") +
-                    formula.matchedDraws.take(10).joinToString(" · ") {
-                        "${it.date} ${if (it.session.name == "MORNING") "AM" else "PM"}"
-                    } + if (formula.matchedDraws.size > 10) " …" else "",
+                if (en) "Matched historical 2D results:"
+                else "သမိုင်းတွင် ကိုက်ညီခဲ့သော 2D Result များ:",
                 style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
             )
+            evidence.matched.take(10).forEach { draw ->
+                Text(
+                    "${draw.date} " +
+                        (if (draw.session.name == "MORNING") "AM" else "PM") +
+                        " · ${draw.digit}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (evidence.matched.size > 10) {
+                Text(
+                    if (en) "And ${evidence.matched.size - 10} earlier matched draws"
+                    else "ယခင်ကိုက်ညီခဲ့သောပွဲ ${evidence.matched.size - 10} ပွဲ ထပ်ရှိသည်",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
             Text(if (en) "Historical fit only, not a verified forecast."
                 else "အတိတ် Result ကိုက်ညီမှုသာဖြစ်ပြီး အနာဂတ်အနိုင် အထောက်အထားမဟုတ်ပါ။",
                 style = MaterialTheme.typography.labelSmall,

@@ -376,6 +376,8 @@ object CherryFormulaDiscoveryEngine {
         startPosition: Int = 0,
         closedDates: Set<LocalDate> = emptySet(),
         checkCancellation: () -> Unit = {},
+        /** Reports actual inspected grammar-slot position (0..828). */
+        onProgress: (Int) -> Unit = {},
     ): CherryDiscoveryAlternativeScan {
         require(startPosition >= 0)
         val rows = CherryDiscoveryHistoryNormalizer.newestBefore(
@@ -406,8 +408,12 @@ object CherryFormulaDiscoveryEngine {
             expressions(stage).map { stage to it }
         }
         val stop = grammar.size * 4
+        onProgress(startPosition.coerceAtMost(stop))
         for (index in startPosition until stop) {
-            if ((index and 31) == 0) checkCancellation()
+            if ((index and 15) == 0) {
+                checkCancellation()
+                onProgress(index)
+            }
             val wantedIndex = index % 4
             if (wantedIndex >= wanted.size) continue
             val (stage, expression) = grammar[index / 4]
@@ -453,10 +459,13 @@ object CherryFormulaDiscoveryEngine {
                 .joinToString("") {
                     (it.toInt() and 255).toString(16).padStart(2, '0')
                 }
+            checkCancellation()
+            onProgress(index + 1)
             return CherryDiscoveryAlternativeScan(
                 fingerprint, selected, index + 1, false, true, digest)
         }
         checkCancellation()
+        onProgress(stop)
         return CherryDiscoveryAlternativeScan(
             fingerprint, null, stop, true, true)
     }

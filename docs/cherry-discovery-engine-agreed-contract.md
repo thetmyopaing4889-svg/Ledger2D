@@ -181,3 +181,32 @@ call the engine complete because GitHub produced another successful build.
 - Release gating: compile/tests/lint on the exact UI commit; real handset
   screen-width, lifecycle, speed/RAM and actual post-result testing are not
   satisfied by CI. Local system time is not independently attested.
+
+## Better Data Math — Discovery UI correction audit (2026-11-15)
+
+- A newly found Search More candidate becomes the **displayed** formula,
+  regardless of any prior user-selected formula. It is **not** automatically
+  selected for Lock. The prior explicitly selected formula stays unchanged
+  until the user chooses another one or abstains.
+- Category request and response are bound to the same LONE/WAM/BREAK kind.
+  Category chips are disabled while a request is active; a domain-free
+  presentation reducer rejects wrong-category results. It never touches
+  the 2D Analysis screens or their separate truncation/new-old tests.
+- The green progress bar reports actual inspected positions in the finite
+  207*4 grammar cursor (rather than a fake timer or an unchanged checkpoint).
+  A conflated progress channel is delivered onto Compose's owning coroutine;
+  cancellation preserves the last committed cursor.
+- Formula detail verifies the selected candidate by history signature, grammar
+  position and behavior hash, and shows actual matched historical 2D pairs,
+  rather than only dates. Old imports are labeled **historical**, not claimed
+  to be newly verified winner records.
+- Lock confirmation first revalidates each chosen formula and then shows its
+  exact expression, offset, predicted category digit, historical streak and
+  target AM/PM. Explicit abstentions are visible. Save selection and local
+  pre-result Lock remain completely separate.
+- Add targeted presentation-state tests (new search displayed, old selection
+  retained, categories isolated, invalid selection rejected) plus end-to-end
+  service tests verifying evidence pairs and monotonic real search progress.
+- CI passing is only proof of compile/lint/automated tests on that SHA.
+  Device-level screen rendering, cancellation responsiveness, memory and
+  measured timing still require physical-device QA before public release.

@@ -47,6 +47,7 @@ object CherryDiscoverySearchMore {
         previous: CherryDiscoverySearchCursor? = null,
         closedDates: Set<LocalDate> = emptySet(),
         checkCancellation: () -> Unit = {},
+        onProgress: (Int) -> Unit = {},
     ): CherryDiscoverySearchCursor {
         checkCancellation()
         val old = previous?.takeIf {
@@ -79,6 +80,7 @@ object CherryDiscoverySearchMore {
                 history = history, target = target, kind = kind,
                 startPosition = position, closedDates = closedDates,
                 checkCancellation = checkCancellation,
+                onProgress = onProgress,
             )
             // The immutable input list supplied by the caller must be
             // consistent within this operation, even during async refresh.

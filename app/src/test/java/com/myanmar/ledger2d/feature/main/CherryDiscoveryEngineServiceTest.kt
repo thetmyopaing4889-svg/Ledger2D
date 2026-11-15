@@ -135,8 +135,26 @@ class CherryDiscoveryEngineServiceTest {
             val preview = reopened.preview(target, CherryDiscoveryKind.LONE,
                 earlierId, asOfBefore)
             assertEquals(earlierId, preview?.id)
+            val evidence = requireNotNull(reopened.previewEvidence(
+                target, CherryDiscoveryKind.LONE, earlierId, asOfBefore))
+            assertEquals(preview, evidence.formula)
+            assertEquals(preview?.matchedDraws?.size, evidence.matched.size)
+            assertTrue(evidence.matched.isNotEmpty())
+            assertTrue(evidence.matched.all { it.digit == "00" })
+            assertNull(reopened.previewEvidence(target, CherryDiscoveryKind.LONE,
+                "unknown-formula-id", asOfBefore))
             assertNull(reopened.preview(target, CherryDiscoveryKind.LONE,
                 "unknown-formula-id", asOfBefore))
+
+            // The UI observes REAL scanned positions, not an animation timer.
+            val progress = mutableListOf<Int>()
+            val third = reopened.searchMore(
+                target, CherryDiscoveryKind.LONE, asOfBefore,
+                onProgress = { progress.add(it) })
+            assertTrue(progress.isNotEmpty())
+            assertEquals(third.cursor.nextPosition, progress.last())
+            assertTrue(progress.zipWithNext().all { (a, b) -> b >= a })
+            assertTrue(progress.all { it in 0..828 })
 
             val selections = CherryDiscoveryKind.entries.associateWith {
                 if (it == CherryDiscoveryKind.LONE) earlierId else null
