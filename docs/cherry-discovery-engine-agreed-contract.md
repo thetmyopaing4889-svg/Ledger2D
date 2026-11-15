@@ -78,10 +78,12 @@ digit-category match is not an exact two-digit result match.
 2. Confirm all 207 shapes, candidate enumeration order, offset uniqueness,
    stage progress and search exhaustion with adversarial fixtures and
    non-constant historical sequences. Fix any regression.
-3. Finish the newest-203-slot repository read path with priority-aware
-   resolution and missing-draw validation, without deleting archive data.
-4. Confirm state persistence and honest error recovery for UI-free search
-   sessions, not just the local prospective trial journal.
+3. Verify the experimental newest-203-slot adapter's priority-aware Room
+   queries and missing-draw/finality rules. It reads at most 256 rows per
+   input source and passes at most 203 slots to formula evaluation.
+4. Verify the engine-only cursor checkpoint and database-bounded adapter with
+   Robolectric and a restart/reload integration test; a successful build of
+   this exact branch commit is required.
 5. Profile performance and cancellation on a real Android handset,
    including repeated search, rotation/background and RAM pressure.
 6. Compare held-out and genuinely locked future trials with category-specific
@@ -95,3 +97,30 @@ digit-category match is not an exact two-digit result match.
 Distinguish: (a) code committed, (b) passing CI on **that exact commit**,
 (c) real-device verified, (d) empirically validated future outcomes. Never
 call the engine complete because GitHub produced another successful build.
+
+## Engine-only completion candidate (requires CI on this commit)
+
+- Added bounded Room queries to each of four result/tombstone sources, preserving
+  existing observers, read/write behavior and full historical archive.
+- Added a deterministic 203-slot projection through the existing verified
+  winner/daily/history merge, with closed-day/withdrawn-winner handling.
+- Added `CherryDiscoveryCheckpoint` and `CherryDiscoveryCursorStore`:
+  resume last offered formula, best fit and exact grammar scan position after
+  a process restart; reject stale overwrites; discard corrected history only
+  for the search cursor, never for locked future trials. The leaderboard is
+  reconstructed instead of redundantly persisted.
+- Added `CherryDiscoveryEngineService`: explicit search, explicit lock, and
+  explicit confirmed-result recording, with bounded IO reads and Default
+  coroutine computation. No automatic background searching or Compose work.
+- Added Room/Robolectric integration tests for 350-row archive equivalence,
+  winner precedence, deleted winner tombstones, current-day cutoff, search
+  restart/continuation, stale cursor protection and pre-result lock settlement.
+- Search remains a finite 207-shape grammar plus result-derived offsets. Broad
+  unconstrained formula search is not certified as useful: adding thousands
+  of formulas without independent validation would greatly increase data
+  mining/overfitting. Extending the grammar is a separate researched option,
+  not proof of a higher future hit rate.
+- Before user-facing integration: last CI run must be successful for this
+  exact commit; on-phone speed/memory tests and source-finality integration
+  remain explicit limits. Local timestamps remain unverified and cannot be
+  presented as audited real-time evidence.
