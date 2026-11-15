@@ -40,6 +40,22 @@ The regression benchmark `CherryDiscoveryBoundedHistoryTest` tests **200, 500, 1
 
 Do not set brittle absolute latency thresholds on shared GitHub runners. Report observed timings **only after CI actually prints them**.
 
+## Observed first GitHub JVM benchmark (#1601)
+
+The 2026-11-15 CI run [#1601](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/43672804984) passed all unit tests, lint, debug and release builds. The deliberately all-00 worst-case fixture measured these **single-run** times (four stages / 207 expression shapes):
+
+| Input historical draws | Draws scored | GitHub runner elapsed |
+| --- | ---: | ---: |
+| 200 | 199 (one lag needed) | 117 ms |
+| 500 | 200 | 63 ms |
+| 1,000 | 200 | 70 ms |
+| 3,000 | 200 | 100 ms |
+
+- Signatures remained bounded at 4,407–4,473 characters; the same retained formulas were produced for 500, 1,000 and 3,000 input sizes.
+- The separate synthetic research fixture had 1,044 eligible draws in its two-year period and 1,566 in its three-year period, **sampling 16 temporally spread targets for the unit test** (the actual research-mode default is 80).
+- These timings are **not a mobile phone benchmark**, do not constitute a latency guarantee, and are not a controlled median across multiple warm runs.
+- The subsequent optimization to allocate matched-draw lists **only for retained formulas** was committed *after* #1601, so any newer timing requires its own verified run.
+
 ## Remaining device and future-usage release gates
 
 - **Android phone tests**: low-end / 2–4GB RAM device, performance under UI navigation, app background/foreground, quick repeated clicks, cancellation, rotation, battery saver and database imports. No Android profiling has yet proven the UI will never stutter.
