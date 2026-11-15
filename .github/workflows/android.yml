@@ -30,6 +30,7 @@ jobs:
           for path in glob.glob('app/build/test-results/testDebugUnitTest/*.xml'):
               if not any(name in path for name in (
                   'CherryDiscovery2026CoverageTest',
+                  'CherryDiscovery2023HoldoutTest',
                   'CherryFormulaDiscoveryEngineTest',
               )):
                   continue
