@@ -44,6 +44,11 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     fun tr(mm: String, english: String) = if(en) english else mm
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    // Keep the discovery entry point separate from the existing 210 Gemini
+    // research variants, Champion and summary selection.
+    val discoveryService = remember(context, container) {
+        CherryDiscoveryEngineService(context, container.database)
+    }
     val originalSource=remember(context){
         runCatching {
             context.assets.open("two_d_rules_source.txt")
@@ -341,6 +346,13 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 en=en,
                                 onPick={selectedPick=it},
                                 onOriginal={selectedOriginal=it}
+                            )
+                        }
+                        item {
+                            CherryDiscoveryPanel(
+                                service = discoveryService,
+                                target = target,
+                                en = en,
                             )
                         }
                     }

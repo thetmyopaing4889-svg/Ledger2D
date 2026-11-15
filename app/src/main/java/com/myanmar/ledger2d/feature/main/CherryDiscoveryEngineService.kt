@@ -4,6 +4,8 @@ import android.content.Context
 import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryBackgroundRunner
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
+import com.myanmar.ledger2d.core.domain.CherryDiscoveredFormula
+import com.myanmar.ledger2d.core.domain.CherryFormulaDiscoveryEngine
 import com.myanmar.ledger2d.core.domain.CherryDiscoverySearchCursor
 import com.myanmar.ledger2d.core.domain.CherryProspectiveTrialJournal
 import com.myanmar.ledger2d.core.domain.HistoricDraw
@@ -60,6 +62,71 @@ internal class CherryDiscoveryEngineService(
             databaseRowsRead = data.databaseRowsRead,
             completedSlotsScored = data.draws.size.coerceAtMost(200),
         )
+    }
+
+    /** Restore persisted progress without running a fresh Search More. */
+    suspend fun savedCursors(
+        target: DrawIdentity,
+        asOf: LocalDateTime = LocalDateTime.now(yangon),
+    ): Map<CherryDiscoveryKind, CherryDiscoverySearchCursor?> = mutex.withLock {
+        val data = source.latest(target, asOf)
+        withContext(Dispatchers.Default) {
+            CherryDiscoveryKind.entries.associateWith { kind ->
+                cursors.resume(kind, target, data.draws, data.closedDates)
+            }
+        }
+    }
+
+    /**
+     * Rebuild exactly one previously offered candidate for user inspection.
+     * Verifies the unchanged result window and semantic behavior fingerprint.
+     * Does not search or commit a new offer.
+     */
+    suspend fun preview(
+        target: DrawIdentity,
+        kind: CherryDiscoveryKind,
+        formulaId: String,
+        asOf: LocalDateTime = LocalDateTime.now(yangon),
+    ): CherryDiscoveredFormula? = mutex.withLock {
+        val data = source.latest(target, asOf)
+        withContext(Dispatchers.Default) {
+            val cursor = cursors.resume(kind, target, data.draws, data.closedDates)
+                ?: return@withContext null
+            if (formulaId !in cursor.offeredIds) return@withContext null
+            val position = cursor.offeredPositions[formulaId]
+                ?: return@withContext null
+            val scan = CherryFormulaDiscoveryEngine.nextAlternative(
+                data.draws, target, kind, position, data.closedDates)
+            scan.candidate?.takeIf {
+                scan.historySignature == cursor.engine.historySignature &&
+                    scan.nextPosition == position + 1 &&
+                    scan.behaviorKey == cursor.offeredBehaviors[formulaId] &&
+                    it.id == formulaId
+            }
+        }
+    }
+
+    /**
+     * Explicit refresh of previously locked, unfinished trials from persisted
+     * winner/daily sources only. A user action invokes this; it never starts a
+     * new formula search and never revises existing settlement records.
+     */
+    suspend fun checkConfirmedResults(
+        asOf: LocalDateTime = LocalDateTime.now(yangon),
+        checkedAt: Instant = Instant.now(),
+    ): CherryProspectiveTrialJournal = mutex.withLock {
+        var journal = withContext(Dispatchers.IO) { trials.load() }
+        val done = journal.verifiedResults().map { it.target }.toSet()
+        for (lock in journal.lockedTrials()) {
+            if (lock.target in done || checkedAt.isBefore(lock.cutoffAt)) continue
+            val final = source.confirmedFor(lock.target, asOf) ?: continue
+            val updated = withContext(Dispatchers.IO) {
+                journal.evaluate(final, checkedAt)
+            }
+            withContext(Dispatchers.IO) { trials.persist(updated) }
+            journal = updated
+        }
+        journal
     }
 
     /** Only a previously offered formula (or the preserved best) can be locked. */

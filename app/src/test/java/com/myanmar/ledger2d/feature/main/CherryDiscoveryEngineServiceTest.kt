@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.room.Room
 import com.myanmar.ledger2d.core.database.HistoryResultEntity
 import com.myanmar.ledger2d.core.database.LedgerDatabase
+import com.myanmar.ledger2d.core.database.WinningNumberEntity
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
 import com.myanmar.ledger2d.core.domain.CherryProspectiveTrialClock
 import com.myanmar.ledger2d.core.domain.DrawSchedule
@@ -101,4 +102,76 @@ class CherryDiscoveryEngineServiceTest {
             assertEquals(lock.lockedTrials(), laterInstance.trials().lockedTrials())
         } finally { db.close() }
     }
+    @Test fun uiServiceRestoresSearchAndSettlesOnlyStoredFinalResult() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(
+            context, LedgerDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val days = generateSequence(LocalDate.of(2026, 11, 2)) {
+                it.plusDays(1)
+            }.filter(DrawSchedule::isWeekday).take(7).toList()
+            db.historyResultDao().upsertAll(days.take(6).map { day ->
+                HistoryResultEntity(
+                    date = day, morning2d = "00", evening2d = "00",
+                    morningSet = "", morningValue = "",
+                    eveningSet = "", eveningValue = "",
+                    modern930 = "", internet930 = "",
+                    modern200 = "", internet200 = "",
+                )
+            })
+            val target = DrawIdentity(days[6], DrawSession.MORNING)
+            val asOfBefore = LocalDateTime.of(target.date, LocalTime.of(11, 0))
+            val service = CherryDiscoveryEngineService(context, db)
+            assertTrue(service.savedCursors(target, asOfBefore)
+                .values.all { it == null })
+            assertTrue(service.trials().lockedTrials().isEmpty())
+
+            val first = service.searchMore(target, CherryDiscoveryKind.LONE, asOfBefore)
+            val second = service.searchMore(target, CherryDiscoveryKind.LONE, asOfBefore)
+            val earlierId = requireNotNull(first.cursor.newCandidate).id
+            assertNotEquals(earlierId, second.cursor.newCandidate?.id)
+            val reopened = CherryDiscoveryEngineService(context, db)
+            assertEquals(second.cursor,
+                reopened.savedCursors(target, asOfBefore)[CherryDiscoveryKind.LONE])
+            val preview = reopened.preview(target, CherryDiscoveryKind.LONE,
+                earlierId, asOfBefore)
+            assertEquals(earlierId, preview?.id)
+            assertNull(reopened.preview(target, CherryDiscoveryKind.LONE,
+                "unknown-formula-id", asOfBefore))
+
+            val selections = CherryDiscoveryKind.entries.associateWith {
+                if (it == CherryDiscoveryKind.LONE) earlierId else null
+            }
+            val cutoff = CherryProspectiveTrialClock.cutoff(target)
+            val locked = reopened.lock(target, selections, cutoff.minusSeconds(90),
+                asOfBefore)
+            val pending = reopened.checkConfirmedResults(
+                asOfBefore, cutoff.plusSeconds(60))
+            assertEquals(locked.lockedTrials(), pending.lockedTrials())
+            assertTrue(pending.verifiedResults().isEmpty())
+
+            // A saved result before its publication boundary cannot settle.
+            db.winningNumberDao().upsert(WinningNumberEntity(
+                date = target.date, session = target.session,
+                digit = "00", createdAt = 1, updatedAt = 1))
+            assertTrue(reopened.checkConfirmedResults(
+                asOfBefore, cutoff.plusSeconds(60)).verifiedResults().isEmpty())
+
+            val asOfAfter = LocalDateTime.of(target.date, LocalTime.of(12, 30))
+            val checked = reopened.checkConfirmedResults(
+                asOfAfter, cutoff.plusSeconds(60))
+            assertEquals(1, checked.verifiedResults().size)
+            assertEquals("00", checked.verifiedResults().single().actualPair)
+            assertEquals(HistoricSource.WINNER,
+                checked.verifiedResults().single().resultSource)
+            assertEquals(1, checked.stats(CherryDiscoveryKind.LONE).checked)
+            assertEquals(locked.lockedTrials(), checked.lockedTrials())
+            // A second result-check cannot rewrite a settled future prediction.
+            assertEquals(checked.verifiedResults(),
+                reopened.checkConfirmedResults(
+                    asOfAfter, cutoff.plusSeconds(120)).verifiedResults())
+        } finally {
+            db.close()
+        }
+    }
+
 }

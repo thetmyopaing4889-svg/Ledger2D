@@ -148,3 +148,36 @@ call the engine complete because GitHub produced another successful build.
   with up to 4 result-derived offsets per expression; no guarantee of future
   prediction advantage. Physical-device latency/RAM testing and independent
   prospective timestamp attestation are not established by desktop CI.
+
+## Better Data Math — isolated UI integration (first implementation, 2026-11-15)
+
+- The existing Better Data Math frame keeps its original selected math pairs,
+  Champion status, eight original DOC formulas, and 210 Gemini research variants.
+  `CherryDiscoveryPanel` is a NEW separate item after the existing Math frame.
+- The UI restores stored search cursors and local locked trials on entry. **It
+  never starts discovery or advances a grammar stage on composition or tab
+  switching.** Search More happens only after tapping its explicit control.
+- The panel allows LONE, WAM and BREAK to be searched separately, shows the
+  actual finite scan position (0–828) and grammar stages (0–4), and uses a
+  green indeterminate spinner while background search is running. Its cancel
+  action cancels the coroutine without mutating prior persisted checkpoints.
+- The user may select any previously offered formula and inspect its
+  reconstructed expression/offset/predicted category digit. The preview
+  service rechecks grammar position, current bounded history fingerprint, and
+  semantic behavior hash. User selection and explicit abstention are distinct.
+- One confirmation locks all three category choices (including abstentions)
+  to the exact future AM/PM target, only before the cutoff. Saved selections
+  in existing Better Data are a separate unrelated feature.
+- The explicit 'Check confirmed results' button reconciles pending local
+  trials from bounded saved Winner/Daily sources through the same precedence,
+  post-cutoff and manual-deletion policy as historical analytics. It does not
+  search formulas, accept imported history as a final result, or rewrite a
+  settled trial. This phase does NOT claim a persistent background result
+  listener outside the Discovery panel; explicit button/revisit is supported.
+- The existing Analysis, Research Atlas, Rules Library, LIVE, Ledger, Current,
+  Born, Summary, Gemini and Champion source files are unchanged. No automatic
+  promotion of Discovery results to Champion or Summary, and no use of
+  prospective results in operational winner writes.
+- Release gating: compile/tests/lint on the exact UI commit; real handset
+  screen-width, lifecycle, speed/RAM and actual post-result testing are not
+  satisfied by CI. Local system time is not independently attested.

@@ -38,6 +38,39 @@ internal class CherryDiscoveryBoundedSource(private val database: LedgerDatabase
         private val YANGON = ZoneId.of("Asia/Yangon")
     }
 
+    /**
+     * Resolve a single locked session from persisted, final result sources.
+     * Never accept a historical import as proof of a prospective outcome.
+     * Uses the SAME winner/daily/tombstone precedence as Analysis.
+     */
+    suspend fun confirmedFor(
+        target: DrawIdentity,
+        asOf: LocalDateTime = LocalDateTime.now(YANGON),
+    ): HistoricDraw? = withContext(Dispatchers.IO) {
+        if (target.date.isAfter(asOf.toLocalDate())) return@withContext null
+        if (database.closedDayDao().between(target.date, target.date).isNotEmpty())
+            return@withContext null
+        val daily = database.liveDailyResultDao()
+            .newestThrough(target.date, 1).filter { it.date == target.date }
+        val winners = database.winningNumberDao()
+            .newestThrough(target.date, 4).filter { it.date == target.date }
+        val locks = database.manualWinnerLockDao()
+            .newestThrough(target.date, 4).filter { it.date == target.date }
+        val merged = Historic2DDataSource.resolve(
+            liveDaily = daily,
+            history = emptyList(),
+            today = asOf.toLocalDate(),
+            now = asOf.toLocalTime(),
+            winners = winners,
+            manualLocks = locks,
+        )
+        merged.draws.singleOrNull {
+            it.date == target.date && it.session == target.session &&
+                (it.source == com.myanmar.ledger2d.core.domain.HistoricSource.WINNER ||
+                    it.source == com.myanmar.ledger2d.core.domain.HistoricSource.DAILY)
+        }
+    }
+
     suspend fun latest(
         target: DrawIdentity,
         asOf: LocalDateTime = LocalDateTime.now(YANGON),

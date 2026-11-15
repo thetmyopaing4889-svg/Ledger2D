@@ -113,4 +113,36 @@ class CherryDiscoveryBoundedSourceTest {
             assertEquals("79", after.draws.single().digit)
         } finally { database.close() }
     }
+    @Test fun confirmedResultQueryUsesSavedWinnerAndRespectsTombstone() =
+        runBlocking {
+            val database = db()
+            try {
+                val day = LocalDate.of(2026, 11, 16)
+                val target = DrawIdentity(day, DrawSession.MORNING)
+                val source = CherryDiscoveryBoundedSource(database)
+                database.historyResultDao().upsert(row(day, "11", "22"))
+                val before = LocalDateTime.of(day, LocalTime.of(11, 50))
+                val after = LocalDateTime.of(day, LocalTime.of(12, 30))
+                // A history import is never prospective result evidence.
+                assertNull(source.confirmedFor(target, before))
+                assertNull(source.confirmedFor(target, after))
+                val saved = WinningNumberEntity(
+                    date = day, session = DrawSession.MORNING,
+                    digit = "79", createdAt = 1, updatedAt = 1)
+                database.winningNumberDao().upsert(saved)
+                assertNull(source.confirmedFor(target, before))
+                assertEquals("79", source.confirmedFor(target, after)?.digit)
+                assertEquals(HistoricSource.WINNER,
+                    source.confirmedFor(target, after)?.source)
+                // Deleting a winner must never resurrect the historical
+                // row as a "confirmed" result.
+                database.winningNumberDao().delete(saved)
+                database.manualWinnerLockDao().upsert(
+                    ManualWinnerLockEntity(
+                        date = day, session = DrawSession.MORNING,
+                        createdAt = 1, updatedAt = 1))
+                assertNull(source.confirmedFor(target, after))
+            } finally { database.close() }
+        }
+
 }
