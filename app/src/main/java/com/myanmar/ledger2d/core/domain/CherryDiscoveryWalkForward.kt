@@ -12,6 +12,13 @@ import java.time.LocalDate
  * it with the observed result of T. Historical fit and this held-out result
  * are intentionally recorded as separate facts.
  */
+/**
+ * Research-only comparisons. The default LONGEST preserves the agreed
+ * user-facing search target. SIMPLEST is a diagnostic counterfactual, not
+ * a production recommendation until independent results justify it.
+ */
+enum class CherryDiscoverySelectionPolicy { LONGEST, SIMPLEST }
+
 data class CherryDiscoveryForwardCheck(
     val target: DrawIdentity,
     val actualPair: String,
@@ -73,6 +80,7 @@ object CherryDiscoveryWalkForward {
         lastTargets: Int = 20,
         stages: Int = CherryFormulaDiscoveryEngine.STAGE_COUNT,
         closedDates: Set<LocalDate> = emptySet(),
+        policy: CherryDiscoverySelectionPolicy = CherryDiscoverySelectionPolicy.LONGEST,
     ): CherryDiscoveryForwardReport {
         require(lastTargets > 0)
         require(stages in 1..CherryFormulaDiscoveryEngine.STAGE_COUNT)
@@ -96,7 +104,14 @@ object CherryDiscoveryWalkForward {
                 }
                 val state = requireNotNull(result)
                 for (kind in CherryDiscoveryKind.entries) {
-                    val choice = state.longest(kind)
+                    val choice = when (policy) {
+                        CherryDiscoverySelectionPolicy.LONGEST -> state.longest(kind)
+                        CherryDiscoverySelectionPolicy.SIMPLEST ->
+                            state.formulas.filter { it.kind == kind }
+                                .maxWithOrNull(compareBy<CherryDiscoveredFormula> {
+                                    -it.discoveredAtStage
+                                }.thenBy { it.historicalStreak })
+                    }
                     add(CherryDiscoveryForwardCheck(
                         target = t,
                         actualPair = actual.digit,
