@@ -1,5 +1,7 @@
 package com.myanmar.ledger2d.core.domain
 
+import java.util.concurrent.CancellationException
+
 /**
  * Experimental UI-free search controller. Search only runs from an explicit
  * invocation. A future Android service must call this off the UI thread and
@@ -137,6 +139,13 @@ internal object CherryV2TimedSearch {
                     cursor, inspected, newlyRetained.toSet(), elapsed(),
                     StopReason.TIME_LIMIT, uniqueScored, duplicates, unsupported,
                 )
+            } catch (cancelled: CancellationException) {
+                // Preserve all fully completed formulas even if cancellation
+                // comes before the next 64-expression periodic checkpoint.
+                // The currently interrupted expression was never committed.
+                cursor = snapshot()
+                onCheckpoint(cursor)
+                throw cancelled
             }
         }
     }
