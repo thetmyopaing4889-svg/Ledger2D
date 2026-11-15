@@ -63,7 +63,7 @@ class CherryV2GuidedScheduleTest {
         repeat(28) {
             val last = sequence.last()
             val top = (last[0].digitToInt() + last[1].digitToInt()) % 10
-            sequence.add("$top${(top + 3) % 10}")
+            sequence.add("$top${(top + 1) % 10}")
         }
         val days = generateSequence(LocalDate.parse("2026-08-03")) {
             it.plusDays(1)
