@@ -23,16 +23,22 @@ data class CherryProspectiveChoice(
     val kind: CherryDiscoveryKind,
     /** Null represents an explicitly recorded abstention. */
     val formulaId: String?,
+    /** Keep the exact discovered expression and offset for later audit. */
+    val expression: String?,
+    val offset: Int?,
     val outputDigit: Int?,
     val historicalFitStreak: Int?,
     val discoveredAtStage: Int?,
 ) {
     init {
         if (formulaId == null) {
-            require(outputDigit == null && historicalFitStreak == null &&
+            require(expression == null && offset == null &&
+                outputDigit == null && historicalFitStreak == null &&
                 discoveredAtStage == null)
         } else {
             require(formulaId.isNotBlank())
+            require(!expression.isNullOrBlank())
+            require(offset != null && offset in 0..9)
             require(outputDigit != null && outputDigit in 0..9)
             require(historicalFitStreak != null && historicalFitStreak >=
                 CherryFormulaDiscoveryEngine.MIN_STREAK)
@@ -134,8 +140,9 @@ class CherryProspectiveTrialJournal private constructor(
                     ?: throw IllegalArgumentException(
                         "Selection is not in the frozen discovery session: $kind/$id")
             CherryProspectiveChoice(
-                kind, formula?.id, formula?.currentDigit,
-                formula?.historicalStreak, formula?.discoveredAtStage,
+                kind, formula?.id, formula?.expression, formula?.offset,
+                formula?.currentDigit, formula?.historicalStreak,
+                formula?.discoveredAtStage,
             )
         }
         val digest = MessageDigest.getInstance("SHA-256")
