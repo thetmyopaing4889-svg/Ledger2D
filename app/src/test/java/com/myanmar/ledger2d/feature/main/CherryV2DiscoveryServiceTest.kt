@@ -103,6 +103,11 @@ class CherryV2DiscoveryServiceTest {
             val existingRow = requireNotNull(db.historyResultDao().get(updatedDate))
             db.historyResultDao().upsert(existingRow.copy(morning2d = "81"))
             assertEquals("81", db.historyResultDao().get(updatedDate)?.morning2d)
+            val resolved = CherryDiscoveryBoundedSource(db).latest(
+                target, asOf, slotLimit = 212)
+            assertEquals("81", resolved.draws.single {
+                it.date == updatedDate && it.session == DrawSession.MORNING
+            }.digit)
             val revised = CherryV2DiscoveryService(app, db)
             assertNull(revised.saved(target, CherryDiscoveryKind.LONE, asOf))
             val fresh = revised.search(target, CherryDiscoveryKind.LONE,
