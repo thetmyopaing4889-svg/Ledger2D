@@ -111,7 +111,7 @@ object CherryDiscoveryWalkForward {
             }
         )
         return replayAtIndices(
-            rows, rows.indices.takeLast(lastTargets), stages,
+            rows, (maxOf(0, rows.size - lastTargets) until rows.size).toList(), stages,
             closedDates, policy, checkCancellation,
         )
     }
