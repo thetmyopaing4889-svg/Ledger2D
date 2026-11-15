@@ -33,11 +33,16 @@ class CherryProspectiveTrialStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(
         "cherry_prospective_trial_v1", Context.MODE_PRIVATE)
 
-    @Synchronized
-    fun load(): CherryProspectiveTrialJournal {
+    companion object {
+        // Serialize read/compare/write even when callers create two store
+        // objects. This remains single-process protection, not notarization.
+        private val processLock = Any()
+    }
+
+    fun load(): CherryProspectiveTrialJournal = synchronized(processLock) {
         val saved = prefs.getString("snapshot", null)
-            ?: return CherryProspectiveTrialJournal.empty()
-        return try {
+            ?: return@synchronized CherryProspectiveTrialJournal.empty()
+        try {
             CherryProspectiveTrialCodec.decode(saved)
         } catch (error: Exception) {
             throw IllegalStateException(
@@ -49,8 +54,7 @@ class CherryProspectiveTrialStore(context: Context) {
      * Append-only at the logical journal level. Rejects replacing any existing
      * locked prediction, erasing a settled result, or rewriting a past hit/miss.
      */
-    @Synchronized
-    fun persist(next: CherryProspectiveTrialJournal) {
+    fun persist(next: CherryProspectiveTrialJournal) = synchronized(processLock) {
         val prior = load()
         val oldLocks = prior.lockedTrials()
         val oldResults = prior.verifiedResults()
