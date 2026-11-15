@@ -36,12 +36,13 @@ jobs:
                   'CherryDiscoveryBoundedHistoryTest',
                   'CherryDiscoveryResearchWindowTest',
                   'CherryDiscoveryWalkForwardTest',
+                  'CherryV2ActualSeedAuditTest',
               )):
                   continue
               root = ET.parse(path).getroot()
               for block in root.findall('.//system-out'):
                   for line in (block.text or '').splitlines():
-                      if any(tag in line for tag in ('CHERRY_DISCOVERY_', 'CHERRY_SELECTION_', 'CHERRY_NULL_', 'CHERRY_BOUNDED_', 'CHERRY_RESEARCH_')):
+                      if any(tag in line for tag in ('CHERRY_DISCOVERY_', 'CHERRY_SELECTION_', 'CHERRY_NULL_', 'CHERRY_BOUNDED_', 'CHERRY_RESEARCH_', 'CHERRY_V2_SEED_')):
                           print(line.strip())
           PY
       - name: Show unit test failures
