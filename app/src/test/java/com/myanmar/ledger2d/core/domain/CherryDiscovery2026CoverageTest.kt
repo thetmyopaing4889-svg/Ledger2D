@@ -65,7 +65,7 @@ class CherryDiscovery2026CoverageTest {
                         later!! >= earlier)
                 }
                 assertTrue(newer.heldOutHit == null ||
-                    newer.outputDigit in 0..9)
+                    (newer.outputDigit?.let { it in 0..9 } == true))
             }
             println("CHERRY_DISCOVERY_2026 kind=$kind targets=${b.targetCount}" +
                 " oneStageChecked=${a.checked} oneStageHits=${a.hits}" +
