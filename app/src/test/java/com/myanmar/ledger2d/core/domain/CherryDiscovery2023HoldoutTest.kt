@@ -54,6 +54,19 @@ class CherryDiscovery2023HoldoutTest {
         }
     }
 
+    @Test fun simplicityCandidateIsAnIndependentOfflineDiagnostic() {
+        val (draws, closed) = fixture()
+        val alternative = CherryDiscoveryWalkForward.replay(
+            draws, lastTargets = 80, stages = 4, closedDates = closed,
+            policy = CherryDiscoverySelectionPolicy.SIMPLEST)
+        for (kind in CherryDiscoveryKind.entries) {
+            val s = alternative.stats(kind)
+            assertEquals(80, s.checked + s.noSelection)
+            println("CHERRY_SELECTION_2023 kind=" + kind +
+                " simplicityHits=" + s.hits + "/" + s.checked)
+        }
+    }
+
     companion object {
         private val DATA = """
             02-01-2023,Off,-
