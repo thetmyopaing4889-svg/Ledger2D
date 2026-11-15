@@ -17,6 +17,8 @@ internal object CherryV2OrderBenchmark {
 
     enum class Order { RAW, GUIDED }
 
+    private class TimeBudgetReached : RuntimeException()
+
     data class Metrics(
         val order: Order,
         val inspected: Int,
@@ -70,6 +72,11 @@ internal object CherryV2OrderBenchmark {
         checkCancellation: () -> Unit,
     ): Metrics {
         val started = nanoTime()
+        fun elapsed() = (nanoTime() - started).coerceAtLeast(0L)
+        fun checkBudget() {
+            checkCancellation()
+            if (elapsed() >= budgetNanos) throw TimeBudgetReached()
+        }
         var inspected = 0
         var scorable = 0
         var duplicates = 0
@@ -81,17 +88,17 @@ internal object CherryV2OrderBenchmark {
         // oldest behavior fingerprints may be revisited after eviction.
         val seen = LinkedHashSet<String>()
         while (!context.blocked && inspected < limit) {
-            checkCancellation()
-            if ((nanoTime() - started).coerceAtLeast(0L) >= budgetNanos) break
+            try {
+            checkBudget()
             val index = BigInteger.valueOf(inspected.toLong())
             val expression = when (order) {
                 Order.RAW -> CherryV2ExpandableGrammar.expressionAt(
-                    index, checkCancellation)
+                    index, ::checkBudget)
                 Order.GUIDED -> CherryV2GuidedSchedule.expressionAt(
-                    index, checkCancellation)
+                    index, ::checkBudget)
             }
             val trace = CherryV2HistoricalEvaluator.trace(
-                context, expression, checkCancellation, category)
+                context, expression, ::checkBudget, category)
             // A candidate is committed only after all its computations.
             if (trace != null) {
                 scorable++
@@ -99,7 +106,7 @@ internal object CherryV2OrderBenchmark {
                     duplicates++
                 } else {
                     val fits = CherryV2HistoricalEvaluator.evaluateTrace(
-                        context, category, index, trace, checkCancellation)
+                        context, category, index, trace, ::checkBudget)
                     distinct++
                     for (fit in fits) {
                         byStreak.putIfAbsent(fit.historicalStreak, inspected)
@@ -115,9 +122,13 @@ internal object CherryV2OrderBenchmark {
                     }
                 }
             }
+            checkBudget() // never include an unfinished candidate
             inspected++
+            } catch (_: TimeBudgetReached) {
+                break
+            }
         }
-        val elapsed = (nanoTime() - started).coerceAtLeast(0L)
+        val elapsed = elapsed()
         return Metrics(
             order = order,
             inspected = inspected,
