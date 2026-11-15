@@ -83,7 +83,9 @@ internal sealed class CherryV2Expression {
  * labeling and a recoverable cursor. This generator never starts work itself.
  */
 internal object CherryV2ExpandableGrammar {
-    const val VERSION = 1
+    // V2 schedule slots now interleave simple and guided candidates.
+    // Old checkpoints must not replay the same index against a new formula.
+    const val VERSION = CherryV2GuidedSchedule.VERSION
     val FIRST_INDEX: BigInteger = BigInteger.ZERO
     private val one = BigInteger.ONE
     private val two = BigInteger.valueOf(2)
