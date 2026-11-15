@@ -355,29 +355,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 onPick={selectedPick=it}
                             )
                         }
-                        item {
-                            CherryHeading(
-                                tr("အကျုံးဝင်သော သင်္ချာတွက်နည်းများ",
-                                    "Individual math formulas"),
-                                tr("နည်းတစ်ခုကိုနှိပ်ပြီး တွက်ချက်ပုံ၊ စစ်ချက်နှင့် ထွက်သောအတွဲများ ကြည့်ရန်",
-                                    "Tap a formula for its calculation, checks and pairs")
-                            )
-                        }
-                        // Exactly like CURRENT: each DOC formula is an independent
-                        // LazyColumn card, not nested behind an outer 8-formula gate.
-                        val mathFormulas=report.mathAnalysis.formulas
-                        if(mathFormulas.isEmpty()) item { CherryEmpty(en) }
-                        items(mathFormulas,key={ "math-doc-${it.id}" }){formula->
-                            CherryMathFormulaRuleCard(
-                                f=formula,
-                                all=report.math,
-                                champion=report.mathAnalysis.champions[formula.kind]==formula.id,
-                                source=originalSource,
-                                en=en,
-                                onPick={selectedPick=it},
-                                onOriginal={selectedOriginal=it}
-                            )
-                        }
+                        // The Champion stays directly below the prioritized picks.
                         item {
                             CherryMathSupportFrames(
                                 analysis=report.mathAnalysis,
@@ -385,7 +363,39 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 originalSource=originalSource,
                                 en=en,
                                 onPick={selectedPick=it},
+                                onOriginal={selectedOriginal=it},
+                                showWatches=false,
+                                showResearch=false
+                            )
+                        }
+                        item {
+                            CherryHeading(
+                                tr("တွက်နည်းများ","Math formulas"),
+                                tr("လုံးပိုင်၊ ဝမ်းချိန်း၊ ဘရိတ် ကတ်ကိုနှိပ်ပြီး သက်ဆိုင်ရာတွက်နည်းများ ကြည့်ရန်",
+                                    "Tap Lone, Wam or Break to see its formulas")
+                            )
+                        }
+                        item {
+                            CherryMathMethodCategories(
+                                analysis=report.mathAnalysis,
+                                all=report.math,
+                                originalSource=originalSource,
+                                en=en,
+                                onPick={selectedPick=it},
                                 onOriginal={selectedOriginal=it}
+                            )
+                        }
+                        // Gemini research remains below all original categories.
+                        item {
+                            CherryMathSupportFrames(
+                                analysis=report.mathAnalysis,
+                                all=report.math,
+                                originalSource=originalSource,
+                                en=en,
+                                onPick={selectedPick=it},
+                                onOriginal={selectedOriginal=it},
+                                showChampion=false,
+                                showWatches=false
                             )
                         }
                         // Keep Discovery unchanged, after all existing Math content.

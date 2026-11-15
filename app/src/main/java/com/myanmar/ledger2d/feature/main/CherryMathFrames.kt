@@ -281,6 +281,71 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
     }
 }
 
+
+/** LONE, WAM and BREAK are arranged as three category cards, never an 8-card list. */
+internal fun cherryMathCategoryKinds():List<String> = listOf("LONE","WAM","BREAK")
+
+@Composable internal fun CherryMathMethodCategories(
+    analysis:CherryMathAnalysis,all:List<CherryPick>,originalSource:String?,
+    en:Boolean,onPick:(CherryPick)->Unit,
+    onOriginal:(CherryOriginalReference)->Unit
+){
+    var openKind by rememberSaveable { mutableStateOf<String?>(null) }
+    Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)){
+            cherryMathCategoryKinds().forEach{kind->
+                val active=openKind==kind
+                val label=when(kind){
+                    "LONE"->if(en)"Lone" else "လုံးပိုင်"
+                    "WAM"->if(en)"Wam" else "ဝမ်းချိန်း"
+                    else->if(en)"Break" else "ဘရိတ်"
+                }
+                val count=analysis.formulas.count{it.kind==kind}
+                Surface(
+                    onClick={openKind=if(active)null else kind},
+                    modifier=Modifier.weight(1f),
+                    color=if(active)Color(0xFFFFE7EF) else Color.White,
+                    shape=RoundedCornerShape(16.dp),
+                    border=BorderStroke(1.dp,if(active)AppColors.PrimaryDeep else mathEdge)
+                ){
+                    Column(Modifier.fillMaxWidth().padding(horizontal=2.dp,vertical=13.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(5.dp)){
+                        Text(label,color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
+                            style=MaterialTheme.typography.bodyMedium,maxLines=1)
+                        Text(if(en)"$count methods" else "$count နည်း",
+                            style=MaterialTheme.typography.labelSmall,
+                            color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(if(active)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription=null,tint=AppColors.PrimaryDeep,
+                            modifier=Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+        openKind?.let{kind->
+            analysis.formulas.filter{it.kind==kind}.forEach{formula->
+                key(formula.id){
+                    CherryMathFormulaRuleCard(
+                        f=formula,all=all,
+                        champion=analysis.champions[formula.kind]==formula.id,
+                        source=originalSource,en=en,onPick=onPick,
+                        onOriginal=onOriginal
+                    )
+                }
+            }
+            // Original conditional watch explanations remain accessible inside
+            // the methods section, without changing the five-section ordering.
+            if(analysis.watches.isNotEmpty())
+                CherryMathSupportFrames(
+                    analysis=analysis,all=all,originalSource=originalSource,
+                    en=en,onPick=onPick,onOriginal=onOriginal,
+                    showChampion=false,showResearch=false
+                )
+        }
+    }
+}
+
 /**
  * Secondary Math panels remain separate from the eight visible rule cards.
  * Historical Champion, conditional original rules and Gemini research survive
@@ -289,7 +354,8 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
 @Composable internal fun CherryMathSupportFrames(
     analysis:CherryMathAnalysis,all:List<CherryPick>,originalSource:String?,
     en:Boolean,onPick:(CherryPick)->Unit,
-    onOriginal:(CherryOriginalReference)->Unit
+    onOriginal:(CherryOriginalReference)->Unit,
+    showChampion:Boolean=true,showWatches:Boolean=true,showResearch:Boolean=true
 ){
     var championOpen by rememberSaveable{mutableStateOf(false)}
     var watchesOpen by rememberSaveable{mutableStateOf(false)}
@@ -297,7 +363,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
     var poolOpen by rememberSaveable{mutableStateOf(false)}
     val overall=analysis.primaryChampion()
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
-        if(overall==null){
+        if(showChampion && overall==null){
             MathBox {
                 Row(Modifier.fillMaxWidth(),
                     verticalAlignment=Alignment.CenterVertically,
@@ -311,7 +377,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                         color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-        }else{
+        }else if(showChampion && overall!=null){
             MathFoldFrame(
                 title=if(en)"Champion" else "အကောင်းဆုံးတွက်နည်း",
                 summary=overall.name+" · "+overall.streak+
@@ -346,7 +412,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                     style=MaterialTheme.typography.bodySmall)
             }
         }
-        if(analysis.watches.isNotEmpty()){
+        if(showWatches && analysis.watches.isNotEmpty()){
             MathFoldFrame(
                 title=if(en)"Conditional original rules"
                     else "အခြေအနေလိုက် မူရင်းမူများ",
@@ -366,7 +432,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                 }
             }
         }
-        MathFoldFrame(
+        if(showResearch) MathFoldFrame(
             title=if(en)"Research · 210 variants" else "စမ်းသပ်တွက်နည်း · ၂၁၀",
             summary=null,
             expanded=researchOpen,

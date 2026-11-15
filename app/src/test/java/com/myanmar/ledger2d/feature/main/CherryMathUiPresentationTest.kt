@@ -12,6 +12,10 @@ class CherryMathUiPresentationTest {
         assertEquals("★☆☆☆☆", cherryMathStars(CherryMathGrade.C))
     }
 
+    @Test fun mathCategoryCardsUseLoneWamBreakOrder() {
+        assertEquals(listOf("LONE", "WAM", "BREAK"), cherryMathCategoryKinds())
+    }
+
     @Test fun everyStarRatingUsesExactlyFiveGlyphs() {
         CherryMathGrade.entries.forEach { grade ->
             val stars = cherryMathStars(grade)
