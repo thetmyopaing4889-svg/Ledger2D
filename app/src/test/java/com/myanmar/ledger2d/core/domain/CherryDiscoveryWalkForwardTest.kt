@@ -47,6 +47,23 @@ class CherryDiscoveryWalkForwardTest {
         }
     }
 
+    @Test fun pinnedHistoryHasAuditableHeldOutHitCounts() {
+        // These assertions are NOT estimates of real-world future accuracy.
+        // They are regression checks of the fixed 60-day historical fixture.
+        // Each 24-target test only discovers from data prior to that target.
+        val report = CherryDiscoveryWalkForward.replay(realHistory(), lastTargets = 24)
+        val lone = report.stats(CherryDiscoveryKind.LONE)
+        val wam = report.stats(CherryDiscoveryKind.WAM)
+        val brk = report.stats(CherryDiscoveryKind.BREAK)
+        assertEquals(24, lone.checked)
+        assertEquals(1, lone.hits)
+        assertEquals(24, wam.checked)
+        assertEquals(8, wam.hits)
+        assertEquals(18, brk.checked)
+        assertEquals(1, brk.hits)
+        assertEquals(6, brk.noSelection)
+    }
+
     @Test fun alteringHeldOutResultCannotChangeFrozenFormulaOrOutput() {
         val data = realHistory()
         val original = CherryDiscoveryWalkForward.replay(data, lastTargets = 1)
