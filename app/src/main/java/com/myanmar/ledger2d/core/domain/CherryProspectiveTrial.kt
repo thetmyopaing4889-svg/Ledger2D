@@ -94,6 +94,70 @@ class CherryProspectiveTrialJournal private constructor(
     companion object {
         fun empty(): CherryProspectiveTrialJournal =
             CherryProspectiveTrialJournal(emptyList(), emptyList())
+
+        /**
+         * Restore a previously persisted local journal without allowing a
+         * malformed or edited historical lock to be accepted silently.
+         * This checks internal consistency; it is NOT a trusted timestamp.
+         */
+        fun restore(
+            locked: List<CherryProspectiveLockedTrial>,
+            evaluated: List<CherryProspectiveEvaluation>,
+        ): CherryProspectiveTrialJournal {
+            require(locked.map { it.target }.distinct().size == locked.size) {
+                "Duplicate locked draw"
+            }
+            require(evaluated.map { it.target }.distinct().size == evaluated.size) {
+                "Duplicate settled draw"
+            }
+            val byTarget = locked.associateBy { it.target }
+            for (lock in locked) {
+                require(lock.cutoffAt == CherryProspectiveTrialClock.cutoff(lock.target) &&
+                    lock.lockedAt.isBefore(lock.cutoffAt)) {
+                    "Invalid pre-result local lock boundary"
+                }
+                require(lock.historyFingerprint.matches(Regex("[0-9a-f]{64}")) &&
+                    lock.completedStages in 1..CherryFormulaDiscoveryEngine.STAGE_COUNT &&
+                    lock.evidenceLabel == "LOCAL_PRE_RESULT_LOCK_UNVERIFIED") {
+                    "Invalid locked formula provenance"
+                }
+                require(lock.choices.map { it.kind } == CherryDiscoveryKind.entries) {
+                    "A lock must preserve one choice or abstention for every kind"
+                }
+            }
+            for (record in evaluated) {
+                val lock = requireNotNull(byTarget[record.target]) {
+                    "Settled result has no original lock"
+                }
+                require(validHistoric2D(record.actualPair) &&
+                    record.resultSource in setOf(HistoricSource.WINNER, HistoricSource.DAILY) &&
+                    !record.evaluatedAt.isBefore(lock.cutoffAt) &&
+                    !record.evaluatedAt.isBefore(lock.lockedAt)) {
+                    "Invalid confirmed result or verification time"
+                }
+                val expected = lock.choices.map { choice ->
+                    CherryProspectiveOutcome(
+                        choice.kind,
+                        choice.outputDigit?.let { digit ->
+                            CherryDiscoveryWalkForward.matches(
+                                choice.kind, digit, record.actualPair)
+                        },
+                    )
+                }
+                require(record.outcomes == expected) {
+                    "Stored hit/miss does not match the original locked digit"
+                }
+            }
+            val fixedLocks = locked.map { lock ->
+                lock.copy(choices = java.util.Collections.unmodifiableList(
+                    ArrayList(lock.choices)))
+            }
+            val fixedResults = evaluated.map { record ->
+                record.copy(outcomes = java.util.Collections.unmodifiableList(
+                    ArrayList(record.outcomes)))
+            }
+            return CherryProspectiveTrialJournal(fixedLocks, fixedResults)
+        }
     }
 
     fun lockedTrials(): List<CherryProspectiveLockedTrial> = locks.toList()
