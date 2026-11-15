@@ -16,7 +16,7 @@ V2's earlier `CherryV2ExpandableGrammar.expressionAt(index)` was open-ended, but
 2. **CROSS_LAG:** combinations of top/tail/break from up to six previous confirmed draw slots, plus deeper nested expansions when shallow combinations are exhausted;
 3. **NESTED:** three-input arithmetic/nonlinear expression combinations, later expanded with raw grammar subexpressions.
 
-Examples: slot 9 remains `top4`; slot 10 is `(top1+top1)`; slot 11 is `((top1+top1)+top1)`; slot 280 is `(top1+tail1)`. All are deterministic and seekable without a growing in-memory priority queue. The SIMPLE lane maps raw grammar index `i >= 9` to slot `9 + 3*(i-9)`. No raw grammar expression is permanently excluded; scheduled guided candidates can still be behaviorally equivalent to others and are subject to the existing bounded semantic dedup.
+Examples: slot 9 remains `top4`; slot 10 is `(top1+top2)`; slot 11 is `((top1+tail1)+top2)`; slot 280 is `(top1+tail2)`. The useful two-lag `(top1+top2)` expression is therefore seen at guided slot 10 instead of raw grammar index 73, which demonstrates earlier *coverage* for that one pattern, not a verified forecasting advantage. All are deterministic and seekable without a growing in-memory priority queue. The SIMPLE lane maps raw grammar index `i >= 9` to slot `9 + 3*(i-9)`. No raw grammar expression is permanently excluded; scheduled guided candidates can still be behaviorally equivalent to others and are subject to the existing bounded semantic dedup.
 
 **Important:** This is *diversity-guided structural priority*, **not yet data-guided quality ranking or Genetic Programming**. A better search order might find an in-sample 10+ match sooner for some histories, but must not be described as predictive proof or guaranteed better.
 
