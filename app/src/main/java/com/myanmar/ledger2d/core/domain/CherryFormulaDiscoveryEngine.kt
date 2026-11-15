@@ -214,10 +214,26 @@ object CherryFormulaDiscoveryEngine {
         }
     }
 
-    private fun signature(rows: List<HistoricDraw>, closed: Set<LocalDate>): String =
-        rows.joinToString(";") {
+    /**
+     * Search identities depend only on the bounded history window, the target,
+     * and closures that could affect slots inside that window. Including every
+     * historic closure would grow signatures forever and would invalidate a
+     * finished search when a holiday from decades earlier is edited.
+     */
+    private fun signature(
+        rows: List<HistoricDraw>,
+        closed: Set<LocalDate>,
+        target: DrawIdentity,
+    ): String {
+        val oldest = rows.firstOrNull()?.date ?: target.date
+        val relevantClosures = closed.asSequence()
+            .filter { !it.isBefore(oldest) && !it.isAfter(target.date) }
+            .sorted()
+            .joinToString(",")
+        return rows.joinToString(";") {
             it.date.toString() + ":" + it.session.name + "=" + it.digit
-        } + "|closed=" + closed.sorted().joinToString(",")
+        } + "|closed=" + relevantClosures
+    }
 
     /**
      * Calculate one search level only. Passing the returned state to the next
@@ -242,7 +258,7 @@ object CherryFormulaDiscoveryEngine {
             history, target, closedDates, SEARCH_DRAWS + CONTEXT_DRAWS,
             checkCancellation,
         )
-        val sig = signature(rows, closedDates)
+        val sig = signature(rows, closedDates, target)
         val old = previousState?.takeIf {
             it.target == target && it.historySignature == sig
         } ?: CherryDiscoverySession(target, sig, 0, 0, emptyList(), false)
