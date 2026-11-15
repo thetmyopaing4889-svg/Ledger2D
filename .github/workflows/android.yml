@@ -38,7 +38,7 @@ jobs:
               root = ET.parse(path).getroot()
               for block in root.findall('.//system-out'):
                   for line in (block.text or '').splitlines():
-                      if 'CHERRY_DISCOVERY_' in line:
+                      if 'CHERRY_DISCOVERY_' in line or 'CHERRY_SELECTION_' in line:
                           print(line.strip())
           PY
       - name: Show unit test failures
