@@ -92,6 +92,27 @@ class CherryDiscovery2026CoverageTest {
         }
     }
 
+    @Test fun simplicityVersusLongestAreComparedWithoutChangingDefault() {
+        val (draws, closed) = data()
+        val longest = CherryDiscoveryWalkForward.replay(
+            draws, lastTargets = 80, stages = 4, closedDates = closed)
+        val simplest = CherryDiscoveryWalkForward.replay(
+            draws, lastTargets = 80, stages = 4, closedDates = closed,
+            policy = CherryDiscoverySelectionPolicy.SIMPLEST)
+        assertEquals(longest, CherryDiscoveryWalkForward.replay(
+            draws, lastTargets = 80, stages = 4, closedDates = closed,
+            policy = CherryDiscoverySelectionPolicy.LONGEST))
+        for (kind in CherryDiscoveryKind.entries) {
+            val base = longest.stats(kind)
+            val alternative = simplest.stats(kind)
+            assertEquals(80, alternative.targetCount)
+            assertEquals(80, alternative.checked + alternative.noSelection)
+            println("CHERRY_SELECTION_2026 kind=" + kind +
+                " longestHits=" + base.hits + "/" + base.checked +
+                " simplicityHits=" + alternative.hits + "/" + alternative.checked)
+        }
+    }
+
     companion object {
         private val HISTORY = """
             01-01-2026,off,off
