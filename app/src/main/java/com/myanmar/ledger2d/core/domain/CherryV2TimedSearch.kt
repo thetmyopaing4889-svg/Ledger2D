@@ -100,7 +100,7 @@ internal object CherryV2TimedSearch {
             try {
                 checkBudget()
                 val index = cursor.nextIndex
-                val expression = CherryV2ExpandableGrammar.expressionAt(
+                val expression = CherryV2GuidedSchedule.expressionAt(
                     index, ::checkBudget)
                 val trace = CherryV2HistoricalEvaluator.trace(
                     context, expression, ::checkBudget, candidateKind = kind)
