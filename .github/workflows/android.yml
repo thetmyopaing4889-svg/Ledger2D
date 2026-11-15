@@ -31,6 +31,7 @@ jobs:
               if not any(name in path for name in (
                   'CherryDiscovery2026CoverageTest',
                   'CherryDiscovery2023HoldoutTest',
+                  'CherryDiscovery2024And2025HoldoutTest',
                   'CherryFormulaDiscoveryEngineTest',
               )):
                   continue
