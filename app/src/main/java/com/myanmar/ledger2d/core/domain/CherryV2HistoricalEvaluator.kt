@@ -24,6 +24,10 @@ internal object CherryV2HistoricalEvaluator {
         val validTarget: Boolean,
     ) {
         val blocked: Boolean get() = !validTarget || prior.isEmpty()
+        // Materialize the bounded history digits ONCE. A 30-second formula
+        // scan evaluates thousands of expressions against this same snapshot;
+        // rebuilding a new List<String> for every formula creates avoidable GC.
+        val digits: List<String> = prior.map { it.digit }
     }
 
     private fun previous(target: DrawIdentity, closed: Set<LocalDate>): DrawIdentity {
@@ -117,7 +121,7 @@ internal object CherryV2HistoricalEvaluator {
         checkCancellation()
         if (context.blocked ||
             requiredLag(expression) > BigInteger.valueOf(MAX_LAG.toLong())) return null
-        val digits = context.prior.map { it.digit }
+        val digits = context.digits
         val currentBase = expression.evaluate(digits) ?: return null
         val historicalBase = ArrayList<Int>(minOf(MAX_SCORED, digits.size))
         for (index in 0 until minOf(MAX_SCORED, digits.size)) {
