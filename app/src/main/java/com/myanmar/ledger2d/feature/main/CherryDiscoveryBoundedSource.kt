@@ -74,7 +74,9 @@ internal class CherryDiscoveryBoundedSource(private val database: LedgerDatabase
     suspend fun latest(
         target: DrawIdentity,
         asOf: LocalDateTime = LocalDateTime.now(YANGON),
+        slotLimit: Int = ENGINE_SLOT_LIMIT,
     ): CherryDiscoveryBoundedInput = withContext(Dispatchers.IO) {
+        require(slotLimit in 1..PER_SOURCE_LIMIT * 2)
         val through = minOf(target.date, asOf.toLocalDate())
         val history = database.historyResultDao()
             .newestThrough(through, PER_SOURCE_LIMIT)
@@ -103,7 +105,7 @@ internal class CherryDiscoveryBoundedSource(private val database: LedgerDatabase
             manualLocks = locks,
         )
         val newest = CherryDiscoveryHistoryNormalizer.newestBefore(
-            merged.draws, target, closed, ENGINE_SLOT_LIMIT)
+            merged.draws, target, closed, slotLimit)
         CherryDiscoveryBoundedInput(
             newest, closed,
             history.size + daily.size + winners.size + locks.size,
