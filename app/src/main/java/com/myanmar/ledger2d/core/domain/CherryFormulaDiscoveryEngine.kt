@@ -230,8 +230,7 @@ object CherryFormulaDiscoveryEngine {
         val rows = history.filter {
             validHistoric2D(it.digit) && before(it, target) &&
                 DrawSchedule.isWorkingDate(it.date, closedDates)
-        }.sortedWith(compareBy<HistoricDraw> { it.date }.thenBy { it.session.ordinal })
-            .distinctBy { it.date to it.session }
+        }.let(CherryDiscoveryHistoryNormalizer::normalize)
         val sig = signature(rows, closedDates)
         val old = previousState?.takeIf {
             it.target == target && it.historySignature == sig
