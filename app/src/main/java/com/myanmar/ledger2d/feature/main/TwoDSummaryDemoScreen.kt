@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.core.domain.TwoDigitGroups
 import com.myanmar.ledger2d.core.domain.DrawSchedule
+import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.domain.TwoDAnalysisReport
 import com.myanmar.ledger2d.core.domain.TwoDCount
 import com.myanmar.ledger2d.core.domain.TwoDWeekFlow
@@ -52,7 +53,8 @@ import java.time.LocalDate
  * Seven illustrative situations, never connected to real draw results.
  * Current date/session only affect demo reference results and their explanations.
  */
-private val ReportWine = Color(0xFF751B3C)
+private val ReportWine = AppColors.Primary
+private val ReportLabelInk = AppColors.PrimaryDeep // Readable small text on pale cards
 private val ReportPale = Color(0xFFFFEDF2)
 private val ReportLine = Color(0xFFE8CED8)
 private val ReportDataInk = Color(0xFF164F6C) // High-contrast answer ink
@@ -593,7 +595,7 @@ private fun DemoWeekFlow(situation: DemoSituation, en: Boolean) {
         if(missing) Text(
             words("Result မတွေ့တဲ့အကြိမ်နောက်ပိုင်း အသစ်/အဟောင်းကို အတည်မပြုနိုင်ပါ။",
                 "New/old labels after an unknown draw are unverified.").display(en),
-            fontSize = 11.sp, lineHeight = 16.sp, color = ReportWine)
+            fontSize = 11.sp, lineHeight = 16.sp, color = ReportLabelInk)
     }
 }
 
@@ -1270,11 +1272,11 @@ internal fun TwoDSummaryScreen(
                         horizontalAlignment=Alignment.CenterHorizontally,
                         verticalArrangement=Arrangement.spacedBy(1.dp)) {
                         Text(t.display(en),fontWeight=FontWeight.SemiBold,
-                            fontSize=11.sp,color=if(active)Color.White else ReportWine,
+                            fontSize=11.sp,color=if(active)Color.White else ReportLabelInk,
                             maxLines=1)
                         Text(if(index==0)"4" else "2",
                             fontSize=10.sp,color=if(active)Color.White.copy(alpha=.84f)
-                            else ReportWine.copy(alpha=.72f))
+                            else ReportLabelInk.copy(alpha=.72f))
                     }
                 }
             }
@@ -1370,14 +1372,14 @@ private fun CherryMysteryHeader(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(17.dp),
-        color = Color(0xFF270C28),
+        color = AppColors.PrimaryDeep,
         shadowElevation = 5.dp,
     ) {
         Box(
             Modifier.fillMaxWidth().height(117.dp).background(
                 Brush.horizontalGradient(listOf(
-                    Color(0xFF21091F), Color(0xFF671D42),
-                    Color(0xFF2D0D2C),
+                    Color(0xFF89102F), AppColors.Primary,
+                    AppColors.PrimaryDeep,
                 ))
             )
         ) {
@@ -1419,7 +1421,7 @@ private fun CherryMysteryHeader(
                 modifier = Modifier.align(Alignment.BottomCenter)
                     .padding(bottom = 6.dp),
                 shape = RoundedCornerShape(30.dp),
-                color = Color(0xFF1D091E).copy(alpha = .88f),
+                color = Color(0xFF710D2E).copy(alpha = .90f),
             ) {
                 Row(
                     Modifier.padding(start = 11.dp, end = 5.dp),
@@ -1478,8 +1480,8 @@ private fun CherryFrostedDigit(variant: Int) {
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(listOf(
                     Color.White.copy(alpha = .075f),
-                    Color(0xFFDB85AE).copy(alpha = .045f),
-                    Color(0xFF2B102D).copy(alpha = .16f),
+                    Color(0xFFFF99B2).copy(alpha = .07f),
+                    AppColors.PrimaryDeep.copy(alpha = .17f),
                 ))
             )
         ) {
@@ -1557,9 +1559,9 @@ private fun CherryFrostedDigit(variant: Int) {
             Box(
                 Modifier.matchParentSize().background(
                     Brush.horizontalGradient(listOf(
-                        Color(0xFF43172F).copy(alpha = .43f),
+                        Color(0xFF8B153B).copy(alpha = .43f),
                         Color.White.copy(alpha = .12f),
-                        Color(0xFF4E1C3C).copy(alpha = .43f),
+                        Color(0xFF9F1239).copy(alpha = .43f),
                     ))
                 )
             )
@@ -1567,8 +1569,8 @@ private fun CherryFrostedDigit(variant: Int) {
                 Modifier.matchParentSize().background(
                     Brush.verticalGradient(listOf(
                         Color.White.copy(alpha = .07f),
-                        Color(0xFF6B2A50).copy(alpha = .21f),
-                        Color(0xFF2C1129).copy(alpha = .24f),
+                        AppColors.Primary.copy(alpha = .18f),
+                        AppColors.PrimaryDeep.copy(alpha = .24f),
                     ))
                 )
             )
@@ -1601,7 +1603,7 @@ private fun DemoAlignedMethod(
             verticalAlignment=Alignment.Top,
             horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             Text(ordinal.toString()+".", fontSize=13.sp,
-                fontWeight=FontWeight.Bold,color=ReportWine,
+                fontWeight=FontWeight.Bold,color=ReportLabelInk,
                 modifier=Modifier.width(22.dp))
             if(method.id=="05") {
                 Text(words("ယခုအပတ် အသစ်/အဟောင်း အခြေအနေ",
@@ -1615,7 +1617,7 @@ private fun DemoAlignedMethod(
                 }
             }
             Text(if(expanded)"−" else "+",fontSize=16.sp,
-                color=ReportWine,modifier=Modifier.width(15.dp))
+                color=ReportLabelInk,modifier=Modifier.width(15.dp))
         }
         if(method.id=="05") {
             RealWeekFlow(weekFlow,target,closedDates,en)
@@ -1647,7 +1649,7 @@ private fun DemoAlignedMethod(
                     modifier=Modifier.align(Alignment.End).heightIn(min=40.dp)) {
                     Text(words("စစ်ဆေးမှုအသေးစိတ် ကြည့်ရန်",
                         "Open analysis details").display(en),
-                        fontSize=11.sp,color=ReportWine)
+                        fontSize=11.sp,color=ReportLabelInk)
                 }
             }
         }

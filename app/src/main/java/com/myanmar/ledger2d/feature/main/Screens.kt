@@ -179,7 +179,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         onDispose{controller?.isAppearanceLightStatusBars=true}
     }
 }
-@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onCommissionDetails:()->Unit,onAnalysis:()->Unit,onNavigate:(String)->Unit={} ){
+@Composable fun HomeScreen(vm:LedgerViewModel,onQuickEntry:()->Unit,onAgents:()->Unit,onWinning:()->Unit,onLive:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit,onLedger:()->Unit,onAddAgent:()->Unit,onAddCustomer:()->Unit,onAgentDashboard:()->Unit,onCustomerDashboard:()->Unit,onCommissionDetails:()->Unit,onAnalysis:()->Unit,onBetterData:()->Unit,onNavigate:(String)->Unit={} ){
     val l=LocalLanguage.current
     val agents by vm.agents.collectAsStateWithLifecycle()
     DarkStatusBarsEffect()
@@ -207,7 +207,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     // Only the commission area and quick actions change; retain original
                     // Header, LIVE, Weekly Results, bottom navigation and footer.
                     HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
-                    HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis)
+                    HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis, onBetterData)
                     HomeFooter()
                 }
             }
@@ -372,7 +372,7 @@ fun transactionDisplayText(format: String, raw: String): String {
  * KBZPay-style four-across icon shortcuts. Keeping the icon and label in one
  * touch target frees a whole 76dp card row for the Home commission summary.
  */
-@Composable private fun HomeQuickActionsRow(onAddAgent: () -> Unit, onAddCustomer: () -> Unit, onAnalysis: () -> Unit) {
+@Composable private fun HomeQuickActionsRow(onAddAgent: () -> Unit, onAddCustomer: () -> Unit, onAnalysis: () -> Unit, onBetterData: () -> Unit) {
     val language = LocalLanguage.current
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -400,9 +400,8 @@ fun transactionDisplayText(format: String, raw: String): String {
         HomeQuickAction(
             Icons.Default.Storage,
             "Better Data",
-            onClick = null,
+            onClick = onBetterData,
             modifier = Modifier.weight(1f),
-            comingSoon = true,
         )
     }
 }

@@ -9,6 +9,7 @@ import com.myanmar.ledger2d.core.domain.QuickFormat
 import com.myanmar.ledger2d.core.domain.RatedStake
 import com.myanmar.ledger2d.core.domain.DrawRatePolicy
 import com.myanmar.ledger2d.core.domain.DrawSchedule
+import com.myanmar.ledger2d.core.domain.validHistoric2D
 import com.myanmar.ledger2d.core.domain.SnapshotPayoutCalculator
 import com.myanmar.ledger2d.core.domain.SessionScopedLimitValidator
 import com.myanmar.ledger2d.core.model.*
@@ -667,9 +668,18 @@ object HistorySync {
             )
         }
 
-        return out
-            .distinctBy { it.date }
-            .sortedByDescending { it.date }
+        // The public feed sometimes supplies contradictory rows for one day
+        // (e.g. 2025-06-10 has both off/off and genuine 55/60). Keep the
+        // most complete verified 2D record, not whichever row appears first.
+        // Equal-completeness ties remain first-in-source for stable behavior.
+        // Do not merge AM/PM from conflicting rows into an invented record.
+        return out.groupBy { it.date }
+            .values.map { duplicates ->
+                duplicates.maxByOrNull { row ->
+                    (if (validHistoric2D(row.morning2d)) 1 else 0) +
+                        (if (validHistoric2D(row.evening2d)) 1 else 0)
+                }!!
+            }.sortedByDescending { it.date }
     }
 
     private fun httpGet(url: String): String {

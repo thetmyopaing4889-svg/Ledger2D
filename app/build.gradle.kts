@@ -24,6 +24,12 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
     buildTypes {
+        debug {
+            // Preview only: install alongside the existing production Ledger2D app.
+            // Never ask testers to uninstall their ledger to compare Rules layouts.
+            applicationIdSuffix = ".rulespreview"
+            versionNameSuffix = "-rules-preview"
+        }
         release {
             // Keep the distributable release APK complete. R8/resource shrinking
             // reduced the CI artifact from about 17 MiB to about 1.5 MiB.
