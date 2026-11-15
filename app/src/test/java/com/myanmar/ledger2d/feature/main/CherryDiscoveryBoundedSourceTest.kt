@@ -55,6 +55,12 @@ class CherryDiscoveryBoundedSourceTest {
             val snapshot = CherryDiscoveryBoundedSource(database).latest(target, asOf)
             assertEquals(256, snapshot.databaseRowsRead)
             assertEquals(203, snapshot.draws.size)
+            // V2 needs 200 scored + up to 12 lag-context slots without
+            // changing the earlier service's default 203-slot behavior.
+            val v2 = CherryDiscoveryBoundedSource(database).latest(
+                target, asOf, slotLimit = 212)
+            assertEquals(212, v2.draws.size)
+            assertEquals(snapshot.draws, v2.draws.take(203))
             val expected = CherryDiscoveryHistoryNormalizer.newestBefore(
                 Historic2DDataSource.resolve(
                     liveDaily = emptyList(),
