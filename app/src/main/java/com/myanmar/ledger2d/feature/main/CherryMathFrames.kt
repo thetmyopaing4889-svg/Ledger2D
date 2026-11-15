@@ -125,7 +125,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
         }
     }}
 
-@Composable private fun MathFormulaCard(
+@Composable internal fun CherryMathFormulaRuleCard(
     f:CherryMathFormula,all:List<CherryPick>,champion:Boolean,
     source:String?,en:Boolean,onPick:(CherryPick)->Unit,
     onOriginal:(CherryOriginalReference)->Unit
@@ -195,32 +195,27 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
 
 
 /**
- * Mirrors the CURRENT rule overview: one short title and up to three equally
- * sized, tap-to-explain pairs. No evidence rank or letter-grade UI is exposed.
+ * Same overview pattern as CURRENT: one three-column main/reserve row and
+ * an explicit details action. The formula engine and selected order stay intact.
  */
-@Composable private fun MathSelectionHero(
-    selections:List<CherryMathSelection>,en:Boolean,onPick:(CherryPick)->Unit
+@Composable internal fun CherryMathSelectionOverview(
+    selections:List<CherryMathSelection>,all:List<CherryPick>,
+    en:Boolean,onPick:(CherryPick)->Unit
 ){
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
         border=BorderStroke(1.dp,mathEdge)){
         Column(Modifier.fillMaxWidth().padding(13.dp),
             verticalArrangement=Arrangement.spacedBy(11.dp)){
-            Text(if(en)"Selected math pairs" else "သင်္ချာနည်း ရွေးကွက်",
+            Text(if(en)"Prioritized math pairs" else "ဦးစားပေး သင်္ချာရွေးကွက်များ",
                 color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
                 style=MaterialTheme.typography.titleMedium)
             if(selections.isEmpty()){
-                Text(if(en)"No eligible pairs for this draw."
+                Text(if(en)"No eligible math pair for this draw."
                     else "ဒီအကြိမ်အတွက် ရွေးနိုင်သောအတွဲ မရှိသေးပါ။",
                     style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }else{
-                val strict=selections.first().mode==CherryMathSelectionMode.STRICT
-                Text(if(strict){
-                    if(en)"3-draw check passed" else "၃ ပွဲဆက် စစ်ချက်ပြည့်"
-                }else{
-                    if(en)"More checking needed" else "ထပ်မံစစ်ဆေးရန် ရွေးထားသည်"
-                },style=MaterialTheme.typography.bodySmall,
-                    color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(),
                     horizontalArrangement=Arrangement.spacedBy(7.dp)){
                     selections.take(3).forEachIndexed{index,selection->
@@ -243,8 +238,7 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                                 }else{
                                     if(en)"RESERVE" else "အရံ"
                                 },style=MaterialTheme.typography.labelSmall,
-                                    fontWeight=FontWeight.Bold,color=color,
-                                    maxLines=1)
+                                    fontWeight=FontWeight.Bold,color=color,maxLines=1)
                                 Text(selection.pick.pair,fontSize=25.sp,
                                     fontWeight=FontWeight.Black,color=color)
                                 Text(cherryMathStars(selection.grade),
@@ -254,37 +248,55 @@ private fun producedBy(f:CherryMathFormula,all:List<CherryPick>):List<CherryPick
                     }
                     repeat(3-selections.take(3).size){Spacer(Modifier.weight(1f))}
                 }
-                if(!strict)Text(
-                    if(en)"Historical evidence is limited; review before using."
-                    else "သမိုင်းအထောက်အထားနည်းသေး၍ စစ်ဆေးပြီးမှ အသုံးပြုပါ။",
-                    style=MaterialTheme.typography.bodySmall,
+            }
+            TextButton(onClick={expanded=!expanded},
+                modifier=Modifier.fillMaxWidth()){
+                Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription=null)
+                Spacer(Modifier.width(5.dp))
+                Text(if(expanded){
+                    if(en)"Hide calculated pairs" else "ဂဏန်းအားလုံး ပိတ်ရန်"
+                }else{
+                    if(en)"View details — all ${all.size} pairs"
+                    else "အသေးစိတ်ကြည့်ရန် — ${all.size} တွဲအားလုံး"
+                },fontWeight=FontWeight.SemiBold)
+            }
+            if(expanded){
+                HorizontalDivider(color=mathEdge)
+                val strict=selections.firstOrNull()?.mode==CherryMathSelectionMode.STRICT
+                Text(if(strict){
+                    if(en)"3-draw check passed" else "၃ ပွဲဆက် စစ်ချက်ပြည့်"
+                }else{
+                    if(en)"Historical evidence needs further checking"
+                    else "သမိုင်းစစ်ချက်ကို ထပ်မံစစ်ဆေးရန် လိုသေးသည်"
+                },style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(if(en)"Stars show historical evidence, not win odds. Tap a pair for details."
-                    else "ကြယ်ပွင့်က သမိုင်းစစ်ချက်အဆင့်သာ ဖြစ်သည်။ အတွဲကိုနှိပ်၍ အသေးစိတ်ကြည့်ပါ။",
-                    style=MaterialTheme.typography.labelSmall,
+                MathPairGrid(all,en,onPick)
+                Text(if(en)"Stars describe past evidence, not winning odds. Tap any pair for its formula."
+                    else "ကြယ်ပွင့်သည် သမိုင်းစစ်ချက်အဆင့်သာဖြစ်ပြီး အနိုင်ရနိုင်ခြေမဟုတ်ပါ။ အတွဲနှိပ်၍ တွက်နည်းကြည့်နိုင်သည်။",
+                    style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
-@Composable
-internal fun CherryMathFrame(
-    report:CherryReport,originalSource:String?,en:Boolean,
-    onPick:(CherryPick)->Unit,onOriginal:(CherryOriginalReference)->Unit
+/**
+ * Secondary Math panels remain separate from the eight visible rule cards.
+ * Historical Champion, conditional original rules and Gemini research survive
+ * unchanged; none of them can invoke or start the Discovery search.
+ */
+@Composable internal fun CherryMathSupportFrames(
+    analysis:CherryMathAnalysis,all:List<CherryPick>,originalSource:String?,
+    en:Boolean,onPick:(CherryPick)->Unit,
+    onOriginal:(CherryOriginalReference)->Unit
 ){
     var championOpen by rememberSaveable{mutableStateOf(false)}
-    var formulasOpen by rememberSaveable{mutableStateOf(false)}
-    var detailsOpen by rememberSaveable{mutableStateOf(false)}
+    var watchesOpen by rememberSaveable{mutableStateOf(false)}
     var researchOpen by rememberSaveable{mutableStateOf(false)}
     var poolOpen by rememberSaveable{mutableStateOf(false)}
-    val analysis=report.mathAnalysis
-    val selections=report.mathSelections()
     val overall=analysis.primaryChampion()
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
-        MathSelectionHero(selections,en,onPick)
-
-        // Keep a compact status when no historical champion qualifies.
         if(overall==null){
             MathBox {
                 Row(Modifier.fillMaxWidth(),
@@ -334,53 +346,26 @@ internal fun CherryMathFrame(
                     style=MaterialTheme.typography.bodySmall)
             }
         }
-
-        // Keep all eight original DOC formulas, in compact expandable cards.
-        MathFoldFrame(
-            title=if(en)"Original formulas · 8" else "မူရင်းတွက်နည်း · ၈ ခု",
-            summary=null,
-            expanded=formulasOpen,
-            onToggle={formulasOpen=!formulasOpen},
-        ){
-            listOf("WAM" to "ဝမ်းချိန်း","LONE" to "လုံးပိုင်",
-                "BREAK" to "ဘရိတ်").forEach{(kind,title)->
-                Text(if(en)kind else title,color=AppColors.PrimaryDeep,
-                    fontWeight=FontWeight.SemiBold)
-                analysis.formulas.filter{it.kind==kind}.forEach{f->
-                    MathFormulaCard(f,report.math,analysis.champions[kind]==f.id,
-                        originalSource,en,onPick,onOriginal)
-                }
-            }
-        }
-
-        MathFoldFrame(
-            title=if(en)"All calculated pairs" else "တွက်ချက်ထားသော အတွဲအားလုံး",
-            summary=null,
-            expanded=detailsOpen,
-            onToggle={detailsOpen=!detailsOpen},
-        ){
-            Text(if(en)"Stars reflect historical checks, not winning odds."
-                else "ကြယ်ပွင့်က သမိုင်းစစ်ချက်အဆင့်သာ ဖြစ်သည်။",
-                style=MaterialTheme.typography.bodySmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
-            MathPairGrid(report.math,en,onPick)
-            if(analysis.watches.isNotEmpty()){
-                HorizontalDivider(color=mathEdge)
-                MathTitle(if(en)"Conditional original rules"
-                    else "အခြေအနေလိုက် မူရင်းမူများ")
+        if(analysis.watches.isNotEmpty()){
+            MathFoldFrame(
+                title=if(en)"Conditional original rules"
+                    else "အခြေအနေလိုက် မူရင်းမူများ",
+                summary=null,
+                expanded=watchesOpen,
+                onToggle={watchesOpen=!watchesOpen},
+            ){
                 analysis.watches.forEach{w->
-                    Text(w.title,fontWeight=FontWeight.SemiBold)
+                    Text(w.title,fontWeight=FontWeight.SemiBold,
+                        color=AppColors.PrimaryDeep)
                     Text(w.description,style=MaterialTheme.typography.bodySmall)
                     if(w.pairs.isNotEmpty())
-                        MathPairGrid(report.math.filter{p->p.evidence.any{
+                        MathPairGrid(all.filter{p->p.evidence.any{
                             it.id=="watch-${w.id}"
                         }},en,onPick)
                     MathLink(w.id,originalSource,en,onOriginal)
                 }
             }
         }
-
-        // Gemini's 210 experimental variants remain separate from DOC.
         MathFoldFrame(
             title=if(en)"Research · 210 variants" else "စမ်းသပ်တွက်နည်း · ၂၁၀",
             summary=null,

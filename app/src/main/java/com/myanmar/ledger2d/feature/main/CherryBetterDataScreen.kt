@@ -339,15 +339,56 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.MATH->{
-                        item{
-                            CherryMathFrame(
-                                report=report,
+                        item {
+                            // Match CURRENT: a section heading outside the selection card.
+                            CherryHeading(
+                                tr("🧮 သင်္ချာနည်းများ","🧮 Math methods"),
+                                tr("နောက်ဆုံးရလဒ်များမှ တွက်ချက်ထားသော သင်္ချာနည်းများ",
+                                    "Methods calculated from recent confirmed results")
+                            )
+                        }
+                        item {
+                            CherryMathSelectionOverview(
+                                selections=report.mathSelections(),
+                                all=report.math,
+                                en=en,
+                                onPick={selectedPick=it}
+                            )
+                        }
+                        item {
+                            CherryHeading(
+                                tr("အကျုံးဝင်သော သင်္ချာတွက်နည်းများ",
+                                    "Individual math formulas"),
+                                tr("နည်းတစ်ခုကိုနှိပ်ပြီး တွက်ချက်ပုံ၊ စစ်ချက်နှင့် ထွက်သောအတွဲများ ကြည့်ရန်",
+                                    "Tap a formula for its calculation, checks and pairs")
+                            )
+                        }
+                        // Exactly like CURRENT: each DOC formula is an independent
+                        // LazyColumn card, not nested behind an outer 8-formula gate.
+                        val mathFormulas=report.mathAnalysis.formulas
+                        if(mathFormulas.isEmpty()) item { CherryEmpty(en) }
+                        items(mathFormulas,key={ "math-doc-${it.id}" }){formula->
+                            CherryMathFormulaRuleCard(
+                                f=formula,
+                                all=report.math,
+                                champion=report.mathAnalysis.champions[formula.kind]==formula.id,
+                                source=originalSource,
+                                en=en,
+                                onPick={selectedPick=it},
+                                onOriginal={selectedOriginal=it}
+                            )
+                        }
+                        item {
+                            CherryMathSupportFrames(
+                                analysis=report.mathAnalysis,
+                                all=report.math,
                                 originalSource=originalSource,
                                 en=en,
                                 onPick={selectedPick=it},
                                 onOriginal={selectedOriginal=it}
                             )
                         }
+                        // Keep Discovery unchanged, after all existing Math content.
                         item {
                             CherryDiscoveryPanel(
                                 service = discoveryService,
