@@ -7,7 +7,9 @@
 - Input: original app asset `app/src/main/assets/history_seed.json` (read-only; no replacement or modifications).
 - Snapshot last date: **2026-09-29**. This is **not current** for November 2026; no later archived outcome is invented.
 - Source contains **959** dated entries spanning **2023-01-02–2026-09-29**.
-- **904** entries have a valid 2-digit morning and evening pair; **54** explicit `Off` markers exist. One day has a partial valid pair. Weekend rows are excluded. Counts are verified from the checked-in JSON, not a live feed.
+- **904** entries have a valid 2-digit morning and evening pair; **54** raw `Off` markers exist. One day has a partial valid pair. Weekend rows are excluded. Counts are verified from the checked-in JSON, not a live feed.
+- **Provenance conflict:** **2025-06-10** appears both as `off/off` and as `55/60`. The audit quarantines this date as UNKNOWN: it is **neither** trusted as a completed result **nor** allowed as a known closure, so historical continuity stops across it. This leaves **53 usable explicit-off days**. No seed data is edited.
+- **Repeated entries:** **2024-05-21** also appears twice with the identical `72/34` pairs, and is deduplicated without changing its result. These anomalies must be reviewed against a stronger official source before real-world conclusions.
 - Imported historical results are labeled `HISTORY` and are **not** verified operational `WINNER` or truly timestamp-locked outcomes. The test never writes to Room, Research, saved cursors or Champions.
 
 ## Selection and prevention of data leakage
