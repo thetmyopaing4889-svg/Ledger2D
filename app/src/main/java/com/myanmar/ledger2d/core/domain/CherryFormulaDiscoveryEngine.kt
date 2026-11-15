@@ -251,6 +251,8 @@ object CherryFormulaDiscoveryEngine {
         closedDates: Set<LocalDate> = emptySet(),
         /** Call coroutineContext.ensureActive() here from a background caller. */
         checkCancellation: () -> Unit = {},
+        /** Validate an existing search without consuming a new grammar stage. */
+        advanceStage: Boolean = true,
     ): CherryDiscoverySession {
         // A bounded ordered buffer avoids materializing the entire historical
         // source into memory. Only 200 scored draws + 3 lag inputs survive.
@@ -278,6 +280,8 @@ object CherryFormulaDiscoveryEngine {
             // supports this target. Caller can retry when results are complete.
             return old.copy(hasImmediatePreviousDraw = false)
         }
+
+        if (!advanceStage) return old.copy(hasImmediatePreviousDraw = true)
 
         // Do not evaluate the three extra lag-context draws as targets.
         val frames = rows.takeLast(SEARCH_DRAWS).asReversed().map { row ->
