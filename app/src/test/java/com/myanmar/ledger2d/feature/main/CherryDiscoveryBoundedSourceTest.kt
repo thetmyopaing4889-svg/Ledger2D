@@ -60,7 +60,9 @@ class CherryDiscoveryBoundedSourceTest {
             val v2 = CherryDiscoveryBoundedSource(database).latest(
                 target, asOf, slotLimit = 212)
             assertEquals(212, v2.draws.size)
-            assertEquals(snapshot.draws, v2.draws.take(203))
+            // The normalizer returns chronological order (oldest first).
+            // The V2 snapshot adds 9 older lag rows, not newer rows.
+            assertEquals(snapshot.draws, v2.draws.takeLast(203))
             val expected = CherryDiscoveryHistoryNormalizer.newestBefore(
                 Historic2DDataSource.resolve(
                     liveDaily = emptyList(),
