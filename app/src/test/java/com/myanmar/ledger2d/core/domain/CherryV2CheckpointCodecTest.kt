@@ -33,7 +33,7 @@ class CherryV2CheckpointCodecTest {
         assertEquals(saved, CherryV2CheckpointCodec.encode(restored!!))
         assertEquals(BigInteger.valueOf(2), restored.nextIndex)
         assertEquals(10, restored.recommended()!!.historicalStreak)
-        assertEquals("v1:1+5@LONE", restored.recommended()!!.formulaId)
+        assertEquals("v2:1+5@LONE", restored.recommended()!!.formulaId)
         assertEquals(listOf("18:103", "18:209"), restored.recentBehaviorKeys)
     }
 
