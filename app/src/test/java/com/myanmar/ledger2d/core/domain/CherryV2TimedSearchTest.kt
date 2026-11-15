@@ -102,4 +102,34 @@ class CherryV2TimedSearchTest {
         assertEquals(0, result.inspectedThisBatch)
         assertTrue(result.cursor.firstByStreak.isEmpty())
     }
+    @Test fun cancellationPersistsCompletedWorkBeforePropagating() {
+        val ctx = context()
+        var saved: CherryV2StreakRegistry? = null
+        var checks = 0
+        try {
+            CherryV2TimedSearch.run(
+                ctx, CherryDiscoveryKind.LONE,
+                timeBudgetNanos = 30_000_000_000L,
+                monotonicNanos = testClock(),
+                checkCancellation = {
+                    if (++checks >= 200) throw CancellationException("cancel")
+                },
+                onCheckpoint = { saved = it },
+                onBatchBoundary = {},
+            )
+            fail("Cancellation must propagate")
+        } catch (_: CancellationException) {}
+        val persisted = requireNotNull(saved)
+        assertTrue("Completed search positions must be saved on cancel",
+            persisted.nextIndex > BigInteger.ZERO)
+        assertTrue(persisted.recentBehaviorKeys.size <=
+            CherryV2StreakRegistry.BEHAVIOR_WINDOW)
+        val resumed = CherryV2TimedSearch.run(
+            ctx, CherryDiscoveryKind.LONE, previous = persisted,
+            timeBudgetNanos = 1_500_000L, monotonicNanos = testClock(),
+            onBatchBoundary = {},
+        )
+        assertTrue(resumed.cursor.nextIndex > persisted.nextIndex)
+    }
+
 }
