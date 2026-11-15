@@ -93,6 +93,22 @@ class CherryProspectiveTrialStoreTest {
         assertEquals(locked.lockedTrials(), store.load().lockedTrials())
     }
 
+    @Test fun separateStoreInstancesCannotEraseAnotherStoresLock() {
+        val session = discovered()
+        val storeOne = CherryProspectiveTrialStore(context)
+        val storeTwo = CherryProspectiveTrialStore(context)
+        val staleSnapshot = storeTwo.load()
+        val locked = staleSnapshot.lock(
+            session, CherryProspectiveTrialClock.cutoff(session.target)
+                .minusSeconds(90))
+        storeOne.persist(locked)
+        try {
+            storeTwo.persist(staleSnapshot)
+            fail("A stale store instance must not erase a previously committed lock")
+        } catch (_: IllegalArgumentException) { /* expected */ }
+        assertEquals(locked.lockedTrials(), storeTwo.load().lockedTrials())
+    }
+
     @Test fun restoredOutcomeCannotBeRewrittenAsAHit() {
         val session = discovered()
         val cutoff = CherryProspectiveTrialClock.cutoff(session.target)
