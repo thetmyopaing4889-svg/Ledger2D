@@ -9,14 +9,14 @@ The grammar and longest-streak rule were held fixed for all four years. Pinned p
 | Calendar period | Draws available | Closed dates explicitly recorded | LONE (hit/selected) | WAM (hit/selected) | BREAK (hit/selected) | Longest retrospective LONE/WAM/BREAK |
 |---|---:|---:|---:|---:|---:|---|
 | 2023 | 486 | 17 | 19/76 | 29/80 | 10/64 | 7 / 13 / 5 |
-| 2024 | 480 | 5 | 19/68 | 19/68 | 8/52 | 8 / 8 / 7 |
+| 2024 | 480 in source; 478 eligible weekdays | 5 | 20/68 | 18/68 | 8/53 | 8 / 8 / 7 |
 | 2025 | 481 | 17 | 7/80 | 32/80 | 1/64 | 6 / 13 / 4 |
 | 2026 (through Nov 13) | 420 | 17 | 9/80 | 24/80 | 4/65 | 6 / 10 / 5 |
-| Combined sampled targets | — | — | 54/304 | 104/308 | 23/245 | Not combinable |
+| Combined sampled targets | — | — | 55/304 | 103/308 | 23/246 | Not combinable |
 
-All four rows are now confirmed by Kotlin GitHub CI: 2023/2026 at #1510, 2024/2025 at #1514. Each was independently computed separately before CI confirmation. These rows use explicit closure records in the upstream feed; additional official-holiday supplementation is a separate sensitivity test, not included here.
+All four rows are now confirmed by Kotlin GitHub CI: 2023/2026 at #1510, 2024/2025 at #1514, and 2024 rechecked after anomalous Saturday quarantine at #1534. Each was independently computed separately before CI confirmation. These rows use explicit closure records in the upstream feed; additional official-holiday supplementation is a separate sensitivity test, not included here.
 
-For idealized independent uniform 00–99 draws, chance digit-category matches are approximately LONE 19%, WAM 36%, BREAK 10%. Combined selected-only rates here are LONE 17.8%, WAM 33.8%, BREAK 9.4%. **These results do not show a stable predictive edge.** Historical fitting is exploratory, not prospective win-rate evidence.
+For idealized independent uniform 00–99 draws, chance digit-category matches are approximately LONE 19%, WAM 36%, BREAK 10%. Combined selected-only rates here are LONE 18.1%, WAM 33.4%, BREAK 9.3%. **These results do not show a stable predictive edge.** Historical fitting is exploratory, not prospective win-rate evidence.
 
 ## Source-quality flags
 
@@ -41,7 +41,7 @@ For idealized independent uniform 00–99 draws, chance digit-category matches a
 - 4 finite grammar levels with 9+60+60+78 = 207 expression shapes; derived offsets vary with observed outcomes.
 - Completed search state is keyed to the target and sorted history; results change only when history/target changes or an additional unused stage runs.
 - A 1000-all-equal-draw stress test finished all four levels on GitHub runner in 144 ms (#1510). This is **not an Android device benchmark**.
-- **Source anomaly:** the upstream 2D_history also contains a valid-looking 2024-11-23 **Saturday** (AM 91, PM 18). The discovery engine and independent walk-forward replay now quarantine non-working-day rows rather than counting them as ordinary AM/PM rounds. Consequently, the initial 2024 row of this table is a **pre-quarantine historical snapshot**; re-evaluated CI metrics will supersede it. Source history was not deleted.
+- **Source anomaly:** the upstream 2D_history also contains a valid-looking 2024-11-23 **Saturday** (AM 91, PM 18). The discovery engine and independent walk-forward replay now quarantine non-working-day rows rather than counting them as ordinary AM/PM rounds. The corrected 2024 row above is **post-quarantine** and confirmed by #1534; the previous 19/68, 19/68, 8/52 row is superseded. With 13 additionally verified official holidays included, the 2024 sensitivity replay is LONE 20/76, WAM 22/76, BREAK 9/62 (#1534). Source history was not deleted.
 - Engine has been augmented with an optional cooperative cancellation callback; UI must later invoke this with its coroutine cancellation check, from background CPU execution, and test on representative Android devices.
 - Never promise infinite formula generation or guarantee a ten-streak formula.
 
