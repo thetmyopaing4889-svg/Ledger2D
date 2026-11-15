@@ -95,6 +95,41 @@ class CherryFormulaDiscoveryEngineTest {
             "stages=4 elapsedMs=" + elapsedMs)
     }
 
+    @Test fun closedOrWeekendTargetNeverStartsDiscovery() {
+        // Ten draws occupy Mon 2 Nov through Fri 6 Nov 2026.
+        val (rows, _) = history(*Array(10) { "00" })
+        val saturday = DrawIdentity(LocalDate.parse("2026-11-07"), DrawSession.MORNING)
+        val closedMonday = DrawIdentity(LocalDate.parse("2026-11-09"), DrawSession.MORNING)
+        val weekendState = CherryFormulaDiscoveryEngine.nextRound(rows, saturday)
+        val holidayState = CherryFormulaDiscoveryEngine.nextRound(
+            rows, closedMonday, closedDates = setOf(closedMonday.date))
+        assertEquals(0, weekendState.completedStages)
+        assertEquals(0, holidayState.completedStages)
+        assertFalse(weekendState.hasImmediatePreviousDraw)
+        assertFalse(holidayState.hasImmediatePreviousDraw)
+        assertTrue(weekendState.formulas.isEmpty())
+        assertTrue(holidayState.formulas.isEmpty())
+    }
+
+    @Test fun callerCancellationStopsLongSearchWithoutReturningPartialState() {
+        val (rows, target) = history(*Array(12) { "00" })
+        var calls = 0
+        try {
+            CherryFormulaDiscoveryEngine.nextRound(rows, target,
+                checkCancellation = {
+                    calls++
+                    if (calls >= 15) throw java.util.concurrent.CancellationException()
+                })
+            fail("Expected cooperative cancellation")
+        } catch (_: java.util.concurrent.CancellationException) {
+            assertTrue(calls >= 15)
+        }
+        // Re-running after cancellation starts from a clean immutable state.
+        val clean = CherryFormulaDiscoveryEngine.nextRound(rows, target)
+        assertEquals(1, clean.completedStages)
+        assertEquals(11, clean.longest(CherryDiscoveryKind.LONE)?.historicalStreak)
+    }
+
     @Test fun neverReadsTargetOrFutureDrawsWhenSearching() {
         val (rows, target) = history(*Array(10) { "12" })
         val withoutFuture = CherryFormulaDiscoveryEngine.nextRound(rows, target)
