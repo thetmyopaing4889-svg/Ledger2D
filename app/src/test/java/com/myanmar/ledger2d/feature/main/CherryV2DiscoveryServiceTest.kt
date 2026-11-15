@@ -98,7 +98,11 @@ class CherryV2DiscoveryServiceTest {
             assertTrue(lone.nextIndex.signum() > 0)
 
             val updatedDate = days[8]
-            db.historyResultDao().upsertAll(listOf(row(updatedDate, "81")))
+            // Preserve the auto-generated Room primary key when changing an
+            // existing unique-date row. Inserting id=0 is NOT a correction.
+            val existingRow = requireNotNull(db.historyResultDao().get(updatedDate))
+            db.historyResultDao().upsert(existingRow.copy(morning2d = "81"))
+            assertEquals("81", db.historyResultDao().get(updatedDate)?.morning2d)
             val revised = CherryV2DiscoveryService(app, db)
             assertNull(revised.saved(target, CherryDiscoveryKind.LONE, asOf))
             val fresh = revised.search(target, CherryDiscoveryKind.LONE,
