@@ -114,6 +114,28 @@ class CherryDiscoveryBoundedHistoryTest {
         assertNotEquals(old.historySignature, restarted.historySignature)
     }
 
+    @Test fun ancientHolidayCorrectionsDoNotInvalidateRecentSearch() {
+        val completed = search(all)
+        val ancientHoliday = LocalDate.of(2001, 1, 1)
+        val reused = CherryFormulaDiscoveryEngine.nextRound(
+            all, target, completed, closedDates = setOf(ancientHoliday))
+        assertEquals(
+            "Corrections outside the 203-row search window must not restart discovery",
+            completed, reused)
+        assertTrue(reused.isComplete)
+    }
+
+    @Test fun activeHolidayCorrectionsStillInvalidateCachedSearch() {
+        val completed = search(all)
+        val recentlyClosed = days[1499]
+        val restarted = CherryFormulaDiscoveryEngine.nextRound(
+            all, target, completed, closedDates = setOf(recentlyClosed))
+        assertNotEquals(completed.historySignature, restarted.historySignature)
+        assertEquals(
+            "Closed previous working session must not be silently bridged",
+            1, restarted.completedStages)
+    }
+
     @Test fun reverseOrderAndSourceOverridesCannotEvictRecentTruth() {
         val original = CherryDiscoveryHistoryNormalizer.newestBefore(
             all, target, emptySet(), 203)
