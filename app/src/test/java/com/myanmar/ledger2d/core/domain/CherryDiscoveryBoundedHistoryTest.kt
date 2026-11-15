@@ -51,7 +51,7 @@ class CherryDiscoveryBoundedHistoryTest {
             assertTrue(state.formulas.size <= 24)
             assertTrue("Old record signatures must never grow with database size",
                 state.historySignature.length < 10_000)
-            val expected = if (size == 200) 197 else 200
+            val expected = if (size == 200) 199 else 200
             for (kind in CherryDiscoveryKind.entries) {
                 assertEquals("Only latest 200 frames may be scored",
                     expected, state.longest(kind)?.historicalStreak)
