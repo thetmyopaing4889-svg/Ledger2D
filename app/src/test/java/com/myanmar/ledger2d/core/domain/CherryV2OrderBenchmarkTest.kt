@@ -80,6 +80,14 @@ class CherryV2OrderBenchmarkTest {
         assertTrue(report.guided.inspected <= 64)
         assertTrue(report.raw.inspected <= 64)
         assertTrue(report.guided.budgetExpired && report.raw.budgetExpired)
+        // Timeouts inside formula evaluation must never count incomplete
+        // candidates in scorable/distinct/duplicate performance totals.
+        for (metrics in listOf(report.raw, report.guided)) {
+            assertTrue(metrics.scorable <= metrics.inspected)
+            assertEquals(metrics.scorable,
+                metrics.distinctBehaviorTraces +
+                    metrics.duplicateBehaviorTraces)
+        }
         for (bad in listOf(0, CherryV2OrderBenchmark.MAX_CANDIDATES + 1)) {
             try {
                 CherryV2OrderBenchmark.compare(ctx, CherryDiscoveryKind.LONE,
