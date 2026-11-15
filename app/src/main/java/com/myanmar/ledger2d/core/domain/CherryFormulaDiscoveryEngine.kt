@@ -228,7 +228,8 @@ object CherryFormulaDiscoveryEngine {
         checkCancellation: () -> Unit = {},
     ): CherryDiscoverySession {
         val rows = history.filter {
-            validHistoric2D(it.digit) && before(it, target) && it.date !in closedDates
+            validHistoric2D(it.digit) && before(it, target) &&
+                DrawSchedule.isWorkingDate(it.date, closedDates)
         }.sortedWith(compareBy<HistoricDraw> { it.date }.thenBy { it.session.ordinal })
             .distinctBy { it.date to it.session }
         val sig = signature(rows, closedDates)
