@@ -47,8 +47,16 @@ internal data class CherryV2StreakRegistry(
     val historySignature: String,
     val nextIndex: BigInteger = CherryV2ExpandableGrammar.FIRST_INDEX,
     val firstByStreak: Map<Int, CherryV2StreakMatch> = emptyMap(),
+    /** Recent equivalent-output signatures only; never an unlimited HashSet. */
+    val recentBehaviorKeys: List<String> = emptyList(),
+    val grammarVersion: Int = CherryV2ExpandableGrammar.VERSION,
 ) {
+    companion object { const val BEHAVIOR_WINDOW = 512 }
+
     init {
+        require(grammarVersion == CherryV2ExpandableGrammar.VERSION)
+        require(recentBehaviorKeys.size <= BEHAVIOR_WINDOW)
+        require(recentBehaviorKeys.size == recentBehaviorKeys.toSet().size)
         require(historySignature.isNotBlank())
         require(nextIndex.signum() >= 0)
         require(firstByStreak.all { (count, candidate) ->
@@ -90,6 +98,13 @@ internal data class CherryV2StreakRegistry(
             nextIndex = CherryV2ExpandableGrammar.next(index),
             firstByStreak = newResults.toMap(),
         )
+    }
+
+    /** Preserve only a bounded recent equivalence window in checkpoints. */
+    fun withRecentBehaviors(keys: List<String>): CherryV2StreakRegistry {
+        require(keys.size <= BEHAVIOR_WINDOW)
+        require(keys.size == keys.toSet().size)
+        return copy(recentBehaviorKeys = keys.toList())
     }
 
     fun recommended(): CherryV2StreakMatch? =
