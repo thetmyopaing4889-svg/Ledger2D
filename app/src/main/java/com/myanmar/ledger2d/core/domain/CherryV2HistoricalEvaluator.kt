@@ -112,6 +112,7 @@ internal object CherryV2HistoricalEvaluator {
         context: Context,
         expression: CherryV2Expression,
         checkCancellation: () -> Unit = {},
+        candidateKind: CherryDiscoveryKind? = null,
     ): Trace? {
         checkCancellation()
         if (context.blocked ||
@@ -125,6 +126,23 @@ internal object CherryV2HistoricalEvaluator {
             val value = expression.evaluate(digits.subList(index + 1, digits.size))
                 ?: break
             historicalBase.add(value)
+            if (candidateKind != null &&
+                historicalBase.size == CherryFormulaDiscoveryEngine.MIN_STREAK) {
+                // A qualifying consecutive streak MUST match its first
+                // three sessions for one unchanged offset. If none does,
+                // spending time on another ~197 history slots is pointless.
+                // This prefilter uses only already-settled, pre-target draws.
+                val canReachMinimum = (0..9).any { offset ->
+                    (0 until CherryFormulaDiscoveryEngine.MIN_STREAK).all { i ->
+                        CherryDiscoveryWalkForward.matches(
+                            candidateKind,
+                            Math.floorMod(historicalBase[i] + offset, 10),
+                            context.prior[i].digit,
+                        )
+                    }
+                }
+                if (!canReachMinimum) break
+            }
         }
         val key = buildString(historicalBase.size + 16) {
             append(historicalBase.size).append(':')
