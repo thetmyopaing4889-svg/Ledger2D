@@ -91,42 +91,74 @@ internal object CherryV2HistoricalEvaluator {
         }
 
     /**
-     * One expression is evaluated against all ten constant mod-10 offsets.
-     * Each offset is fixed across the ENTIRE streak; it is never retuned per
-     * historical draw. A 10+ match can be returned on the very first call.
-     *
-     * The returned matches are IN-SAMPLE HISTORICAL_FIT evidence, not
-     * forward-locked accuracy or exact two-digit predictions.
+     * All historical windows and the next-target base are evaluated ONCE per
+     * candidate, rather than recomputed for each of the ten offsets.
+     * Only prior completed draws are provided at every historical position.
      */
-    fun evaluate(
+    data class Trace(
+        val expressionKey: String,
+        val currentBase: Int,
+        val historicalBases: List<Int>,
+        /**
+         * Exact in-window behavioral equivalence up to a constant mod-10
+         * shift. All 10 offsets are tested, so shifted expressions cannot
+         * offer a different candidate on this same confirmed history.
+         * Includes the next-target output; not a claim of algebraic identity.
+         */
+        val behaviorKey: String,
+    )
+
+    fun trace(
         context: Context,
-        kind: CherryDiscoveryKind,
-        formulaIndex: BigInteger,
         expression: CherryV2Expression,
         checkCancellation: () -> Unit = {},
-    ): List<CherryV2StreakMatch> {
-        require(formulaIndex.signum() >= 0)
+    ): Trace? {
         checkCancellation()
         if (context.blocked ||
-            requiredLag(expression) > BigInteger.valueOf(MAX_LAG.toLong())) return emptyList()
-
+            requiredLag(expression) > BigInteger.valueOf(MAX_LAG.toLong())) return null
         val digits = context.prior.map { it.digit }
-        val currentBase = expression.evaluate(digits) ?: return emptyList()
+        val currentBase = expression.evaluate(digits) ?: return null
         val historicalBase = ArrayList<Int>(minOf(MAX_SCORED, digits.size))
         for (index in 0 until minOf(MAX_SCORED, digits.size)) {
             if ((index and 15) == 0) checkCancellation()
-            // The draw being scored is NEVER passed to its own formula.
+            // Exclude the scored draw itself: index+1 and older only.
             val value = expression.evaluate(digits.subList(index + 1, digits.size))
                 ?: break
             historicalBase.add(value)
         }
+        val key = buildString(historicalBase.size + 16) {
+            append(historicalBase.size).append(':')
+            // A constant shift in the expression output only changes the
+            // offset labels, never the set of offset-adjusted predictions.
+            for (value in historicalBase) {
+                append(Math.floorMod(value - currentBase, 10))
+            }
+        }
+        checkCancellation()
+        return Trace(expression.structuralKey, currentBase, historicalBase, key)
+    }
+
+    /**
+     * Evaluate all ten FIXED offsets against a trace. A first candidate may
+     * directly fit 10+ consecutive historical sessions; no required ladder.
+     * These are in-sample digit/category fits, not prospective 2D wins.
+     */
+    fun evaluateTrace(
+        context: Context,
+        kind: CherryDiscoveryKind,
+        formulaIndex: BigInteger,
+        trace: Trace,
+        checkCancellation: () -> Unit = {},
+    ): List<CherryV2StreakMatch> {
+        require(formulaIndex.signum() >= 0)
+        checkCancellation()
         val found = ArrayList<CherryV2StreakMatch>(10)
         for (offset in 0..9) {
             checkCancellation()
             var streak = 0
-            for (i in historicalBase.indices) {
+            for (i in trace.historicalBases.indices) {
                 if ((i and 31) == 0) checkCancellation()
-                val output = Math.floorMod(historicalBase[i] + offset, 10)
+                val output = Math.floorMod(trace.historicalBases[i] + offset, 10)
                 if (!CherryDiscoveryWalkForward.matches(
                     kind, output, context.prior[i].digit)) break
                 streak++
@@ -137,12 +169,24 @@ internal object CherryV2HistoricalEvaluator {
                 kind = kind,
                 historySignature = context.historySignature,
                 formulaIndex = formulaIndex,
-                expression = expression.structuralKey,
+                expression = trace.expressionKey,
                 offset = offset,
-                predictedDigit = Math.floorMod(currentBase + offset, 10),
+                predictedDigit = Math.floorMod(trace.currentBase + offset, 10),
                 historicalStreak = streak,
             ))
         }
         return found
+    }
+
+    /** Compatibility entry point for direct scoring and existing tests. */
+    fun evaluate(
+        context: Context,
+        kind: CherryDiscoveryKind,
+        formulaIndex: BigInteger,
+        expression: CherryV2Expression,
+        checkCancellation: () -> Unit = {},
+    ): List<CherryV2StreakMatch> {
+        val values = trace(context, expression, checkCancellation) ?: return emptyList()
+        return evaluateTrace(context, kind, formulaIndex, values, checkCancellation)
     }
 }
