@@ -73,6 +73,44 @@ class CherryDiscovery2024And2025HoldoutTest {
         }
     }
 
+    @Test fun externallyConfirmedHolidaysDoNotBecomeFabricatedResults() {
+        // 2024 official SET market holiday listing:
+        // https://www.set.or.th/en/about/event-calendar/holiday?year=2024
+        // 2025 Thai SEC securities holiday listing:
+        // https://www.sec.or.th/EN/Pages/News_Detail.aspx?SECID=11077
+        // These are explicitly confirmed holidays MISSING from this feed.
+        // Other missing weekdays remain UNKNOWN gaps, never presumed closed.
+        val missingMarketHolidays = mapOf(
+            2024 to listOf("2024-02-26", "2024-04-08", "2024-04-12",
+                "2024-04-15", "2024-04-16", "2024-05-01", "2024-05-06",
+                "2024-05-22", "2024-06-03", "2024-07-29", "2024-12-05",
+                "2024-12-10", "2024-12-31"),
+            2025 to listOf("2025-01-01", "2025-07-10"),
+        )
+        val files = mapOf(2024 to RAW_2024, 2025 to RAW_2025)
+        for (year in listOf(2024, 2025)) {
+            val (draws, recordedClosed) = parse(files.getValue(year))
+            val additional = missingMarketHolidays.getValue(year)
+                .map(LocalDate::parse).toSet()
+            assertTrue("Never erase an actual draw from the trusted fixture",
+                draws.none { it.date in additional })
+            assertTrue("Missing-only holiday dates should be new information",
+                additional.none { it in recordedClosed })
+            val corrected = CherryDiscoveryWalkForward.replay(
+                draws, lastTargets = 80, stages = 4,
+                closedDates = recordedClosed + additional)
+            for (kind in CherryDiscoveryKind.entries) {
+                val result = corrected.stats(kind)
+                assertEquals(80, result.targetCount)
+                assertEquals(80, result.checked + result.noSelection)
+                println("CHERRY_DISCOVERY_OFFICIAL_HOLIDAY year=" + year +
+                    " kind=" + kind + " checked=" + result.checked +
+                    " hits=" + result.hits + " noSelection=" +
+                    result.noSelection + " additionalHolidays=" + additional.size)
+            }
+        }
+    }
+
     @Test fun duplicateSourceDayDoesNotEraseCompletedResults() {
         val (draws, closed) = parse(RAW_2025)
         val day = LocalDate.of(2025, 6, 10)
