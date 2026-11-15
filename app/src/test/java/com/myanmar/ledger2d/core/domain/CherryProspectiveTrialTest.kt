@@ -80,6 +80,93 @@ class CherryProspectiveTrialTest {
         }
     }
 
+    @Test fun locksSecondSearchMoreAlternativeWithoutLeaderBoardPromotion() {
+        val days = generateSequence(LocalDate.parse("2026-11-02")) {
+            it.plusDays(1)
+        }.filter(DrawSchedule::isWeekday).take(7).toList()
+        val rows = (0 until 12).map { i ->
+            HistoricDraw(
+                days[i / 2],
+                if (i % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
+                "00", HistoricSource.WINNER)
+        }
+        val target = DrawIdentity(days[6], DrawSession.MORNING)
+        val first = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE)
+        val second = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE, first)
+        val chosen = requireNotNull(second.newCandidate)
+        assertNotEquals(first.newCandidate?.id, chosen.id)
+        assertTrue(chosen.id !in second.engine.formulas.map { it.id })
+        val selections = CherryDiscoveryKind.entries.associateWith {
+            if (it == CherryDiscoveryKind.LONE) chosen.id else null
+        }
+        val cursors = CherryDiscoveryKind.entries.associateWith {
+            if (it == CherryDiscoveryKind.LONE) second else null
+        }
+        val locked = CherryProspectiveTrialJournal.empty()
+            .lockFromSearchCursors(
+                cursors, selections,
+                CherryProspectiveTrialClock.cutoff(target).minusSeconds(90))
+        val choices = locked.lockedTrials().single().choices
+        assertEquals(chosen.id, choices.single {
+            it.kind == CherryDiscoveryKind.LONE }.formulaId)
+        assertEquals(chosen.currentDigit, choices.single {
+            it.kind == CherryDiscoveryKind.LONE }.outputDigit)
+        assertTrue(choices.filter { it.kind != CherryDiscoveryKind.LONE }
+            .all { it.formulaId == null })
+        val settled = locked.evaluate(
+            HistoricDraw(target.date, target.session, "00",
+                HistoricSource.WINNER),
+            CherryProspectiveTrialClock.cutoff(target).plusSeconds(20))
+        assertEquals(1, settled.stats(CherryDiscoveryKind.LONE).checked)
+        assertEquals(1, settled.stats(CherryDiscoveryKind.LONE).hits)
+        assertEquals(1, settled.stats(CherryDiscoveryKind.WAM).abstentions)
+        assertEquals(1, settled.stats(CherryDiscoveryKind.BREAK).abstentions)
+    }
+
+    @Test fun refusesSearchMoreLocksFromMixedHistoryOrUnseenIds() {
+        val days = generateSequence(LocalDate.parse("2026-11-02")) {
+            it.plusDays(1)
+        }.filter(DrawSchedule::isWeekday).take(7).toList()
+        val rows = (0 until 12).map { i ->
+            HistoricDraw(days[i / 2],
+                if (i % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
+                "00", HistoricSource.WINNER)
+        }
+        val target = DrawIdentity(days[6], DrawSession.MORNING)
+        val lone = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE)
+        val changed = rows.toMutableList().also {
+            it[it.lastIndex] = it.last().copy(digit = "91")
+        }
+        val wam = CherryDiscoverySearchMore.next(
+            changed, target, CherryDiscoveryKind.WAM)
+        val badMix = mapOf(
+            CherryDiscoveryKind.LONE to lone,
+            CherryDiscoveryKind.WAM to wam,
+            CherryDiscoveryKind.BREAK to null)
+        val validChoice = CherryDiscoveryKind.entries.associateWith {
+            if (it == CherryDiscoveryKind.LONE)
+                lone.newCandidate?.id else null
+        }
+        val cutoff = CherryProspectiveTrialClock.cutoff(target)
+        expectInvalid {
+            CherryProspectiveTrialJournal.empty().lockFromSearchCursors(
+                badMix, validChoice, cutoff.minusSeconds(60))
+        }
+        val single = mapOf(
+            CherryDiscoveryKind.LONE to lone,
+            CherryDiscoveryKind.WAM to null,
+            CherryDiscoveryKind.BREAK to null)
+        val unseenChoice = validChoice +
+            (CherryDiscoveryKind.LONE to "UNSEEN_FORMULA")
+        expectInvalid {
+            CherryProspectiveTrialJournal.empty().lockFromSearchCursors(
+                single, unseenChoice, cutoff.minusSeconds(60))
+        }
+    }
+
     @Test fun cannotLockAtOrAfterResultCutoffOrOnClosedDay() {
         val discovered = prepared()
         val cutoff = CherryProspectiveTrialClock.cutoff(discovered.target)
