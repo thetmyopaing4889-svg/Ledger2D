@@ -18,6 +18,22 @@ All four rows are now confirmed by Kotlin GitHub CI: 2023/2026 at #1510, 2024/20
 
 For idealized independent uniform 00–99 draws, chance digit-category matches are approximately LONE 19%, WAM 36%, BREAK 10%. Combined selected-only rates here are LONE 18.1%, WAM 33.4%, BREAK 9.3%. **These results do not show a stable predictive edge.** Historical fitting is exploratory, not prospective win-rate evidence.
 
+## Retrospective Formula Selection Policy Audit
+
+The same four calendar-year replay samples also compared two *research-only* selection policies without changing the public app:
+
+| Category | Longest historical streak first | Earliest grammar stage first |
+| --- | ---: | ---: |
+| LONE | 55/304 (18.1%) | 68/304 (22.4%) |
+| WAM | 103/308 (33.4%) | 101/308 (32.8%) |
+| BREAK | 23/246 (9.3%) | 23/246 (9.3%) |
+
+- Both policies used the same set of eligible Formula Discovery results; no-selection cases are excluded from these conditional denominators.
+- *Earliest grammar stage* is a proxy for simplicity, **not** a mathematical proof of lower algorithmic complexity.
+- The observed LONE benefit of choosing an earlier stage is exploratory and was noticed **after looking at these past results**. It is **not** an independent out-of-sample endorsement for switching Champions.
+- Keep the user-approved longest-streak search display as the default. Do not auto-select a formula or imply better win odds without a new, untouched prospective evaluation period.
+- A separately pinned 2026 shuffle test is being added as a negative control: it permutes paired results across dates and measures spurious fits while preserving the number distribution.
+
 ## Source-quality flags
 
 1. **2025-06-10 occurs twice:** one row claims `off/off`, another gives actual AM 55 / PM 60. The isolated 2025 audit fixture explicitly picks the completed record. That exposed a production history ingestion risk: the old `HistorySync.parse2DHistory` kept the first date entry, including `off`. This has now been narrowly fixed to prefer the source row with more valid 2D session values. A dedicated Robolectric duplicate-day regression test was added; this does not edit winners, bets or UI and affects only future history sync imports.
