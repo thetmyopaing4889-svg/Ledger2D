@@ -21,7 +21,7 @@ The formula discovery prototype finds consecutive **retrospective** digit-catego
 
 ## Crucial limitation: not independently provable YET
 
-The phase-one API accepts a **caller-supplied local Instant** for unit-testability. A phone clock can be changed or a record reconstructed afterward. SHA-256 of the history input prevents accidental confusion about which input was used, **but does not notarize the timestamp**. The current in-memory journal also does not persist across app restarts.
+The phase-one API accepts a **caller-supplied local Instant** for unit-testability. A phone clock can be changed or a record reconstructed afterward. SHA-256 of the history input prevents accidental confusion about which input was used, **but does not notarize the timestamp**. The pure-domain journal remains in memory unless the experimental local store is explicitly used. That store can preserve snapshots across app restarts but does not attest timestamps independently.
 
 **Do not label any phase-one record as an independently verified real-time pre-result lock.** Its evidence label is deliberately `LOCAL_PRE_RESULT_LOCK_UNVERIFIED`. This is a prototype, not a working server-verified betting tool.
 
@@ -39,3 +39,15 @@ For a genuine prospective study the later implementation needs: durable append-o
 Kotlin GitHub CI #1552 passed the shuffled-date negative control: one of six shuffled histories found a WAM retrospective ten-streak. This is only a small qualitative negative control, not a significance test. CI #1566 passed the source-precedence and exhaustive 00–99 baseline tests (as of the creation of this design note).
 
 Nothing here proves a stable edge beyond chance or improves the legal/financial risk of buying 2D outcomes.
+
+
+## Experimental phase 1b — local append-only persistence (draft PR #32)
+
+A separate engine-only file, `CherryProspectiveTrialStore.kt`, provides a versioned local JSON snapshot through Android SharedPreferences. The future caller must invoke it on Dispatchers.IO and explicitly persist each new journal state; **it is not yet wired into any UI, result listener, or repository flow**.
+
+- Before writing a new snapshot, read the previously stored one and require its entire locked-prediction sequence and its settled-outcome sequence to remain unchanged as prefixes.
+- During import/restore, reject duplicate targets, unsupported source kinds, invalid cutoff ordering, altered hit/miss values, missing categories and malformed provenance; never silently erase a corrupted local journal.
+- A synchronous commit either reports success or fails. New app-store instances can reload a previous session's frozen formula choices and settlements.
+- This protects against accidental application code rewrites, **not** malicious device edits, cleared application storage, falsified device time, or two independently competing processes.
+- No extra claim of predictive skill follows from adding persistence. A server-backed, append-only trusted timestamp is still required for independently verified prospective evidence.
+- Robolectric tests cover save/reload, unchanged lock after settlement, overwrite/deletion rejection, outcome falsification rejection and fail-closed corruption behavior. Passing CI and mobile review are separate gates.
