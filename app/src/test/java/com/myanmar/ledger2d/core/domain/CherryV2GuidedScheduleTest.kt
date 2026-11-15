@@ -35,11 +35,10 @@ class CherryV2GuidedScheduleTest {
             CherryV2GuidedSchedule.laneAt(BigInteger.valueOf(10)))
         assertEquals(CherryV2GuidedSchedule.Lane.NESTED,
             CherryV2GuidedSchedule.laneAt(BigInteger.valueOf(11)))
-        assertEquals("(top1+top1)", at(10).structuralKey)
-        assertEquals("((top1+top1)+top1)", at(11).structuralKey)
-        // Prior top+tail is surfaced by slot 280 rather than waiting for
-        // the raw syntax grammar to reach whichever deep index represents it.
-        assertEquals("(top1+tail1)", at(280).structuralKey)
+        assertEquals("(top1+top2)", at(10).structuralKey)
+        assertEquals("((top1+tail1)+top2)", at(11).structuralKey)
+        // Early guided candidates mix distinct lags and components.
+        assertEquals("(top1+tail2)", at(280).structuralKey)
         val first = (0L..600L).map { at(it).structuralKey }
         assertTrue(first.any { it.contains("top2") && it.contains("tail1") })
         assertTrue(first.any { it.count { ch -> ch == '(' } >= 2 })
@@ -64,8 +63,10 @@ class CherryV2GuidedScheduleTest {
     @Test fun crossLagCandidateDirectlyFitsLongRecentStreakWithoutLadder() {
         val sequence = mutableListOf("12", "34")
         repeat(28) {
-            val last = sequence.last()
-            val top = (last[0].digitToInt() + last[1].digitToInt()) % 10
+            // Truly nonconstant Fibonacci-like recurrence: the next top
+            // digit equals top1+top2, modulo 10.
+            val top = (sequence.last()[0].digitToInt() +
+                sequence[sequence.lastIndex - 1][0].digitToInt()) % 10
             sequence.add("$top${(top + 1) % 10}")
         }
         val days = generateSequence(LocalDate.parse("2026-08-03")) {
@@ -78,7 +79,7 @@ class CherryV2GuidedScheduleTest {
         }
         val target = DrawIdentity(days[15], DrawSession.MORNING)
         val context = CherryV2HistoricalEvaluator.prepare(draws, target)
-        val slot = BigInteger.valueOf(280)
+        val slot = BigInteger.valueOf(10)
         val expression = CherryV2GuidedSchedule.expressionAt(slot)
         val found = CherryV2HistoricalEvaluator.evaluate(
             context, CherryDiscoveryKind.LONE, slot, expression)
@@ -89,7 +90,7 @@ class CherryV2GuidedScheduleTest {
         for (n in listOf(0L, 9L, 10L, 11L, 280L, 5000L, 200_000L)) {
             assertEquals(at(n).structuralKey, at(n).structuralKey)
         }
-        assertNull(at(280).evaluate(emptyList()))
+        assertNull(at(10).evaluate(emptyList()))
         try {
             CherryV2GuidedSchedule.expressionAt(BigInteger.valueOf(-1))
             fail("Negative search cursor not allowed")
