@@ -224,6 +224,8 @@ object CherryFormulaDiscoveryEngine {
         target: DrawIdentity,
         previousState: CherryDiscoverySession? = null,
         closedDates: Set<LocalDate> = emptySet(),
+        /** Call coroutineContext.ensureActive() here from a background caller. */
+        checkCancellation: () -> Unit = {},
     ): CherryDiscoverySession {
         val rows = history.filter {
             validHistoric2D(it.digit) && before(it, target) && it.date !in closedDates
@@ -234,6 +236,10 @@ object CherryFormulaDiscoveryEngine {
             it.target == target && it.historySignature == sig
         } ?: CherryDiscoverySession(target, sig, 0, 0, emptyList(), false)
         if (old.isComplete) return old
+        if (!DrawSchedule.isWorkingDate(target.date, closedDates)) {
+            return old.copy(hasImmediatePreviousDraw = false)
+        }
+        checkCancellation()
 
         val lookup = rows.associateBy { it.date to it.session }
         val currentInputs = inputs(target, lookup, closedDates)
@@ -255,6 +261,7 @@ object CherryFormulaDiscoveryEngine {
         old.formulas.forEach { slots[it.kind to minOf(it.historicalStreak, TARGET_STREAK)] = it }
         val mostRecent = frames.firstOrNull()
         for (expression in level) {
+            checkCancellation()
             val first = mostRecent?.let { expression.eval(it.inputs) } ?: continue
             val current = expression.eval(currentInputs) ?: continue
             for (kind in CherryDiscoveryKind.entries) {
@@ -262,6 +269,7 @@ object CherryFormulaDiscoveryEngine {
                     val offset = mod(wanted - first)
                     val hits = ArrayList<DrawIdentity>()
                     for (frame in frames) {
+                        if ((hits.size and 63) == 0) checkCancellation()
                         val base = expression.eval(frame.inputs) ?: break
                         if (!hit(kind, mod(base + offset), frame.draw.digit)) break
                         hits.add(identity(frame.draw))
