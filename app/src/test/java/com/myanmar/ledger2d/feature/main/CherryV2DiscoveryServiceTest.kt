@@ -144,4 +144,29 @@ class CherryV2DiscoveryServiceTest {
             db.close()
         }
     }
+    @Test fun orderAuditIsExplicitReadOnlyAndDoesNotStartOrAlterDiscovery() = runBlocking {
+        val db = database()
+        try {
+            db.historyResultDao().upsertAll(days.take(10).map(::row))
+            val kind = CherryDiscoveryKind.LONE
+            val service = CherryV2DiscoveryService(app, db)
+            assertNull(service.saved(target, kind, asOf))
+            assertTrue(prefs().all.isEmpty())
+
+            val metrics = service.auditSearchOrder(
+                target = target, kind = kind, asOf = asOf,
+                candidatesPerMode = 12, budgetPerModeNanos = 1_000_000_000L,
+            )
+            assertEquals(12, metrics.raw.inspected)
+            assertEquals(12, metrics.guided.inspected)
+            assertEquals(kind, metrics.category)
+            assertTrue(metrics.raw.longestHistoricalStreak >= 0)
+            assertTrue(metrics.guided.longestHistoricalStreak >= 0)
+            assertTrue(prefs().all.isEmpty())
+            assertNull(service.saved(target, kind, asOf))
+        } finally {
+            db.close()
+        }
+    }
+
 }
