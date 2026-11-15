@@ -244,7 +244,7 @@ class CherryProspectiveTrialJournal private constructor(
         }
         val available = cursors.values.filterNotNull()
         require(available.isNotEmpty()) { "A discovery session is required" }
-        val reference = available.first.engine
+        val reference = available.first().engine
         require(reference.hasImmediatePreviousDraw && reference.completedStages > 0) {
             "Only valid evaluated discovery sessions can be locked"
         }
