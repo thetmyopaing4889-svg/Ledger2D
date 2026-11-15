@@ -62,6 +62,11 @@ internal object CherryV2ForwardValidation {
         // Prevent accidental reuse of a schedule index from another version.
         require(frozen.grammarVersion == CherryV2GuidedSchedule.VERSION)
         require(heldOutActuals.size <= 256) { "Bound audit window to 256 draws" }
+        val originalTraining = CherryV2HistoricalEvaluator.prepare(
+            fullArchive, frozen.target, closedDates, checkCancellation)
+        require(originalTraining.historySignature == frozen.historySignature) {
+            "Training results were corrected: old selected formula is stale"
+        }
         val normalized = heldOutActuals
             .map { DrawIdentity(it.date, it.session) to it }
         require(normalized.all { (identity, actual) ->
