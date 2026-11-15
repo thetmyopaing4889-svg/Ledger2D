@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.core.domain
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
+import java.security.MessageDigest
 import kotlin.math.abs
 
 /**
@@ -46,6 +47,20 @@ data class CherryDiscoverySession(
                     .thenByDescending { it.discoveredAtStage }
             )
 }
+
+/**
+ * A cursor step over finite expressions and their possible result-derived
+ * offsets. No unbounded candidate pool is retained in memory.
+ */
+data class CherryDiscoveryAlternativeScan(
+    val historySignature: String,
+    val candidate: CherryDiscoveredFormula?,
+    val nextPosition: Int,
+    val isExhausted: Boolean,
+    val hasImmediatePreviousDraw: Boolean,
+    /** SHA-256 of the formula's complete historical and next-session outputs. */
+    val behaviorKey: String? = null,
+)
 
 /**
  * Deterministic four-level search. Each round inspects one NEW grammar level.
@@ -214,10 +229,26 @@ object CherryFormulaDiscoveryEngine {
         }
     }
 
-    private fun signature(rows: List<HistoricDraw>, closed: Set<LocalDate>): String =
-        rows.joinToString(";") {
+    /**
+     * Search identities depend only on the bounded history window, the target,
+     * and closures that could affect slots inside that window. Including every
+     * historic closure would grow signatures forever and would invalidate a
+     * finished search when a holiday from decades earlier is edited.
+     */
+    private fun signature(
+        rows: List<HistoricDraw>,
+        closed: Set<LocalDate>,
+        target: DrawIdentity,
+    ): String {
+        val oldest = rows.firstOrNull()?.date ?: target.date
+        val relevantClosures = closed.asSequence()
+            .filter { !it.isBefore(oldest) && !it.isAfter(target.date) }
+            .sorted()
+            .joinToString(",")
+        return rows.joinToString(";") {
             it.date.toString() + ":" + it.session.name + "=" + it.digit
-        } + "|closed=" + closed.sorted().joinToString(",")
+        } + "|closed=" + relevantClosures
+    }
 
     /**
      * Calculate one search level only. Passing the returned state to the next
@@ -235,6 +266,8 @@ object CherryFormulaDiscoveryEngine {
         closedDates: Set<LocalDate> = emptySet(),
         /** Call coroutineContext.ensureActive() here from a background caller. */
         checkCancellation: () -> Unit = {},
+        /** Validate an existing search without consuming a new grammar stage. */
+        advanceStage: Boolean = true,
     ): CherryDiscoverySession {
         // A bounded ordered buffer avoids materializing the entire historical
         // source into memory. Only 200 scored draws + 3 lag inputs survive.
@@ -242,7 +275,7 @@ object CherryFormulaDiscoveryEngine {
             history, target, closedDates, SEARCH_DRAWS + CONTEXT_DRAWS,
             checkCancellation,
         )
-        val sig = signature(rows, closedDates)
+        val sig = signature(rows, closedDates, target)
         val old = previousState?.takeIf {
             it.target == target && it.historySignature == sig
         } ?: CherryDiscoverySession(target, sig, 0, 0, emptyList(), false)
@@ -262,6 +295,8 @@ object CherryFormulaDiscoveryEngine {
             // supports this target. Caller can retry when results are complete.
             return old.copy(hasImmediatePreviousDraw = false)
         }
+
+        if (!advanceStage) return old.copy(hasImmediatePreviousDraw = true)
 
         // Do not evaluate the three extra lag-context draws as targets.
         val frames = rows.takeLast(SEARCH_DRAWS).asReversed().map { row ->
@@ -321,4 +356,118 @@ object CherryFormulaDiscoveryEngine {
             hasImmediatePreviousDraw = true,
         )
     }
+
+    /**
+     * Search exactly one next viable expression/offset candidate for a kind.
+     *
+     * Unlike the leaderboard's one-formula-per-streak-bucket rule, this cursor
+     * can enumerate every distinct viable expression and offset in the bounded
+     * 207-shape grammar. It retains only a single returned candidate, even in
+     * an all-zero worst-case history. The caller stores a cursor position and
+     * checks the fingerprint to restart safely after data corrections.
+     *
+     * Four cursor slots per expression cover the largest WAM target set;
+     * LONE/BREAK leave some slots empty but maintain stable positions.
+     */
+    fun nextAlternative(
+        history: List<HistoricDraw>,
+        target: DrawIdentity,
+        kind: CherryDiscoveryKind,
+        startPosition: Int = 0,
+        closedDates: Set<LocalDate> = emptySet(),
+        checkCancellation: () -> Unit = {},
+        /** Reports actual inspected grammar-slot position (0..828). */
+        onProgress: (Int) -> Unit = {},
+    ): CherryDiscoveryAlternativeScan {
+        require(startPosition >= 0)
+        val rows = CherryDiscoveryHistoryNormalizer.newestBefore(
+            history, target, closedDates, SEARCH_DRAWS + CONTEXT_DRAWS,
+            checkCancellation,
+        )
+        val fingerprint = signature(rows, closedDates, target)
+        if (!DrawSchedule.isWorkingDate(target.date, closedDates)) {
+            return CherryDiscoveryAlternativeScan(
+                fingerprint, null, startPosition, false, false)
+        }
+        val lookup = rows.associateBy { it.date to it.session }
+        val currentInputs = inputs(target, lookup, closedDates)
+        val validImmediate = currentInputs.firstOrNull()?.let {
+            identity(it) == previous(target, closedDates)
+        } ?: false
+        if (!validImmediate) {
+            return CherryDiscoveryAlternativeScan(
+                fingerprint, null, startPosition, false, false)
+        }
+        val frames = rows.takeLast(SEARCH_DRAWS).asReversed().map { row ->
+            Frame(row, inputs(identity(row), lookup, closedDates))
+        }
+        val newest = frames.firstOrNull() ?: return CherryDiscoveryAlternativeScan(
+            fingerprint, null, startPosition, false, true)
+        val wanted = targets(kind, newest.draw.digit)
+        val grammar = (0 until STAGE_COUNT).flatMap { stage ->
+            expressions(stage).map { stage to it }
+        }
+        val stop = grammar.size * 4
+        onProgress(startPosition.coerceAtMost(stop))
+        for (index in startPosition until stop) {
+            if ((index and 15) == 0) {
+                checkCancellation()
+                onProgress(index)
+            }
+            val wantedIndex = index % 4
+            if (wantedIndex >= wanted.size) continue
+            val (stage, expression) = grammar[index / 4]
+            val first = expression.eval(newest.inputs) ?: continue
+            val current = expression.eval(currentInputs) ?: continue
+            val offset = mod(wanted[wantedIndex] - first)
+            var streak = 0
+            for (frame in frames) {
+                if ((streak and 63) == 0) checkCancellation()
+                val base = expression.eval(frame.inputs) ?: break
+                if (!hit(kind, mod(base + offset), frame.draw.digit)) break
+                streak++
+            }
+            if (streak < MIN_STREAK) continue
+            val selected = CherryDiscoveredFormula(
+                kind = kind,
+                id = expression.label + "+" + offset + "@" + kind.name,
+                expression = expression.label,
+                offset = offset,
+                currentDigit = mod(current + offset),
+                historicalStreak = streak,
+                matchedDraws = frames.take(streak).map { identity(it.draw) },
+                discoveredAtStage = stage + 1,
+            )
+            // Behavioral dedup, not expression-name dedup. Commutative
+            // expressions and offset variants may be exactly equivalent on
+            // the available bounded evidence. WAM digit and digit+5 cover
+            // identical actual outcomes, so canonicalize modulo five.
+            fun canonical(digit: Int): Int =
+                if (kind == CherryDiscoveryKind.WAM) mod(digit) % 5 else mod(digit)
+            val trace = buildString {
+                append(kind.name).append(':')
+                append(canonical(selected.currentDigit)).append(':')
+                for ((n, frame) in frames.withIndex()) {
+                    if ((n and 31) == 0) checkCancellation()
+                    val value = expression.eval(frame.inputs)
+                    if (value == null) append('x')
+                    else append(('a'.code + canonical(value + offset)).toChar())
+                }
+            }
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(trace.toByteArray(Charsets.UTF_8))
+                .joinToString("") {
+                    (it.toInt() and 255).toString(16).padStart(2, '0')
+                }
+            checkCancellation()
+            onProgress(index + 1)
+            return CherryDiscoveryAlternativeScan(
+                fingerprint, selected, index + 1, false, true, digest)
+        }
+        checkCancellation()
+        onProgress(stop)
+        return CherryDiscoveryAlternativeScan(
+            fingerprint, null, stop, true, true)
+    }
+
 }

@@ -69,6 +69,26 @@ class CherryDiscoveryResearchWindowTest {
         assertEquals(earlier, all)
     }
 
+    @Test fun stratifiedSamplesIncludeTheNewestTargetAndOneSampleUsesNewest() {
+        val through = days.last()
+        val latest = com.myanmar.ledger2d.core.model.DrawIdentity(
+            through, DrawSession.EVENING)
+        for (years in listOf(2, 3)) {
+            val spread = CherryDiscoveryWalkForward.replayResearchWindow(
+                rows, throughInclusive = through, years = years,
+                sampleTargets = 16)
+            assertEquals(latest, spread.report.checks.last().target)
+            val unique = spread.report.checks.map { it.target }.distinct()
+            assertEquals(16, unique.size)
+            val single = CherryDiscoveryWalkForward.replayResearchWindow(
+                rows, throughInclusive = through, years = years,
+                sampleTargets = 1)
+            assertEquals(1, single.sampledTargets)
+            assertEquals(3, single.report.checks.size)
+            assertEquals(setOf(latest), single.report.checks.map { it.target }.toSet())
+        }
+    }
+
     @Test fun boundedResearchSamplesCanBeCancelled() {
         try {
             var calls = 0

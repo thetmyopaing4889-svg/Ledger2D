@@ -68,6 +68,38 @@ class CherryDiscoveryBoundedHistoryTest {
         assertEquals(baseline, search(all.takeLast(203)))
     }
 
+    @Test fun tenThousandDrawsKeepTheSameBoundedFormulaSearch() {
+        val weekdays = generateSequence(LocalDate.of(2005, 1, 3)) {
+            it.plusDays(1)
+        }.filter(DrawSchedule::isWeekday).take(5001).toList()
+        val rows = (0 until 10_000).map { index ->
+            HistoricDraw(weekdays[index / 2],
+                if (index % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
+                "00", HistoricSource.HISTORY)
+        }
+        val next = DrawIdentity(weekdays[5000], DrawSession.MORNING)
+        fun run(input: List<HistoricDraw>): CherryDiscoverySession {
+            var session: CherryDiscoverySession? = null
+            repeat(CherryFormulaDiscoveryEngine.STAGE_COUNT) {
+                session = CherryFormulaDiscoveryEngine.nextRound(input, next, session)
+            }
+            return requireNotNull(session)
+        }
+        val start = System.nanoTime()
+        val fromFullArchive = run(rows)
+        val elapsedMs = (System.nanoTime() - start) / 1_000_000L
+        val fromOnlyLatest203 = run(rows.takeLast(203))
+        assertEquals(fromOnlyLatest203, fromFullArchive)
+        assertEquals(207, fromFullArchive.inspectedExpressions)
+        assertTrue(fromFullArchive.formulas.size <= 24)
+        assertTrue(fromFullArchive.historySignature.length < 10_000)
+        for (kind in CherryDiscoveryKind.entries) {
+            assertEquals(200, fromFullArchive.longest(kind)?.historicalStreak)
+        }
+        println("CHERRY_BOUNDED_10K inputDraws=10000 scoredDraws=200 " +
+            "expressions=207 elapsedMs=" + elapsedMs)
+    }
+
     @Test fun changingOnlyAncientHistoryDoesNotInvalidateFinishedSearch() {
         val old = search(all)
         val changed = all.toMutableList()
@@ -80,6 +112,28 @@ class CherryDiscoveryBoundedHistoryTest {
             changed, target, previousState = old)
         assertEquals(1, restarted.completedStages)
         assertNotEquals(old.historySignature, restarted.historySignature)
+    }
+
+    @Test fun ancientHolidayCorrectionsDoNotInvalidateRecentSearch() {
+        val completed = search(all)
+        val ancientHoliday = LocalDate.of(2001, 1, 1)
+        val reused = CherryFormulaDiscoveryEngine.nextRound(
+            all, target, completed, closedDates = setOf(ancientHoliday))
+        assertEquals(
+            "Corrections outside the 203-row search window must not restart discovery",
+            completed, reused)
+        assertTrue(reused.isComplete)
+    }
+
+    @Test fun activeHolidayCorrectionsStillInvalidateCachedSearch() {
+        val completed = search(all)
+        val recentlyClosed = days[1499]
+        val restarted = CherryFormulaDiscoveryEngine.nextRound(
+            all, target, completed, closedDates = setOf(recentlyClosed))
+        assertNotEquals(completed.historySignature, restarted.historySignature)
+        assertEquals(
+            "Closed previous working session must not be silently bridged",
+            1, restarted.completedStages)
     }
 
     @Test fun reverseOrderAndSourceOverridesCannotEvictRecentTruth() {

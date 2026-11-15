@@ -33,6 +33,27 @@ object CherryDiscoveryBackgroundRunner {
         )
     }
 
+    /** Offer the next unseen representative; never block Compose/Main. */
+    suspend fun searchMore(
+        history: List<HistoricDraw>,
+        target: DrawIdentity,
+        kind: CherryDiscoveryKind,
+        previous: CherryDiscoverySearchCursor? = null,
+        closedDates: Set<LocalDate> = emptySet(),
+        onProgress: (Int) -> Unit = {},
+    ): CherryDiscoverySearchCursor = withContext(Dispatchers.Default) {
+        val jobContext = coroutineContext
+        CherryDiscoverySearchMore.next(
+            history = history,
+            target = target,
+            kind = kind,
+            previous = previous,
+            closedDates = closedDates,
+            checkCancellation = { jobContext.ensureActive() },
+            onProgress = onProgress,
+        )
+    }
+
     /** Research mode: 80 time-distributed samples over 2 years by default. */
     suspend fun research(
         history: List<HistoricDraw>,

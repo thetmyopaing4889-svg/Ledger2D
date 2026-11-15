@@ -32,6 +32,22 @@ class CherryDiscoveryBackgroundRunnerTest {
                 history, target, actual).completedStages)
     }
 
+    @Test fun asyncSearchMoreMatchesPureEngineAndPreservesProgress() = runBlocking {
+        val target = DrawIdentity(days[80], DrawSession.MORNING)
+        val first = CherryDiscoveryBackgroundRunner.searchMore(
+            history, target, CherryDiscoveryKind.LONE)
+        assertEquals(
+            CherryDiscoverySearchMore.next(
+                history, target, CherryDiscoveryKind.LONE),
+            first)
+        val expected = CherryDiscoverySearchMore.next(
+            history, target, CherryDiscoveryKind.LONE, first)
+        val next = CherryDiscoveryBackgroundRunner.searchMore(
+            history, target, CherryDiscoveryKind.LONE, first)
+        assertEquals(expected, next)
+        assertTrue(next.offeredIds.containsAll(first.offeredIds))
+    }
+
     @Test fun cancelledScopeCannotStartDiscoveryOrResearch() = runBlocking {
         val cancelled = Job().apply { cancel() }
         val target = DrawIdentity(days[80], DrawSession.MORNING)
@@ -47,6 +63,13 @@ class CherryDiscoveryBackgroundRunnerTest {
                     history, days[79], years = 2, samples = 10)
             }
             fail("Expected research cancellation")
+        } catch (_: CancellationException) { /* expected */ }
+        try {
+            withContext(cancelled) {
+                CherryDiscoveryBackgroundRunner.searchMore(
+                    history, target, CherryDiscoveryKind.BREAK)
+            }
+            fail("Expected Search More cancellation")
         } catch (_: CancellationException) { /* expected */ }
     }
 }

@@ -94,6 +94,70 @@ class CherryProspectiveTrialJournal private constructor(
     companion object {
         fun empty(): CherryProspectiveTrialJournal =
             CherryProspectiveTrialJournal(emptyList(), emptyList())
+
+        /**
+         * Restore a previously persisted local journal without allowing a
+         * malformed or edited historical lock to be accepted silently.
+         * This checks internal consistency; it is NOT a trusted timestamp.
+         */
+        fun restore(
+            locked: List<CherryProspectiveLockedTrial>,
+            evaluated: List<CherryProspectiveEvaluation>,
+        ): CherryProspectiveTrialJournal {
+            require(locked.map { it.target }.distinct().size == locked.size) {
+                "Duplicate locked draw"
+            }
+            require(evaluated.map { it.target }.distinct().size == evaluated.size) {
+                "Duplicate settled draw"
+            }
+            val byTarget = locked.associateBy { it.target }
+            for (lock in locked) {
+                require(lock.cutoffAt == CherryProspectiveTrialClock.cutoff(lock.target) &&
+                    lock.lockedAt.isBefore(lock.cutoffAt)) {
+                    "Invalid pre-result local lock boundary"
+                }
+                require(lock.historyFingerprint.matches(Regex("[0-9a-f]{64}")) &&
+                    lock.completedStages in 1..CherryFormulaDiscoveryEngine.STAGE_COUNT &&
+                    lock.evidenceLabel == "LOCAL_PRE_RESULT_LOCK_UNVERIFIED") {
+                    "Invalid locked formula provenance"
+                }
+                require(lock.choices.map { it.kind } == CherryDiscoveryKind.entries) {
+                    "A lock must preserve one choice or abstention for every kind"
+                }
+            }
+            for (record in evaluated) {
+                val lock = requireNotNull(byTarget[record.target]) {
+                    "Settled result has no original lock"
+                }
+                require(validHistoric2D(record.actualPair) &&
+                    record.resultSource in setOf(HistoricSource.WINNER, HistoricSource.DAILY) &&
+                    !record.evaluatedAt.isBefore(lock.cutoffAt) &&
+                    !record.evaluatedAt.isBefore(lock.lockedAt)) {
+                    "Invalid confirmed result or verification time"
+                }
+                val expected = lock.choices.map { choice ->
+                    CherryProspectiveOutcome(
+                        choice.kind,
+                        choice.outputDigit?.let { digit ->
+                            CherryDiscoveryWalkForward.matches(
+                                choice.kind, digit, record.actualPair)
+                        },
+                    )
+                }
+                require(record.outcomes == expected) {
+                    "Stored hit/miss does not match the original locked digit"
+                }
+            }
+            val fixedLocks = locked.map { lock ->
+                lock.copy(choices = java.util.Collections.unmodifiableList(
+                    ArrayList(lock.choices)))
+            }
+            val fixedResults = evaluated.map { record ->
+                record.copy(outcomes = java.util.Collections.unmodifiableList(
+                    ArrayList(record.outcomes)))
+            }
+            return CherryProspectiveTrialJournal(fixedLocks, fixedResults)
+        }
     }
 
     fun lockedTrials(): List<CherryProspectiveLockedTrial> = locks.toList()
@@ -157,6 +221,80 @@ class CherryProspectiveTrialJournal private constructor(
             choices = java.util.Collections.unmodifiableList(ArrayList(choices)),
         )
         return CherryProspectiveTrialJournal(locks + lock, evaluations)
+    }
+
+    /**
+     * Freeze a user-approved Search More alternative without requiring it to
+     * occupy the engine's 24 representative leaderboard slots.
+     *
+     * Only the current offered candidate or the explicitly retained best
+     * candidate may be selected. Every category must be represented; null is
+     * an explicit abstention. All cursors must refer to the same settled
+     * history fingerprint and target. Does not silently change an old lock.
+     */
+    fun lockFromSearchCursors(
+        cursors: Map<CherryDiscoveryKind, CherryDiscoverySearchCursor?>,
+        selectedIds: Map<CherryDiscoveryKind, String?>,
+        lockedAt: Instant,
+        closedDates: Set<LocalDate> = emptySet(),
+        /** Re-evaluate older offered formulas rather than retaining huge lists. */
+        history: List<HistoricDraw> = emptyList(),
+        checkCancellation: () -> Unit = {},
+    ): CherryProspectiveTrialJournal {
+        val kinds = CherryDiscoveryKind.entries.toSet()
+        require(cursors.keys == kinds && selectedIds.keys == kinds) {
+            "All three categories must be included, including abstentions"
+        }
+        val available = cursors.values.filterNotNull()
+        require(available.isNotEmpty()) { "A discovery session is required" }
+        val reference = available.first().engine
+        require(reference.hasImmediatePreviousDraw && reference.completedStages > 0) {
+            "Only valid evaluated discovery sessions can be locked"
+        }
+        require(available.all {
+            it.kind in kinds && it.engine.target == reference.target &&
+                it.engine.historySignature == reference.historySignature &&
+                it.engine.hasImmediatePreviousDraw
+        }) {
+            "Cannot combine different target sessions or corrected histories"
+        }
+        val selected = CherryDiscoveryKind.entries.mapNotNull { kind ->
+            val id = selectedIds.getValue(kind) ?: return@mapNotNull null
+            val cursor = requireNotNull(cursors.getValue(kind)) {
+                "Selected category requires its discovery cursor"
+            }
+            require(cursor.kind == kind && id in cursor.offeredIds) {
+                "The chosen formula was not offered for this category"
+            }
+            val directlyAvailable = listOfNotNull(
+                cursor.newCandidate, cursor.bestCandidate)
+                .firstOrNull { it.kind == kind && it.id == id }
+            val candidate = directlyAvailable ?: run {
+                val position = requireNotNull(cursor.offeredPositions[id]) {
+                    "No recorded grammar position for the selected formula"
+                }
+                require(history.isNotEmpty()) {
+                    "Restoring an earlier offered formula requires its original history"
+                }
+                checkCancellation()
+                val scan = CherryFormulaDiscoveryEngine.nextAlternative(
+                    history, reference.target, kind, position, closedDates,
+                    checkCancellation)
+                require(scan.historySignature == reference.historySignature &&
+                    scan.nextPosition == position + 1 &&
+                    scan.candidate?.id == id &&
+                    scan.behaviorKey == cursor.offeredBehaviors[id]) {
+                    "Selected formula no longer matches its original evidence"
+                }
+                requireNotNull(scan.candidate)
+            }
+            candidate
+        }
+        val snapshot = reference.copy(
+            completedStages = available.maxOf { it.engine.completedStages },
+            formulas = selected,
+        )
+        return lock(snapshot, lockedAt, selectedIds, closedDates)
     }
 
     /**

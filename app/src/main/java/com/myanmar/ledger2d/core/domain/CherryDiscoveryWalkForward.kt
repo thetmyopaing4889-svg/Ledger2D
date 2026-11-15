@@ -149,11 +149,18 @@ object CherryDiscoveryWalkForward {
         )
         val eligible = rows.indices.filter { rows[it].date >= from }
         val count = minOf(sampleTargets, eligible.size)
-        // Deterministic stratified temporal sample, not only the latest 80.
-        val selected = if (count == 0) emptyList() else
-            (0 until count).map { index ->
-                eligible[index * eligible.size / count]
+        // Deterministic stratified temporal sample, including the most recent
+        // eligible target. A one-target audit must test that most recent draw,
+        // not the oldest draw in a two/three-year window.
+        val selected = when (count) {
+            0 -> emptyList()
+            1 -> listOf(eligible.last())
+            else -> (0 until count).map { index ->
+                val offset = (index.toLong() * (eligible.size - 1) /
+                    (count - 1)).toInt()
+                eligible[offset]
             }
+        }
         return CherryDiscoveryWindowAudit(
             years, from, throughInclusive, eligible.size, count,
             replayAtIndices(rows, selected, stages,

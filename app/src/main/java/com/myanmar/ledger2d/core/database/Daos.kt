@@ -138,6 +138,9 @@ data class AgentStatementCommissionRow(
 }
 @Dao interface WinningNumberDao {
     @Query("SELECT * FROM winning_numbers ORDER BY date DESC, session") fun observeAll(): Flow<List<WinningNumberEntity>>
+    /** Engine-only bounded snapshot; does not change existing observers. */
+    @Query("SELECT * FROM winning_numbers WHERE date <= :through ORDER BY date DESC, session DESC LIMIT :limit")
+    suspend fun newestThrough(through: LocalDate, limit: Int): List<WinningNumberEntity>
     @Query("SELECT * FROM winning_numbers WHERE date=:date AND session=:session") fun observe(date: LocalDate, session: DrawSession): Flow<WinningNumberEntity?>
     @Query("SELECT * FROM winning_numbers WHERE date=:date AND session=:session") suspend fun get(date: LocalDate, session: DrawSession): WinningNumberEntity?
     @Upsert suspend fun upsert(value: WinningNumberEntity): Long
@@ -145,6 +148,8 @@ data class AgentStatementCommissionRow(
 }
 
 @Dao interface ManualWinnerLockDao {
+    @Query("SELECT * FROM manual_winner_locks WHERE date <= :through ORDER BY date DESC, session DESC LIMIT :limit")
+    suspend fun newestThrough(through: LocalDate, limit: Int): List<ManualWinnerLockEntity>
     @Query("SELECT * FROM manual_winner_locks ORDER BY date DESC, session")
     fun observeAll(): Flow<List<ManualWinnerLockEntity>>
     @Query("SELECT * FROM manual_winner_locks WHERE date=:date AND session=:session LIMIT 1")
@@ -155,6 +160,8 @@ data class AgentStatementCommissionRow(
 }
 @Dao interface HistoryResultDao {
     @Query("SELECT * FROM history_results ORDER BY date DESC") fun observeAll(): Flow<List<HistoryResultEntity>>
+    @Query("SELECT * FROM history_results WHERE date <= :through ORDER BY date DESC LIMIT :limit")
+    suspend fun newestThrough(through: LocalDate, limit: Int): List<HistoryResultEntity>
     @Query("SELECT * FROM history_results WHERE date=:date") fun observe(date: LocalDate): Flow<HistoryResultEntity?>
     @Query("SELECT * FROM history_results WHERE date=:date") suspend fun get(date: LocalDate): HistoryResultEntity?
     @Upsert suspend fun upsert(value: HistoryResultEntity): Long
@@ -167,6 +174,8 @@ data class AgentStatementCommissionRow(
 }
 
 @Dao interface LiveDailyResultDao {
+    @Query("SELECT * FROM live_daily_results WHERE date <= :through ORDER BY date DESC LIMIT :limit")
+    suspend fun newestThrough(through: LocalDate, limit: Int): List<LiveDailyResultEntity>
     @Query("SELECT * FROM live_daily_results ORDER BY date DESC")
     fun observeAll(): Flow<List<LiveDailyResultEntity>>
 
@@ -181,6 +190,8 @@ data class AgentStatementCommissionRow(
 }
 
 @Dao interface ClosedDayDao {
+    @Query("SELECT * FROM closed_days WHERE date BETWEEN :from AND :through ORDER BY date")
+    suspend fun between(from: LocalDate, through: LocalDate): List<ClosedDayEntity>
     @Query("SELECT * FROM closed_days ORDER BY date") fun observeAll(): Flow<List<ClosedDayEntity>>
     @Query("SELECT EXISTS(SELECT 1 FROM closed_days WHERE date=:date)") suspend fun isClosed(date: LocalDate): Boolean
     @Query("SELECT * FROM closed_days WHERE date=:date") suspend fun get(date: LocalDate): ClosedDayEntity?

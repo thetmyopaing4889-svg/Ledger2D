@@ -44,6 +44,11 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     fun tr(mm: String, english: String) = if(en) english else mm
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    // Keep the discovery entry point separate from the existing 210 Gemini
+    // research variants, Champion and summary selection.
+    val discoveryService = remember(context, container) {
+        CherryDiscoveryEngineService(context, container.database)
+    }
     val originalSource=remember(context){
         runCatching {
             context.assets.open("two_d_rules_source.txt")
@@ -334,13 +339,71 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.MATH->{
-                        item{
-                            CherryMathFrame(
-                                report=report,
+                        item {
+                            // Match CURRENT: a section heading outside the selection card.
+                            CherryHeading(
+                                tr("🧮 သင်္ချာနည်းများ","🧮 Math methods"),
+                                tr("နောက်ဆုံးရလဒ်များမှ တွက်ချက်ထားသော သင်္ချာနည်းများ",
+                                    "Methods calculated from recent confirmed results")
+                            )
+                        }
+                        item {
+                            CherryMathSelectionOverview(
+                                selections=report.mathSelections(),
+                                all=report.math,
+                                en=en,
+                                onPick={selectedPick=it}
+                            )
+                        }
+                        // The Champion stays directly below the prioritized picks.
+                        item {
+                            CherryMathSupportFrames(
+                                analysis=report.mathAnalysis,
+                                all=report.math,
+                                originalSource=originalSource,
+                                en=en,
+                                onPick={selectedPick=it},
+                                onOriginal={selectedOriginal=it},
+                                showWatches=false,
+                                showResearch=false
+                            )
+                        }
+                        item {
+                            CherryHeading(
+                                tr("တွက်နည်းများ","Math formulas"),
+                                tr("လုံးပိုင်၊ ဝမ်းချိန်း၊ ဘရိတ် ကတ်ကိုနှိပ်ပြီး သက်ဆိုင်ရာတွက်နည်းများ ကြည့်ရန်",
+                                    "Tap Lone, Wam or Break to see its formulas")
+                            )
+                        }
+                        item {
+                            CherryMathMethodCategories(
+                                analysis=report.mathAnalysis,
+                                all=report.math,
                                 originalSource=originalSource,
                                 en=en,
                                 onPick={selectedPick=it},
                                 onOriginal={selectedOriginal=it}
+                            )
+                        }
+                        // Gemini research remains below all original categories.
+                        item {
+                            CherryMathSupportFrames(
+                                analysis=report.mathAnalysis,
+                                all=report.math,
+                                originalSource=originalSource,
+                                en=en,
+                                onPick={selectedPick=it},
+                                onOriginal={selectedOriginal=it},
+                                showChampion=false,
+                                showWatches=false
+                            )
+                        }
+                        // Keep Discovery unchanged, after all existing Math content.
+                        item {
+                            CherryDiscoveryPanel(
+                                service = discoveryService,
+                                target = target,
+                                en = en,
                             )
                         }
                     }
