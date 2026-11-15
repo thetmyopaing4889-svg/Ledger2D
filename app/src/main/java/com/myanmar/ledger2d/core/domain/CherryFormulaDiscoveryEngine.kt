@@ -59,6 +59,10 @@ object CherryFormulaDiscoveryEngine {
     const val STAGE_COUNT = 4
     const val MIN_STREAK = 3
     const val TARGET_STREAK = 10
+    /** Normal discovery evaluates at most the latest 200 confirmed draw slots. */
+    const val SEARCH_DRAWS = 200
+    /** The grammar references up to three PRECEDING slots for each draw. */
+    private const val CONTEXT_DRAWS = 3
 
     private fun mod(n: Int): Int = Math.floorMod(n, 10)
     private fun before(d: HistoricDraw, t: DrawIdentity): Boolean =
@@ -218,6 +222,11 @@ object CherryFormulaDiscoveryEngine {
     /**
      * Calculate one search level only. Passing the returned state to the next
      * call advances the grammar without repeating previous levels.
+     *
+     * Only the newest SEARCH_DRAWS frames are scored, while CONTEXT_DRAWS
+     * extra older slots supply lagged inputs. This bounds the expensive
+     * expression-streak search even if the repository grows to many years.
+     * Historical data is NOT deleted; research walk-forward is separate.
      */
     fun nextRound(
         history: List<HistoricDraw>,
@@ -227,10 +236,20 @@ object CherryFormulaDiscoveryEngine {
         /** Call coroutineContext.ensureActive() here from a background caller. */
         checkCancellation: () -> Unit = {},
     ): CherryDiscoverySession {
-        val rows = history.filter {
-            validHistoric2D(it.digit) && before(it, target) &&
-                DrawSchedule.isWorkingDate(it.date, closedDates)
-        }.let(CherryDiscoveryHistoryNormalizer::normalize)
+        // Filter/normalize may inspect the supplied history once, but all
+        // subsequent high-cost grammar evaluation is strictly bounded.
+        // A repository can optimize further by querying only the latest
+        // (SEARCH_DRAWS + CONTEXT_DRAWS) settled draw slots.
+        val eligible = ArrayList<HistoricDraw>(history.size.coerceAtMost(
+            SEARCH_DRAWS + CONTEXT_DRAWS))
+        history.forEachIndexed { index, row ->
+            if ((index and 127) == 0) checkCancellation()
+            if (validHistoric2D(row.digit) && before(row, target) &&
+                DrawSchedule.isWorkingDate(row.date, closedDates)) eligible.add(row)
+        }
+        checkCancellation()
+        val rows = CherryDiscoveryHistoryNormalizer.normalize(eligible)
+            .takeLast(SEARCH_DRAWS + CONTEXT_DRAWS)
         val sig = signature(rows, closedDates)
         val old = previousState?.takeIf {
             it.target == target && it.historySignature == sig
@@ -252,7 +271,8 @@ object CherryFormulaDiscoveryEngine {
             return old.copy(hasImmediatePreviousDraw = false)
         }
 
-        val frames = rows.asReversed().map { row ->
+        // Do not evaluate the three extra lag-context draws as targets.
+        val frames = rows.takeLast(SEARCH_DRAWS).asReversed().map { row ->
             Frame(row, inputs(identity(row), lookup, closedDates))
         }
         val stage = old.completedStages
