@@ -22,9 +22,10 @@ Working branch: `feature/2d-rules-dual-view`.
 1. `CherryDiscoveryHistoryNormalizer.newestBefore` uses an ordered map capped at **203 distinct date/session slots**. It scans caller input once, using **O(N log 203) CPU time and O(203) additional buffer memory**, regardless of how many years exist. Verified winner > daily > history precedence is unchanged.
 2. `CherryFormulaDiscoveryEngine.nextRound` scores **no more than 200 frames**. Up to 3 earlier rows are context only. For 200 input rows, a one-lag expression can match at most 199; with 203+ contiguous rows the max is 200.
 3. Signatures and saved `matchedDraws` operate only on the window. A correction to ancient, out-of-window input does not unnecessarily invalidate the current completed search; a recent correction does.
-4. Research backtesting slices the previously normalized history by index before each target, instead of filtering and rescanning years of earlier draws on each of four grammar stages.
-5. `CherryDiscoveryBackgroundRunner` supplies an **opt-in coroutine wrapper** using `Dispatchers.Default` and cancellation checks. It is **not connected to the UI yet**; UI integration must use this background path rather than invoking heavy discovery synchronously in Compose.
-6. Work is cancellable in the input scan, between expressions, and in the 200-frame streak scan. No background global job is started.
+4. Candidate evaluation counts consecutive matches first and only builds the `matchedDraws` list when a formula actually occupies a retained slot. This eliminates repeated temporary identity/list allocation for candidates that fail early or lose to an existing formula.
+5. Research backtesting slices the previously normalized history by index before each target, instead of filtering and rescanning years of earlier draws on each of four grammar stages.
+6. `CherryDiscoveryBackgroundRunner` supplies an **opt-in coroutine wrapper** using `Dispatchers.Default` and cancellation checks. It is **not connected to the UI yet**; UI integration must use this background path rather than invoking heavy discovery synchronously in Compose.
+7. Work is cancellable in the input scan, between expressions, and in the 200-frame streak scan. No background global job is started.
 
 ## Benchmark contract (not phone results)
 
