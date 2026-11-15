@@ -92,7 +92,7 @@ class CherryFormulaDiscoveryEngineTest {
         }
         assertEquals(result, CherryFormulaDiscoveryEngine.nextRound(rows, target, result))
         println("CHERRY_DISCOVERY_STRESS draws=1000 expressions=207 " +
-            "stages=4 elapsedMs=$" + elapsedMs)
+            "stages=4 elapsedMs=" + elapsedMs)
     }
 
     @Test fun neverReadsTargetOrFutureDrawsWhenSearching() {
