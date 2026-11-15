@@ -9,7 +9,8 @@ import java.util.concurrent.CancellationException
  */
 internal object CherryV2TimedSearch {
     const val DEFAULT_BUDGET_NANOS = 30_000_000_000L
-    private const val CHECKPOINT_EVERY = 64
+    private const val CHECKPOINT_EVERY = 512
+    private const val CHECKPOINT_MIN_INTERVAL_NANOS = 500_000_000L
 
     enum class StopReason { TIME_LIMIT, BLOCKED }
 
@@ -33,8 +34,9 @@ internal object CherryV2TimedSearch {
      * If time expires mid-expression, Continue safely retries that expression.
      *
      * The bounded recent-behavior queue is included in snapshots; no global
-     * unlimited in-memory set is retained. onCheckpoint is called after each
-     * completed 64 expressions and at timeout. The caller is responsible for
+     * unlimited in-memory set is retained. Periodic checkpoint writes are
+     * throttled to avoid saturating flash storage on fast phones; checkpoint
+     * is always written at timeout or cancellation. Caller is responsible for
      * atomic durability and serializing simultaneous sessions.
      *
      * onBatchBoundary is a cooperative hook for an Android integration worker
@@ -59,6 +61,7 @@ internal object CherryV2TimedSearch {
         )) { "Wrong target/category, grammar or corrected history: stale search" }
 
         val started = monotonicNanos()
+        var lastPersistedAt = started
         var cursor = previous ?: CherryV2StreakRegistry(
             context.target, kind, context.historySignature)
         if (context.blocked) {
@@ -129,8 +132,14 @@ internal object CherryV2TimedSearch {
 
                 if (inspected % CHECKPOINT_EVERY == 0) {
                     cursor = snapshot()
-                    onCheckpoint(cursor)
+                    // Let cooperative Android workers yield even when a
+                    // durable write is not yet needed.
                     onBatchBoundary()
+                    val now = monotonicNanos()
+                    if ((now - lastPersistedAt) >= CHECKPOINT_MIN_INTERVAL_NANOS) {
+                        onCheckpoint(cursor)
+                        lastPersistedAt = now
+                    }
                 }
             } catch (_: DeadlineReached) {
                 cursor = snapshot()
