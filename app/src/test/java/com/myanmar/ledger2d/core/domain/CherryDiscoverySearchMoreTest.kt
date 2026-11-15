@@ -20,49 +20,67 @@ class CherryDiscoverySearchMoreTest {
             "00", HistoricSource.WINNER)
     }
 
-    @Test fun searchMoreEnumeratesDistinctFormulasAndOnlyAdvancesNewStages() {
+    @Test fun equivalenceDedupSkipsDifferentNamesWithSameOutputBehavior() {
+        val rows = history()
+        val first = CherryFormulaDiscoveryEngine.nextAlternative(
+            rows, target, CherryDiscoveryKind.LONE)
+        val equivalent = CherryFormulaDiscoveryEngine.nextAlternative(
+            rows, target, CherryDiscoveryKind.LONE, first.nextPosition)
+        assertNotEquals(first.candidate?.id, equivalent.candidate?.id)
+        assertEquals("top1 and tail1 are indistinguishable in this fixture",
+            first.behaviorKey, equivalent.behaviorKey)
+
+        val offered = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE)
+        assertEquals(first.candidate?.id, offered.newCandidate?.id)
+        val second = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE, offered)
+        assertNotEquals("An equivalent formula must be skipped",
+            equivalent.candidate?.id, second.newCandidate?.id)
+        assertEquals(2, second.offeredBehaviors.size)
+        assertEquals(2, second.offeredBehaviors.values.toSet().size)
+    }
+
+    @Test fun searchMoreEnumeratesUniqueBehaviorsAndExhaustsFiniteGrammar() {
         for (kind in CherryDiscoveryKind.entries) {
             val rows = history()
             var cursor: CherryDiscoverySearchCursor? = null
             val ids = mutableSetOf<String>()
+            val behaviors = mutableSetOf<String>()
             var lastStages = 0
-            // The degenerate all-zero fixture has hundreds of valid
-            // alternatives, so sample the first dozen instead of retaining
-            // a large result list or wasting CI time enumerating them all.
-            repeat(12) {
+            var calls = 0
+            while (true) {
                 val next = CherryDiscoverySearchMore.next(
                     rows, target, kind, cursor)
                 assertFalse(next.blocked)
-                assertFalse(next.exhausted)
                 assertTrue(next.completedStages >= lastStages)
                 lastStages = next.completedStages
+                if (next.exhausted) {
+                    assertNull(next.newCandidate)
+                    assertTrue(next.engine.isComplete)
+                    assertEquals(207, next.inspectedExpressions)
+                    assertEquals(ids, next.offeredIds)
+                    assertEquals(behaviors, next.offeredBehaviors.values.toSet())
+                    assertEquals(next, CherryDiscoverySearchMore.next(
+                        rows, target, kind, next))
+                    break
+                }
                 val fresh = requireNotNull(next.newCandidate)
                 assertEquals(kind, fresh.kind)
-                assertTrue("Search More must not repeat an old formula",
-                    ids.add(fresh.id))
+                assertTrue(ids.add(fresh.id))
+                assertTrue(behaviors.add(requireNotNull(
+                    next.offeredBehaviors[fresh.id])))
                 assertEquals(ids, next.offeredIds)
+                assertEquals(ids, next.offeredPositions.keys)
+                assertEquals(ids, next.offeredBehaviors.keys)
                 assertEquals("HISTORICAL_FIT", fresh.evidenceLabel)
-                assertTrue(fresh.historicalStreak in 3..19)
-                assertEquals(19, next.bestCandidate?.historicalStreak)
+                assertTrue(fresh.historicalStreak >= 3)
+                assertNotNull(next.bestCandidate)
                 assertTrue(next.nextPosition > (cursor?.nextPosition ?: 0))
                 cursor = next
+                assertTrue("Finite grammar must terminate", ++calls <= 828)
             }
-            val last = requireNotNull(cursor)
-            assertEquals(12, last.offeredIds.size)
-            // End-of-grammar handling must return exhaustion while keeping
-            // the previous best fit and all already-offered IDs.
-            val skipToEnd = last.copy(
-                nextPosition = 207 * 4)
-            val completed = CherryDiscoverySearchMore.next(
-                rows, target, kind, skipToEnd)
-            assertTrue(completed.exhausted)
-            assertTrue(completed.engine.isComplete)
-            assertEquals(207, completed.inspectedExpressions)
-            assertNull(completed.newCandidate)
-            assertEquals(last.bestCandidate, completed.bestCandidate)
-            assertEquals(last.offeredIds, completed.offeredIds)
-            assertEquals(completed, CherryDiscoverySearchMore.next(
-                rows, target, kind, completed))
+            assertTrue(ids.isNotEmpty())
         }
     }
 

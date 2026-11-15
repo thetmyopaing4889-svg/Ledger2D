@@ -29,7 +29,7 @@ class CherryDiscoveryCursorStore(context: Context) {
 
     companion object {
         private val processLock = Any()
-        private const val VERSION = 1
+        private const val VERSION = 2
         private fun key(kind: CherryDiscoveryKind): String =
             "cursor_" + kind.name
     }
@@ -42,6 +42,12 @@ class CherryDiscoveryCursorStore(context: Context) {
             require(next.nextPosition >= previous.nextPosition &&
                 next.completedStages >= previous.completedStages &&
                 next.offeredIds.containsAll(previous.offeredIds) &&
+                previous.offeredPositions.all { (id, pos) ->
+                    next.offeredPositions[id] == pos
+                } &&
+                previous.offeredBehaviors.all { (id, key) ->
+                    next.offeredBehaviors[id] == key
+                } &&
                 (!previous.exhausted || next.exhausted)) {
                 "A search checkpoint cannot erase previously offered formulas"
             }
@@ -126,7 +132,12 @@ class CherryDiscoveryCursorStore(context: Context) {
 
     private fun encode(value: CherryDiscoveryCheckpoint): String {
         val seen = JSONArray()
-        value.offeredIds.sorted().forEach { seen.put(it) }
+        value.offeredIds.sorted().forEach { id ->
+            seen.put(JSONObject()
+                .put("id", id)
+                .put("position", value.offeredPositions.getValue(id))
+                .put("behavior", value.offeredBehaviors.getValue(id)))
+        }
         return JSONObject()
             .put("version", VERSION)
             .put("target", draw(value.target))
@@ -145,8 +156,13 @@ class CherryDiscoveryCursorStore(context: Context) {
         val obj = JSONObject(raw)
         require(obj.getInt("version") == VERSION)
         val offered = obj.getJSONArray("offeredIds")
-        val ids = (0 until offered.length())
-            .map { offered.getString(it) }
+        val offers = (0 until offered.length())
+            .map { offered.getJSONObject(it) }
+        val ids = offers.map { it.getString("id") }
+        val positions = offers.associate { it.getString("id") to
+            it.getInt("position") }
+        val behaviors = offers.associate { it.getString("id") to
+            it.getString("behavior") }
         require(ids.size == ids.toSet().size) {
             "Duplicate IDs in stored discovery checkpoint"
         }
@@ -160,6 +176,8 @@ class CherryDiscoveryCursorStore(context: Context) {
             newCandidate = readFormula(obj.optJSONObject("newCandidate")),
             bestCandidate = readFormula(obj.optJSONObject("bestCandidate")),
             exhausted = obj.getBoolean("exhausted"),
+            offeredPositions = positions,
+            offeredBehaviors = behaviors,
         )
         CherryDiscoveryCheckpoints.validate(snapshot)
         return snapshot

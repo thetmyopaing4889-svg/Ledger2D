@@ -125,6 +125,44 @@ class CherryProspectiveTrialTest {
         assertEquals(1, settled.stats(CherryDiscoveryKind.BREAK).abstentions)
     }
 
+    @Test fun previouslyOfferedNonbestFormulaCanBeLockedAfterMoreSearch() {
+        val days = generateSequence(LocalDate.parse("2026-11-02")) {
+            it.plusDays(1)
+        }.filter(DrawSchedule::isWeekday).take(7).toList()
+        val rows = (0 until 12).map { i ->
+            HistoricDraw(days[i / 2],
+                if (i % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
+                "00", HistoricSource.WINNER)
+        }
+        val target = DrawIdentity(days[6], DrawSession.MORNING)
+        val first = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE)
+        val second = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE, first)
+        val third = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE, second)
+        val wanted = requireNotNull(second.newCandidate)
+        assertNotEquals(wanted.id, third.newCandidate?.id)
+        assertNotEquals(wanted.id, third.bestCandidate?.id)
+        val cursors = CherryDiscoveryKind.entries.associateWith {
+            if (it == CherryDiscoveryKind.LONE) third else null
+        }
+        val selected = CherryDiscoveryKind.entries.associateWith {
+            if (it == CherryDiscoveryKind.LONE) wanted.id else null
+        }
+        val committed = CherryProspectiveTrialJournal.empty()
+            .lockFromSearchCursors(
+                cursors, selected,
+                CherryProspectiveTrialClock.cutoff(target).minusSeconds(60),
+                history = rows)
+        val chosen = committed.lockedTrials().single().choices
+            .single { it.kind == CherryDiscoveryKind.LONE }
+        assertEquals(wanted.id, chosen.formulaId)
+        assertEquals(wanted.currentDigit, chosen.outputDigit)
+        assertEquals(wanted.offset, chosen.offset)
+        assertEquals(wanted.historicalFitStreak, chosen.historicalFitStreak)
+    }
+
     @Test fun refusesSearchMoreLocksFromMixedHistoryOrUnseenIds() {
         val days = generateSequence(LocalDate.parse("2026-11-02")) {
             it.plusDays(1)

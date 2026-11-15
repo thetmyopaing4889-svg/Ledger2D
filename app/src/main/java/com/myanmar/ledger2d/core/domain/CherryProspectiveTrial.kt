@@ -237,6 +237,9 @@ class CherryProspectiveTrialJournal private constructor(
         selectedIds: Map<CherryDiscoveryKind, String?>,
         lockedAt: Instant,
         closedDates: Set<LocalDate> = emptySet(),
+        /** Re-evaluate older offered formulas rather than retaining huge lists. */
+        history: List<HistoricDraw> = emptyList(),
+        checkCancellation: () -> Unit = {},
     ): CherryProspectiveTrialJournal {
         val kinds = CherryDiscoveryKind.entries.toSet()
         require(cursors.keys == kinds && selectedIds.keys == kinds) {
@@ -263,12 +266,29 @@ class CherryProspectiveTrialJournal private constructor(
             require(cursor.kind == kind && id in cursor.offeredIds) {
                 "The chosen formula was not offered for this category"
             }
-            val candidate = listOfNotNull(
+            val directlyAvailable = listOfNotNull(
                 cursor.newCandidate, cursor.bestCandidate)
                 .firstOrNull { it.kind == kind && it.id == id }
-            requireNotNull(candidate) {
-                "Only the current offered formula or preserved best can be locked"
+            val candidate = directlyAvailable ?: run {
+                val position = requireNotNull(cursor.offeredPositions[id]) {
+                    "No recorded grammar position for the selected formula"
+                }
+                require(history.isNotEmpty()) {
+                    "Restoring an earlier offered formula requires its original history"
+                }
+                checkCancellation()
+                val scan = CherryFormulaDiscoveryEngine.nextAlternative(
+                    history, reference.target, kind, position, closedDates,
+                    checkCancellation)
+                require(scan.historySignature == reference.historySignature &&
+                    scan.nextPosition == position + 1 &&
+                    scan.candidate?.id == id &&
+                    scan.behaviorKey == cursor.offeredBehaviors[id]) {
+                    "Selected formula no longer matches its original evidence"
+                }
+                requireNotNull(scan.candidate)
             }
+            candidate
         }
         val snapshot = reference.copy(
             completedStages = available.maxOf { it.engine.completedStages },

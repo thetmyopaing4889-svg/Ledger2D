@@ -67,7 +67,16 @@ class CherryDiscoveryEngineServiceTest {
             assertNotEquals(first.cursor.newCandidate?.id,
                 second.cursor.newCandidate?.id)
             assertEquals(2, second.cursor.offeredIds.size)
+            val third = CherryDiscoveryEngineService(context, db)
+                .searchMore(target, CherryDiscoveryKind.LONE, asOf)
+            assertEquals(3, third.cursor.offeredIds.size)
+            assertNotEquals(second.cursor.newCandidate?.id,
+                third.cursor.newCandidate?.id)
+            assertNotEquals(second.cursor.newCandidate?.id,
+                third.cursor.bestCandidate?.id)
 
+            // Earlier, non-best formula remains user-selectable even after
+            // searching past it and reconstructing progress from disk.
             val selected = CherryDiscoveryKind.entries.associateWith { kind ->
                 if (kind == CherryDiscoveryKind.LONE)
                     second.cursor.newCandidate?.id else null

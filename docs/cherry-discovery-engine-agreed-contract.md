@@ -124,3 +124,27 @@ call the engine complete because GitHub produced another successful build.
   exact commit; on-phone speed/memory tests and source-finality integration
   remain explicit limits. Local timestamps remain unverified and cannot be
   presented as audited real-time evidence.
+
+## Post-#1633 audit fixes — selection and semantic dedup (CI required)
+
+- Search More now hashes the **whole bounded historical prediction trace plus
+  next-session digit**. A formula ID change alone does not make an alternative
+  truly new. For WAM, predictions differing by five are behaviorally identical.
+  This is evidence-window behavioral equivalence, not a proof that two symbolic
+  formulas are algebraically identical for every possible input.
+- The search cursor retains ID-to-grammar-position and ID-to-behavior-hash
+  maps, bounded at 207*4 theoretical slots. A cheap, versioned local progress
+  snapshot preserves these maps across restarts. Semantic duplicates are skipped
+  without keeping hundreds of full matched-draw lists in RAM.
+- Previously offered non-best formulas may be selected. The exact original
+  candidate is reconstructed from its recorded grammar slot and checked
+  against the same pre-result history fingerprint and behavior hash before
+  any formula is locked. Previously locked trials are still immutable.
+- Negative controls: constant-data equivalent-expression names are deduplicated,
+  distinct behavior is retained, end-of-grammar reports exhaustion, old
+  non-best selections survive process restart, and forged checkpoint rewrites
+  are rejected. The newest CI on the exact code commit is the acceptance gate.
+- Formula quality caveat remains: finite symbolic search (207 expressions)
+  with up to 4 result-derived offsets per expression; no guarantee of future
+  prediction advantage. Physical-device latency/RAM testing and independent
+  prospective timestamp attestation are not established by desktop CI.

@@ -77,7 +77,8 @@ internal class CherryDiscoveryEngineService(
         }
         withContext(Dispatchers.IO) {
             val next = trials.load().lockFromSearchCursors(
-                allCursors, selectedIds, lockedAt, data.closedDates)
+                allCursors, selectedIds, lockedAt, data.closedDates,
+                history = data.draws)
             trials.persist(next)
             next
         }

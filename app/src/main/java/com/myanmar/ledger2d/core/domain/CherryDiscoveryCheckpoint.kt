@@ -19,6 +19,8 @@ data class CherryDiscoveryCheckpoint(
     val newCandidate: CherryDiscoveredFormula?,
     val bestCandidate: CherryDiscoveredFormula?,
     val exhausted: Boolean,
+    val offeredPositions: Map<String, Int> = emptyMap(),
+    val offeredBehaviors: Map<String, String> = emptyMap(),
 )
 
 object CherryDiscoveryCheckpoints {
@@ -30,6 +32,18 @@ object CherryDiscoveryCheckpoints {
         require(snapshot.nextPosition in 0..MAX_POSITIONS)
         require(snapshot.offeredIds.size <= MAX_POSITIONS)
         require(snapshot.offeredIds.all { it.isNotBlank() })
+        require(snapshot.offeredPositions.keys == snapshot.offeredIds &&
+            snapshot.offeredBehaviors.keys == snapshot.offeredIds)
+        require(snapshot.offeredPositions.values.all {
+            it in 0 until MAX_POSITIONS && it < snapshot.nextPosition
+        })
+        require(snapshot.offeredPositions.values.distinct().size ==
+            snapshot.offeredPositions.size)
+        require(snapshot.offeredBehaviors.values.all {
+            it.matches(Regex("[0-9a-f]{64}"))
+        })
+        require(snapshot.offeredBehaviors.values.distinct().size ==
+            snapshot.offeredBehaviors.size)
         require(!snapshot.exhausted || snapshot.nextPosition == MAX_POSITIONS)
         require(!snapshot.exhausted ||
             snapshot.completedStages == CherryFormulaDiscoveryEngine.STAGE_COUNT)
@@ -53,6 +67,8 @@ object CherryDiscoveryCheckpoints {
             newCandidate = cursor.newCandidate,
             bestCandidate = cursor.bestCandidate,
             exhausted = cursor.exhausted,
+            offeredPositions = cursor.offeredPositions.toMap(),
+            offeredBehaviors = cursor.offeredBehaviors.toMap(),
         )
         validate(snapshot)
         return snapshot
@@ -88,6 +104,8 @@ object CherryDiscoveryCheckpoints {
             bestCandidate = snapshot.bestCandidate,
             exhausted = snapshot.exhausted,
             nextPosition = snapshot.nextPosition,
+            offeredPositions = snapshot.offeredPositions.toMap(),
+            offeredBehaviors = snapshot.offeredBehaviors.toMap(),
         )
     }
 }

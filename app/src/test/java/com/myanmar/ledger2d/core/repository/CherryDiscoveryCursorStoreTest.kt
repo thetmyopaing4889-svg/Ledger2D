@@ -79,6 +79,25 @@ class CherryDiscoveryCursorStoreTest {
             CherryDiscoveryKind.WAM, target, history))
     }
 
+    @Test fun persistedOfferPositionsAndBehaviorsCannotBeRewritten() {
+        val history = rows()
+        val store = CherryDiscoveryCursorStore(context)
+        val first = CherryDiscoverySearchMore.next(
+            history, target, CherryDiscoveryKind.LONE)
+        assertEquals(first.offeredIds, first.offeredPositions.keys)
+        assertEquals(first.offeredIds, first.offeredBehaviors.keys)
+        store.persist(first)
+        val id = requireNotNull(first.newCandidate).id
+        val forged = first.copy(
+            offeredPositions = first.offeredPositions + (id to 827))
+        try {
+            store.persist(forged)
+            fail("A stored formula position must be immutable")
+        } catch (_: IllegalArgumentException) { /* expected */ }
+        assertEquals(first, store.resume(
+            CherryDiscoveryKind.LONE, target, history))
+    }
+
     @Test fun correctedHistoryInvalidatesCursorWithoutChangingFrozenResults() {
         val history = rows()
         val store = CherryDiscoveryCursorStore(context)

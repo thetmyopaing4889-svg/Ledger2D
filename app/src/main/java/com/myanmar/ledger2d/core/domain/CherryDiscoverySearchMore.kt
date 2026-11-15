@@ -25,6 +25,10 @@ data class CherryDiscoverySearchCursor(
     val exhausted: Boolean,
     /** Immutable scan position in the finite grammar/offset space. */
     val nextPosition: Int = 0,
+    /** ID -> finite grammar slot, sufficient to reproduce any offered fit. */
+    val offeredPositions: Map<String, Int> = emptyMap(),
+    /** ID -> bounded behavioral output fingerprint (not just formula name). */
+    val offeredBehaviors: Map<String, String> = emptyMap(),
 ) {
     val blocked: Boolean get() = !engine.hasImmediatePreviousDraw
     val inspectedExpressions: Int get() = engine.inspectedExpressions
@@ -58,12 +62,15 @@ object CherryDiscoverySearchMore {
                 it.engine.completedStages == validated.completedStages
         }
         val seen = continued?.offeredIds.orEmpty()
+        val positions = continued?.offeredPositions.orEmpty()
+        val behaviors = continued?.offeredBehaviors.orEmpty()
         val oldBest = continued?.bestCandidate
         val startingPosition = continued?.nextPosition ?: 0
         if (!validated.hasImmediatePreviousDraw) {
             return CherryDiscoverySearchCursor(
                 kind, validated, seen, null, oldBest, false,
-                nextPosition = startingPosition)
+                nextPosition = startingPosition,
+                offeredPositions = positions, offeredBehaviors = behaviors)
         }
         var position = startingPosition
         while (true) {
@@ -81,12 +88,16 @@ object CherryDiscoverySearchMore {
             if (!next.hasImmediatePreviousDraw) {
                 return CherryDiscoverySearchCursor(
                     kind, validated, seen, null, oldBest, false,
-                    nextPosition = startingPosition)
+                    nextPosition = startingPosition,
+                    offeredPositions = positions, offeredBehaviors = behaviors)
             }
             position = next.nextPosition
             val candidate = next.candidate
             if (candidate != null) {
-                if (candidate.id in seen) continue
+                val key = requireNotNull(next.behaviorKey) {
+                    "A historical-fit alternative must include its behavior"
+                }
+                if (candidate.id in seen || key in behaviors.values) continue
                 // Keep the existing leaderboard session in sync with the
                 // candidate's grammar stage, preserving old engine API/tests.
                 var stage = validated
@@ -106,6 +117,8 @@ object CherryDiscoverySearchMore {
                 return CherryDiscoverySearchCursor(
                     kind, stage, seen + candidate.id, candidate, best, false,
                     nextPosition = position,
+                    offeredPositions = positions + (candidate.id to (position - 1)),
+                    offeredBehaviors = behaviors + (candidate.id to key),
                 )
             }
             if (next.isExhausted) {
@@ -123,6 +136,8 @@ object CherryDiscoverySearchMore {
                 return CherryDiscoverySearchCursor(
                     kind, stage, seen, null, oldBest, true,
                     nextPosition = position,
+                    offeredPositions = positions,
+                    offeredBehaviors = behaviors,
                 )
             }
         }

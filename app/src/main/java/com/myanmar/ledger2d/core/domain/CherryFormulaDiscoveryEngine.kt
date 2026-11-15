@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.core.domain
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.LocalDate
+import java.security.MessageDigest
 import kotlin.math.abs
 
 /**
@@ -57,6 +58,8 @@ data class CherryDiscoveryAlternativeScan(
     val nextPosition: Int,
     val isExhausted: Boolean,
     val hasImmediatePreviousDraw: Boolean,
+    /** SHA-256 of the formula's complete historical and next-session outputs. */
+    val behaviorKey: String? = null,
 )
 
 /**
@@ -429,8 +432,29 @@ object CherryFormulaDiscoveryEngine {
                 matchedDraws = frames.take(streak).map { identity(it.draw) },
                 discoveredAtStage = stage + 1,
             )
+            // Behavioral dedup, not expression-name dedup. Commutative
+            // expressions and offset variants may be exactly equivalent on
+            // the available bounded evidence. WAM digit and digit+5 cover
+            // identical actual outcomes, so canonicalize modulo five.
+            fun canonical(digit: Int): Int =
+                if (kind == CherryDiscoveryKind.WAM) mod(digit) % 5 else mod(digit)
+            val trace = buildString {
+                append(kind.name).append(':')
+                append(canonical(selected.currentDigit)).append(':')
+                for ((n, frame) in frames.withIndex()) {
+                    if ((n and 31) == 0) checkCancellation()
+                    val value = expression.eval(frame.inputs)
+                    if (value == null) append('x')
+                    else append(('a'.code + canonical(value + offset)).toChar())
+                }
+            }
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(trace.toByteArray(Charsets.UTF_8))
+                .joinToString("") {
+                    (it.toInt() and 255).toString(16).padStart(2, '0')
+                }
             return CherryDiscoveryAlternativeScan(
-                fingerprint, selected, index + 1, false, true)
+                fingerprint, selected, index + 1, false, true, digest)
         }
         checkCancellation()
         return CherryDiscoveryAlternativeScan(
