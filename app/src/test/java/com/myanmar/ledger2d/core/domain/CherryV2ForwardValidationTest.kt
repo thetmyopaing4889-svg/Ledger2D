@@ -106,4 +106,17 @@ class CherryV2ForwardValidationTest {
         assertEquals("(top1+top2)", frozen.expression)
         assertEquals(0, frozen.offset)
     }
+    @Test fun correctedTrainingHistoryRejectsStaleFrozenFormula() {
+        val rows = archive()
+        val frozen = chosen(rows)
+        val corrected = rows.toMutableList()
+        corrected[32] = corrected[32].copy(digit = "99")
+        assertNotEquals(rows[32].digit, corrected[32].digit)
+        try {
+            CherryV2ForwardValidation.replay(
+                frozen, corrected, listOf(corrected[37]))
+            fail("Training correction must invalidate previous formula evidence")
+        } catch (_: IllegalArgumentException) {}
+    }
+
 }
