@@ -4,6 +4,7 @@ import android.content.Context
 import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
 import com.myanmar.ledger2d.core.domain.CherryV2HistoricalEvaluator
+import com.myanmar.ledger2d.core.domain.CherryV2OrderBenchmark
 import com.myanmar.ledger2d.core.domain.CherryV2StreakRegistry
 import com.myanmar.ledger2d.core.domain.CherryV2TimedSearch
 import com.myanmar.ledger2d.core.repository.CherryV2CheckpointStore
@@ -88,6 +89,36 @@ internal class CherryV2DiscoveryService(
                 onCheckpoint = { state -> store.persist(state) },
             )
             Receipt(result, bounded.databaseRowsRead, context.prior.size)
+        }
+    }
+
+    /**
+     * Opt-in developer research comparison only. Runs NO normal discovery,
+     * stores NO checkpoint, and cannot alter any formula/Champion selection.
+     * Raw and guided modes use the same exact bounded snapshot and budget.
+     */
+    suspend fun auditSearchOrder(
+        target: DrawIdentity,
+        kind: CherryDiscoveryKind,
+        asOf: LocalDateTime = LocalDateTime.now(yangon),
+        candidatesPerMode: Int = CherryV2OrderBenchmark.DEFAULT_CANDIDATES,
+        budgetPerModeNanos: Long = CherryV2OrderBenchmark.DEFAULT_BUDGET_NANOS,
+    ): CherryV2OrderBenchmark.Comparison = sessionLock.withLock {
+        val bounded = input.latest(
+            target, asOf,
+            CherryV2HistoricalEvaluator.MAX_SCORED +
+                CherryV2HistoricalEvaluator.MAX_LAG,
+        )
+        withContext(Dispatchers.Default) {
+            val work = coroutineContext
+            val context = CherryV2HistoricalEvaluator.prepare(
+                bounded.draws, target, bounded.closedDates,
+                checkCancellation = { work.ensureActive() },
+            )
+            CherryV2OrderBenchmark.compare(
+                context, kind, candidatesPerMode, budgetPerModeNanos,
+                checkCancellation = { work.ensureActive() },
+            )
         }
     }
 
