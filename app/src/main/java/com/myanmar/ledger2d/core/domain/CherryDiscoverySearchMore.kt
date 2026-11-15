@@ -4,16 +4,15 @@ import com.myanmar.ledger2d.core.model.DrawIdentity
 import java.time.LocalDate
 
 /**
- * UI-independent Search More controller.
+ * UI-independent, bounded-memory Search More cursor.
  *
- * Returns one unseen formula at a time. An existing stage's candidates are
- * exhausted before evaluating the next grammar stage; no previous stage is
- * rescanned. A data correction or new target invalidates the previous cursor.
+ * One fresh viable expression/offset is offered on each request. The cursor
+ * iterates all 207 grammar shapes and per-category result-derived offsets,
+ * rather than only the 24 representative leaderboard formulas. Previously
+ * seen IDs and the strongest historical fit survive continuation.
  *
- * This controller intentionally exposes only representative candidates
- * retained by CherryFormulaDiscoveryEngine (at most 24 at a time). It does
- * not yet enumerate every viable expression/offset combination; expanding
- * the candidate pool is a separate, bounded engine task.
+ * A correction to the relevant history window invalidates this cursor.
+ * These are historical digit-category fits, NOT exact 2D predictions.
  */
 data class CherryDiscoverySearchCursor(
     val kind: CherryDiscoveryKind,
@@ -21,9 +20,11 @@ data class CherryDiscoverySearchCursor(
     val offeredIds: Set<String>,
     /** Newly offered on this call; null when blocked or exhausted. */
     val newCandidate: CherryDiscoveredFormula?,
-    /** Best historical fit ever seen by this cursor, not a future win claim. */
+    /** Best historical fit ever offered by this cursor. */
     val bestCandidate: CherryDiscoveredFormula?,
     val exhausted: Boolean,
+    /** Immutable scan position in the finite grammar/offset space. */
+    val nextPosition: Int = 0,
 ) {
     val blocked: Boolean get() = !engine.hasImmediatePreviousDraw
     val inspectedExpressions: Int get() = engine.inspectedExpressions
@@ -31,12 +32,8 @@ data class CherryDiscoverySearchCursor(
 }
 
 /**
- * Pure-domain continuation, no Main-thread work or background tasks created.
- * A UI integration must call this through an owned coroutine on Default.
- *
- * A candidate is offered at most once per category and unchanged history
- * signature. Cache invalidation resets only this search cursor; an already
- * accepted, separately time-locked prospective trial must never be rewritten.
+ * Pure domain: never launches a task on its own. Use the cancellable
+ * CherryDiscoveryBackgroundRunner when connected to a future UI.
  */
 object CherryDiscoverySearchMore {
     fun next(
@@ -51,7 +48,6 @@ object CherryDiscoverySearchMore {
         val old = previous?.takeIf {
             it.kind == kind && it.engine.target == target
         }
-        // Verify the bounded input fingerprint without advancing the grammar.
         val validated = CherryFormulaDiscoveryEngine.nextRound(
             history = history, target = target,
             previousState = old?.engine, closedDates = closedDates,
@@ -59,49 +55,75 @@ object CherryDiscoverySearchMore {
         )
         val continued = old?.takeIf {
             it.engine.historySignature == validated.historySignature &&
-                validated.completedStages == it.engine.completedStages
+                it.engine.completedStages == validated.completedStages
         }
         val seen = continued?.offeredIds.orEmpty()
-        val previousBest = continued?.bestCandidate
-
+        val oldBest = continued?.bestCandidate
+        val startingPosition = continued?.nextPosition ?: 0
         if (!validated.hasImmediatePreviousDraw) {
             return CherryDiscoverySearchCursor(
-                kind, validated, seen, null, previousBest, exhausted = false)
+                kind, validated, seen, null, oldBest, false,
+                nextPosition = startingPosition)
         }
-        var session = validated
+        var position = startingPosition
         while (true) {
             checkCancellation()
-            val unseen = session.formulas.asSequence()
-                .filter { it.kind == kind && it.id !in seen }
-                .sortedWith(compareByDescending<CherryDiscoveredFormula> {
-                    it.historicalStreak
-                }.thenBy { it.discoveredAtStage }.thenBy { it.id })
-                .firstOrNull()
-            if (unseen != null) {
-                val best = listOfNotNull(previousBest, unseen).maxWithOrNull(
+            val next = CherryFormulaDiscoveryEngine.nextAlternative(
+                history = history, target = target, kind = kind,
+                startPosition = position, closedDates = closedDates,
+                checkCancellation = checkCancellation,
+            )
+            // The immutable input list supplied by the caller must be
+            // consistent within this operation, even during async refresh.
+            check(next.historySignature == validated.historySignature) {
+                "Discovery history changed during Search More"
+            }
+            if (!next.hasImmediatePreviousDraw) {
+                return CherryDiscoverySearchCursor(
+                    kind, validated, seen, null, oldBest, false,
+                    nextPosition = startingPosition)
+            }
+            position = next.nextPosition
+            val candidate = next.candidate
+            if (candidate != null) {
+                if (candidate.id in seen) continue
+                // Keep the existing leaderboard session in sync with the
+                // candidate's grammar stage, preserving old engine API/tests.
+                var stage = validated
+                while (stage.completedStages < candidate.discoveredAtStage) {
+                    checkCancellation()
+                    stage = CherryFormulaDiscoveryEngine.nextRound(
+                        history = history, target = target, previousState = stage,
+                        closedDates = closedDates,
+                        checkCancellation = checkCancellation,
+                    )
+                }
+                val best = listOfNotNull(oldBest, candidate).maxWithOrNull(
                     compareBy<CherryDiscoveredFormula> {
                         it.historicalStreak
                     }.thenBy { -it.discoveredAtStage }
                 )
                 return CherryDiscoverySearchCursor(
-                    kind, session, seen + unseen.id, unseen, best,
-                    exhausted = false,
+                    kind, stage, seen + candidate.id, candidate, best, false,
+                    nextPosition = position,
                 )
             }
-            if (session.isComplete) {
+            if (next.isExhausted) {
+                // A stage-complete result remains available to existing audit
+                // and trial code; the cursor offers no duplicate after finish.
+                var stage = validated
+                while (!stage.isComplete) {
+                    checkCancellation()
+                    stage = CherryFormulaDiscoveryEngine.nextRound(
+                        history = history, target = target, previousState = stage,
+                        closedDates = closedDates,
+                        checkCancellation = checkCancellation,
+                    )
+                }
                 return CherryDiscoverySearchCursor(
-                    kind, session, seen, null, previousBest, exhausted = true)
-            }
-            // Consume exactly one new grammar level; never revisit a stage
-            // when the caller passes this cursor back on the next request.
-            session = CherryFormulaDiscoveryEngine.nextRound(
-                history = history, target = target,
-                previousState = session, closedDates = closedDates,
-                checkCancellation = checkCancellation,
-            )
-            if (!session.hasImmediatePreviousDraw) {
-                return CherryDiscoverySearchCursor(
-                    kind, session, seen, null, previousBest, exhausted = false)
+                    kind, stage, seen, null, oldBest, true,
+                    nextPosition = position,
+                )
             }
         }
     }
