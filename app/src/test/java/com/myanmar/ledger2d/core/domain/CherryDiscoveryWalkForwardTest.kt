@@ -47,6 +47,45 @@ class CherryDiscoveryWalkForwardTest {
         }
     }
 
+    @Test fun deterministicShuffledHistoryNegativeControls() {
+        // Fixed-seed permutations preserve the actual paired-result
+        // distribution, draw dates, and AM/PM slots, but scramble temporal
+        // relationships. An in-sample streak on shuffled input is not
+        // evidence that the algorithm predicts future results.
+        val source = realHistory()
+        val observed = CherryDiscoveryWalkForward.replay(source, lastTargets = 24)
+        for (kind in CherryDiscoveryKind.entries) {
+            val s = observed.stats(kind)
+            println("CHERRY_NULL_OBSERVED kind=" + kind +
+                " selected=" + s.checked + " heldOutHits=" + s.hits)
+        }
+        for (seed in listOf(11L, 29L, 53L, 79L, 101L, 127L)) {
+            val permuted = source.map { it.digit }.toMutableList()
+            java.util.Collections.shuffle(permuted, java.util.Random(seed))
+            val shuffled = source.mapIndexed { index, original ->
+                original.copy(digit = permuted[index])
+            }
+            // The multiset of *complete 2D pairs* is unchanged.
+            assertEquals(source.groupingBy { it.digit }.eachCount(),
+                shuffled.groupingBy { it.digit }.eachCount())
+            val report = CherryDiscoveryWalkForward.replay(
+                shuffled, lastTargets = 24)
+            for (kind in CherryDiscoveryKind.entries) {
+                val sample = report.checks.filter { it.kind == kind }
+                val fits = sample.mapNotNull { it.historicalFitStreak }
+                val s = report.stats(kind)
+                assertEquals(24, s.targetCount)
+                assertEquals(24, s.checked + s.noSelection)
+                assertTrue(s.hits in 0..s.checked)
+                println("CHERRY_NULL_SHUFFLED seed=" + seed +
+                    " kind=" + kind + " selected=" + s.checked +
+                    " heldOutHits=" + s.hits +
+                    " maxRetrospectiveStreak=" + (fits.maxOrNull() ?: 0) +
+                    " tenPlusFits=" + fits.count { it >= 10 })
+            }
+        }
+    }
+
     @Test fun pinnedHistoryHasAuditableHeldOutHitCounts() {
         // These assertions are NOT estimates of real-world future accuracy.
         // They are regression checks of the fixed 60-day historical fixture.
