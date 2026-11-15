@@ -136,7 +136,12 @@ class CherryDiscoveryBoundedSourceTest {
                     source.confirmedFor(target, after)?.source)
                 // Deleting a winner must never resurrect the historical
                 // row as a "confirmed" result.
-                database.winningNumberDao().delete(saved)
+                // Room assigns an auto-generated primary key. Delete the
+                // persisted entity, not the original id=0 input instance.
+                val persisted = requireNotNull(database.winningNumberDao().get(
+                    day, DrawSession.MORNING))
+                database.winningNumberDao().delete(persisted)
+                assertNull(database.winningNumberDao().get(day, DrawSession.MORNING))
                 database.manualWinnerLockDao().upsert(
                     ManualWinnerLockEntity(
                         date = day, session = DrawSession.MORNING,
