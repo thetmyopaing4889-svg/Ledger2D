@@ -104,4 +104,26 @@ class CherryV2SemanticDedupTest {
         } catch (_: IllegalArgumentException) {}
         assertTrue(cursor.recentBehaviorKeys.isEmpty())
     }
+    @Test fun threeStreakPrefilterPrunesImpossibleBreakButRetainsDirectTen() {
+        val context = CherryV2HistoricalEvaluator.prepare(history, target)
+        val top = CherryV2Expression.Feature(one, CherryV2Expression.Part.TOP)
+        val constantTail = CherryV2Expression.Feature(
+            one, CherryV2Expression.Part.TAIL)
+        val full = requireNotNull(CherryV2HistoricalEvaluator.trace(
+            context, constantTail))
+        val prefiltered = requireNotNull(CherryV2HistoricalEvaluator.trace(
+            context, constantTail, candidateKind = CherryDiscoveryKind.BREAK))
+        assertTrue(full.historicalBases.size > 10)
+        assertEquals(3, prefiltered.historicalBases.size)
+        assertTrue(CherryV2HistoricalEvaluator.evaluateTrace(
+            context, CherryDiscoveryKind.BREAK, one, prefiltered).isEmpty())
+
+        val eligible = requireNotNull(CherryV2HistoricalEvaluator.trace(
+            context, top, candidateKind = CherryDiscoveryKind.BREAK))
+        assertTrue(eligible.historicalBases.size > 10)
+        val matches = CherryV2HistoricalEvaluator.evaluateTrace(
+            context, CherryDiscoveryKind.BREAK, BigInteger.ZERO, eligible)
+        assertTrue(matches.any { it.historicalStreak >= 10 })
+    }
+
 }
