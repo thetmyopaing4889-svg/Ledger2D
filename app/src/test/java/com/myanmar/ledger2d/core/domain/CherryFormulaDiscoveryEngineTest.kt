@@ -62,6 +62,39 @@ class CherryFormulaDiscoveryEngineTest {
         assertEquals(current, CherryFormulaDiscoveryEngine.nextRound(rows, target, current))
     }
 
+    @Test fun thousandIdenticalResultsFinishAllFiniteStagesWithoutGrowingFormulaList() {
+        // Deliberately degenerate input: nearly every candidate expression
+        // matches every prior draw, maximizing full-length streak evaluation.
+        val weekdays = generateSequence(LocalDate.parse("2024-01-01")) { it.plusDays(1) }
+            .filter { DrawSchedule.isWeekday(it) }
+            .take(501).toList()
+        val rows = (0 until 1000).map { index ->
+            HistoricDraw(
+                weekdays[index / 2],
+                if (index % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
+                "00",
+                HistoricSource.WINNER,
+            )
+        }
+        val target = DrawIdentity(weekdays[500], DrawSession.MORNING)
+        var session: CherryDiscoverySession? = null
+        val start = System.nanoTime()
+        repeat(CherryFormulaDiscoveryEngine.STAGE_COUNT) {
+            session = CherryFormulaDiscoveryEngine.nextRound(rows, target, session)
+        }
+        val result = requireNotNull(session)
+        val elapsedMs = (System.nanoTime() - start) / 1_000_000L
+        assertTrue(result.isComplete)
+        assertEquals(207, result.inspectedExpressions)
+        assertTrue(result.formulas.size <= 24)
+        for (kind in CherryDiscoveryKind.entries) {
+            assertEquals(999, result.longest(kind)?.historicalStreak)
+        }
+        assertEquals(result, CherryFormulaDiscoveryEngine.nextRound(rows, target, result))
+        println("CHERRY_DISCOVERY_STRESS draws=1000 expressions=207 " +
+            "stages=4 elapsedMs=$" + elapsedMs)
+    }
+
     @Test fun neverReadsTargetOrFutureDrawsWhenSearching() {
         val (rows, target) = history(*Array(10) { "12" })
         val withoutFuture = CherryFormulaDiscoveryEngine.nextRound(rows, target)
