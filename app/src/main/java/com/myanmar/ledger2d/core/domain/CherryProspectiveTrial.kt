@@ -224,6 +224,60 @@ class CherryProspectiveTrialJournal private constructor(
     }
 
     /**
+     * Freeze a user-approved Search More alternative without requiring it to
+     * occupy the engine's 24 representative leaderboard slots.
+     *
+     * Only the current offered candidate or the explicitly retained best
+     * candidate may be selected. Every category must be represented; null is
+     * an explicit abstention. All cursors must refer to the same settled
+     * history fingerprint and target. Does not silently change an old lock.
+     */
+    fun lockFromSearchCursors(
+        cursors: Map<CherryDiscoveryKind, CherryDiscoverySearchCursor?>,
+        selectedIds: Map<CherryDiscoveryKind, String?>,
+        lockedAt: Instant,
+        closedDates: Set<LocalDate> = emptySet(),
+    ): CherryProspectiveTrialJournal {
+        val kinds = CherryDiscoveryKind.entries.toSet()
+        require(cursors.keys == kinds && selectedIds.keys == kinds) {
+            "All three categories must be included, including abstentions"
+        }
+        val available = cursors.values.filterNotNull()
+        require(available.isNotEmpty()) { "A discovery session is required" }
+        val reference = available.first.engine
+        require(reference.hasImmediatePreviousDraw && reference.completedStages > 0) {
+            "Only valid evaluated discovery sessions can be locked"
+        }
+        require(available.all {
+            it.kind in kinds && it.engine.target == reference.target &&
+                it.engine.historySignature == reference.historySignature &&
+                it.engine.hasImmediatePreviousDraw
+        }) {
+            "Cannot combine different target sessions or corrected histories"
+        }
+        val selected = CherryDiscoveryKind.entries.mapNotNull { kind ->
+            val id = selectedIds.getValue(kind) ?: return@mapNotNull null
+            val cursor = requireNotNull(cursors.getValue(kind)) {
+                "Selected category requires its discovery cursor"
+            }
+            require(cursor.kind == kind && id in cursor.offeredIds) {
+                "The chosen formula was not offered for this category"
+            }
+            val candidate = listOfNotNull(
+                cursor.newCandidate, cursor.bestCandidate)
+                .firstOrNull { it.kind == kind && it.id == id }
+            requireNotNull(candidate) {
+                "Only the current offered formula or preserved best can be locked"
+            }
+        }
+        val snapshot = reference.copy(
+            completedStages = available.maxOf { it.engine.completedStages },
+            formulas = selected,
+        )
+        return lock(snapshot, lockedAt, selectedIds, closedDates)
+    }
+
+    /**
      * Outcome is always compared with the previously frozen digit.
      * A completed trial is NEVER reopened, even to record the same pair.
      */
