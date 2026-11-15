@@ -56,6 +56,19 @@ data class CherryDiscoveryForwardReport(
     }
 }
 
+/**
+ * Research-only window audit. sampledTargets are deliberately spaced through
+ * the entire period; this does NOT claim that every draw was replayed.
+ */
+data class CherryDiscoveryWindowAudit(
+    val years: Int,
+    val fromInclusive: LocalDate,
+    val throughInclusive: LocalDate,
+    val eligibleTargetsInWindow: Int,
+    val sampledTargets: Int,
+    val report: CherryDiscoveryForwardReport,
+)
+
 object CherryDiscoveryWalkForward {
     private fun before(d: HistoricDraw, t: DrawIdentity): Boolean =
         d.date < t.date || (d.date == t.date && d.session.ordinal < t.session.ordinal)
@@ -75,23 +88,98 @@ object CherryDiscoveryWalkForward {
         }
     }
 
+    /**
+     * Default historical replay: newest already-settled targets. Every target
+     * discovers only from its preceding 203 (200 scored + 3 context) slots.
+     * No target result is used to choose the formula or its offset.
+     */
     fun replay(
         historicalDraws: List<HistoricDraw>,
         lastTargets: Int = 20,
         stages: Int = CherryFormulaDiscoveryEngine.STAGE_COUNT,
         closedDates: Set<LocalDate> = emptySet(),
         policy: CherryDiscoverySelectionPolicy = CherryDiscoverySelectionPolicy.LONGEST,
+        checkCancellation: () -> Unit = {},
     ): CherryDiscoveryForwardReport {
         require(lastTargets > 0)
         require(stages in 1..CherryFormulaDiscoveryEngine.STAGE_COUNT)
-        val rows = historicalDraws.filter {
-            validHistoric2D(it.digit) && DrawSchedule.isWorkingDate(it.date, closedDates)
-        }.let(CherryDiscoveryHistoryNormalizer::normalize)
-        val selectedTargets = rows.takeLast(lastTargets)
+        checkCancellation()
+        val rows = CherryDiscoveryHistoryNormalizer.normalize(
+            historicalDraws.filter {
+                validHistoric2D(it.digit) &&
+                    DrawSchedule.isWorkingDate(it.date, closedDates)
+            }
+        )
+        return replayAtIndices(
+            rows, rows.indices.takeLast(lastTargets), stages,
+            closedDates, policy, checkCancellation,
+        )
+    }
+
+    /**
+     * Explicit slow/research path, separate from normal 200-draw discovery.
+     * A 2- or 3-year period is sampled at evenly spaced historic targets,
+     * with 80 samples by default. The report clearly labels the sample size.
+     * Past context may precede the audited period but cannot reach the
+     * held-out target itself.
+     */
+    fun replayResearchWindow(
+        historicalDraws: List<HistoricDraw>,
+        throughInclusive: LocalDate,
+        years: Int = 2,
+        sampleTargets: Int = 80,
+        stages: Int = CherryFormulaDiscoveryEngine.STAGE_COUNT,
+        closedDates: Set<LocalDate> = emptySet(),
+        policy: CherryDiscoverySelectionPolicy = CherryDiscoverySelectionPolicy.LONGEST,
+        checkCancellation: () -> Unit = {},
+    ): CherryDiscoveryWindowAudit {
+        require(years == 2 || years == 3)
+        require(sampleTargets in 1..200) {
+            "Research samples are bounded; run larger audits offline in batches"
+        }
+        require(stages in 1..CherryFormulaDiscoveryEngine.STAGE_COUNT)
+        checkCancellation()
+        val from = throughInclusive.minusYears(years.toLong())
+        val rows = CherryDiscoveryHistoryNormalizer.normalize(
+            historicalDraws.filter {
+                validHistoric2D(it.digit) &&
+                    DrawSchedule.isWorkingDate(it.date, closedDates) &&
+                    !it.date.isAfter(throughInclusive)
+            }
+        )
+        val eligible = rows.indices.filter { rows[it].date >= from }
+        val count = minOf(sampleTargets, eligible.size)
+        // Deterministic stratified temporal sample, not only the latest 80.
+        val selected = if (count == 0) emptyList() else
+            (0 until count).map { index ->
+                eligible[index * eligible.size / count]
+            }
+        return CherryDiscoveryWindowAudit(
+            years, from, throughInclusive, eligible.size, count,
+            replayAtIndices(rows, selected, stages,
+                closedDates, policy, checkCancellation),
+        )
+    }
+
+    private fun replayAtIndices(
+        rows: List<HistoricDraw>,
+        selectedIndices: List<Int>,
+        stages: Int,
+        closedDates: Set<LocalDate>,
+        policy: CherryDiscoverySelectionPolicy,
+        checkCancellation: () -> Unit,
+    ): CherryDiscoveryForwardReport {
         val checks = buildList {
-            for (actual in selectedTargets) {
+            for (index in selectedIndices) {
+                checkCancellation()
+                val actual = rows[index]
                 val t = DrawIdentity(actual.date, actual.session)
-                val past = rows.filter { before(it, t) }
+                // Already sorted, unique and time-filtered: avoid scanning
+                // the entire archive for each replay target.
+                val past = rows.subList(
+                    maxOf(0, index - CherryFormulaDiscoveryEngine.SEARCH_DRAWS - 3),
+                    index,
+                )
                 var result: CherryDiscoverySession? = null
                 repeat(stages) {
                     result = CherryFormulaDiscoveryEngine.nextRound(
@@ -99,6 +187,7 @@ object CherryDiscoveryWalkForward {
                         target = t,
                         previousState = result,
                         closedDates = closedDates,
+                        checkCancellation = checkCancellation,
                     )
                 }
                 val state = requireNotNull(result)
@@ -118,11 +207,14 @@ object CherryDiscoveryWalkForward {
                         discoveredFormulaId = choice?.id,
                         historicalFitStreak = choice?.historicalStreak,
                         outputDigit = choice?.currentDigit,
-                        heldOutHit = choice?.let { matches(kind, it.currentDigit, actual.digit) },
+                        heldOutHit = choice?.let {
+                            matches(kind, it.currentDigit, actual.digit)
+                        },
                     ))
                 }
             }
         }
         return CherryDiscoveryForwardReport(checks, stages)
     }
+
 }
