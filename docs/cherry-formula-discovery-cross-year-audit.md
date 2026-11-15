@@ -20,7 +20,7 @@ For idealized independent uniform 00–99 draws, chance digit-category matches a
 
 ## Source-quality flags
 
-1. **2025-06-10 occurs twice:** one row claims `off/off`, another gives actual AM 55 / PM 60. The isolated 2025 audit fixture explicitly picks the completed record. Existing `HistorySync.parse2DHistory` in `Repositories.kt` uses `.distinctBy { it.date }` with first-found order, which may instead keep `off`. This is a **production history ingestion risk** to address separately, with tests and user authorization; **we did not modify it**.
+1. **2025-06-10 occurs twice:** one row claims `off/off`, another gives actual AM 55 / PM 60. The isolated 2025 audit fixture explicitly picks the completed record. That exposed a production history ingestion risk: the old `HistorySync.parse2DHistory` kept the first date entry, including `off`. This has now been narrowly fixed to prefer the source row with more valid 2D session values. A dedicated Robolectric duplicate-day regression test was added; this does not edit winners, bets or UI and affects only future history sync imports.
 2. **2024-05-21 occurs twice** with identical results; duplicated source records must be deduplicated.
 3. **2025-03-28** has AM 30 but PM `xx`. Never fabricate a PM result; never mark the whole day closed.
 4. **2024 has 18 weekdays absent entirely from the downloaded history.** Checking the official [Stock Exchange of Thailand 2024 holiday calendar](https://www.set.or.th/en/about/event-calendar/holiday?year=2024) identifies **13** of these as confirmed exchange holidays. The other five missing weekdays (2024-03-21, 2024-04-26, 2024-08-02, 2024-09-20, 2024-11-25) remain **unverified source gaps**. Do not silently assume they were closed.
@@ -41,6 +41,7 @@ For idealized independent uniform 00–99 draws, chance digit-category matches a
 - 4 finite grammar levels with 9+60+60+78 = 207 expression shapes; derived offsets vary with observed outcomes.
 - Completed search state is keyed to the target and sorted history; results change only when history/target changes or an additional unused stage runs.
 - A 1000-all-equal-draw stress test finished all four levels on GitHub runner in 144 ms (#1510). This is **not an Android device benchmark**.
+- **Source anomaly:** the upstream 2D_history also contains a valid-looking 2024-11-23 **Saturday** (AM 91, PM 18). The discovery engine and independent walk-forward replay now quarantine non-working-day rows rather than counting them as ordinary AM/PM rounds. Consequently, the initial 2024 row of this table is a **pre-quarantine historical snapshot**; re-evaluated CI metrics will supersede it. Source history was not deleted.
 - Engine has been augmented with an optional cooperative cancellation callback; UI must later invoke this with its coroutine cancellation check, from background CPU execution, and test on representative Android devices.
 - Never promise infinite formula generation or guarantee a ten-streak formula.
 
