@@ -46,6 +46,24 @@ class CherryDiscovery2026CoverageTest {
             draws, lastTargets = 80, stages = 4, closedDates = closed)
 
         assertEquals(240, four.checks.size)
+        // Independently calculated historical regression snapshot, 2026 fixture.
+        // This does NOT assert future success or any statistical advantage.
+        val lone = four.stats(CherryDiscoveryKind.LONE)
+        val wam = four.stats(CherryDiscoveryKind.WAM)
+        val brk = four.stats(CherryDiscoveryKind.BREAK)
+        assertEquals(80, lone.checked)
+        assertEquals(9, lone.hits)
+        assertEquals(80, wam.checked)
+        assertEquals(24, wam.hits)
+        assertEquals(65, brk.checked)
+        assertEquals(4, brk.hits)
+        assertEquals(15, brk.noSelection)
+        assertEquals(6, four.checks.filter { it.kind == CherryDiscoveryKind.LONE }
+            .mapNotNull { it.historicalFitStreak }.maxOrNull())
+        assertEquals(10, four.checks.filter { it.kind == CherryDiscoveryKind.WAM }
+            .mapNotNull { it.historicalFitStreak }.maxOrNull())
+        assertEquals(5, four.checks.filter { it.kind == CherryDiscoveryKind.BREAK }
+            .mapNotNull { it.historicalFitStreak }.maxOrNull())
         for (kind in CherryDiscoveryKind.entries) {
             val a = one.stats(kind)
             val b = four.stats(kind)
