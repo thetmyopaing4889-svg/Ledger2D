@@ -22,6 +22,20 @@ jobs:
         run: chmod +x gradlew
       - name: Unit tests, lint, and debug APK
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - name: Show formula-discovery historical audit
+        if: success()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob('app/build/test-results/testDebugUnitTest/*.xml'):
+              if 'CherryDiscovery2026CoverageTest' not in path:
+                  continue
+              root = ET.parse(path).getroot()
+              for block in root.findall('.//system-out'):
+                  for line in (block.text or '').splitlines():
+                      if 'CHERRY_DISCOVERY_2026' in line:
+                          print(line.split('CHERRY_DISCOVERY_2026', 1)[1].join(['CHERRY_DISCOVERY_2026', '']))
+          PY
       - name: Show unit test failures
         if: failure()
         run: |
