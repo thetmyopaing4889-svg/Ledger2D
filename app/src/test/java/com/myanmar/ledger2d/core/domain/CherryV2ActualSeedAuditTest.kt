@@ -101,6 +101,10 @@ class CherryV2ActualSeedAuditTest {
         var holdoutChecked: Int = 0,
         var holdoutHits: Int = 0,
         var holdoutAbstained: Int = 0,
+        var rawSelected: Int = 0,
+        var rawHoldoutChecked: Int = 0,
+        var rawHoldoutHits: Int = 0,
+        var rawHoldoutAbstained: Int = 0,
     )
 
     @Test fun checkedInSeedIsRealImportWithExplicitOffDaysNotFabricatedData() {
@@ -152,6 +156,39 @@ class CherryV2ActualSeedAuditTest {
                 if (comparison.raw.firstAtLeastTen != null) stats.rawTen++
                 if (comparison.guided.firstAtLeastTen != null) stats.guidedTen++
 
+                // Compare BOTH frozen candidate policies on the exact same
+                // later slots, not just their retrospective discovery streak.
+                // The RAW option is a diagnostic control and never becomes a
+                // persisted V2 cursor or user-selectable Champion.
+                val rawBest = comparison.raw.firstByStreak.maxByOrNull { it.key }
+                if (rawBest != null) {
+                    val rawIndex = java.math.BigInteger.valueOf(rawBest.value.toLong())
+                    val rawExpression = CherryV2ExpandableGrammar.expressionAt(rawIndex)
+                    val rawChoice = CherryV2HistoricalEvaluator.evaluate(
+                        context, kind, rawIndex, rawExpression
+                    ).firstOrNull { it.historicalStreak == rawBest.key }
+                    if (rawChoice != null) {
+                        stats.rawSelected++
+                        for (actual in future) {
+                            val laterContext = CherryV2HistoricalEvaluator.prepare(
+                                seed.rows, identity(actual), seed.offDates)
+                            val predicted = if (laterContext.blocked) null else
+                                rawExpression.evaluate(laterContext.digits)?.let {
+                                    Math.floorMod(it + rawChoice.offset, 10)
+                                }
+                            if (predicted == null) {
+                                stats.rawHoldoutAbstained++
+                            } else {
+                                stats.rawHoldoutChecked++
+                                if (CherryDiscoveryWalkForward.matches(
+                                        kind, predicted, actual.digit)) {
+                                    stats.rawHoldoutHits++
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Training choice is fixed from THIS target's earlier
                 // results. Neither later actuals nor their hit-rate affect
                 // the formula, offset, or category chosen.
@@ -185,14 +222,26 @@ class CherryV2ActualSeedAuditTest {
             val observed = if (x.holdoutChecked == 0) "NA" else
                 "%.4f".format(java.util.Locale.US,
                     x.holdoutHits.toDouble() / x.holdoutChecked)
+            val rawObserved = if (x.rawHoldoutChecked == 0) "NA" else
+                "%.4f".format(java.util.Locale.US,
+                    x.rawHoldoutHits.toDouble() / x.rawHoldoutChecked)
+            val chance = when (kind) {
+                CherryDiscoveryKind.LONE -> "0.19"
+                CherryDiscoveryKind.WAM -> "0.36"
+                CherryDiscoveryKind.BREAK -> "0.10"
+            }
             println(
                 "CHERRY_V2_SEED_AUDIT category=${kind.name} targets=${x.contexts} " +
                     "usable=${x.nonemptyHistory} rawInspected=${x.rawInspected} " +
                     "guidedInspected=${x.guidedInspected} rawDistinct=${x.rawDistinct} " +
                     "guidedDistinct=${x.guidedDistinct} rawTenTargets=${x.rawTen} " +
-                    "guidedTenTargets=${x.guidedTen} chosen=${x.selected} " +
-                    "holdoutChecked=${x.holdoutChecked} holdoutHits=${x.holdoutHits} " +
-                    "holdoutAbstain=${x.holdoutAbstained} holdoutHitRate=$observed " +
+                    "guidedTenTargets=${x.guidedTen} rawChosen=${x.rawSelected} " +
+                    "rawHoldoutChecked=${x.rawHoldoutChecked} rawHoldoutHits=${x.rawHoldoutHits} " +
+                    "rawHoldoutAbstain=${x.rawHoldoutAbstained} rawHitRate=$rawObserved " +
+                    "guidedChosen=${x.selected} guidedHoldoutChecked=${x.holdoutChecked} " +
+                    "guidedHoldoutHits=${x.holdoutHits} " +
+                    "guidedHoldoutAbstain=${x.holdoutAbstained} guidedHitRate=$observed " +
+                    "uniformChanceRef=$chance " +
                     "label=IMPORTED_SEED_HISTORICAL_REPLAY_NOT_PROSPECTIVE"
             )
         }
