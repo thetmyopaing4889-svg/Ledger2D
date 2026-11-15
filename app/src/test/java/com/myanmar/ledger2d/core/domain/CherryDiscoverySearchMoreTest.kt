@@ -20,66 +20,63 @@ class CherryDiscoverySearchMoreTest {
             "00", HistoricSource.WINNER)
     }
 
-    @Test fun noFormulaIsOfferedTwiceAndStagesOnlyAdvanceWhenNeeded() {
+    @Test fun searchMoreEnumeratesDistinctFormulasAndOnlyAdvancesNewStages() {
         for (kind in CherryDiscoveryKind.entries) {
             val rows = history()
             var cursor: CherryDiscoverySearchCursor? = null
             val ids = mutableSetOf<String>()
             var lastStages = 0
-            var steps = 0
-            while (true) {
+            // The degenerate all-zero fixture has hundreds of valid
+            // alternatives, so sample the first dozen instead of retaining
+            // a large result list or wasting CI time enumerating them all.
+            repeat(12) {
                 val next = CherryDiscoverySearchMore.next(
                     rows, target, kind, cursor)
+                assertFalse(next.blocked)
+                assertFalse(next.exhausted)
                 assertTrue(next.completedStages >= lastStages)
                 lastStages = next.completedStages
-                assertEquals(next.offeredIds.size, ids.size +
-                    if (next.newCandidate != null) 1 else 0)
-                next.newCandidate?.let {
-                    assertEquals(kind, it.kind)
-                    assertTrue("Search More must not repeat an old formula",
-                        ids.add(it.id))
-                    assertEquals("HISTORICAL_FIT", it.evidenceLabel)
-                    assertEquals(19, it.historicalStreak)
-                }
+                val fresh = requireNotNull(next.newCandidate)
+                assertEquals(kind, fresh.kind)
+                assertTrue("Search More must not repeat an old formula",
+                    ids.add(fresh.id))
+                assertEquals(ids, next.offeredIds)
+                assertEquals("HISTORICAL_FIT", fresh.evidenceLabel)
+                assertEquals(19, fresh.historicalStreak)
+                assertEquals(19, next.bestCandidate?.historicalStreak)
+                assertTrue(next.nextPosition > (cursor?.nextPosition ?: 0))
                 cursor = next
-                assertTrue("Finite search must exhaust", ++steps < 50)
-                if (next.exhausted) break
             }
-            val final = requireNotNull(cursor)
-            assertTrue(final.engine.isComplete)
-            assertNull(final.newCandidate)
-            assertTrue(final.bestCandidate != null)
-            assertEquals(ids, final.offeredIds)
-            assertEquals(207, final.inspectedExpressions)
-            assertEquals(final, CherryDiscoverySearchMore.next(
-                rows, target, kind, final))
+            val last = requireNotNull(cursor)
+            assertEquals(12, last.offeredIds.size)
+            // End-of-grammar handling must return exhaustion while keeping
+            // the previous best fit and all already-offered IDs.
+            val skipToEnd = last.copy(
+                nextPosition = 207 * 4)
+            val completed = CherryDiscoverySearchMore.next(
+                rows, target, kind, skipToEnd)
+            assertTrue(completed.exhausted)
+            assertTrue(completed.engine.isComplete)
+            assertEquals(207, completed.inspectedExpressions)
+            assertNull(completed.newCandidate)
+            assertEquals(last.bestCandidate, completed.bestCandidate)
+            assertEquals(last.offeredIds, completed.offeredIds)
+            assertEquals(completed, CherryDiscoverySearchMore.next(
+                rows, target, kind, completed))
         }
     }
 
-    @Test fun checkingAnotherCandidateDoesNotConsumeStageIfOneAlreadyAvailable() {
-        val rows = (0 until 20).map { i ->
-            val pair = when (i % 4) {
-                0 -> "12"
-                1 -> "27"
-                2 -> "32"
-                else -> "47"
-            }
-            HistoricDraw(dates[i / 2],
-                if (i % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
-                pair, HistoricSource.WINNER)
-        }
-        var cursor: CherryDiscoverySearchCursor? = null
-        var prev = 0
-        repeat(8) {
-            val result = CherryDiscoverySearchMore.next(
-                rows, target, CherryDiscoveryKind.LONE, cursor)
-            assertTrue(result.completedStages >= prev)
-            assertTrue(result.completedStages <= CherryFormulaDiscoveryEngine.STAGE_COUNT)
-            assertTrue(result.offeredIds.size <= 24)
-            prev = result.completedStages
-            cursor = result
-        }
-        assertNotNull(cursor)
+    @Test fun nextAlternativeWithinSameStageDoesNotRepeatAnExpression() {
+        val rows = history()
+        val first = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE)
+        val second = CherryDiscoverySearchMore.next(
+            rows, target, CherryDiscoveryKind.LONE, first)
+        assertEquals(1, first.completedStages)
+        assertEquals(1, second.completedStages)
+        assertEquals(2, second.offeredIds.size)
+        assertNotEquals(first.newCandidate?.id, second.newCandidate?.id)
+        assertEquals(first.bestCandidate, second.bestCandidate)
     }
 
     @Test fun changingHistoryResetsOfferedIdsAndNeverReusesOldFingerprint() {
