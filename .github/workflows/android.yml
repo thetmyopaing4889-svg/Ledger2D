@@ -33,12 +33,13 @@ jobs:
                   'CherryDiscovery2023HoldoutTest',
                   'CherryDiscovery2024And2025HoldoutTest',
                   'CherryFormulaDiscoveryEngineTest',
+                  'CherryDiscoveryWalkForwardTest',
               )):
                   continue
               root = ET.parse(path).getroot()
               for block in root.findall('.//system-out'):
                   for line in (block.text or '').splitlines():
-                      if 'CHERRY_DISCOVERY_' in line or 'CHERRY_SELECTION_' in line:
+                      if any(tag in line for tag in ('CHERRY_DISCOVERY_', 'CHERRY_SELECTION_', 'CHERRY_NULL_')):
                           print(line.strip())
           PY
       - name: Show unit test failures
