@@ -55,7 +55,7 @@ class CherryProspectiveTrialTest {
         assertEquals(CherryDiscoveryKind.entries, entry.choices.map { it.kind })
         assertTrue(entry.choices.all { it.outputDigit == 0 })
         assertTrue(entry.choices.all { !it.expression.isNullOrBlank() })
-        assertTrue(entry.choices.all { it.offset in 0..9 })
+        assertTrue(entry.choices.all { it.offset?.let { n -> n in 0..9 } == true })
         assertTrue(entry.choices.all { it.historicalFitStreak == 11 })
         for (kind in CherryDiscoveryKind.entries) {
             val pending = locked.stats(kind)
