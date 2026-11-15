@@ -279,20 +279,23 @@ object CherryFormulaDiscoveryEngine {
             for (kind in CherryDiscoveryKind.entries) {
                 for (wanted in targets(kind, mostRecent.draw.digit)) {
                     val offset = mod(wanted - first)
-                    val hits = ArrayList<DrawIdentity>()
+                    // Count first; only allocate matchedDraws if the formula
+                    // actually earns a saved slot. This avoids thousands of
+                    // short-lived lists and identities in worst-case searches.
+                    var count = 0
                     for (frame in frames) {
-                        if ((hits.size and 63) == 0) checkCancellation()
+                        if ((count and 63) == 0) checkCancellation()
                         val base = expression.eval(frame.inputs) ?: break
                         if (!hit(kind, mod(base + offset), frame.draw.digit)) break
-                        hits.add(identity(frame.draw))
+                        count++
                     }
-                    val count = hits.size
                     if (count < MIN_STREAK) continue
                     val bucket = kind to minOf(count, TARGET_STREAK)
                     val already = slots[bucket]
                     // First-found wins exact ties; in the 10+ bucket keep a
                     // genuinely longer streak instead of truncating its length.
                     if (already != null && already.historicalStreak >= count) continue
+                    val hits = frames.take(count).map { identity(it.draw) }
                     slots[bucket] = CherryDiscoveredFormula(
                         kind = kind,
                         id = expression.label + "+" + offset + "@" + kind.name,
