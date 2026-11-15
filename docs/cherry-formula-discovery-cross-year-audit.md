@@ -14,7 +14,7 @@ The grammar and longest-streak rule were held fixed for all four years. Pinned p
 | 2026 (through Nov 13) | 420 | 17 | 9/80 | 24/80 | 4/65 | 6 / 10 / 5 |
 | Combined sampled targets | — | — | 54/304 | 104/308 | 23/245 | Not combinable |
 
-The 2023 and 2026 rows were verified in GitHub CI #1510. The 2024 and 2025 rows were **independently computed** and pending new Kotlin CI regression confirmation when recorded here.
+All four rows are now confirmed by Kotlin GitHub CI: 2023/2026 at #1510, 2024/2025 at #1514. Each was independently computed separately before CI confirmation. These rows use explicit closure records in the upstream feed; additional official-holiday supplementation is a separate sensitivity test, not included here.
 
 For idealized independent uniform 00–99 draws, chance digit-category matches are approximately LONE 19%, WAM 36%, BREAK 10%. Combined selected-only rates here are LONE 17.8%, WAM 33.8%, BREAK 9.4%. **These results do not show a stable predictive edge.** Historical fitting is exploratory, not prospective win-rate evidence.
 
@@ -23,9 +23,10 @@ For idealized independent uniform 00–99 draws, chance digit-category matches a
 1. **2025-06-10 occurs twice:** one row claims `off/off`, another gives actual AM 55 / PM 60. The isolated 2025 audit fixture explicitly picks the completed record. Existing `HistorySync.parse2DHistory` in `Repositories.kt` uses `.distinctBy { it.date }` with first-found order, which may instead keep `off`. This is a **production history ingestion risk** to address separately, with tests and user authorization; **we did not modify it**.
 2. **2024-05-21 occurs twice** with identical results; duplicated source records must be deduplicated.
 3. **2025-03-28** has AM 30 but PM `xx`. Never fabricate a PM result; never mark the whole day closed.
-4. **2024 has 18 weekdays absent entirely from the downloaded history.** Their closure status is not proven by absence. The current evaluator deliberately treats these as gaps, which interrupts streaks and reduces evaluable target coverage. Do not silently fill them or call them confirmed market closures without external verification.
-5. Rows marked `off` on weekdays are excluded from expected draw-slot lookup via explicit closure dates.
-6. Walk-forward uses the best currently available historical feed, not a snapshot of corrections as known at the original time. This limitation is disclosed.
+4. **2024 has 18 weekdays absent entirely from the downloaded history.** Checking the official [Stock Exchange of Thailand 2024 holiday calendar](https://www.set.or.th/en/about/event-calendar/holiday?year=2024) identifies **13** of these as confirmed exchange holidays. The other five missing weekdays (2024-03-21, 2024-04-26, 2024-08-02, 2024-09-20, 2024-11-25) remain **unverified source gaps**. Do not silently assume they were closed.
+5. **2025 has three absent weekdays:** 2025-01-01 and 2025-07-10 are corroborated as holidays by the [Thai SEC 2025 securities calendar](https://www.sec.or.th/EN/Pages/News_Detail.aspx?SECID=11077), while 2025-03-21 remains an unknown gap. A separate test evaluates supplementation with *only* officially confirmed holidays, without adding fabricated draws.
+6. Rows marked `off` on weekdays are excluded from expected draw-slot lookup via explicit closure dates.
+7. Walk-forward uses the best currently available historical feed, not a snapshot of corrections as known at the original time. This limitation is disclosed.
 
 ## Overfitting and comparison
 
