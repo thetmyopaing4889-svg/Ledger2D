@@ -101,7 +101,7 @@ internal object CherryV2TimedSearch {
                 val expression = CherryV2ExpandableGrammar.expressionAt(
                     index, ::checkBudget)
                 val trace = CherryV2HistoricalEvaluator.trace(
-                    context, expression, ::checkBudget)
+                    context, expression, ::checkBudget, candidateKind = kind)
 
                 val matches = when {
                     trace == null -> emptyList()
