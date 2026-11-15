@@ -78,7 +78,9 @@ internal object CherryV2GuidedSchedule {
         val op = CherryV2Expression.Operator.entries[opAndFeatures[1].toInt()]
         val bAndA = opAndFeatures[0].divideAndRemainder(eighteen)
         val left = feature(bAndA[1])
-        val right = feature(bAndA[0])
+        // Offset the second operand to prioritize genuinely cross-lag
+        // relations (top1 + top2), not top1 + top1 duplicates first.
+        val right = feature(bAndA[0].add(three))
         val layer = opAndFeatures[0].divide(threeHundredTwentyFour)
         if (layer == zero) return CherryV2Expression.Binary(op, left, right)
 
@@ -104,8 +106,10 @@ internal object CherryV2GuidedSchedule {
         val opOuter = CherryV2Expression.Operator.entries[second[1].toInt()]
         val features = second[0]
         val firstFeature = feature(features)
-        val secondFeature = feature(features.divide(eighteen))
-        val thirdFeature = feature(features.divide(threeHundredTwentyFour))
+        // Start with distinct prior components and lags. Mixed features
+        // are evaluated before algebraically redundant repeated top1s.
+        val secondFeature = feature(features.divide(eighteen).add(one))
+        val thirdFeature = feature(features.divide(threeHundredTwentyFour).add(three))
         val layer = features.divide(fiveThousandEightHundredThirtyTwo)
         val lhs = if (layer == zero) firstFeature
         else CherryV2ExpandableGrammar.expressionAt(layer.subtract(one),
