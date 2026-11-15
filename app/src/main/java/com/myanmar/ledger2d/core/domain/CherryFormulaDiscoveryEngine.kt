@@ -236,20 +236,12 @@ object CherryFormulaDiscoveryEngine {
         /** Call coroutineContext.ensureActive() here from a background caller. */
         checkCancellation: () -> Unit = {},
     ): CherryDiscoverySession {
-        // Filter/normalize may inspect the supplied history once, but all
-        // subsequent high-cost grammar evaluation is strictly bounded.
-        // A repository can optimize further by querying only the latest
-        // (SEARCH_DRAWS + CONTEXT_DRAWS) settled draw slots.
-        val eligible = ArrayList<HistoricDraw>(history.size.coerceAtMost(
-            SEARCH_DRAWS + CONTEXT_DRAWS))
-        history.forEachIndexed { index, row ->
-            if ((index and 127) == 0) checkCancellation()
-            if (validHistoric2D(row.digit) && before(row, target) &&
-                DrawSchedule.isWorkingDate(row.date, closedDates)) eligible.add(row)
-        }
-        checkCancellation()
-        val rows = CherryDiscoveryHistoryNormalizer.normalize(eligible)
-            .takeLast(SEARCH_DRAWS + CONTEXT_DRAWS)
+        // A bounded ordered buffer avoids materializing the entire historical
+        // source into memory. Only 200 scored draws + 3 lag inputs survive.
+        val rows = CherryDiscoveryHistoryNormalizer.newestBefore(
+            history, target, closedDates, SEARCH_DRAWS + CONTEXT_DRAWS,
+            checkCancellation,
+        )
         val sig = signature(rows, closedDates)
         val old = previousState?.takeIf {
             it.target == target && it.historySignature == sig
