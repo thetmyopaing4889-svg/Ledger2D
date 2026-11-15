@@ -36,6 +36,9 @@ class CherryV2GuidedScheduleTest {
         assertEquals(CherryV2GuidedSchedule.Lane.NESTED,
             CherryV2GuidedSchedule.laneAt(BigInteger.valueOf(11)))
         assertEquals("(top1+top2)", at(10).structuralKey)
+        assertEquals("(top1+top2)",
+            CherryV2ExpandableGrammar.expressionAt(BigInteger.valueOf(73))
+                .structuralKey) // raw linear search finds this much later
         assertEquals("((top1+tail1)+top2)", at(11).structuralKey)
         // Early guided candidates mix distinct lags and components.
         assertEquals("(top1+tail2)", at(280).structuralKey)
