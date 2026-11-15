@@ -130,6 +130,28 @@ class CherryFormulaDiscoveryEngineTest {
         assertEquals(11, clean.longest(CherryDiscoveryKind.LONE)?.historicalStreak)
     }
 
+    @Test fun cancellingContinueSearchNeverDiscardsAlreadyFoundFormula() {
+        val (rows, target) = history(*Array(12) { "00" })
+        val first = CherryFormulaDiscoveryEngine.nextRound(rows, target)
+        assertEquals(1, first.completedStages)
+        var checks = 0
+        try {
+            CherryFormulaDiscoveryEngine.nextRound(rows, target, first,
+                checkCancellation = {
+                    if (++checks >= 5) throw java.util.concurrent.CancellationException()
+                })
+            fail("Expected cancellation during second stage")
+        } catch (_: java.util.concurrent.CancellationException) {
+            assertEquals(1, first.completedStages)
+            assertEquals(11,
+                first.longest(CherryDiscoveryKind.WAM)?.historicalStreak)
+        }
+        val resumed = CherryFormulaDiscoveryEngine.nextRound(rows, target, first)
+        assertEquals(2, resumed.completedStages)
+        assertEquals(first.longest(CherryDiscoveryKind.WAM)?.id,
+            resumed.longest(CherryDiscoveryKind.WAM)?.id)
+    }
+
     @Test fun neverReadsTargetOrFutureDrawsWhenSearching() {
         val (rows, target) = history(*Array(10) { "12" })
         val withoutFuture = CherryFormulaDiscoveryEngine.nextRound(rows, target)
