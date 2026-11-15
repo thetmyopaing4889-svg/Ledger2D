@@ -113,7 +113,10 @@ class CherryFormulaDiscoveryEngineTest {
         assertEquals(207, result.inspectedExpressions)
         assertTrue(result.formulas.size <= 24)
         for (kind in CherryDiscoveryKind.entries) {
-            assertEquals(999, result.longest(kind)?.historicalStreak)
+            // 200 most recent draws are scored; three older draws only
+            // provide lag inputs, regardless of how large history grows.
+            assertEquals(CherryFormulaDiscoveryEngine.SEARCH_DRAWS,
+                result.longest(kind)?.historicalStreak)
         }
         assertEquals(result, CherryFormulaDiscoveryEngine.nextRound(rows, target, result))
         println("CHERRY_DISCOVERY_STRESS draws=1000 expressions=207 " +
