@@ -98,6 +98,33 @@ class CherryV2DiscoveryServiceTest {
         }
     }
 
+    @Test fun insufficientConfirmedHistoryDoesNotStartUiTimerOrConsumeSearchBudget() =
+        runBlocking {
+            val db = database()
+            try {
+                // One previous weekday contains just AM and PM = 2 slots.
+                // This cannot support a 3-match historical streak with
+                // even the simplest lag-1 expression (requires 4 slots).
+                db.historyResultDao().upsertAll(
+                    listOf(row(days[9])))
+                val service = CherryV2DiscoveryService(app, db)
+                var started = 0
+                val receipt = service.search(
+                    target, CherryDiscoveryKind.LONE, asOf,
+                    timeBudgetNanos = CherryV2TimedSearch.DEFAULT_BUDGET_NANOS,
+                    onSearchStarted = { started++ },
+                )
+                assertEquals(0, started)
+                assertEquals(CherryV2TimedSearch.StopReason.BLOCKED,
+                    receipt.result.stopReason)
+                assertEquals(0, receipt.result.inspectedThisBatch)
+                assertEquals(2, receipt.contiguousSlots)
+                assertNull(service.saved(target, CherryDiscoveryKind.LONE, asOf))
+            } finally {
+                db.close()
+            }
+        }
+
     @Test fun uiTimerStartsExactlyOnceAfterPreparationAndOnlyOnExplicitTap() =
         runBlocking {
             val db = database()
