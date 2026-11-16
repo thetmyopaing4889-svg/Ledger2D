@@ -347,68 +347,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.MATH->{
-                        item {
-                            // Match CURRENT: a section heading outside the selection card.
-                            CherryHeading(
-                                tr("🧮 သင်္ချာနည်းများ","🧮 Math methods"),
-                                tr("နောက်ဆုံးရလဒ်များမှ တွက်ချက်ထားသော သင်္ချာနည်းများ",
-                                    "Methods calculated from recent confirmed results")
-                            )
-                        }
-                        item {
-                            CherryMathSelectionOverview(
-                                selections=report.mathSelections(),
-                                all=report.math,
-                                en=en,
-                                onPick={selectedPick=it}
-                            )
-                        }
-                        // The Champion stays directly below the prioritized picks.
-                        item {
-                            CherryMathSupportFrames(
-                                analysis=report.mathAnalysis,
-                                all=report.math,
-                                originalSource=originalSource,
-                                en=en,
-                                onPick={selectedPick=it},
-                                onOriginal={selectedOriginal=it},
-                                showWatches=false,
-                                showResearch=false
-                            )
-                        }
-                        item {
-                            CherryHeading(
-                                tr("တွက်နည်းများ","Math formulas"),
-                                tr("လုံးပိုင်၊ ဝမ်းချိန်း၊ ဘရိတ် ကတ်ကိုနှိပ်ပြီး သက်ဆိုင်ရာတွက်နည်းများ ကြည့်ရန်",
-                                    "Tap Lone, Wam or Break to see its formulas")
-                            )
-                        }
-                        item {
-                            CherryMathMethodCategories(
-                                analysis=report.mathAnalysis,
-                                all=report.math,
-                                originalSource=originalSource,
-                                en=en,
-                                onPick={selectedPick=it},
-                                onOriginal={selectedOriginal=it}
-                            )
-                        }
-                        // Gemini research remains below all original categories.
-                        item {
-                            CherryMathSupportFrames(
-                                analysis=report.mathAnalysis,
-                                all=report.math,
-                                originalSource=originalSource,
-                                en=en,
-                                onPick={selectedPick=it},
-                                onOriginal={selectedOriginal=it},
-                                showChampion=false,
-                                showWatches=false
-                            )
-                        }
-                        // V3 is the primary integrated Search on the existing
-                        // Math page, after Gemini 210 and approved Champion.
-                        // No background pre-run, no separate test APK/screen.
+                        // V3-only Math: keep existing on-demand UI unchanged.
+                        // Legacy DOC Champion, Gemini 210 and ranking panels
+                        // are intentionally not composed.
                         item {
                             CherryV3DiscoveryPanel(
                                 controller = v3Search,
@@ -416,8 +357,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 en = en,
                             )
                         }
-                        // Previous finite-search UI intentionally hidden.
-                        // Legacy trials/cursors remain untouched in storage.
                     }
                     CherryTab.SUMMARY->{
                         item{CherryHeading(tr("👑 ဒီအကြိမ်အတွက် နောက်ဆုံးအချုပ်",
@@ -630,11 +569,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                     style=MaterialTheme.typography.bodySmall)
                             }
                         }
-                    }else if(tab==CherryTab.MATH){
-                        CherryMathPairDetail(p,originalSource,en,
-                            onOriginal={selectedPick=null;selectedOriginal=it},
-                            selection=report?.mathSelections()
-                                ?.firstOrNull{it.pick.pair==p.pair})
                     }else{
                         p.evidence.distinctBy{it.id to it.origin}.forEach{ev->
                             Text("• ${ev.name}",fontWeight=FontWeight.Bold,

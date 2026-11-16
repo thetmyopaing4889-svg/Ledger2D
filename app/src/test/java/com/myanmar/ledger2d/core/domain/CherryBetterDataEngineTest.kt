@@ -70,13 +70,16 @@ class CherryBetterDataEngineTest {
         assertFalse(report.activeRules.any{it.name.contains("1264")})
     }
 
-    @Test fun formulaProducesGoldenAndCrossPairs() {
+    @Test fun formerGeminiChampionPairsAreNotIncludedInBetterData() {
         val report=CherryBetterDataEngine.calculate(
             listOf(d("2026-11-09",DrawSession.MORNING,"12"),
                 d("2026-11-09",DrawSession.EVENING,"34")),
             target("2026-11-10",DrawSession.MORNING))
-        assertTrue(report.math.any{it.pair=="27"&&it.evidence.any{ev->ev.id=="gold-w1"}})
-        assertTrue(report.math.any{it.pair=="07"&&it.evidence.any{ev->ev.id=="cross-l1-b1"}})
+        assertTrue(report.math.isEmpty())
+        assertTrue(report.mathAnalysis.research.isEmpty())
+        assertTrue(report.mathAnalysis.champions.isEmpty())
+        assertTrue(report.summary.none{p->p.evidence.any{it.tab==CherryTab.MATH}})
+        assertTrue(report.current.isNotEmpty())
     }
 
     @Test fun sectionEightCutsAreTaggedNotMistakenForCertainty() {

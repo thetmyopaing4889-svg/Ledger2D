@@ -172,19 +172,6 @@ object CherryMathStreakEngine {
         val digit=digits.singleOrNull()?:return null
         return digit.takeIf{it==wamDigit||it==mod(wamDigit+5)}
     }
-    private fun research(
-        type:String,a:Int,b:Int,k:Int,rows:List<HistoricDraw>,
-        target:DrawIdentity,closed:Set<LocalDate>
-    ):Int?{
-        val last=previous(rows,target,1,closed)?.firstOrNull()?.digit?:return null
-        val t=last[0].digitToInt();val u=last[1].digitToInt()
-        return mod(when(type){
-            "sum"->a*t+b*u+k
-            "nine"->a*(9-t)+b*(9-u)+k
-            "diff"->a*abs(t-u)+k
-            else->return null
-        })
-    }
     private fun watches(
         rows:List<HistoricDraw>,target:DrawIdentity,closed:Set<LocalDate>
     ):List<CherryMathWatch>{
@@ -262,39 +249,10 @@ object CherryMathStreakEngine {
                 }
             })
         }
-        val types=listOf("sum" to "ထိပ်ပိတ်ပေါင်း",
-            "nine" to "၉ နှုတ်ဓာတ်ပြောင်း","diff" to "ထိပ်ပိတ်ခြားနားချက်")
-        // Experiment ONLY. Coefficients and constants are not in the DOC.
-        // 90 sum + 90 nine-transform + 30 difference = 210 candidates.
-        val pool=types.flatMap{(type,name)->
-            (1..3).flatMap{a->
-                (if(type=="diff")listOf(1)else (1..3).toList()).flatMap{b->
-                    (0..9).map{k->
-                        val label="$name (a=$a, b=$b, k=$k)"
-                        val e=evaluate(label,"research-$type-$a-$b-$k",
-                            "WAM",prior,target,closed,"RESEARCH"){data,t->
-                            research(type,a,b,k,data,t,closed)
-                        }
-                        e.copy(explanation="Gemini သုတေသနအလေးချိန် a=$a, b=$b, " +
-                            "ကိန်းသေ k=$k — မူရင်း DOC မဟုတ်ပါ")
-                    }
-                }
-            }
-        }
-        val best=types.mapNotNull{(type,_)->
-            pool.filter{it.id.startsWith("research-$type-")&&
-                it.streak>=3&&it.checked>=10}
-                .sortedWith(compareByDescending<CherryMathFormula>{it.streak}
-                    .thenByDescending{it.hits}.thenBy{it.id})
-                .firstOrNull()
-        }
-        val confluence=if(best.size==3&&best.map{it.result}.distinct().size==1)
-            listOfNotNull(best[0].result) else emptyList()
         return CherryMathAnalysis(
             formulas,champions,prevChampion,
-            pool.sortedWith(compareByDescending<CherryMathFormula>{it.streak}
-                .thenByDescending{it.hits}.thenBy{it.id}),
-            confluence,watches(prior,target,closed),prior.takeLast(20).size,
+            emptyList(),emptyList(),
+            watches(prior,target,closed),prior.takeLast(20).size,
             primaryChampionId,loneConsensus
         )
     }

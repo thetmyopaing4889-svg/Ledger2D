@@ -389,15 +389,10 @@ object CherryBetterDataEngine {
             .sortedWith(compareBy<HistoricDraw>{it.date}.thenBy{it.session.ordinal})
             .distinctBy{it.date to it.session}
         val prev=priorSlots(rows,target,closed,1)?.firstOrNull()
-        val prev2=priorSlots(rows,target,closed,2)
-        val prev3=priorSlots(rows,target,closed,3)
         val current=mutableListOf<CherryEvidence>()
         val born=mutableListOf<CherryEvidence>()
-        val math=mutableListOf<CherryEvidence>()
         val cut=mutableMapOf<String,MutableList<String>>()
         val births=mutableListOf<CherryBirth>()
-        val singles=mutableListOf<CherryValue>()
-        val breaks=mutableListOf<CherryValue>()
         fun add(to:MutableList<CherryEvidence>,rule:String,family:String,
                 title:String,detail:String,pairs:Iterable<String>,origin:DrawIdentity?=null,tab:CherryTab) {
             pairs.filter(::validHistoric2D).distinct().forEach{p->
@@ -542,96 +537,8 @@ object CherryBetterDataEngine {
         if(groupSix.any{it in thisWeek})add(born,"s3-six","s3-six",
             "အပတ်စဉ် ၆ ကွက်အုပ်စု","ယခုအပတ် အုပ်စုတစ်ကွက် ပေါ်ပြီး",
             groupSix.filterNot{it in thisWeek},null,CherryTab.BORN)
-        if(prev2!=null){
-            val p=prev2[1].digit
-            val c=prev2[0].digit
-            val w=(p[1].digitToInt()*2+c[1].digitToInt()+4)%10
-            singles+=CherryValue("w1","ဝမ်းချိန်း (၁)",w,
-                "(${p[1]} × ၂) + ${c[1]} + ၄","WAM")
-            val l=(c[1].digitToInt()*2+2)%10
-            singles+=CherryValue("l1","လုံးပိုင် (၁)",l,
-                "(${c[1]} × ၂) + ၂","LONE")
-            val b1=(p[0].digitToInt()*2+c[0].digitToInt()+c[1].digitToInt()*3)%10
-            val b2=((p[0].digitToInt()+abs(p[0].digitToInt()-p[1].digitToInt()))*4+1)%10
-            breaks+=CherryValue("b1","ဘရိတ် (၁)",b1,
-                "(${p[0]} × ၂) + ${c[0]} + (${c[1]} × ၃)","BREAK")
-            breaks+=CherryValue("b2","ဘရိတ် (၂)",b2,
-                "(${p[0]} + |${p[0]} − ${p[1]}|) × ၄ + ၁","BREAK")
-        }
-        if(prev3!=null){
-            val a=prev3[2].digit;val b=prev3[1].digit;val c=prev3[0].digit
-            val w=((a[1].digitToInt()+b[1].digitToInt())*2+
-                (b[0].digitToInt()+c[1].digitToInt())*3+2)%10
-            val l=(a[1].digitToInt()*2+b[0].digitToInt()*4+
-                c[0].digitToInt()*2+c[1].digitToInt()*3+1)%10
-            singles+=CherryValue("w2","ဝမ်းချိန်း (၂)",w,
-                "[(${a[1]} + ${b[1]}) × ၂] + [(${b[0]} + ${c[1]}) × ၃] + ၂","WAM")
-            singles+=CherryValue("l2","လုံးပိုင် (၂)",l,
-                "(${a[1]}×၂) + (${b[0]}×၄) + (${c[0]}×၂) + (${c[1]}×၃) + ၁","LONE")
-        }
-        // Require the immediately previous working day's two completed
-        // sessions; a missing day must not become a stale WaiLin signal.
-        val previousWorkingDay=immediate(
-            DrawIdentity(target.date,DrawSession.MORNING),closed).date
-        val waiLinAm=rows.firstOrNull{
-            it.date==previousWorkingDay&&it.session==DrawSession.MORNING
-        }
-        val waiLinPm=rows.firstOrNull{
-            it.date==previousWorkingDay&&it.session==DrawSession.EVENING
-        }
-        if(waiLinAm!=null&&waiLinPm!=null){
-            val l=(waiLinAm.digit[0].digitToInt()+
-                waiLinPm.digit[0].digitToInt()+
-                waiLinPm.digit[1].digitToInt())%10
-            singles+=CherryValue("wl","WaiLin လုံးပိုင်",l,
-                "${waiLinAm.digit[0]} + ${waiLinPm.digit[0]} + "+
-                "${waiLinPm.digit[1]}","LONE")
-        }
-        if(prev!=null){
-            val b=Math.floorMod(bk(prev.digit)-3,10)
-            breaks+=CherryValue("cycle","၃ လျှော့ ဘရိတ်",b,
-                "${bk(prev.digit)} BK → $b BK","BREAK")
-        }
-        val mathAnalysis=CherryMathStreakEngine.analyze(rows,target,singles,breaks,closed)
-        // Research confluence is a separate observable result, never a DOC champion.
-        // No experimental pair is eligible for main picks without DOC agreement.
-        mathAnalysis.confluence.singleOrNull()?.let{digit->
-            add(math,"research-confluence","research-confluence",
-                "သုတေသန ၃ နည်း ဘုံတူဝမ်းချိန်း",
-                "စမ်းသပ်တွက်နည်းအုပ်စု ၃ မျိုးက $digit ကို တူညီစွာညွှန်ပြသည်။ " +
-                    "မူရင်း DOC ပုံသေနည်း မဟုတ်သေးပါ။",
-                CherryPairExpander.power(digit),null,CherryTab.MATH)
-        }
-        // Keep DOC conditional math watches visible without inventing pairs.
-        mathAnalysis.watches.filter{it.pairs.isNotEmpty()}.forEach{watch->
-            add(math,"watch-${watch.id}","watch-${watch.id}",watch.title,
-                watch.description,watch.pairs,null,CherryTab.MATH)
-        }
-        singles.filter{it.kind=="WAM"}.forEach{w->
-            add(math,"gold-${w.id}","gold-${w.id}","${w.name} ပါဝါတွဲ",
-                "${w.formula} = ${w.digit} → ${CherryPairExpander.power(w.digit).joinToString(" / ")}",
-                CherryPairExpander.power(w.digit),null,CherryTab.MATH)
-        }
-        singles.filter{it.kind=="LONE"}.forEach{l->
-            breaks.forEach{b->
-                add(math,"cross-${l.id}-${b.id}","cross-${l.id}-${b.id}",
-                    "${l.name} × ${b.name} (ဒဲ့ဘရိတ်)",
-                    "လုံးပိုင် ${l.digit}၊ ဘရိတ် ${b.digit}။ " +
-                        "တွဲဖက်လုံး = (${b.digit} − ${l.digit} + 10) mod 10။ " +
-                        CherryPairExpander.cross(l.digit,b.digit).joinToString(" / "),
-                    CherryPairExpander.cross(l.digit,b.digit),null,CherryTab.MATH)
-                if(b.id=="b1"||b.id=="b2"){
-                    val powerBreak=(b.digit+5)%10
-                    add(math,"cross-${l.id}-${b.id}-power",
-                        "cross-${l.id}-${b.id}-power",
-                        "${l.name} × ${b.name} (ပါဝါဘရိတ်)",
-                        "ဒဲ့ဘရိတ် ${b.digit} + 5 = ${powerBreak} ပါဝါဘရိတ်။ " +
-                            "လုံးပိုင် ${l.digit} နှင့် တွဲစပ် → " +
-                            CherryPairExpander.cross(l.digit,powerBreak).joinToString(" / "),
-                        CherryPairExpander.cross(l.digit,powerBreak),null,CherryTab.MATH)
-                }
-            }
-        }
+        // Legacy DOC/Gemini Math generation is retired. The V3 discovery
+        // engine is a separate, explicit-tap workflow and never executes here.
         fun group(e:List<CherryEvidence>):List<CherryPick> =
             e.distinctBy{Triple(it.id,it.pair,it.origin)}.groupBy{it.pair}
                 .map{(p,ev)->
@@ -648,54 +555,26 @@ object CherryBetterDataEngine {
                     .thenByDescending{it.score}.thenBy{it.pair})
         val currentPicks=group(current)
         val bornPicks=group(born)
-        // Individual Math cards remain inspectable, including unverified signals.
-        // Only three-step DOC champions and strictly verified pairings may
-        // influence the general ranked shortlist or summary.
-        val mathPicks=group(math)
-        val wamChampion=mathAnalysis.champion("WAM")
-        val loneChampion=mathAnalysis.champion("LONE")
-        val breakChampion=mathAnalysis.champion("BREAK")
-        val verifiedLoneId=loneChampion?.takeIf{
-            it.result==mathAnalysis.loneConsensus
-        }?.id
-        val verifiedCrossIds=if(verifiedLoneId!=null&&breakChampion!=null)
-            setOf("cross-$verifiedLoneId-${breakChampion.id}",
-                "cross-$verifiedLoneId-${breakChampion.id}-power")
-        else emptySet()
-        val verifiedMath=math.filter{e->
-            (wamChampion!=null&&e.id=="gold-${wamChampion.id}")||
-                e.id in verifiedCrossIds||
-                (e.id=="research-confluence"&&
-                    mathAnalysis.confluence.singleOrNull()==wamChampion?.result)
-        }
-        val candidates=group(current+born+verifiedMath)
-        val goldenPairKeys=if(wamChampion==null)emptySet()else
-            candidates.filter{p->p.cuts.isEmpty()&&p.evidence.any{e->
-                e.id=="gold-${wamChampion.id}"
-            }}.map{it.pair}.toSet()
-        val distinct=mutableSetOf<String>()
-        val ranked=candidates.filter{it.cuts.isEmpty()}.filter{p->
-            // The Golden Rule explicitly retains direct and reverse. Other
-            // pair recommendations may collapse reverse duplicates.
-            if(p.pair in goldenPairKeys)true
-            else{
-                val reverse=p.pair.reversed()
-                val key=if(p.pair<reverse)p.pair else reverse
-                distinct.add(key)
-            }
-        }
-        // Reserve both original Golden Rule directions in the short summary.
-        // Never silently override a documented cut: conflicted pairs stay
-        // visible with their cut explanation in the Math detail frame.
-        val goldenPairs=if(wamChampion!=null)
-            candidates.filter{it.cuts.isEmpty()&&it.evidence.any{e->
-                e.id=="gold-${wamChampion.id}"
-            }}.sortedBy{it.pair}.take(2)
-        else emptyList()
-        val summary=(goldenPairs+ranked).distinctBy{it.pair}.take(3)
-        return CherryReport(target,rows.size,rows.lastOrNull(),currentPicks,bornPicks,
-            mathPicks,summary,ranked,births,singles,breaks,cut.mapValues{it.value.distinct()},
-            target.session==DrawSession.MORNING&&modern?.matches(Regex("[0-9]{2}"))==true&&
-                internet?.matches(Regex("[0-9]{2}"))==true,mathAnalysis)
+        // Final Summary now contains only CURRENT + BORN evidence.
+        // Preserve documented cuts and deduplicate reverse families.
+        val ranked=group(current+born).filter{it.cuts.isEmpty()}
+            .distinctBy{minOf(it.pair,it.pair.reversed())}
+        val summary=ranked.take(3)
+        // Temporary compatibility payload only: no Champion or Gemini is
+        // evaluated when Better Data opens. V3 owns Math independently.
+        val inactiveMath=CherryMathAnalysis(
+            formulas=emptyList(),champions=emptyMap(),
+            previousChampions=emptyMap(),research=emptyList(),
+            confluence=emptyList(),watches=emptyList(),testedDraws=0,
+        )
+        return CherryReport(
+            target,rows.size,rows.lastOrNull(),currentPicks,bornPicks,
+            emptyList(),summary,ranked,births,emptyList(),emptyList(),
+            cut.mapValues{it.value.distinct()},
+            target.session==DrawSession.MORNING&&
+                modern?.matches(Regex("[0-9]{2}"))==true&&
+                internet?.matches(Regex("[0-9]{2}"))==true,
+            inactiveMath,
+        )
     }
 }
