@@ -71,6 +71,30 @@ class CherryV2OrderBenchmarkTest {
         assertEquals(first.guided.firstAtLeastTen, second.guided.firstAtLeastTen)
     }
 
+    @Test fun reversingAuditOrderPreservesScoresWhenTimeBudgetDoesNotBind() {
+        val ctx = CherryV2HistoricalEvaluator.prepare(fibonacciDraws(), target)
+        val rawFirst = CherryV2OrderBenchmark.compare(
+            ctx, CherryDiscoveryKind.LONE, candidatesPerMode = 64,
+            budgetPerModeNanos = 200_000_000L, nanoTime = clock(),
+            guidedFirst = false,
+        )
+        val guidedFirst = CherryV2OrderBenchmark.compare(
+            ctx, CherryDiscoveryKind.LONE, candidatesPerMode = 64,
+            budgetPerModeNanos = 200_000_000L, nanoTime = clock(),
+            guidedFirst = true,
+        )
+        for ((a, b) in listOf(
+            rawFirst.raw to guidedFirst.raw,
+            rawFirst.guided to guidedFirst.guided,
+        )) {
+            assertEquals(a.inspected, b.inspected)
+            assertEquals(a.scorable, b.scorable)
+            assertEquals(a.distinctBehaviorTraces, b.distinctBehaviorTraces)
+            assertEquals(a.firstByStreak, b.firstByStreak)
+            assertEquals(a.firstAtLeastTen, b.firstAtLeastTen)
+        }
+    }
+
     @Test fun strictBudgetAndCandidateCapPreventUnboundedBenchmarkRuns() {
         val ctx = CherryV2HistoricalEvaluator.prepare(fibonacciDraws(), target)
         val report = CherryV2OrderBenchmark.compare(
