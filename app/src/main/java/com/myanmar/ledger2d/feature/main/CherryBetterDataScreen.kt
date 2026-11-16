@@ -81,6 +81,19 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             next=DrawIdentity(next.date.plusDays(1),DrawSession.MORNING)
         next
     }
+    // Long-running V3 scope lives at SCREEN level, not inside a LazyColumn
+    // item: scrolling the Math panel offscreen must not cancel a live search.
+    // Service construction does NOT start formula discovery.
+    val v3Service=remember(context,container){
+        CherryV2DiscoveryService(context,container.database)
+    }
+    val v3Scope=rememberCoroutineScope()
+    val v3Search=remember(v3Service,target,v3Scope){
+        CherryV3DiscoveryController(v3Service,target,v3Scope)
+    }
+    DisposableEffect(v3Search){
+        onDispose{v3Search.cancel()}
+    }
     val merged=remember(history,daily,winners,locks,now,closedDates) {
         Historic2DDataSource.resolve(
             liveDaily=daily.orEmpty(),history=history.orEmpty(),
@@ -100,6 +113,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         else null
     }
     var tab by rememberSaveable{mutableStateOf(CherryTab.SUMMARY)}
+    var showLegacyDiscovery by rememberSaveable{mutableStateOf(false)}
     var selectedPick by remember { mutableStateOf<CherryPick?>(null) }
     var selectedOriginal by remember { mutableStateOf<CherryOriginalReference?>(null) }
     var showHistory by remember { mutableStateOf(false) }
@@ -398,8 +412,31 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 showWatches=false
                             )
                         }
-                        // Keep Discovery unchanged, after all existing Math content.
+                        // V3 is the primary integrated Search on the existing
+                        // Math page, after Gemini 210 and approved Champion.
+                        // No background pre-run, no separate test APK/screen.
                         item {
+                            CherryV3DiscoveryPanel(
+                                controller = v3Search,
+                                target = target,
+                                en = en,
+                            )
+                        }
+                        // The old finite Search More and its local trial locks
+                        // remain accessible; do not erase approved saved data.
+                        item {
+                            OutlinedButton(
+                                onClick={showLegacyDiscovery=!showLegacyDiscovery},
+                                modifier=Modifier.fillMaxWidth()
+                            ){
+                                Text(if(showLegacyDiscovery)
+                                    tr("ယခင် Formula မှတ်တမ်း ပိတ်ရန်",
+                                        "Hide previous formula workspace")
+                                else tr("ယခင် Formula မှတ်တမ်း ကြည့်ရန်",
+                                        "View previous formula workspace"))
+                            }
+                        }
+                        if(showLegacyDiscovery) item {
                             CherryDiscoveryPanel(
                                 service = discoveryService,
                                 target = target,
