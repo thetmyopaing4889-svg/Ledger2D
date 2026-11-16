@@ -125,6 +125,33 @@ class CherryV2DiscoveryServiceTest {
             }
         }
 
+    @Test fun savedFormulaCanBeExplainedForTwoSessionsWithoutAnotherSearch() =
+        runBlocking {
+            val db = database()
+            try {
+                db.historyResultDao().upsertAll(days.take(10).map(::row))
+                val service = CherryV2DiscoveryService(app, db)
+                val kind = CherryDiscoveryKind.LONE
+                val first = service.search(
+                    target, kind, asOf, timeBudgetNanos = 150_000_000L)
+                val saved = requireNotNull(first.recommended)
+                val before = requireNotNull(service.saved(target, kind, asOf))
+                val example = requireNotNull(
+                    service.explain(target, kind, saved.formulaId, asOf))
+                assertEquals(target, example.current.draw)
+                assertNull(example.current.actualPair)
+                assertEquals("00", example.previous.actualPair)
+                assertTrue(example.current.inputs.isNotEmpty())
+                assertTrue(example.previous.inputs.isNotEmpty())
+                assertEquals(saved.predictedDigit, example.current.digit)
+                assertEquals(before, service.saved(target, kind, asOf))
+                assertNull("Never offer an unrecorded formula",
+                    service.explain(target, kind, "v3:not-saved", asOf))
+            } finally {
+                db.close()
+            }
+        }
+
     @Test fun uiTimerStartsExactlyOnceAfterPreparationAndOnlyOnExplicitTap() =
         runBlocking {
             val db = database()
