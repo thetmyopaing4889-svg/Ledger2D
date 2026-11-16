@@ -27,7 +27,13 @@ internal object CherryV2HistoricalEvaluator {
         val historySignature: String,
         val validTarget: Boolean,
     ) {
-        val blocked: Boolean get() = !validTarget || prior.isEmpty()
+        // The shortest legal V3 expression uses lag 1. To score three
+        // historical sessions without looking at the target, the evaluator
+        // needs at least 1 current-input slot + 3 older draw slots.
+        // With 1..3 available results NO expression can qualify, so do not
+        // waste a full 30-second user-triggered CPU budget on the phone.
+        val blocked: Boolean get() = !validTarget ||
+            prior.size < CherryFormulaDiscoveryEngine.MIN_STREAK + 1
         // Materialize the bounded history digits ONCE. A 30-second formula
         // scan evaluates thousands of expressions against this same snapshot;
         // rebuilding a new List<String> for every formula creates avoidable GC.
