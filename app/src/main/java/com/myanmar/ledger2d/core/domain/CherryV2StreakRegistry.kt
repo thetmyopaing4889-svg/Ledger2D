@@ -52,7 +52,9 @@ internal data class CherryV2StreakRegistry(
     val grammarVersion: Int = CherryV2ExpandableGrammar.VERSION,
 ) {
     companion object {
-        const val BEHAVIOR_WINDOW = 512
+        // Compact 128-bit behavior fingerprints allow 4096 distinct traces within a
+        // bounded checkpoint, versus 512 full-length textual traces in V3.
+        const val BEHAVIOR_WINDOW = 4096
         // User target: one first-found tier for each of 3,4,...,9,10+.
         // This is at most eight recommendations, not ~198 numbers.
         const val MAX_TARGET_STREAK = 10

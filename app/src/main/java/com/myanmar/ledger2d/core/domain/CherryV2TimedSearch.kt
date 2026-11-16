@@ -10,7 +10,9 @@ import java.util.concurrent.CancellationException
 internal object CherryV2TimedSearch {
     const val DEFAULT_BUDGET_NANOS = 30_000_000_000L
     private const val CHECKPOINT_EVERY = 512
-    private const val CHECKPOINT_MIN_INTERVAL_NANOS = 500_000_000L
+    // Avoid rewriting a large compact fingerprint window 60 times per search.
+    // Always flush on timeout and cancellation.
+    private const val CHECKPOINT_MIN_INTERVAL_NANOS = 3_000_000_000L
 
     enum class StopReason { TIME_LIMIT, BLOCKED }
 
@@ -26,6 +28,23 @@ internal object CherryV2TimedSearch {
     )
 
     private class DeadlineReached : RuntimeException()
+
+    /** Stable bounded-size semantic fingerprint for persisted exact-window traces.
+     * Two independent mixed 64-bit accumulators make incidental collisions
+     * extremely unlikely; behavior equivalence remains evidence-window only.
+     */
+    private fun behaviorFingerprint(value: String): String {
+        var first = 0x6a09e667f3bcc909L
+        var second = 0x3c6ef372fe94f82bL
+        for (char in value) {
+            first = (first xor char.code.toLong()) * 1099511628211L
+            second = java.lang.Long.rotateLeft(
+                second xor (char.code.toLong() + 0x9e37L), 7
+            ) * 1099511628211L
+        }
+        return java.lang.Long.toHexString(first).padStart(16, '0') +
+            java.lang.Long.toHexString(second).padStart(16, '0')
+    }
 
     /**
      * One search window runs until the monotonic *time* budget expires, NOT
@@ -108,9 +127,10 @@ internal object CherryV2TimedSearch {
                 val trace = CherryV2HistoricalEvaluator.trace(
                     context, expression, ::checkBudget, candidateKind = kind)
 
+                val behaviorKey = trace?.let { behaviorFingerprint(it.behaviorKey) }
+                val isDuplicate = behaviorKey != null && seen.contains(behaviorKey)
                 val matches = when {
-                    trace == null -> emptyList()
-                    seen.contains(trace.behaviorKey) -> emptyList()
+                    trace == null || isDuplicate -> emptyList()
                     else -> CherryV2HistoricalEvaluator.evaluateTrace(
                         context, kind, index, trace, ::checkBudget)
                 }
@@ -119,11 +139,11 @@ internal object CherryV2TimedSearch {
                 val advanced = cursor.inspectedBatch(index, matches)
                 if (trace == null) {
                     unsupported++
-                } else if (seen.contains(trace.behaviorKey)) {
+                } else if (isDuplicate) {
                     duplicates++
                 } else {
                     uniqueScored++
-                    remember(trace.behaviorKey)
+                    remember(requireNotNull(behaviorKey))
                 }
                 newlyRetained.addAll(
                     advanced.firstByStreak.keys - cursor.firstByStreak.keys)
