@@ -6,7 +6,7 @@
 
 `CherryV2DiscoveryService(context, database)` has **no constructor side effects**. A caller must explicitly invoke `suspend fun search(target, kind, asOf, timeBudgetNanos)`. Its algorithm:
 
-1. Read bounded confirmed-source history with existing winner/daily/tombstone precedence, **200 scored + 12 possible lag slots**. Existing legacy discovery still defaults to 203 slots; its UI/engine behavior is unchanged.
+1. Read bounded confirmed-source history with existing winner/daily/tombstone precedence, **200 scored + 3 possible lag slots = 203 total** per the original Master Plan. The V2 history fingerprint includes a new policy marker, preventing old 200+12 V2 checkpoints from resuming as if they were calculated under this policy. Existing legacy discovery also defaults to 203 slots; its UI/engine behavior is unchanged.
 2. Normalize and verify contiguous AM/PM history without target leakage on `Dispatchers.Default`.
 3. Restore **only** the corresponding target, category, history hash and versioned V2 search state from isolated local `SharedPreferences` (I/O).
 4. Execute `CherryV2TimedSearch.run` off Main. A normal session uses a **30-second computation budget**, measured monotonically **after data loading**. Coroutine cancellation uses `ensureActive` checks while generating and scoring; the search itself starts **no background process**.
