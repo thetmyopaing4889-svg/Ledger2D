@@ -61,6 +61,13 @@ internal class CherryV2DiscoveryService(
         kind: CherryDiscoveryKind,
         asOf: LocalDateTime = LocalDateTime.now(yangon),
         timeBudgetNanos: Long = CherryV2TimedSearch.DEFAULT_BUDGET_NANOS,
+        /**
+         * Invoked exactly when 30-second formula evaluation starts, AFTER
+         * bounded Room reads, normalization, and checkpoint restore.
+         * The caller may display a wall-clock timer; this callback must
+         * not perform blocking UI work.
+         */
+        onSearchStarted: (Long) -> Unit = {},
     ): Receipt = sessionLock.withLock {
         require(timeBudgetNanos > 0L)
         val bounded = input.latest(
@@ -77,8 +84,11 @@ internal class CherryV2DiscoveryService(
             val existing = withContext(Dispatchers.IO) {
                 store.resume(kind, target, context.historySignature)
             }
-            // The isolated V2 store validates all persisted state before
-            // resuming. Formula Search never writes to existing Champions.
+            // The isolated V3 store validates prior work before resuming.
+            // This signal starts the UI's REAL 30-second clock only after
+            // all data preparation is complete; no Champion is changed.
+            work.ensureActive()
+            onSearchStarted(System.nanoTime())
             val result = CherryV2TimedSearch.run(
                 context = context,
                 kind = kind,
