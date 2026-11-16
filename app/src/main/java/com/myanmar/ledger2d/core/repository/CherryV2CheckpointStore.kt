@@ -17,7 +17,7 @@ import java.time.LocalDate
  */
 internal class CherryV2CheckpointStore(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(
-        "cherry_v2_discovery_cursors_v2", Context.MODE_PRIVATE)
+        "cherry_v2_discovery_cursors_v3", Context.MODE_PRIVATE)
 
     companion object {
         private val processLock = Any()
