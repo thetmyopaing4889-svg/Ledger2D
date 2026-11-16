@@ -26,7 +26,7 @@ class CherryV2CheckpointStoreTest {
         DrawSession.MORNING)
     private val signature = "historical-hash-a"
     private fun prefs() = context.getSharedPreferences(
-        "cherry_v2_discovery_cursors_v2", Context.MODE_PRIVATE)
+        "cherry_v2_discovery_cursors_v3", Context.MODE_PRIVATE)
 
     @Before fun prepare() { assertTrue(prefs().edit().clear().commit()) }
     @After fun cleanup() { prefs().edit().clear().commit() }
