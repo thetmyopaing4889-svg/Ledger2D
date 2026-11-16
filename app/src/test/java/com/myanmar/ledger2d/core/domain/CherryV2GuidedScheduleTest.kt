@@ -26,7 +26,7 @@ class CherryV2GuidedScheduleTest {
             CherryV2ExpandableGrammar.expressionAt(BigInteger.valueOf(9))
                 .structuralKey)
         assertEquals("(top1+top1)", at(9).structuralKey)
-        assertEquals("(top1-top1)", at(12).structuralKey)
+        assertEquals("(top1-top1)", at(13).structuralKey)
         assertEquals("top1", at(0).structuralKey)
     }
 
@@ -43,7 +43,10 @@ class CherryV2GuidedScheduleTest {
                 .structuralKey) // raw linear search finds this much later
         assertEquals("((top1+tail1)+top2)", at(11).structuralKey)
         // Early guided candidates mix distinct lags and components.
-        assertEquals("(top1+break2)", at(280).structuralKey)
+        assertEquals("(top1+break2)", at(370).structuralKey)
+        assertEquals(CherryV2GuidedSchedule.Lane.BALANCED,
+            CherryV2GuidedSchedule.laneAt(BigInteger.valueOf(12)))
+        assertTrue(at(12).structuralKey.count { it == '(' } >= 3)
         val first = (0L..600L).map { at(it).structuralKey }
         assertTrue(first.any { it.contains("top2") && it.contains("tail1") })
         assertTrue(first.any { it.count { ch -> ch == '(' } >= 2 })
@@ -54,7 +57,7 @@ class CherryV2GuidedScheduleTest {
         // V3 retains an unbounded SIMPLE lane, now built only from lag-1..3
         // features; it cannot replay incompatible V2 raw-index candidates.
         for (raw in listOf(9L, 10L, 20L, 207L, 828L, 10_000L)) {
-            val slot = BigInteger.valueOf(9L + 3L * (raw - 9L))
+            val slot = BigInteger.valueOf(9L + 4L * (raw - 9L))
             assertEquals(CherryV2GuidedSchedule.Lane.SIMPLE,
                 CherryV2GuidedSchedule.laneAt(slot))
             assertEquals(
@@ -78,7 +81,7 @@ class CherryV2GuidedScheduleTest {
         }
         val deep = at(100_000L)
         assertTrue(maxLag(deep) <= BigInteger.valueOf(3))
-        assertEquals(3, CherryV2GuidedSchedule.VERSION)
+        assertEquals(4, CherryV2GuidedSchedule.VERSION)
     }
 
     @Test fun crossLagCandidateDirectlyFitsLongRecentStreakWithoutLadder() {

@@ -35,7 +35,7 @@ class CherryV2HistoricalEvaluatorTest {
         assertTrue(offsetOne.historicalStreak >= 10)
         assertEquals(0, offsetOne.predictedDigit) // most recent top 9, +1
         assertEquals("HISTORICAL_FIT", offsetOne.evidenceLabel)
-        assertEquals("v3:0+1@LONE", offsetOne.formulaId)
+        assertEquals("v4:0+1@LONE", offsetOne.formulaId)
         val saved = CherryV2StreakRegistry(
             target, CherryDiscoveryKind.LONE, context.historySignature)
             .inspectedBatch(index, matches)

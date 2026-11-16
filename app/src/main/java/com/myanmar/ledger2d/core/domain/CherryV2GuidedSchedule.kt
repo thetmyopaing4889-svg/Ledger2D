@@ -10,10 +10,11 @@ import java.math.BigInteger
  * All later candidate trees also use ONLY lag 1..3, so none is rejected
  * purely due to the approved Master Plan's 203-slot/lag-3 policy.
  * This changes schedule slot meanings and intentionally bumps VERSION.
- * Thereafter every three slots interleave:
+ * Thereafter every four slots interleave:
  *  0: the indefinitely expandable lag-1..3 eligible expression grammar;
  *  1: cross-feature binary combinations over useful recent lags;
  *  2: nested three-feature/nonlinear combinations.
+ *  3: balanced four-feature combinations with independently mixed subtrees.
  *
  * This is *structural-diversity prioritization*, not evidence of increased
  * predictive accuracy. All lanes are lazily decoded, all are subject to the
@@ -27,23 +28,25 @@ import java.math.BigInteger
 internal object CherryV2GuidedSchedule {
     // V3 changes the meaning of slots >=9. V2 checkpoints must fail closed
     // rather than being resumed as different formulas after the 203-slot fix.
-    const val VERSION = 3
+    const val VERSION = 4
 
     private val zero = BigInteger.ZERO
     private val one = BigInteger.ONE
     private val nine = BigInteger.valueOf(9)
     private val three = BigInteger.valueOf(3)
+    private val four = BigInteger.valueOf(4)
     private val five = BigInteger.valueOf(5)
     private val nineFeatures = BigInteger.valueOf(9)
     private val eightyOne = BigInteger.valueOf(81)
     private val sevenHundredTwentyNine = BigInteger.valueOf(729)
+    private val sixThousandFiveHundredSixtyOne = BigInteger.valueOf(6561)
 
-    enum class Lane { SIMPLE, CROSS_LAG, NESTED }
+    enum class Lane { SIMPLE, CROSS_LAG, NESTED, BALANCED }
 
     fun laneAt(slot: BigInteger): Lane {
         require(slot.signum() >= 0)
         if (slot < nine) return Lane.SIMPLE
-        return Lane.entries[slot.subtract(nine).mod(three).toInt()]
+        return Lane.entries[slot.subtract(nine).mod(four).toInt()]
     }
 
     fun expressionAt(
@@ -55,13 +58,14 @@ internal object CherryV2GuidedSchedule {
         if (slot < nine) {
             return CherryV2EligibleGrammar.expressionAt(slot, checkCancellation)
         }
-        val divided = slot.subtract(nine).divideAndRemainder(three)
+        val divided = slot.subtract(nine).divideAndRemainder(four)
         val round = divided[0]
         return when (Lane.entries[divided[1].toInt()]) {
             Lane.SIMPLE -> CherryV2EligibleGrammar.expressionAt(
                 nine.add(round), checkCancellation)
             Lane.CROSS_LAG -> pair(round, checkCancellation)
             Lane.NESTED -> triple(round, checkCancellation)
+            Lane.BALANCED -> balanced(round, checkCancellation)
         }
     }
 
@@ -123,6 +127,41 @@ internal object CherryV2GuidedSchedule {
             opOuter,
             CherryV2Expression.Binary(opInner, lhs, secondFeature),
             thirdFeature,
+        )
+    }
+
+    /**
+     * Fourth, complexity-balanced lane: two independent mixed-feature
+     * subtrees are combined instead of repeatedly extending one side of
+     * the same expression. Enumerates lag-1..3 features and five safe
+     * operators lazily. The deeper-left layer keeps it expandable.
+     *
+     * A new schedule version invalidates old slot/formula-ID meanings.
+     */
+    private fun balanced(
+        round: BigInteger,
+        checkCancellation: () -> Unit,
+    ): CherryV2Expression {
+        checkCancellation()
+        val outerParts = round.divideAndRemainder(five)
+        val leftParts = outerParts[0].divideAndRemainder(five)
+        val rightParts = leftParts[0].divideAndRemainder(five)
+        val outerOp = CherryV2Expression.Operator.entries[outerParts[1].toInt()]
+        val leftOp = CherryV2Expression.Operator.entries[leftParts[1].toInt()]
+        val rightOp = CherryV2Expression.Operator.entries[rightParts[1].toInt()]
+        val features = rightParts[0]
+        val a = feature(features)
+        val b = feature(features.divide(nineFeatures).add(three))
+        val c = feature(features.divide(eightyOne).add(one))
+        val d = feature(features.divide(sevenHundredTwentyNine).add(five))
+        val layer = features.divide(sixThousandFiveHundredSixtyOne)
+        val nestedLeft = if (layer == zero) a else
+            CherryV2EligibleGrammar.expressionAt(
+                layer.subtract(one), checkCancellation)
+        return CherryV2Expression.Binary(
+            outerOp,
+            CherryV2Expression.Binary(leftOp, nestedLeft, b),
+            CherryV2Expression.Binary(rightOp, c, d),
         )
     }
 }
