@@ -88,7 +88,11 @@ internal class CherryV2DiscoveryService(
             // This signal starts the UI's REAL 30-second clock only after
             // all data preparation is complete; no Champion is changed.
             work.ensureActive()
-            onSearchStarted(System.nanoTime())
+            // No timer and no 30-second worker for a target with too few
+            // consecutive confirmed results to form even a 3-streak.
+            if (!context.blocked) {
+                onSearchStarted(System.nanoTime())
+            }
             val result = CherryV2TimedSearch.run(
                 context = context,
                 kind = kind,
