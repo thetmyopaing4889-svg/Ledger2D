@@ -42,6 +42,26 @@ class CherryV2CheckpointStoreTest {
         "formula$index", 4, streak, offset = 1,
     )
 
+    @Test fun newScheduleWritesCannotOverwriteSavedV2ExperimentalState() {
+        val oldPrefs = context.getSharedPreferences(
+            "cherry_v2_discovery_cursors_v2", Context.MODE_PRIVATE)
+        try {
+            assertTrue(oldPrefs.edit().clear().commit())
+            val opaqueOldPayload = "original-V2-progress-not-to-be-erased"
+            assertTrue(oldPrefs.edit().putString("cursor_LONE",
+                opaqueOldPayload).putString("meta_LONE",
+                "2|2026-11-16|MORNING|LONE|old-signature").commit())
+            val fresh = start().inspected(BigInteger.ZERO, candidate(0, 3))
+            CherryV2CheckpointStore(context).persist(fresh)
+            assertEquals("V3 may not overwrite V2 user progress",
+                opaqueOldPayload, oldPrefs.getString("cursor_LONE", null))
+            assertEquals(fresh, CherryV2CheckpointStore(context).resume(
+                CherryDiscoveryKind.LONE, target, signature))
+        } finally {
+            assertTrue(oldPrefs.edit().clear().commit())
+        }
+    }
+
     @Test fun separateStoreInstancesResumeExactCursorAfterRestart() {
         val store = CherryV2CheckpointStore(context)
         val first = start().inspected(BigInteger.ZERO, candidate(0, 3))
