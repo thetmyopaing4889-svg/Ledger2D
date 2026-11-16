@@ -19,12 +19,14 @@ class CherryV2GuidedScheduleTest {
                 at(i.toLong()).structuralKey,
             )
         }
-        assertEquals("top4", at(9).structuralKey)
-        // In the original grammar, lag-4 features are seven raw indices
-        // apart; raw indices 10/11 are arithmetic, not tail4/break4.
-        assertEquals("(top1+top1)", at(12).structuralKey)
-        assertEquals("tail4", at(30).structuralKey) // raw index 16
-        assertEquals("break4", at(51).structuralKey) // raw index 23
+        // The old raw grammar's slot 9 was top4, which cannot be evaluated
+        // under the approved lag-3 policy. V3 instead starts an indefinitely
+        // expandable family of valid nested lag-1..3 expressions.
+        assertEquals("top4",
+            CherryV2ExpandableGrammar.expressionAt(BigInteger.valueOf(9))
+                .structuralKey)
+        assertEquals("(top1+top1)", at(9).structuralKey)
+        assertEquals("(top1-top1)", at(12).structuralKey)
         assertEquals("top1", at(0).structuralKey)
     }
 
@@ -41,26 +43,42 @@ class CherryV2GuidedScheduleTest {
                 .structuralKey) // raw linear search finds this much later
         assertEquals("((top1+tail1)+top2)", at(11).structuralKey)
         // Early guided candidates mix distinct lags and components.
-        assertEquals("(top1+tail2)", at(280).structuralKey)
+        assertEquals("(top1+break2)", at(280).structuralKey)
         val first = (0L..600L).map { at(it).structuralKey }
         assertTrue(first.any { it.contains("top2") && it.contains("tail1") })
         assertTrue(first.any { it.count { ch -> ch == '(' } >= 2 })
         assertTrue(first.size > 207)
     }
 
-    @Test fun anyRawExpressionEventuallyHasAStableSimpleLaneSlot() {
-        // The original grammar has no finite endpoint; each raw index >=9
-        // appears exactly once in the SIMPLE lane at 9 + 3*(rawIndex-9).
+    @Test fun everyLagThreeEligibleExpressionEventuallyHasAStableSimpleLaneSlot() {
+        // V3 retains an unbounded SIMPLE lane, now built only from lag-1..3
+        // features; it cannot replay incompatible V2 raw-index candidates.
         for (raw in listOf(9L, 10L, 20L, 207L, 828L, 10_000L)) {
             val slot = BigInteger.valueOf(9L + 3L * (raw - 9L))
             assertEquals(CherryV2GuidedSchedule.Lane.SIMPLE,
                 CherryV2GuidedSchedule.laneAt(slot))
             assertEquals(
-                CherryV2ExpandableGrammar.expressionAt(BigInteger.valueOf(raw))
+                CherryV2EligibleGrammar.expressionAt(BigInteger.valueOf(raw))
                     .structuralKey,
                 CherryV2GuidedSchedule.expressionAt(slot).structuralKey,
             )
         }
+    }
+
+    @Test fun everyGuidedCandidateUsesOnlyApprovedThreeLagsEvenFarPast207() {
+        fun maxLag(exp: CherryV2Expression): BigInteger = when (exp) {
+            is CherryV2Expression.Feature -> exp.lag
+            is CherryV2Expression.Complement -> maxLag(exp.inner)
+            is CherryV2Expression.Binary -> maxOf(maxLag(exp.left), maxLag(exp.right))
+        }
+        for (slot in 0L..2100L) {
+            val expr = at(slot)
+            assertTrue("Unsupported lag at formula slot $slot: ${expr.structuralKey}",
+                maxLag(expr) <= BigInteger.valueOf(3))
+        }
+        val deep = at(100_000L)
+        assertTrue(maxLag(deep) <= BigInteger.valueOf(3))
+        assertEquals(3, CherryV2GuidedSchedule.VERSION)
     }
 
     @Test fun crossLagCandidateDirectlyFitsLongRecentStreakWithoutLadder() {
