@@ -38,6 +38,14 @@ internal object CherryV2HistoricalEvaluator {
         // scan evaluates thousands of expressions against this same snapshot;
         // rebuilding a new List<String> for every formula creates avoidable GC.
         val digits: List<String> = prior.map { it.digit }
+
+        // Compile valid input digits only once per draw snapshot. A search
+        // evaluates millions of short-lived candidates over the same data.
+        // Indexed primitive arrays avoid per-candidate String parsing and
+        // subList allocation during historical evaluation.
+        val tops: IntArray = IntArray(prior.size) { prior[it].digit[0].digitToInt() }
+        val tails: IntArray = IntArray(prior.size) { prior[it].digit[1].digitToInt() }
+        val breaks: IntArray = IntArray(prior.size) { (tops[it] + tails[it]) % 10 }
     }
 
     private fun previous(target: DrawIdentity, closed: Set<LocalDate>): DrawIdentity {
@@ -131,18 +139,20 @@ internal object CherryV2HistoricalEvaluator {
         expression: CherryV2Expression,
         checkCancellation: () -> Unit = {},
         candidateKind: CherryDiscoveryKind? = null,
+        /** Internal search-only optimization; public audit trace still shows
+         * the three tested positions even when no offset can qualify.
+         */
+        rejectBelowMinimum: Boolean = false,
     ): Trace? {
         checkCancellation()
         if (context.blocked ||
             requiredLag(expression) > BigInteger.valueOf(MAX_LAG.toLong())) return null
-        val digits = context.digits
-        val currentBase = expression.evaluate(digits) ?: return null
-        val historicalBase = ArrayList<Int>(minOf(MAX_SCORED, digits.size))
-        for (index in 0 until minOf(MAX_SCORED, digits.size)) {
+        val currentBase = valueAt(context, expression, 0) ?: return null
+        val historicalBase = ArrayList<Int>(minOf(MAX_SCORED, context.prior.size))
+        for (index in 0 until minOf(MAX_SCORED, context.prior.size)) {
             if ((index and 15) == 0) checkCancellation()
             // Exclude the scored draw itself: index+1 and older only.
-            val value = expression.evaluate(digits.subList(index + 1, digits.size))
-                ?: break
+            val value = valueAt(context, expression, index + 1) ?: break
             historicalBase.add(value)
             if (candidateKind != null &&
                 historicalBase.size == CherryFormulaDiscoveryEngine.MIN_STREAK) {
@@ -159,7 +169,14 @@ internal object CherryV2HistoricalEvaluator {
                         )
                     }
                 }
-                if (!canReachMinimum) break
+                if (!canReachMinimum) {
+                    // Failed 3-streak candidates cannot produce any retained
+                    // formula. In user-triggered search, skip semantic string
+                    // construction, fingerprinting and registry evaluation.
+                    // Audit callers can still inspect the exact first three.
+                    if (rejectBelowMinimum) return null
+                    break
+                }
             }
         }
         val key = buildString(historicalBase.size + 16) {
@@ -212,6 +229,41 @@ internal object CherryV2HistoricalEvaluator {
             ))
         }
         return found
+    }
+
+    /**
+     * Index-based evaluation of the SAME expression grammar. No substring,
+     * priorDraws.subList, BigInteger subtraction or digit parsing in the hot
+     * loop. Every operand still comes strictly from settled pre-target slots.
+     */
+    private fun valueAt(
+        context: Context,
+        expression: CherryV2Expression,
+        start: Int,
+    ): Int? = when (expression) {
+        is CherryV2Expression.Feature -> {
+            if (expression.lag.bitLength() > 31) null else {
+                val index = start + expression.lag.toInt() - 1
+                if (index !in context.tops.indices) null else when (expression.part) {
+                    CherryV2Expression.Part.TOP -> context.tops[index]
+                    CherryV2Expression.Part.TAIL -> context.tails[index]
+                    CherryV2Expression.Part.BREAK -> context.breaks[index]
+                }
+            }
+        }
+        is CherryV2Expression.Complement ->
+            valueAt(context, expression.inner, start)?.let { 9 - it }
+        is CherryV2Expression.Binary -> {
+            val a = valueAt(context, expression.left, start)
+            val b = if (a == null) null else valueAt(context, expression.right, start)
+            if (a == null || b == null) null else when (expression.op) {
+                CherryV2Expression.Operator.ADD -> (a + b) % 10
+                CherryV2Expression.Operator.SUBTRACT -> (a - b + 10) % 10
+                CherryV2Expression.Operator.MULTIPLY -> (a * b) % 10
+                CherryV2Expression.Operator.ABS_DIFFERENCE -> kotlin.math.abs(a - b)
+                CherryV2Expression.Operator.TWICE_PLUS -> (a * 2 + b) % 10
+            }
+        }
     }
 
     /** Compatibility entry point for direct scoring and existing tests. */

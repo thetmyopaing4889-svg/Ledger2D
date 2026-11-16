@@ -125,7 +125,8 @@ internal object CherryV2TimedSearch {
                 val expression = CherryV2GuidedSchedule.expressionAt(
                     index, ::checkBudget)
                 val trace = CherryV2HistoricalEvaluator.trace(
-                    context, expression, ::checkBudget, candidateKind = kind)
+                    context, expression, ::checkBudget, candidateKind = kind,
+                    rejectBelowMinimum = true)
 
                 val behaviorKey = trace?.let { behaviorFingerprint(it.behaviorKey) }
                 val isDuplicate = behaviorKey != null && seen.contains(behaviorKey)
