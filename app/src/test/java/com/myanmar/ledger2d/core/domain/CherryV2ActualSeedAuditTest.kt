@@ -151,7 +151,16 @@ class CherryV2ActualSeedAuditTest {
         )
     }
 
-    @Test fun twoYearEightyTargetThreeCategoryRawVersusGuidedAndHoldoutAudit() {
+    /**
+     * Same 80 selected targets in both bands; never adjust target selection
+     * after looking at the observed holdout hits. Increasing search breadth
+     * changes only the allowed syntax indices and the independent time cap.
+     */
+    private fun auditBand(
+        candidateLimit: Int,
+        perModeBudgetNanos: Long,
+        band: String,
+    ) {
         val seed = readSeed()
         val sampled = sampleTargets(seed, 80)
         assertEquals(80, sampled.size)
@@ -171,8 +180,8 @@ class CherryV2ActualSeedAuditTest {
 
                 val comparison = CherryV2OrderBenchmark.compare(
                     context, kind,
-                    candidatesPerMode = 64,
-                    budgetPerModeNanos = 350_000_000L,
+                    candidatesPerMode = candidateLimit,
+                    budgetPerModeNanos = perModeBudgetNanos,
                 )
                 stats.rawInspected += comparison.raw.inspected
                 stats.guidedInspected += comparison.guided.inspected
@@ -256,7 +265,8 @@ class CherryV2ActualSeedAuditTest {
                 CherryDiscoveryKind.BREAK -> "0.10"
             }
             println(
-                "CHERRY_V2_SEED_AUDIT category=${kind.name} targets=${x.contexts} " +
+                "CHERRY_V2_SEED_AUDIT band=$band maxCandidates=$candidateLimit " +
+                    "category=${kind.name} targets=${x.contexts} " +
                     "usable=${x.nonemptyHistory} rawInspected=${x.rawInspected} " +
                     "guidedInspected=${x.guidedInspected} rawDistinct=${x.rawDistinct} " +
                     "guidedDistinct=${x.guidedDistinct} rawTenTargets=${x.rawTen} " +
@@ -271,4 +281,18 @@ class CherryV2ActualSeedAuditTest {
             )
         }
     }
+
+    @Test fun twoYearEightyTargetThreeCategoryRawVersusGuidedAndHoldoutAudit() =
+        auditBand(
+            candidateLimit = 64,
+            perModeBudgetNanos = 350_000_000L,
+            band = "BASE64",
+        )
+
+    @Test fun expandedTwoHundredFiftySixFormulaAuditUsesIdenticalHistoryTargets() =
+        auditBand(
+            candidateLimit = 256,
+            perModeBudgetNanos = 800_000_000L,
+            band = "EXPANDED256",
+        )
 }
