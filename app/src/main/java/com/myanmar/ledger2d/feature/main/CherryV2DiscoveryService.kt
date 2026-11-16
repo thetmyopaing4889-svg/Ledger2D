@@ -25,7 +25,7 @@ import kotlin.coroutines.coroutineContext
  * eventual progress bar. A cancelled Job stops this search synchronously.
  *
  * Uses the existing settled-result precedence / tombstone policy, a bounded
- * 200+12 historical slot window, and an ISOLATED V2 checkpoint namespace.
+ * 200+3 historical slot window, and an ISOLATED V2 checkpoint namespace.
  * All expensive work is dispatched away from Main.
  */
 internal class CherryV2DiscoveryService(
@@ -65,8 +65,7 @@ internal class CherryV2DiscoveryService(
         require(timeBudgetNanos > 0L)
         val bounded = input.latest(
             target, asOf,
-            CherryV2HistoricalEvaluator.MAX_SCORED +
-                CherryV2HistoricalEvaluator.MAX_LAG,
+            CherryV2HistoricalEvaluator.CONTEXT_LIMIT,
         )
         withContext(Dispatchers.Default) {
             val work = coroutineContext
@@ -106,8 +105,7 @@ internal class CherryV2DiscoveryService(
     ): CherryV2OrderBenchmark.Comparison = sessionLock.withLock {
         val bounded = input.latest(
             target, asOf,
-            CherryV2HistoricalEvaluator.MAX_SCORED +
-                CherryV2HistoricalEvaluator.MAX_LAG,
+            CherryV2HistoricalEvaluator.CONTEXT_LIMIT,
         )
         withContext(Dispatchers.Default) {
             val work = coroutineContext
@@ -130,8 +128,7 @@ internal class CherryV2DiscoveryService(
     ): CherryV2StreakRegistry? = sessionLock.withLock {
         val bounded = input.latest(
             target, asOf,
-            CherryV2HistoricalEvaluator.MAX_SCORED +
-                CherryV2HistoricalEvaluator.MAX_LAG,
+            CherryV2HistoricalEvaluator.CONTEXT_LIMIT,
         )
         withContext(Dispatchers.Default) {
             val work = coroutineContext
