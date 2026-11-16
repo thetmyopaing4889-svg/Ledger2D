@@ -38,6 +38,7 @@ jobs:
                   'CherryDiscoveryWalkForwardTest',
                   'CherryV2ActualSeedAuditTest',
                   'CherryV2EngineContractTest',
+                  'CherryV3BreakAuditTest',
               )):
                   continue
               root = ET.parse(path).getroot()
