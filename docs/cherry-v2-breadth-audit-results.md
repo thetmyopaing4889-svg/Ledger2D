@@ -1,5 +1,7 @@
 # Cherry V2 — 64 vs 256 Formula Breadth: Verified Historical Audit
 
+**Archive notice (2026-11-16):** This report evaluates the previous V2 schedule and is **not a benchmark of V3's lag-1..3-only schedule**. Do not transfer its reported relative accuracy or formula positions to the current V3 search. The archive is retained for historical traceability, not used to select an automatic Champion.
+
 ## Reproducible source and run
 
 - **Verified green results:** Android CI [#43789868174](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/43789868174) (initial RAW-first 64/256 audit) and CI [#43790322131](https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/43790322131), commit `5762f1be19ad` (balanced-order 64/256 audit). **Both runs reported identical historical hits/denominators and 10-streak counts.** Both bands reached their formula-count cap on all 78 usable target contexts, with **0 scan timeouts**.
