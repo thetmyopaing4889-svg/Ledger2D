@@ -30,6 +30,51 @@ class CherryV2StreakRegistryTest {
         assertEquals(i(0), first.firstByStreak[3]!!.formulaIndex)
     }
 
+    @Test fun firstTenPlusHitWinsAndTheEightVisibleTiersNeverExpandIntoHundreds() {
+        var saved = state()
+        // Index 0 already fits 15: by agreement this qualifies as the
+        // FIRST 10+ milestone, not a separate 15th visible result.
+        saved = saved.inspected(i(0), match(0, 15))
+        assertEquals(listOf(10), saved.orderedResults().map {
+            it.historicalStreak
+        })
+        assertEquals(i(0), saved.recommended()!!.formulaIndex)
+        saved = saved.inspected(i(1), match(1, 10))
+        saved = saved.inspected(i(2), match(2, 12))
+        assertEquals(i(0), saved.recommended()!!.formulaIndex)
+        for (streak in 3..9) {
+            saved = saved.inspected(i(streak.toLong()), match(streak.toLong(), streak))
+        }
+        assertEquals((3..10).toList(),
+            saved.orderedResults().map { it.historicalStreak })
+        assertEquals(8, saved.firstByStreak.size)
+        assertEquals(8, saved.orderedResults().size)
+        assertEquals(i(0), saved.recommended()!!.formulaIndex)
+    }
+
+    @Test fun oldVersionTwoExactStreaksRemainReadableWithoutChangingSavedCheckpoint() {
+        // Pre-cap V2 used to store 10, 11, 12... as distinct historical
+        // lengths. Preserve the original immutable state, but summarize
+        // it using earliest discovered 10+ as the user-facing milestone.
+        val old = CherryV2StreakRegistry(
+            target, CherryDiscoveryKind.LONE, "history-1",
+            nextIndex = i(5),
+            firstByStreak = mapOf(
+                15 to match(0, 15),
+                11 to match(1, 11),
+                10 to match(3, 10),
+            ),
+        )
+        assertEquals(3, old.firstByStreak.size)
+        assertEquals(10, old.recommended()!!.historicalStreak)
+        assertEquals(i(0), old.recommended()!!.formulaIndex)
+        assertEquals(listOf(10), old.orderedResults().map {
+            it.historicalStreak
+        })
+        val continued = old.inspected(i(5), match(5, 19))
+        assertEquals(old.firstByStreak, continued.firstByStreak)
+    }
+
     @Test fun missesAndShortFitsAdvanceCursorWithoutPollutingResults() {
         val noHit = state().inspected(i(0), null)
         val twoHits = noHit.inspected(i(1), match(1, 2))
