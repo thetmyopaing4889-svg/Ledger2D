@@ -134,6 +134,12 @@ class CherryV2EngineContractTest {
             assertEquals("First-found $streak must survive a second run",
                 firstFound, continued.cursor.firstByStreak[streak])
         }
+        assertTrue("A real engine scan must capture the 10+ target milestone",
+            continued.cursor.firstByStreak.containsKey(10))
+        assertTrue("New search cannot store more than eight milestone tiers",
+            continued.cursor.firstByStreak.size <= 8)
+        assertTrue(continued.cursor.firstByStreak.keys.all { it in 3..10 })
+        assertEquals(10, continued.cursor.recommended()!!.historicalStreak)
         assertTrue(continued.cursor.recentBehaviorKeys.size <=
             CherryV2StreakRegistry.BEHAVIOR_WINDOW)
         assertEquals(continued.cursor.recentBehaviorKeys.size,
