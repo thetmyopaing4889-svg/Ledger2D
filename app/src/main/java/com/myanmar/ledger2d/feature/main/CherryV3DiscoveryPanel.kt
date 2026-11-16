@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
+import com.myanmar.ledger2d.core.domain.CherryV3FormulaSelection
 import com.myanmar.ledger2d.core.domain.CherryV2StreakRegistry
 import com.myanmar.ledger2d.core.domain.CherryV2StreakMatch
 import com.myanmar.ledger2d.core.domain.CherryV3WorkedExamples
@@ -236,7 +237,12 @@ internal fun CherryV3DiscoveryPanel(
     controller: CherryV3DiscoveryController,
     target: DrawIdentity,
     en: Boolean,
+    selected: Map<CherryDiscoveryKind, CherryV3FormulaSelection>,
+    onFormulaSelected: (CherryV2StreakMatch) -> Unit,
 ) {
+    var pendingSelection by remember(controller) {
+        mutableStateOf<CherryV2StreakMatch?>(null)
+    }
     LaunchedEffect(controller) { controller.restore() }
     val saved = controller.current
     val results = saved?.orderedResults().orEmpty()
@@ -345,6 +351,8 @@ internal fun CherryV3DiscoveryPanel(
                 CherryV3FormulaCard(
                     recommended, controller, en,
                     highlighted = true,
+                    selected = selected[recommended.kind]?.formulaId == recommended.formulaId,
+                    onSelectRequest = { pendingSelection = it },
                 )
             }
             if (results.isNotEmpty()) {
@@ -355,7 +363,11 @@ internal fun CherryV3DiscoveryPanel(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 results.forEach { formula ->
-                    CherryV3FormulaCard(formula, controller, en)
+                    CherryV3FormulaCard(
+                        formula, controller, en,
+                        selected = selected[formula.kind]?.formulaId == formula.formulaId,
+                        onSelectRequest = { pendingSelection = it },
+                    )
                 }
             }
             controller.message?.let {
@@ -367,6 +379,33 @@ internal fun CherryV3DiscoveryPanel(
                     style = MaterialTheme.typography.bodySmall)
             }
         }
+    }
+    pendingSelection?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingSelection = null },
+            title = {
+                Text(if (en) "Select this formula?" else "ဒီ Formula ကို ရွေးချယ်မလား")
+            },
+            text = {
+                Text("${v3KindName(pending.kind, en)} ${pending.predictedDigit}  " +
+                    cherryV3HistoricalStars(pending.historicalStreak))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (pending.target == target && !controller.busy) {
+                        onFormulaSelected(pending)
+                    }
+                    pendingSelection = null
+                }) {
+                    Text(if (en) "Select" else "ရွေးချယ်မည်")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSelection = null }) {
+                    Text(if (en) "Cancel" else "မရွေးတော့ပါ")
+                }
+            },
+        )
     }
     val selected = controller.detailFormula
     if (selected != null) {
@@ -432,13 +471,17 @@ private fun CherryV3FormulaCard(
     controller: CherryV3DiscoveryController,
     en: Boolean,
     highlighted: Boolean = false,
+    selected: Boolean,
+    onSelectRequest: (CherryV2StreakMatch) -> Unit,
 ) {
     Surface(
-        color = if (highlighted) Color(0xFFFFE1EB) else v3Blush,
+        onClick = { onSelectRequest(formula) },
+        enabled = !controller.busy && !controller.loading,
+        color = if (highlighted || selected) Color(0xFFFFE1EB) else v3Blush,
         shape = RoundedCornerShape(11.dp),
         border = BorderStroke(
-            if (highlighted) 1.5.dp else 0.5.dp,
-            if (highlighted) AppColors.PrimaryDeep else v3Edge,
+            if (highlighted || selected) 1.5.dp else 0.5.dp,
+            if (highlighted || selected) AppColors.PrimaryDeep else v3Edge,
         ),
     ) {
         Column(
@@ -472,6 +515,12 @@ private fun CherryV3FormulaCard(
                 color = AppColors.PrimaryDeep,
                 style = MaterialTheme.typography.titleMedium,
             )
+            if (selected) {
+                Text(if (en) "Selected" else "ရွေးထားသည်",
+                    color = AppColors.PrimaryDeep,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall)
+            }
             TextButton(
                 onClick = { controller.openDetails(formula) },
                 enabled = !controller.busy && !controller.loading,

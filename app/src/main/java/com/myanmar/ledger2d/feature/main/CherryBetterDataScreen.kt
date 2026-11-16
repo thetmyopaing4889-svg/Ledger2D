@@ -107,6 +107,33 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         if(ready) CherryBetterDataEngine.calculate(merged,target,modern,internet,closedDates)
         else null
     }
+    // A V3 choice is bound to one draw, never silently reused next session.
+    // Reading choices does not invoke the expensive discovery engine.
+    val v3ChoicePrefs = remember(context) {
+        context.getSharedPreferences("cherry_v3_manual_choices", 0)
+    }
+    val drawKey = target.date.toString() + "_" + target.session.name
+    val v3Choices = remember(drawKey, v3ChoicePrefs) {
+        mutableStateMapOf<CherryDiscoveryKind, CherryV3FormulaSelection>().apply {
+            CherryDiscoveryKind.entries.forEach { kind ->
+                val raw = v3ChoicePrefs.getString(drawKey + "_" + kind.name, null)
+                val parts = raw?.split("|").orEmpty()
+                if (parts.size == 3) {
+                    val digit = parts[1].toIntOrNull()
+                    val streak = parts[2].toIntOrNull()
+                    if (digit != null && digit in 0..9 && streak != null && streak >= 3 &&
+                        parts[0].isNotBlank()) {
+                        put(kind, CherryV3FormulaSelection(kind, digit, streak, parts[0]))
+                    }
+                }
+            }
+        }
+    }
+    val v3Plan = CherryV3PairPlanner.plan(v3Choices.values)
+    var showMathOther by rememberSaveable(drawKey) { mutableStateOf(false) }
+    var showSummaryMathOther by rememberSaveable(drawKey) { mutableStateOf(false) }
+    val summaryPicks = report?.visible(CherryTab.SUMMARY, 3).orEmpty()
+    val combinedSummaryPairs = (v3Plan.all + summaryPicks.map { it.pair }).distinct()
     var tab by rememberSaveable{mutableStateOf(CherryTab.SUMMARY)}
     var selectedPick by remember { mutableStateOf<CherryPick?>(null) }
     var selectedOriginal by remember { mutableStateOf<CherryOriginalReference?>(null) }
@@ -347,14 +374,32 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.MATH->{
-                        // V3-only Math: keep existing on-demand UI unchanged.
-                        // Legacy DOC Champion, Gemini 210 and ranking panels
-                        // are intentionally not composed.
+                        item {
+                            CherryV3PickOverview(v3Plan, en, showMathOther) {
+                                showMathOther = !showMathOther
+                            }
+                        }
+                        item { CherryV3ChosenOverview(v3Choices, en) }
+                        // Manual discovery remains the third frame. No auto-search.
                         item {
                             CherryV3DiscoveryPanel(
                                 controller = v3Search,
                                 target = target,
                                 en = en,
+                                selected = v3Choices,
+                                onFormulaSelected = { formula ->
+                                    if (formula.target == target) {
+                                        val selection = CherryV3FormulaSelection(
+                                            formula.kind, formula.predictedDigit,
+                                            formula.historicalStreak, formula.formulaId)
+                                        v3Choices[formula.kind] = selection
+                                        v3ChoicePrefs.edit().putString(
+                                            drawKey + "_" + formula.kind.name,
+                                            listOf(selection.formulaId, selection.digit,
+                                                selection.streak).joinToString("|")
+                                        ).apply()
+                                    }
+                                },
                             )
                         }
                     }
@@ -368,14 +413,37 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 Text(tr("ရွေးချယ်ထားသော ဂဏန်းတွဲများ",
                                     "Selected number pairs"),
                                     fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                CherryBalls(report.visible(CherryTab.SUMMARY,3),
-                                    {selectedPick=it},en)
-                                val chosen=report.visible(CherryTab.SUMMARY,3)
+                                if (v3Plan.main.isNotEmpty()) {
+                                    Text(tr("🧮 သင်္ချာနည်း", "🧮 Math"),
+                                        fontWeight=FontWeight.SemiBold,
+                                        color=AppColors.PrimaryDeep)
+                                    CherryV3PairTiles(v3Plan.main, true)
+                                    if (v3Plan.remaining.isNotEmpty()) {
+                                        TextButton(onClick={
+                                            showSummaryMathOther = !showSummaryMathOther
+                                        }) {
+                                            Text(tr(
+                                                if (showSummaryMathOther) "ကျန်အကွက်များ ပိတ်ရန်"
+                                                else "ကျန်အကွက်များကြည့်ရန်",
+                                                if (showSummaryMathOther) "Hide other pairs"
+                                                else "View other pairs"))
+                                        }
+                                        if (showSummaryMathOther) {
+                                            CherryV3PairTiles(v3Plan.remaining, false)
+                                        }
+                                    }
+                                    HorizontalDivider(color=Color(0xFFFFE5EC))
+                                    Text(tr("လက်ရှိမူ / မွေးမူ", "Current / Born"),
+                                        fontWeight=FontWeight.SemiBold,
+                                        color=AppColors.PrimaryDeep)
+                                }
+                                CherryBalls(summaryPicks,{selectedPick=it},en)
+                                val chosen=combinedSummaryPairs
                                 if(chosen.isNotEmpty()){
                                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                                         OutlinedButton(
                                             onClick={clipboard.setText(
-                                                AnnotatedString(chosen.joinToString(" • "){it.pair}))},
+                                                AnnotatedString(chosen.joinToString(" • ")))},
                                             modifier=Modifier.weight(1f)
                                         ){
                                             Icon(Icons.Default.ContentCopy,null,Modifier.size(16.dp))
@@ -385,7 +453,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                         Button(onClick={
                                             val snapshot=now.toString()
                                             val entry="${target.date} ${target.session.name} | " +
-                                                chosen.joinToString(","){it.pair} + " | $snapshot"
+                                                chosen.joinToString(",") + " | $snapshot"
                                             val next=(listOf(entry)+saved.lines().filter{it.isNotBlank()})
                                                 .distinct().take(40).joinToString("\n")
                                             val done=prefs.edit().putString("tickets",next).commit()
@@ -407,7 +475,21 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             CherryPanel {
                                 Text(tr("🔎 ဘာကြောင့် ရွေးထားသလဲ","🔎 Winning DNA"),
                                     fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                report.visible(CherryTab.SUMMARY,3).forEach{p->
+                                v3Plan.main.forEach { pair ->
+                                    Surface(color=AppColors.Blush,
+                                        shape=RoundedCornerShape(10.dp)) {
+                                        Row(Modifier.fillMaxWidth().padding(10.dp),
+                                            verticalAlignment=Alignment.CenterVertically) {
+                                            Text(pair,fontWeight=FontWeight.Black,
+                                                fontSize=24.sp,color=AppColors.PrimaryDeep)
+                                            Spacer(Modifier.width(10.dp))
+                                            Text(tr("V3 ရွေးချယ်ထားသော Formula",
+                                                "V3 selected formulas"),
+                                                style=MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                                summaryPicks.forEach{p->
                                     Surface(onClick={selectedPick=p},color=AppColors.Blush,
                                         shape=RoundedCornerShape(10.dp)){
                                         Row(Modifier.fillMaxWidth().padding(10.dp),
@@ -424,7 +506,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                         }
                                     }
                                 }
-                                if(report.summary.isEmpty())CherryEmpty(en)
+                                if(summaryPicks.isEmpty() && v3Plan.main.isEmpty())
+                                    CherryEmpty(en)
                             }
                         }
                         item {
@@ -464,8 +547,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                             tint=AppColors.PrimaryDeep)
                                     }
                                 }
-                                val selected=report.summary.filter{
-                                    (ledgerPayouts[it.pair]?:0L)>0L
+                                val selected=combinedSummaryPairs.filter{
+                                    (ledgerPayouts[it]?:0L)>0L
                                 }
                                 if(ledgerPayouts.isEmpty()) {
                                     Text(tr("ဒီအကြိမ်အတွက် ဒိုင်စာရင်းထိုးငွေ မရှိသေးပါ။",
@@ -477,13 +560,13 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                         "No stakes on selected numbers."),
                                         style=MaterialTheme.typography.bodySmall)
                                 } else {
-                                    selected.forEach{p->
+                                    selected.forEach{pair->
                                         Row(Modifier.fillMaxWidth()){
-                                            Text(p.pair,fontWeight=FontWeight.Black,
+                                            Text(pair,fontWeight=FontWeight.Black,
                                                 color=AppColors.PrimaryDeep,
                                                 modifier=Modifier.weight(1f))
                                             Text(tr("ပေါက်လျှင်ပေးရန် ","Payout if drawn ") +
-                                                String.format("%,d",ledgerPayouts[p.pair]?:0L),
+                                                String.format("%,d",ledgerPayouts[pair]?:0L),
                                                 style=MaterialTheme.typography.bodySmall)
                                         }
                                     }
@@ -684,5 +767,99 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         Text(value.formula,style=MaterialTheme.typography.bodySmall,
             color=MaterialTheme.colorScheme.onSurfaceVariant)
         HorizontalDivider(color=Color(0xFFFFE5EC))
+    }
+}
+
+
+// V3 is selected manually; only this cheap projection runs during recomposition.
+@Composable private fun CherryV3PickOverview(
+    plan: CherryV3PairPlan, en: Boolean, expanded: Boolean, onToggle: () -> Unit,
+) {
+    CherryPanel {
+        Text(if(en) "Prioritized pairs" else "ဦးစားပေးရွေးကွက်များ",
+            fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+        if (plan.main.isEmpty()) {
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                repeat(3) {
+                    Surface(modifier=Modifier.weight(1f),
+                        color=Color(0xFFFFEDF2),
+                        shape=RoundedCornerShape(12.dp)) {
+                        Box(Modifier.height(62.dp),contentAlignment=Alignment.Center) {
+                            Text("??",fontSize=23.sp,fontWeight=FontWeight.Black,
+                                color=AppColors.PrimaryDeep)
+                        }
+                    }
+                }
+            }
+        } else {
+            CherryV3PairTiles(plan.main, true)
+        }
+        if (plan.remaining.isNotEmpty()) {
+            TextButton(onClick=onToggle) {
+                Text(if(expanded) {
+                    if(en) "Hide other pairs" else "ကျန်အကွက်များ ပိတ်ရန်"
+                } else {
+                    if(en) "View other pairs" else "ကျန်အကွက်များကြည့်ရန်"
+                })
+            }
+            if(expanded) CherryV3PairTiles(plan.remaining, false)
+        }
+    }
+}
+
+@Composable private fun CherryV3ChosenOverview(
+    choices: Map<CherryDiscoveryKind, CherryV3FormulaSelection>, en: Boolean,
+) {
+    CherryPanel {
+        Text(if(en) "Selected formulas" else "ရွေးချယ်ထားသော Formula များ",
+            fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+        Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            CherryDiscoveryKind.entries.forEach { kind ->
+                val choice = choices[kind]
+                Surface(modifier=Modifier.weight(1f),
+                    color=Color(0xFFFFEDF2),
+                    shape=RoundedCornerShape(12.dp)) {
+                    Column(Modifier.padding(vertical=11.dp,horizontal=2.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                        Text(when(kind) {
+                            CherryDiscoveryKind.LONE -> if(en) "Lone" else "လုံးပိုင်"
+                            CherryDiscoveryKind.WAM -> if(en) "Wam" else "ဝမ်းချိန်း"
+                            CherryDiscoveryKind.BREAK -> if(en) "Break" else "ဘရိတ်"
+                        },style=MaterialTheme.typography.labelSmall,maxLines=1)
+                        Text(choice?.digit?.toString() ?: "–",
+                            fontSize=23.sp,fontWeight=FontWeight.Black,
+                            color=AppColors.PrimaryDeep)
+                        Text(choice?.let {
+                            "★".repeat(it.stars) + "☆".repeat(5-it.stars)
+                        } ?: "☆☆☆☆☆",
+                            fontSize=11.sp,maxLines=1,
+                            color=AppColors.PrimaryDeep)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun CherryV3PairTiles(pairs: List<String>, main: Boolean) {
+    if (pairs.isEmpty()) return
+    val columns = minOf(3, pairs.size)
+    pairs.chunked(columns).forEach { line ->
+        Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            line.forEach { pair ->
+                Surface(modifier=Modifier.weight(1f),
+                    color=if(main) AppColors.Primary else Color(0xFFFFEDF2),
+                    shape=RoundedCornerShape(12.dp)) {
+                    Box(Modifier.height(57.dp),contentAlignment=Alignment.Center) {
+                        Text(pair,fontSize=24.sp,fontWeight=FontWeight.Black,
+                            color=if(main) Color.White else AppColors.PrimaryDeep)
+                    }
+                }
+            }
+            repeat(columns - line.size) {
+                Spacer(Modifier.weight(1f))
+            }
+        }
     }
 }
