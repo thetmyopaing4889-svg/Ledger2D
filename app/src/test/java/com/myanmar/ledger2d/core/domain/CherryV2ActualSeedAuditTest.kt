@@ -116,6 +116,10 @@ class CherryV2ActualSeedAuditTest {
         var guidedInspected: Long = 0,
         var rawDistinct: Long = 0,
         var guidedDistinct: Long = 0,
+        var rawElapsedNanos: Long = 0,
+        var guidedElapsedNanos: Long = 0,
+        var rawTimeCapReached: Int = 0,
+        var guidedTimeCapReached: Int = 0,
         var rawTen: Int = 0,
         var guidedTen: Int = 0,
         var selected: Int = 0,
@@ -187,6 +191,10 @@ class CherryV2ActualSeedAuditTest {
                 stats.guidedInspected += comparison.guided.inspected
                 stats.rawDistinct += comparison.raw.distinctBehaviorTraces
                 stats.guidedDistinct += comparison.guided.distinctBehaviorTraces
+                stats.rawElapsedNanos += comparison.raw.elapsedNanos
+                stats.guidedElapsedNanos += comparison.guided.elapsedNanos
+                if (comparison.raw.budgetExpired) stats.rawTimeCapReached++
+                if (comparison.guided.budgetExpired) stats.guidedTimeCapReached++
                 if (comparison.raw.firstAtLeastTen != null) stats.rawTen++
                 if (comparison.guided.firstAtLeastTen != null) stats.guidedTen++
 
@@ -269,7 +277,12 @@ class CherryV2ActualSeedAuditTest {
                     "category=${kind.name} targets=${x.contexts} " +
                     "usable=${x.nonemptyHistory} rawInspected=${x.rawInspected} " +
                     "guidedInspected=${x.guidedInspected} rawDistinct=${x.rawDistinct} " +
-                    "guidedDistinct=${x.guidedDistinct} rawTenTargets=${x.rawTen} " +
+                    "guidedDistinct=${x.guidedDistinct} " +
+                    "rawElapsedMs=${x.rawElapsedNanos / 1_000_000} " +
+                    "guidedElapsedMs=${x.guidedElapsedNanos / 1_000_000} " +
+                    "rawTimeCapReached=${x.rawTimeCapReached} " +
+                    "guidedTimeCapReached=${x.guidedTimeCapReached} " +
+                    "rawTenTargets=${x.rawTen} " +
                     "guidedTenTargets=${x.guidedTen} rawChosen=${x.rawSelected} " +
                     "rawHoldoutChecked=${x.rawHoldoutChecked} rawHoldoutHits=${x.rawHoldoutHits} " +
                     "rawHoldoutAbstain=${x.rawHoldoutAbstained} rawHitRate=$rawObserved " +
