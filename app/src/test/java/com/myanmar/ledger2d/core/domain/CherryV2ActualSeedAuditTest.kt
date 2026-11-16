@@ -186,6 +186,7 @@ class CherryV2ActualSeedAuditTest {
                     context, kind,
                     candidatesPerMode = candidateLimit,
                     budgetPerModeNanos = perModeBudgetNanos,
+                    guidedFirst = (position and 1) == 1,
                 )
                 stats.rawInspected += comparison.raw.inspected
                 stats.guidedInspected += comparison.guided.inspected
