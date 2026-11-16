@@ -51,7 +51,12 @@ internal data class CherryV2StreakRegistry(
     val recentBehaviorKeys: List<String> = emptyList(),
     val grammarVersion: Int = CherryV2ExpandableGrammar.VERSION,
 ) {
-    companion object { const val BEHAVIOR_WINDOW = 512 }
+    companion object {
+        const val BEHAVIOR_WINDOW = 512
+        // User target: one first-found tier for each of 3,4,...,9,10+.
+        // This is at most eight recommendations, not ~198 numbers.
+        const val MAX_TARGET_STREAK = 10
+    }
 
     init {
         require(grammarVersion == CherryV2ExpandableGrammar.VERSION)
@@ -90,7 +95,18 @@ internal data class CherryV2StreakRegistry(
         }
         val newResults = firstByStreak.toMutableMap()
         candidates.forEach { candidate ->
-            if (candidate.historicalStreak >= CherryFormulaDiscoveryEngine.MIN_STREAK) {
+            if (candidate.historicalStreak < CherryFormulaDiscoveryEngine.MIN_STREAK) {
+                return@forEach
+            }
+            if (candidate.historicalStreak >= MAX_TARGET_STREAK) {
+                // One first-seen 10+ match represents the target milestone.
+                // Older V2 checkpoints could contain 11+, so never overwrite
+                // their earliest already-retained 10+ matching candidate.
+                if (newResults.keys.none { it >= MAX_TARGET_STREAK }) {
+                    newResults[MAX_TARGET_STREAK] = candidate.copy(
+                        historicalStreak = MAX_TARGET_STREAK)
+                }
+            } else {
                 newResults.putIfAbsent(candidate.historicalStreak, candidate)
             }
         }
@@ -107,9 +123,27 @@ internal data class CherryV2StreakRegistry(
         return copy(recentBehaviorKeys = keys.toList())
     }
 
-    fun recommended(): CherryV2StreakMatch? =
-        firstByStreak.maxByOrNull { it.key }?.value
+    fun recommended(): CherryV2StreakMatch? = orderedResults().lastOrNull()
 
-    fun orderedResults(): List<CherryV2StreakMatch> =
-        firstByStreak.toSortedMap().values.toList()
+    /**
+     * Never expose more than eight 3..10+ tiers to Math UI. Existing
+     * pre-cap V2 checkpoints remain readable and are NOT rewritten, lost or
+     * silently truncated in persistent storage. For multiple 10+ entries in
+     * such a checkpoint the FIRST discovered schedule index wins.
+     */
+    fun orderedResults(): List<CherryV2StreakMatch> {
+        val perTier = sortedMapOf<Int, CherryV2StreakMatch>()
+        for (candidate in firstByStreak.values.sortedWith(
+            compareBy<CherryV2StreakMatch> { it.formulaIndex }
+                .thenBy { it.offset }
+        )) {
+            val tier = minOf(candidate.historicalStreak, MAX_TARGET_STREAK)
+            if (tier >= CherryFormulaDiscoveryEngine.MIN_STREAK) {
+                perTier.putIfAbsent(tier,
+                    if (candidate.historicalStreak == tier) candidate
+                    else candidate.copy(historicalStreak = tier))
+            }
+        }
+        return perTier.values.toList()
+    }
 }
