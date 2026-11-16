@@ -67,6 +67,10 @@ class CherryV2DiscoveryServiceTest {
             assertTrue(first.result.inspectedThisBatch > 0)
             assertTrue(first.contiguousSlots >= 10)
             assertNotNull(first.recommended)
+            assertTrue("At most eight first-found tiers 3..10+",
+                first.results.size <= 8)
+            assertEquals(first.results.map { it.historicalStreak },
+                first.results.map { it.historicalStreak }.sorted())
             assertEquals(first.result.cursor,
                 CherryV2DiscoveryService(app, db).saved(target, kind, asOf))
 
@@ -79,6 +83,8 @@ class CherryV2DiscoveryServiceTest {
                 assertEquals(choice.formulaId,
                     second.result.cursor.firstByStreak.getValue(streak).formulaId)
             }
+            assertTrue("Continue must not expand visible results past eight",
+                second.results.size <= 8)
             assertEquals(second.result.cursor,
                 CherryV2DiscoveryService(app, db).saved(target, kind, asOf))
         } finally {
