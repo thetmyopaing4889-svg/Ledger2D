@@ -7,6 +7,10 @@ import com.myanmar.ledger2d.core.database.HistoryResultEntity
 import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
 import com.myanmar.ledger2d.core.domain.CherryV2TimedSearch
+import com.myanmar.ledger2d.core.domain.CherryV2HistoricalEvaluator
+import com.myanmar.ledger2d.core.domain.CherryV2StreakRegistry
+import com.myanmar.ledger2d.core.repository.CherryV2CheckpointStore
+import java.security.MessageDigest
 import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
@@ -66,6 +70,8 @@ class CherryV2DiscoveryServiceTest {
                 first.result.stopReason)
             assertTrue(first.result.inspectedThisBatch > 0)
             assertTrue(first.contiguousSlots >= 10)
+            assertTrue(first.contiguousSlots <=
+                CherryV2HistoricalEvaluator.CONTEXT_LIMIT)
             assertNotNull(first.recommended)
             assertTrue("At most eight first-found tiers 3..10+",
                 first.results.size <= 8)
@@ -91,6 +97,55 @@ class CherryV2DiscoveryServiceTest {
             db.close()
         }
     }
+
+    @Test fun masterPlan203PolicyDoesNotSilentlyReuseOld212PolicyCheckpoint() =
+        runBlocking {
+            val db = database()
+            try {
+                db.historyResultDao().upsertAll(days.take(10).map(::row))
+                val kind = CherryDiscoveryKind.LONE
+                val bounded = CherryDiscoveryBoundedSource(db)
+                    .latest(target, asOf)
+                val prepared = CherryV2HistoricalEvaluator.prepare(
+                    bounded.draws, target, bounded.closedDates)
+                // Reconstruct the old V2 hash over this SHORT fixture. The
+                // original 200+12 policy sees the exact same rows here;
+                // only the versioned policy label can invalidate its saved
+                // checkpoint. No source rows or user formulas are removed.
+                val oldEvidence = buildString {
+                    append("V2|").append(target.date).append('|')
+                        .append(target.session.name).append("|true|")
+                    for (slot in prepared.prior) {
+                        append('|').append(slot.date).append(':')
+                            .append(slot.session.name).append('=')
+                            .append(slot.digit).append('@')
+                            .append(slot.source.name)
+                    }
+                }
+                val oldHash = MessageDigest.getInstance("SHA-256")
+                    .digest(oldEvidence.toByteArray(Charsets.UTF_8))
+                    .joinToString("") {
+                        (it.toInt() and 255).toString(16).padStart(2, '0')
+                    }
+                assertNotEquals(oldHash, prepared.historySignature)
+                val store = CherryV2CheckpointStore(app)
+                val old = CherryV2StreakRegistry(target, kind, oldHash)
+                store.persist(old)
+                assertEquals(old, store.resume(kind, target, oldHash))
+                assertNull(
+                    CherryV2DiscoveryService(app, db).saved(target, kind, asOf))
+                // The prior incompatible state is not discarded on read;
+                // explicit user search can establish a new policy snapshot.
+                assertEquals(old, store.resume(kind, target, oldHash))
+                val fresh = CherryV2DiscoveryService(app, db).search(
+                    target, kind, asOf, timeBudgetNanos = 120_000_000L)
+                assertEquals(prepared.historySignature,
+                    fresh.result.cursor.historySignature)
+                assertNotEquals(oldHash, fresh.result.cursor.historySignature)
+            } finally {
+                db.close()
+            }
+        }
 
     @Test fun categoryIsolationAndCorrectedHistoryNeverReuseStaleSearch() = runBlocking {
         val db = database()
