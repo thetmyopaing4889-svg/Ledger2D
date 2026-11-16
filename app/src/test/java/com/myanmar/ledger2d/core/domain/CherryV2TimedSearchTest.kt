@@ -93,6 +93,37 @@ class CherryV2TimedSearchTest {
         assertTrue(original.firstByStreak.isEmpty())
     }
 
+    @Test fun oneToThreeConfirmedDrawsStopImmediatelyInsteadOfHeatingPhoneForThirtySeconds() {
+        for (count in 1..3) {
+            val partial = CherryV2HistoricalEvaluator.prepare(
+                history.takeLast(count), target)
+            assertEquals(count, partial.prior.size)
+            assertTrue("Cannot score a 3-streak from $count draws", partial.blocked)
+            var now = 0L
+            val clocks = { now += 1_000L; now }
+            val result = CherryV2TimedSearch.run(
+                partial, CherryDiscoveryKind.LONE,
+                timeBudgetNanos = CherryV2TimedSearch.DEFAULT_BUDGET_NANOS,
+                monotonicNanos = clocks,
+            )
+            assertEquals(CherryV2TimedSearch.StopReason.BLOCKED,
+                result.stopReason)
+            assertEquals(0, result.inspectedThisBatch)
+            assertTrue(result.cursor.firstByStreak.isEmpty())
+        }
+
+        // Four verified consecutive results can score 3 earlier sessions
+        // using a lag-1 formula. Do not reject that legitimate boundary.
+        val minimal = CherryV2HistoricalEvaluator.prepare(
+            history.takeLast(4), target)
+        assertEquals(4, minimal.prior.size)
+        assertFalse(minimal.blocked)
+        val expression = CherryV2GuidedSchedule.expressionAt(BigInteger.ZERO)
+        val trace = requireNotNull(
+            CherryV2HistoricalEvaluator.trace(minimal, expression))
+        assertEquals(3, trace.historicalBases.size)
+    }
+
     @Test fun emptyPreviousResultDoesNotWasteBudgetOrForgeAnyFormula() {
         val blocked = CherryV2HistoricalEvaluator.prepare(
             history.dropLast(1), target)
