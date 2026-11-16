@@ -44,11 +44,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     fun tr(mm: String, english: String) = if(en) english else mm
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
-    // Keep the discovery entry point separate from the existing 210 Gemini
-    // research variants, Champion and summary selection.
-    val discoveryService = remember(context, container) {
-        CherryDiscoveryEngineService(context, container.database)
-    }
     val originalSource=remember(context){
         runCatching {
             context.assets.open("two_d_rules_source.txt")
@@ -113,7 +108,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         else null
     }
     var tab by rememberSaveable{mutableStateOf(CherryTab.SUMMARY)}
-    var showLegacyDiscovery by rememberSaveable{mutableStateOf(false)}
     var selectedPick by remember { mutableStateOf<CherryPick?>(null) }
     var selectedOriginal by remember { mutableStateOf<CherryOriginalReference?>(null) }
     var showHistory by remember { mutableStateOf(false) }
@@ -422,27 +416,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 en = en,
                             )
                         }
-                        // The old finite Search More and its local trial locks
-                        // remain accessible; do not erase approved saved data.
-                        item {
-                            OutlinedButton(
-                                onClick={showLegacyDiscovery=!showLegacyDiscovery},
-                                modifier=Modifier.fillMaxWidth()
-                            ){
-                                Text(if(showLegacyDiscovery)
-                                    tr("ယခင် Formula မှတ်တမ်း ပိတ်ရန်",
-                                        "Hide previous formula workspace")
-                                else tr("ယခင် Formula မှတ်တမ်း ကြည့်ရန်",
-                                        "View previous formula workspace"))
-                            }
-                        }
-                        if(showLegacyDiscovery) item {
-                            CherryDiscoveryPanel(
-                                service = discoveryService,
-                                target = target,
-                                en = en,
-                            )
-                        }
+                        // Previous finite-search UI intentionally hidden.
+                        // Legacy trials/cursors remain untouched in storage.
                     }
                     CherryTab.SUMMARY->{
                         item{CherryHeading(tr("👑 ဒီအကြိမ်အတွက် နောက်ဆုံးအချုပ်",
