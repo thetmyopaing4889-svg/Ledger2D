@@ -82,6 +82,20 @@ class CherryV2StreakRegistryTest {
         assertEquals(i(2), twoHits.nextIndex)
     }
 
+    @Test fun millionsOfMissesDoNotCopySavedStreakMap() {
+        val initial = state().inspected(i(0), match(0, 3))
+        val retained = initial.firstByStreak
+        var cursor = initial
+        repeat(5000) {
+            cursor = cursor.inspectedBatch(cursor.nextIndex, emptyList())
+            assertSame("No-fit advances must reuse the immutable first-found map",
+                retained, cursor.firstByStreak)
+        }
+        assertEquals(i(5001), cursor.nextIndex)
+        assertEquals(initial.firstByStreak, cursor.firstByStreak)
+        assertEquals(i(0), cursor.firstByStreak.getValue(3).formulaIndex)
+    }
+
     @Test fun refusesStaleCursorCrossCategoryOrHistoryMismatch() {
         val first = state().inspected(i(0), match(0, 5))
         try {

@@ -95,6 +95,12 @@ internal data class CherryV2StreakRegistry(
             require(candidate.historySignature == historySignature)
             require(candidate.grammarVersion == CherryV2ExpandableGrammar.VERSION)
         }
+        // Most generated expressions miss the minimum streak. Reuse the
+        // immutable existing result map instead of copying it millions of
+        // times. Only the exact cursor position advances.
+        if (candidates.isEmpty()) {
+            return copy(nextIndex = CherryV2ExpandableGrammar.next(index))
+        }
         val newResults = firstByStreak.toMutableMap()
         candidates.forEach { candidate ->
             if (candidate.historicalStreak < CherryFormulaDiscoveryEngine.MIN_STREAK) {
