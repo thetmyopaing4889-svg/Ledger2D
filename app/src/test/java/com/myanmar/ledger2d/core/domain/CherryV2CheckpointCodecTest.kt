@@ -63,6 +63,33 @@ class CherryV2CheckpointCodecTest {
             "x".repeat(520_000), target, kind, signature))
     }
 
+    @Test fun previouslySavedV2ScheduleCannotBeResumedAsV3Formulas() {
+        val current = CherryV2CheckpointCodec.encode(sample())
+        val parts = current.removePrefix("CHERRY-V2:").split(':')
+        val bytes = java.util.Base64.getUrlDecoder().decode(parts[0])
+        val stream = java.io.ByteArrayInputStream(bytes)
+        val input = java.io.DataInputStream(stream)
+        input.readInt() // magic
+        input.readInt() // codec format
+        repeat(5) { input.readUTF() } // target date/session, kind, hash, cursor
+        val grammarOffset = bytes.size - stream.available()
+        // Simulate a correctly checksummed, incompatible V2 schedule cursor.
+        java.nio.ByteBuffer.wrap(bytes, grammarOffset, 4).putInt(2)
+        val checksum = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(bytes).joinToString("") {
+                (it.toInt() and 255).toString(16).padStart(2, '0')
+            }
+        val savedV2 = "CHERRY-V2:" +
+            java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(bytes) + ":" + checksum
+        assertNull("V2 schedule slots must never decode as V3 meanings",
+            CherryV2CheckpointCodec.decode(
+                savedV2, target, kind, signature))
+        // The current grammar checkpoint must still decode normally.
+        assertEquals(sample(), CherryV2CheckpointCodec.decode(
+            current, target, kind, signature))
+    }
+
     @Test fun emptyCheckpointIsValidAndDoesNotInventFoundFormulas() {
         val original = CherryV2StreakRegistry(target, CherryDiscoveryKind.BREAK,
             signature)
