@@ -37,7 +37,7 @@ class CherryV2DiscoveryServiceTest {
     private val target = DrawIdentity(days[10], DrawSession.MORNING)
     private val asOf = LocalDateTime.of(target.date, LocalTime.of(11, 0))
     private fun prefs() = app.getSharedPreferences(
-        "cherry_v2_discovery_cursors_v2", Context.MODE_PRIVATE)
+        "cherry_v2_discovery_cursors_v3", Context.MODE_PRIVATE)
 
     @Before fun cleanStart() { assertTrue(prefs().edit().clear().commit()) }
     @After fun cleanFinish() { assertTrue(prefs().edit().clear().commit()) }
