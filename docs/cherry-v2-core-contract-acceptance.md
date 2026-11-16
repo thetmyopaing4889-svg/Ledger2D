@@ -13,8 +13,26 @@
 6. **No history lookahead or gaps:** target/after-target results are not formula inputs. Source corrections and known closure dates feed the history signature; unknown missing working sessions stop consecutive streaks, not automatically count as `Off`.
 7. **One deliberate 30-second run:** search uses a monotonic elapsed budget **after** bounded Room data loading. Each finished expression/offset group advances one cursor position. No 100,000-formula count cap. A time limit in mid-expression retries that expression on Continue.
 8. **Cancel and Continue:** cancellation is checked inside decoder/evaluator, preserves fully completed positions and the recent bounded semantic-dedup window, persists a checksum-checked checkpoint, then propagates cancellation. The next button-triggered search restores exactly that target/category/history/version cursor, never resets its first-found match. Corrections invalidate a previous history signature.
-9. **Off Main / bounded resources:** database uses IO dispatch; formula evaluation uses Default; a bounded history of **200 score + 12 lag slots**, a **512**-behavior recent signature window and throttled checkpoint writes avoid infinite collections and excessive disk I/O.
+9. **Off Main / bounded resources:** database uses IO dispatch; formula evaluation uses Default; the Master Plan's normal **200 scored + 3 lag = 203 total draw slots** is enforced by `CherryV2HistoricalEvaluator.CONTEXT_LIMIT`. Long lag expressions (4+) remain generatable but are **not eligible for scoring** until a separate reviewed expansion. The **512**-behavior recent signature window and throttled checkpoint writes avoid infinite collections and excessive disk I/O. The V2 signature's `V2-203-LAG3` policy marker invalidates any former 200+12 progress before a new explicitly requested search (old incompatible saved bytes are not silently reused).
 10. **Recommendation is evidence, not a guarantee.** Historical 10+ fit is not proof of accurate future draws. The V2 service does not automatically change Champion or a user's already approved formulas.
+
+## Master Plan alignment and unresolved gates (2026-11-16)
+
+The user's acceptance of the review direction is applied as **one first-found 10+ milestone** and **203-slot baseline policy**, without changing the original Master Plan or non-V2 screens. This document is the requirements-to-tests status page; a passing CI is not equivalent to device certification.
+
+| Master phase | Current demonstrated state | Remaining gate |
+| --- | --- | --- |
+| 1. Baseline and change control | Isolated V2 branch descended from Build #1641, unchanged legacy Math/Research/UI | Keep exact-head CI and no main merge |
+| 2. Open-ended symbolic grammar | Lazy BigInteger-index generator, >207 grammar tests | Only tested bounded subsets are validated; no infinite compute promise |
+| 3. Quality-guided diversity | Deterministic SIMPLE/CROSS-LAG/NESTED guided schedule and synthetic direct-10+ fixture | Adaptivity/held-out advantage not established |
+| 4. First-found and dedup | 3..9 and earliest 10+ tier, eight max, recent behavior dedup, resume tests | User-facing detail/evidence presentation reviewed only in future UI phase |
+| 5. Timed search/checkpoint | 30s monotonic simulated clock, cancel/continue, saved-state, stale policy invalidation | **Physical** 30 seconds, battery/thermal and process-lifecycle checks |
+| 6. Evidence/validation | Year-sliced historical and held-out replay marked non-prospective | Verified new results and truly pre-result locked prospective trials |
+| 7. Android device stress | Off-Main IO/Default, bounded 203 history, local checkpoint tests | Actual CPU/RAM/thermal/rotation/rapid cancel/start on phone |
+| 8. Timed-batch UI | **Not connected** | User-approved interaction and device review |
+| 9. Math/Champion | **Not connected** | Separate approval, scoring/persistence/rollback tests |
+
+**Do not restart unrelated RAW/GUIDED historical benchmark loops as a substitute for phases 4, 5 and 7.** Existing earlier reports remain archival diagnostics. Discovery has no demonstrated future predictive advantage.
 
 ## Verification scope
 
