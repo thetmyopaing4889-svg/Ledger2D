@@ -81,10 +81,9 @@ class CherryV3FormulaExplainerTest {
             ctx, matching.copy(expression = "top2")))
         assertNull(CherryV3FormulaExplainer.explain(
             ctx, matching.copy(historySignature = "changed")))
+        // The arithmetic would produce 5 in both periods, but 42 does
+        // not contain 5, so a claimed prior consecutive hit must fail.
         assertNull(CherryV3FormulaExplainer.explain(
-            ctx, matching.copy(offset = 0, predictedDigit = 4)))
-        // Last case: the current output looks right, but the previous hit
-        // could be wrong for another fixture. Here offset 0 also matches 42.
-        // So the preview is only gated by verified replay, not invented wins.
+            ctx, matching.copy(offset = 1, predictedDigit = 5)))
     }
 }
