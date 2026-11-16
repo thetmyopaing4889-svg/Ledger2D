@@ -12,8 +12,12 @@ import java.time.LocalDate
  * stop the suffix rather than being silently bridged.
  */
 internal object CherryV2HistoricalEvaluator {
-    const val MAX_LAG = 12
+    // Master Plan §5: 200 scored draw slots plus at most 3 prior lag slots.
+    // Longer lags require a separately reviewed, versioned policy change.
+    const val MAX_LAG = 3
     const val MAX_SCORED = CherryFormulaDiscoveryEngine.SEARCH_DRAWS
+    const val CONTEXT_LIMIT = MAX_SCORED + MAX_LAG
+    private const val HISTORY_POLICY_VERSION = "V2-203-LAG3"
 
     internal data class Context(
         val target: DrawIdentity,
@@ -53,13 +57,13 @@ internal object CherryV2HistoricalEvaluator {
         checkCancellation()
         val working = DrawSchedule.isWorkingDate(target.date, closedDates)
         val rows = if (working) CherryDiscoveryHistoryNormalizer.newestBefore(
-            history, target, closedDates, MAX_SCORED + MAX_LAG, checkCancellation,
+            history, target, closedDates, CONTEXT_LIMIT, checkCancellation,
         ) else emptyList()
         val lookup = rows.associateBy { DrawIdentity(it.date, it.session) }
         val contiguous = ArrayList<HistoricDraw>(rows.size)
         if (working) {
             var cursor = previous(target, closedDates)
-            while (contiguous.size < MAX_SCORED + MAX_LAG) {
+            while (contiguous.size < CONTEXT_LIMIT) {
                 checkCancellation()
                 val row = lookup[cursor] ?: break
                 contiguous.add(row)
@@ -71,7 +75,11 @@ internal object CherryV2HistoricalEvaluator {
             .filter { !it.isBefore(relevantOldest) && !it.isAfter(target.date) }
             .sorted().joinToString(",")
         val evidence = buildString {
-            append("V2|").append(target.date).append('|')
+            // The policy marker prevents accidental reuse of checkpoints
+            // scored with the former 200+12, lag-12 V2 policy even if the
+            // shortened snapshot happens to contain the same few rows.
+            append(HISTORY_POLICY_VERSION).append('|')
+                .append(target.date).append('|')
                 .append(target.session.name).append('|')
                 .append(working).append('|').append(relevantClosures)
             for (row in contiguous) {
