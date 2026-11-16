@@ -98,6 +98,39 @@ class CherryV2DiscoveryServiceTest {
         }
     }
 
+    @Test fun uiTimerStartsExactlyOnceAfterPreparationAndOnlyOnExplicitTap() =
+        runBlocking {
+            val db = database()
+            try {
+                db.historyResultDao().upsertAll(days.take(10).map(::row))
+                val service = CherryV2DiscoveryService(app, db)
+                var started = 0
+                var startNanos = 0L
+                // Constructing the service and loading saved results are
+                // READ-ONLY and must not trigger the progress timer.
+                assertNull(service.saved(target, CherryDiscoveryKind.LONE, asOf))
+                assertEquals(0, started)
+                val receipt = service.search(
+                    target, CherryDiscoveryKind.LONE, asOf,
+                    timeBudgetNanos = 100_000_000L,
+                    onSearchStarted = { stamp ->
+                        started++
+                        startNanos = stamp
+                    },
+                )
+                assertEquals("One explicit search = one timer start", 1, started)
+                assertTrue("Monotonic timer must receive real clock", startNanos > 0L)
+                assertEquals(CherryV2TimedSearch.StopReason.TIME_LIMIT,
+                    receipt.result.stopReason)
+                assertTrue(receipt.result.inspectedThisBatch > 0)
+                // Saved cursor inspection cannot accidentally restart a scan.
+                assertNotNull(service.saved(target, CherryDiscoveryKind.LONE, asOf))
+                assertEquals(1, started)
+            } finally {
+                db.close()
+            }
+        }
+
     @Test fun masterPlan203PolicyDoesNotSilentlyReuseOld212PolicyCheckpoint() =
         runBlocking {
             val db = database()
