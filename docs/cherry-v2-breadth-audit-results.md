@@ -25,6 +25,18 @@ Rates are conditional on a frozen formula being found and a scorable later resul
 - Guided LONE later-draw hit rate **fell** from 18.57% to 14.38% as search breadth increased; WAM and BREAK increased slightly. No tested configuration demonstrates a robust, repeatable advantage over the category-specific chance references.
 - The initial 64/256 run executed RAW before GUIDED. Its follow-up **balanced-order** run alternated which scanner ran first by target and **passed CI with the same hit totals**, reducing JVM warm-up/order confounding. Because **all candidate-count caps were reached**, the observed hit differences reflect enumeration breadth rather than an elapsed-time cutoff. Benchmark JVM elapsed milliseconds are not Android CPU/RAM/thermal measurements.
 
+## Added year-by-year stability audit (pending latest CI)
+
+The new `CherryV2ActualSeedAuditTest.yearSeparatedArchiveRobustnessHasNoTargetLeakage` test checks **four separately reported calendar-year slices (2023, 2024, 2025, 2026)** rather than relying only on the pooled 80-target result. Its protocol is fixed before examining its output:
+
+- Sample **24 time-distributed target sessions per calendar year** (96 in total); reserve at least four later recorded sessions. Exclude unknown/colliding `Off` source dates using the existing audited seed normalizer.
+- In **each calendar year and category**, compare `RAW` and `GUIDED`, each at both **64** and **256** expressions with an equal **1-second per-mode cap**. Alternate which mode runs first on odd/even sample positions.
+- Select the first-found candidate with the longest historical streak using **only completed pre-target draws**. Freeze the expression tree, offset and category; replay it on the same next four later recorded draws without retuning.
+- Report, for every **year × category × cap × order**, attempts, usable contexts, selected candidates, selection coverage, historical 10+ streak count, later checked/hits, abstentions and conditional hit rate via `CHERRY_V2_YEAR_SPLIT` CI lines.
+- The year slices **are exploratory robustness diagnostics only**: the source archive and earlier pooled results have already been examined. Do **not** describe 2026 as a pristine confirmatory test or claim a reliable edge from any one subgroup. Avoid selecting a best formula policy on this same archive and then presenting its measured hit rate as prospective success.
+
+The test is intended to detect year-to-year instability and differences in formula-selection coverage; it is not a device CPU/thermal benchmark and it does not change the production V2 search or Champion.
+
 ## Practical decision
 
 **Do not enable automatic Champion, promote a historical 10-streak as a forecast, or change the approved production search schedule based on these results.** There is no evidence of a reliable prospective edge. Keep the V2 engine isolated until further independent validation.
