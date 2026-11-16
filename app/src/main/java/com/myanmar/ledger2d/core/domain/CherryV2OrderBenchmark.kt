@@ -47,18 +47,24 @@ internal object CherryV2OrderBenchmark {
         budgetPerModeNanos: Long = DEFAULT_BUDGET_NANOS,
         nanoTime: () -> Long = System::nanoTime,
         checkCancellation: () -> Unit = {},
+        /** Rotate this per target to reduce JVM warm-up/order bias. */
+        guidedFirst: Boolean = false,
     ): Comparison {
         require(candidatesPerMode in 1..MAX_CANDIDATES)
         require(budgetPerModeNanos > 0)
         checkCancellation()
-        val raw = scan(
-            Order.RAW, context, category, candidatesPerMode,
+        val first = if (guidedFirst) Order.GUIDED else Order.RAW
+        val second = if (guidedFirst) Order.RAW else Order.GUIDED
+        val result1 = scan(
+            first, context, category, candidatesPerMode,
             budgetPerModeNanos, nanoTime, checkCancellation,
         )
-        val guided = scan(
-            Order.GUIDED, context, category, candidatesPerMode,
+        val result2 = scan(
+            second, context, category, candidatesPerMode,
             budgetPerModeNanos, nanoTime, checkCancellation,
         )
+        val raw = if (guidedFirst) result2 else result1
+        val guided = if (guidedFirst) result1 else result2
         return Comparison(raw, guided, category, context.historySignature)
     }
 
