@@ -432,12 +432,18 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                             CherryV3PairTiles(v3Plan.remaining, false)
                                         }
                                     }
-                                    HorizontalDivider(color=Color(0xFFFFE5EC))
-                                    Text(tr("လက်ရှိမူ / မွေးမူ", "Current / Born"),
-                                        fontWeight=FontWeight.SemiBold,
-                                        color=AppColors.PrimaryDeep)
                                 }
-                                CherryBalls(summaryPicks,{selectedPick=it},en)
+                                if (summaryPicks.isNotEmpty()) {
+                                    if (v3Plan.main.isNotEmpty()) {
+                                        HorizontalDivider(color=Color(0xFFFFE5EC))
+                                        Text(tr("လက်ရှိမူ / မွေးမူ", "Current / Born"),
+                                            fontWeight=FontWeight.SemiBold,
+                                            color=AppColors.PrimaryDeep)
+                                    }
+                                    CherryBalls(summaryPicks,{selectedPick=it},en)
+                                } else if (v3Plan.main.isEmpty()) {
+                                    CherryEmpty(en)
+                                }
                                 val chosen=combinedSummaryPairs
                                 if(chosen.isNotEmpty()){
                                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
