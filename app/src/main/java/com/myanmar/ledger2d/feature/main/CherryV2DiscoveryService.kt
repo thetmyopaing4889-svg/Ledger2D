@@ -7,6 +7,8 @@ import com.myanmar.ledger2d.core.domain.CherryV2HistoricalEvaluator
 import com.myanmar.ledger2d.core.domain.CherryV2OrderBenchmark
 import com.myanmar.ledger2d.core.domain.CherryV2StreakRegistry
 import com.myanmar.ledger2d.core.domain.CherryV2TimedSearch
+import com.myanmar.ledger2d.core.domain.CherryV3FormulaExplainer
+import com.myanmar.ledger2d.core.domain.CherryV3WorkedExamples
 import com.myanmar.ledger2d.core.repository.CherryV2CheckpointStore
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import java.time.LocalDateTime
@@ -102,6 +104,37 @@ internal class CherryV2DiscoveryService(
                 onCheckpoint = { state -> store.persist(state) },
             )
             Receipt(result, bounded.databaseRowsRead, context.prior.size)
+        }
+    }
+
+    /**
+     * Read-only evidence for a SAVED, first-found V3 formula. Reconstructs the
+     * exact expression by stable index, verifies its history fingerprint and
+     * the predicted digit, then explains only the last known draw and target.
+     * Never discovers new formulas or touches Champion/trial selection.
+     */
+    suspend fun explain(
+        target: DrawIdentity,
+        kind: CherryDiscoveryKind,
+        formulaId: String,
+        asOf: LocalDateTime = LocalDateTime.now(yangon),
+    ): CherryV3WorkedExamples? = sessionLock.withLock {
+        val bounded = input.latest(
+            target, asOf, CherryV2HistoricalEvaluator.CONTEXT_LIMIT)
+        withContext(Dispatchers.Default) {
+            val work = coroutineContext
+            val context = CherryV2HistoricalEvaluator.prepare(
+                bounded.draws, target, bounded.closedDates,
+                checkCancellation = { work.ensureActive() },
+            )
+            val saved = withContext(Dispatchers.IO) {
+                store.resume(kind, target, context.historySignature)
+            } ?: return@withContext null
+            val match = saved.orderedResults().firstOrNull {
+                it.formulaId == formulaId
+            } ?: return@withContext null
+            work.ensureActive()
+            CherryV3FormulaExplainer.explain(context, match)
         }
     }
 
