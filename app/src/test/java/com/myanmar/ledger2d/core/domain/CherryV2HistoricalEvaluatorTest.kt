@@ -106,6 +106,35 @@ class CherryV2HistoricalEvaluatorTest {
                 it.kind == CherryDiscoveryKind.BREAK })
     }
 
+    @Test fun approvedMasterPlanLimitsHistoryTo200Plus3AndRejectsUnapprovedLongLags() {
+        val weekdays = generateSequence(LocalDate.parse("2025-01-06")) {
+            it.plusDays(1)
+        }.filter(DrawSchedule::isWeekday).take(110).toList()
+        val all = (0 until 218).map { n ->
+            HistoricDraw(
+                weekdays[n / 2],
+                if (n % 2 == 0) DrawSession.MORNING else DrawSession.EVENING,
+                "${n % 10}${(n + 3) % 10}", HistoricSource.WINNER)
+        }
+        val nextTarget = DrawIdentity(weekdays[109], DrawSession.MORNING)
+        val prepared = CherryV2HistoricalEvaluator.prepare(all, nextTarget)
+        assertEquals(200, CherryV2HistoricalEvaluator.MAX_SCORED)
+        assertEquals(3, CherryV2HistoricalEvaluator.MAX_LAG)
+        assertEquals(203, CherryV2HistoricalEvaluator.CONTEXT_LIMIT)
+        assertEquals(203, prepared.prior.size)
+        assertTrue(prepared.prior.none { it.date == nextTarget.date })
+        assertTrue(prepared.historySignature.isNotEmpty())
+        val thirdLag = CherryV2ExpandableGrammar.expressionAt(
+            BigInteger.valueOf(6))
+        val fourthLag = CherryV2ExpandableGrammar.expressionAt(
+            BigInteger.valueOf(9))
+        assertEquals("top3", thirdLag.structuralKey)
+        assertEquals("top4", fourthLag.structuralKey)
+        assertNotNull(CherryV2HistoricalEvaluator.trace(prepared, thirdLag))
+        assertNull("Lag 4 requires future explicit Master Plan approval",
+            CherryV2HistoricalEvaluator.trace(prepared, fourthLag))
+    }
+
     @Test fun oldCorrectedDrawInvalidatesOnlyRelevantHistorySnapshot() {
         val old = ascendingHistory()
         val context = CherryV2HistoricalEvaluator.prepare(old, target)
