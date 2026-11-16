@@ -309,4 +309,157 @@ class CherryV2ActualSeedAuditTest {
             perModeBudgetNanos = 800_000_000L,
             band = "EXPANDED256",
         )
+
+    private data class YearSliceTotals(
+        var attempted: Int = 0,
+        var usable: Int = 0,
+        var chosen: Int = 0,
+        var tenPlusFits: Int = 0,
+        var checked: Int = 0,
+        var hits: Int = 0,
+        var abstained: Int = 0,
+    )
+
+    /**
+     * Exploratory calendar-year robustness, NOT an untouched confirmatory
+     * holdout. This same seed was already inspected in previous audits.
+     *
+     * All policies and candidate caps are fixed ahead of this test, not
+     * tuned on the next four actual results. The four years are reported
+     * separately so pooled rates cannot conceal a poor or unstable period.
+     */
+    @Test fun yearSeparatedArchiveRobustnessHasNoTargetLeakage() {
+        val seed = readSeed()
+        val years = listOf(2023, 2024, 2025, 2026)
+        val samplePerYear = 24
+        val candidateCaps = listOf(64, 256)
+        val totals = linkedMapOf<String, YearSliceTotals>()
+
+        for (year in years) {
+            // Leave four later same-year outcomes available at the end.
+            val eligible = seed.rows.filter { it.date.year == year }
+                .dropLast(4)
+            assertTrue("Insufficient archived targets in $year",
+                eligible.size >= samplePerYear)
+            val samples = (0 until samplePerYear).map { i ->
+                eligible[i * (eligible.size - 1) / (samplePerYear - 1)]
+            }
+            assertEquals(samplePerYear, samples.map(::identity).distinct().size)
+
+            for ((samplePosition, selectedDraw) in samples.withIndex()) {
+                val target = identity(selectedDraw)
+                val context = CherryV2HistoricalEvaluator.prepare(
+                    seed.rows, target, seed.offDates)
+                val laterActuals = seed.rows.asSequence()
+                    .filter { strictlyLater(identity(it), target) }
+                    .take(4).toList()
+                assertEquals(4, laterActuals.size)
+                assertTrue(context.prior.none { identity(it) == target })
+
+                // Freeze the one pre-target context and each later pre-draw
+                // context ONCE for all formula policies and categories.
+                val later = laterActuals.map { actual ->
+                    actual to CherryV2HistoricalEvaluator.prepare(
+                        seed.rows, identity(actual), seed.offDates)
+                }
+
+                for (kind in CherryDiscoveryKind.entries) {
+                    for (cap in candidateCaps) {
+                        val report = if (!context.blocked &&
+                            context.prior.size >= 4) {
+                            CherryV2OrderBenchmark.compare(
+                                context, kind,
+                                candidatesPerMode = cap,
+                                budgetPerModeNanos = 1_000_000_000L,
+                                guidedFirst = (samplePosition and 1) == 1,
+                            )
+                        } else null
+
+                        for (order in CherryV2OrderBenchmark.Order.entries) {
+                            val key = "$year|${kind.name}|$cap|${order.name}"
+                            val stats = totals.getOrPut(key) {
+                                YearSliceTotals()
+                            }
+                            stats.attempted++
+                            if (report == null) continue
+                            stats.usable++
+                            val byStreak = when (order) {
+                                CherryV2OrderBenchmark.Order.RAW ->
+                                    report.raw.firstByStreak
+                                CherryV2OrderBenchmark.Order.GUIDED ->
+                                    report.guided.firstByStreak
+                            }
+                            val strongest = byStreak.maxByOrNull { it.key }
+                                ?: continue
+                            val index = java.math.BigInteger.valueOf(
+                                strongest.value.toLong())
+                            val expression = when (order) {
+                                CherryV2OrderBenchmark.Order.RAW ->
+                                    CherryV2ExpandableGrammar.expressionAt(index)
+                                CherryV2OrderBenchmark.Order.GUIDED ->
+                                    CherryV2GuidedSchedule.expressionAt(index)
+                            }
+                            val chosen = CherryV2HistoricalEvaluator.evaluate(
+                                context, kind, index, expression,
+                            ).firstOrNull {
+                                it.historicalStreak == strongest.key
+                            } ?: continue
+                            stats.chosen++
+                            if (chosen.historicalStreak >= 10) {
+                                stats.tenPlusFits++
+                            }
+
+                            // An unchanged formula tree and offset are
+                            // evaluated for each later target, using ONLY
+                            // its own strictly earlier confirmed results.
+                            for ((actual, beforeDraw) in later) {
+                                val base = if (beforeDraw.blocked) null else
+                                    expression.evaluate(beforeDraw.digits)
+                                val predicted = base?.let {
+                                    Math.floorMod(it + chosen.offset, 10)
+                                }
+                                if (predicted == null) {
+                                    stats.abstained++
+                                } else {
+                                    stats.checked++
+                                    if (CherryDiscoveryWalkForward.matches(
+                                        kind, predicted, actual.digit)) {
+                                        stats.hits++
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        assertEquals(
+            years.size * CherryDiscoveryKind.entries.size *
+                candidateCaps.size *
+                CherryV2OrderBenchmark.Order.entries.size,
+            totals.size,
+        )
+        for ((key, stats) in totals) {
+            assertEquals(samplePerYear, stats.attempted)
+            assertTrue("Too few valid historical snapshots $key",
+                stats.usable >= samplePerYear - 4)
+            assertTrue(stats.hits <= stats.checked)
+            assertTrue(stats.checked + stats.abstained <= 4 * stats.chosen)
+            val hitRate = if (stats.checked == 0) "NA" else
+                "%.4f".format(java.util.Locale.US,
+                    stats.hits.toDouble() / stats.checked)
+            val coverage = "%.4f".format(java.util.Locale.US,
+                stats.chosen.toDouble() / stats.attempted)
+            println(
+                "CHERRY_V2_YEAR_SPLIT yearPolicy=$key " +
+                    "attempted=${stats.attempted} usable=${stats.usable} " +
+                    "chosen=${stats.chosen} selectionCoverage=$coverage " +
+                    "historicalTenPlus=${stats.tenPlusFits} " +
+                    "holdoutChecked=${stats.checked} hits=${stats.hits} " +
+                    "abstained=${stats.abstained} holdoutRate=$hitRate " +
+                    "label=EXPLORATORY_YEAR_SLICE_NOT_PROSPECTIVE"
+            )
+        }
+    }
 }
