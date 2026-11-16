@@ -26,6 +26,18 @@ import kotlinx.coroutines.launch
 private val v3Edge = Color(0xFFF4CFDA)
 private val v3Blush = Color(0xFFFFF6F8)
 
+ /** Star tiers represent only observed historical streak, never win odds. */
+internal fun cherryV3HistoricalStars(streak: Int): String {
+    val filled = when {
+        streak >= 9 -> 5
+        streak >= 7 -> 4
+        streak >= 5 -> 3
+        streak >= 4 -> 2
+        else -> 1
+    }
+    return "★".repeat(filled) + "☆".repeat(5 - filled)
+}
+
 /**
  * Screen-level controller, NOT a LazyColumn-item scope. Scrolling the Math
  * list cannot accidentally cancel the user-started 30-second search. Leaving
@@ -302,6 +314,7 @@ internal fun CherryV3DiscoveryPanel(
                     "${recommended.historicalStreak}" +
                         (if (recommended.historicalStreak >= 10) "+" else "") +
                         (if (en) " consecutive" else " ပွဲဆက်") +
+                        " · " + cherryV3HistoricalStars(recommended.historicalStreak) +
                         " · ${recommended.expression} + ${recommended.offset} → " +
                         recommended.predictedDigit,
                     style = MaterialTheme.typography.bodyMedium,
@@ -323,7 +336,8 @@ internal fun CherryV3DiscoveryPanel(
                             Text(
                                 "${formula.historicalStreak}" +
                                     (if (formula.historicalStreak >= 10) "+" else "") +
-                                    (if (en) " consecutive" else " ပွဲဆက်"),
+                                    (if (en) " consecutive · " else " ပွဲဆက် · ") +
+                                    cherryV3HistoricalStars(formula.historicalStreak),
                                 fontWeight = FontWeight.Bold,
                                 color = AppColors.PrimaryDeep,
                                 style = MaterialTheme.typography.bodySmall,
