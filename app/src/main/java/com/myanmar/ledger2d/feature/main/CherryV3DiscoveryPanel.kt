@@ -1,6 +1,8 @@
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -10,9 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.domain.CherryDiscoveryKind
 import com.myanmar.ledger2d.core.domain.CherryV2StreakRegistry
+import com.myanmar.ledger2d.core.domain.CherryV2StreakMatch
+import com.myanmar.ledger2d.core.domain.CherryV3WorkedExamples
+import com.myanmar.ledger2d.core.domain.CherryV3WorkedExample
 import com.myanmar.ledger2d.core.domain.CherryV2TimedSearch
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import kotlinx.coroutines.CancellationException
@@ -70,12 +76,60 @@ internal class CherryV3DiscoveryController(
         mutableStateOf(emptyMap())
     private var restoredKinds: Set<CherryDiscoveryKind> by mutableStateOf(emptySet())
     private var running: Job? = null
+    private var detailJob: Job? = null
+    var detailFormula by mutableStateOf<CherryV2StreakMatch?>(null)
+        private set
+    var detail by mutableStateOf<CherryV3WorkedExamples?>(null)
+        private set
+    var detailLoading by mutableStateOf(false)
+        private set
+    var detailError by mutableStateOf<String?>(null)
+        private set
+
+    /** Opening a calculation does NOT start the discovery scan. */
+    fun openDetails(formula: CherryV2StreakMatch) {
+        if (busy || loading || formula.kind != kind ||
+            current?.orderedResults()?.none { it.formulaId == formula.formulaId } != false
+        ) return
+        detailJob?.cancel()
+        detailFormula = formula
+        detail = null
+        detailError = null
+        detailLoading = true
+        val requestedKind = kind
+        detailJob = scope.launch {
+            try {
+                val explained = service.explain(target, requestedKind, formula.formulaId)
+                if (explained == null) {
+                    detailError = "တွက်နည်းကို ပြန်စစ်မရပါ"
+                } else {
+                    detail = explained
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                detailError = failure.message ?: "တွက်နည်း ပြန်စစ်မရပါ"
+            } finally {
+                detailLoading = false
+            }
+        }
+    }
+
+    fun dismissDetails() {
+        detailJob?.cancel()
+        detailJob = null
+        detailFormula = null
+        detail = null
+        detailError = null
+        detailLoading = false
+    }
 
     val current: CherryV2StreakRegistry?
         get() = previous[kind]
 
     fun choose(next: CherryDiscoveryKind) {
         if (busy || loading || next == kind) return
+        dismissDetails()
         kind = next
         message = null
         error = null
@@ -138,17 +192,16 @@ internal class CherryV3DiscoveryController(
                 latestReceipt = receipt
                 elapsedSeconds = (receipt.result.elapsedNanos / 1_000_000_000f)
                     .coerceIn(0f, 30f)
-                message = when (receipt.result.stopReason) {
-                    CherryV2TimedSearch.StopReason.BLOCKED ->
-                        "၃ ပွဲဆက်စစ်ရန် အရင် Result ၄ ပွဲ အနည်းဆုံး ဆက်တိုက်လိုပါသည်"
-                    CherryV2TimedSearch.StopReason.TIME_LIMIT ->
-                        "ရှာဖွေချိန်ပြည့်ပါပြီ · ဆက်ရှာနိုင်သည်"
-                }
+                // No 'time finished' or engineering diagnostics in product UI.
+                message = if (receipt.result.stopReason ==
+                    CherryV2TimedSearch.StopReason.BLOCKED)
+                    "ရှာဖွေရန် အရင် Result ၄ ကြိမ် အနည်းဆုံး လိုပါသည်"
+                else null
             } catch (_: CancellationException) {
                 // Search controller persists fully completed formulas on
                 // cancel. Reload that saved checkpoint for accurate UI.
                 cancelled = true
-                message = "ရှာဖွေမှု ရပ်လိုက်ပါပြီ"
+                message = null
             } catch (failure: Exception) {
                 error = failure.message ?: "Formula search failed"
             } finally {
@@ -167,6 +220,7 @@ internal class CherryV3DiscoveryController(
 
     fun cancel() {
         running?.cancel()
+        dismissDetails()
     }
 }
 
@@ -176,7 +230,7 @@ private fun v3KindName(kind: CherryDiscoveryKind, en: Boolean) = when (kind) {
     CherryDiscoveryKind.BREAK -> if (en) "Break" else "ဘရိတ်"
 }
 
-/** Real on-screen test path, under original Gemini 210; no Champion writes. */
+/** Original Math tab frame retained. Discovery remains manual and isolated. */
 @Composable
 internal fun CherryV3DiscoveryPanel(
     controller: CherryV3DiscoveryController,
@@ -197,19 +251,23 @@ internal fun CherryV3DiscoveryPanel(
             Modifier.fillMaxWidth().padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // Distinct section title without changing the Math frame position.
+            Surface(color = AppColors.PrimaryDeep, shape = RoundedCornerShape(10.dp)) {
+                Text(
+                    "Formula အသစ်ရှာမယ်",
+                    modifier = Modifier.fillMaxWidth().padding(
+                        horizontal = 13.dp, vertical = 11.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
             Text(
-                if (en) "Formula အသစ်ရှာမယ်" else "Formula အသစ်ရှာမယ်",
-                color = AppColors.PrimaryDeep,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                "${target.date} · " +
-                    if (target.session.name == "MORNING") {
-                        if (en) "AM" else "မနက်"
-                    } else {
-                        if (en) "PM" else "ညနေ"
-                    },
+                "${target.date} · " + if (target.session.name == "MORNING") {
+                    if (en) "AM" else "မနက်"
+                } else {
+                    if (en) "PM" else "ညနေ"
+                },
                 style = MaterialTheme.typography.labelMedium,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -223,15 +281,10 @@ internal fun CherryV3DiscoveryPanel(
                     )
                 }
             }
-
             if (controller.loading) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     color = AppColors.PrimaryDeep,
-                )
-                Text(
-                    if (en) "Reading saved progress…" else "သိမ်းထားသော Formula ပြန်ဖတ်နေသည်…",
-                    style = MaterialTheme.typography.bodySmall,
                 )
             }
             if (controller.busy) {
@@ -240,8 +293,7 @@ internal fun CherryV3DiscoveryPanel(
                         modifier = Modifier.fillMaxWidth(),
                         color = AppColors.PrimaryDeep,
                     )
-                    Text(if (en) "Preparing confirmed history…"
-                        else "အတည်ပြု History ပြင်ဆင်နေသည်…",
+                    Text(if (en) "Preparing results…" else "Result များ ပြင်ဆင်နေသည်…",
                         style = MaterialTheme.typography.bodySmall)
                 } else {
                     LinearProgressIndicator(
@@ -250,11 +302,10 @@ internal fun CherryV3DiscoveryPanel(
                         color = AppColors.PrimaryDeep,
                         trackColor = v3Edge,
                     )
+                    // ONE consistent digit style in both languages: 1/30.
                     Text(
-                        if (en)
-                            "Searching: ${controller.elapsedSeconds.toInt()}/30 sec"
-                        else
-                            "ရှာနေသည် · ${controller.elapsedSeconds.toInt()}/၃၀ စက္ကန့်",
+                        (if (en) "Searching " else "ရှာဖွေနေသည် ") +
+                            "${controller.elapsedSeconds.toInt()}/30",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -273,99 +324,213 @@ internal fun CherryV3DiscoveryPanel(
                         containerColor = AppColors.PrimaryDeep),
                 ) {
                     Text(if (saved == null || saved.nextIndex.signum() == 0) {
-                        if (en) "Search formulas" else "ရှာဖွေမည်"
+                        if (en) "Search" else "ရှာဖွေမည်"
                     } else {
-                        if (en) "Continue search · 30s" else "ဆက်ရှာမည် · ၃၀ စက္ကန့်"
+                        if (en) "Continue search" else "ဆက်ရှာမည်"
                     })
                 }
             }
-
             if (saved != null) {
                 Text(
-                    if (en)
-                        "Checked ${saved.nextIndex} formulas · ${results.size} streak tiers"
-                    else
-                        "စစ်ပြီး ${saved.nextIndex} မျိုး · တွေ့ပြီး ${results.size} အဆင့်",
+                    (if (en) "Checked " else "စစ်ဆေးမှု ") +
+                        "${saved.nextIndex} / " +
+                        (if (en) "Found " else "တွေ့ရှိမှု ") +
+                        "${results.size} Formula",
                     color = AppColors.PrimaryDeep,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            controller.latestReceipt?.let { receipt ->
-                Text(
-                    if (en)
-                        "This round: ${receipt.result.inspectedThisBatch} checked · " +
-                            "${receipt.result.distinctBehaviorsEvaluated} distinct · " +
-                            "${receipt.result.equivalentBehaviorsSkipped} equivalent"
-                    else
-                        "ဒီအကြိမ် ${receipt.result.inspectedThisBatch} မျိုးစစ် · " +
-                            "${receipt.result.distinctBehaviorsEvaluated} မျိုးကွဲ · " +
-                            "${receipt.result.equivalentBehaviorsSkipped} မျိုးတူပယ်",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
             if (recommended != null) {
-                HorizontalDivider(color = v3Edge)
-                Text(
-                    if (en) "Top historical fit" else "ဦးစားပေးရွေးကွက်",
-                    fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep,
-                )
-                Text(
-                    "${recommended.historicalStreak}" +
-                        (if (recommended.historicalStreak >= 10) "+" else "") +
-                        (if (en) " consecutive" else " ပွဲဆက်") +
-                        " · " + cherryV3HistoricalStars(recommended.historicalStreak) +
-                        " · ${recommended.expression} + ${recommended.offset} → " +
-                        recommended.predictedDigit,
-                    style = MaterialTheme.typography.bodyMedium,
+                CherryV3FormulaCard(
+                    recommended, controller, en,
+                    highlighted = true,
                 )
             }
             if (results.isNotEmpty()) {
-                Text(if (en) "First-found streak methods" else "ပထမတွေ့ခဲ့သော တွက်နည်းများ",
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (en) "Methods" else "တွက်နည်းများ",
+                    color = AppColors.PrimaryDeep,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 results.forEach { formula ->
-                    Surface(
-                        color = v3Blush,
-                        shape = RoundedCornerShape(10.dp),
-                    ) {
-                        Column(
-                            Modifier.fillMaxWidth().padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                        ) {
-                            Text(
-                                "${formula.historicalStreak}" +
-                                    (if (formula.historicalStreak >= 10) "+" else "") +
-                                    (if (en) " consecutive · " else " ပွဲဆက် · ") +
-                                    cherryV3HistoricalStars(formula.historicalStreak),
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.PrimaryDeep,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Text(
-                                "${formula.expression} + ${formula.offset} (mod 10) → " +
-                                    formula.predictedDigit,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
+                    CherryV3FormulaCard(formula, controller, en)
                 }
             }
             controller.message?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = AppColors.PrimaryDeep)
+                Text(it, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
             }
             controller.error?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
+                Text(it, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+    val selected = controller.detailFormula
+    if (selected != null) {
+        Dialog(onDismissRequest = { controller.dismissDetails() }) {
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, v3Edge),
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 620.dp)
+                        .verticalScroll(rememberScrollState()).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        if (en) "Calculation" else "တွက်နည်းကြည့်ရန်",
+                        color = AppColors.PrimaryDeep,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    Text(
+                        "${v3KindName(selected.kind, en)} ${selected.predictedDigit}",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    when {
+                        controller.detailLoading ->
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(26.dp),
+                                color = AppColors.PrimaryDeep,
+                            )
+                        controller.detail != null -> {
+                            val example = controller.detail!!
+                            CherryV3ExampleSection(
+                                if (en) "Previous draw" else "ရှေ့တစ်ကြိမ်",
+                                example.previous, selected.kind, en,
+                            )
+                            HorizontalDivider(color = v3Edge)
+                            CherryV3ExampleSection(
+                                if (en) "This draw" else "ယခုအကြိမ်",
+                                example.current, selected.kind, en,
+                            )
+                        }
+                        controller.detailError != null ->
+                            Text(controller.detailError.orEmpty(),
+                                color = MaterialTheme.colorScheme.error)
+                    }
+                    TextButton(
+                        onClick = { controller.dismissDetails() },
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text(if (en) "Close" else "ပိတ်ရန်")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CherryV3FormulaCard(
+    formula: CherryV2StreakMatch,
+    controller: CherryV3DiscoveryController,
+    en: Boolean,
+    highlighted: Boolean = false,
+) {
+    Surface(
+        color = if (highlighted) Color(0xFFFFE1EB) else v3Blush,
+        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(
+            if (highlighted) 1.5.dp else 0.5.dp,
+            if (highlighted) AppColors.PrimaryDeep else v3Edge,
+        ),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (highlighted) Text(
+                if (en) "Top pick" else "ဦးစားပေးရွေးကွက်",
+                color = AppColors.PrimaryDeep,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "${formula.historicalStreak}" +
+                        (if (formula.historicalStreak >= 10) "+" else "") +
+                        (if (en) " consecutive correct" else " ကြိမ်ဆက်တိုက်မှန်"),
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(cherryV3HistoricalStars(formula.historicalStreak),
+                    color = AppColors.PrimaryDeep,
+                    style = MaterialTheme.typography.bodySmall)
             }
             Text(
-                if (en)
-                    "Historical fits only, not future wins. No automatic Champion changes."
-                else
-                    "သမိုင်းကိုက်ညီမှုသာ ဖြစ်သည်။ Champion ကို အလိုအလျောက် မပြောင်းပါ။",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
+                "${v3KindName(formula.kind, en)} ${formula.predictedDigit}",
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDeep,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            TextButton(
+                onClick = { controller.openDetails(formula) },
+                enabled = !controller.busy && !controller.loading,
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text(if (en) "View calculation" else "တွက်နည်းကြည့်ရန်",
+                    style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CherryV3ExampleSection(
+    heading: String,
+    example: CherryV3WorkedExample,
+    kind: CherryDiscoveryKind,
+    en: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(heading, color = AppColors.PrimaryDeep,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium)
+        Text(
+            "${example.draw.date} · " +
+                if (example.draw.session.name == "MORNING") {
+                    if (en) "AM" else "မနက်"
+                } else {
+                    if (en) "PM" else "ညနေ"
+                },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        example.inputs.forEach { row ->
+            Text(row, style = MaterialTheme.typography.bodySmall)
+        }
+        Surface(color = v3Blush, shape = RoundedCornerShape(9.dp)) {
+            Column(
+                Modifier.fillMaxWidth().padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                example.steps.forEach { step ->
+                    Text(step, style = MaterialTheme.typography.bodySmall)
+                }
+                Text(
+                    "${v3KindName(kind, en)} ${example.digit}",
+                    color = AppColors.PrimaryDeep,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        example.actualPair?.let { actual ->
+            Text(
+                (if (en) "Actual result " else "အမှန်တကယ်ထွက် ") +
+                    actual +
+                    (if (en) " · matched" else " · ကိုက်ညီ"),
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
