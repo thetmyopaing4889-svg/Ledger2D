@@ -140,7 +140,7 @@ internal class CherryV3DiscoveryController(
                     .coerceIn(0f, 30f)
                 message = when (receipt.result.stopReason) {
                     CherryV2TimedSearch.StopReason.BLOCKED ->
-                        "အရင်အကြိမ် အတည်ပြု Result မပြည့်စုံသေးပါ"
+                        "၃ ပွဲဆက်စစ်ရန် အရင် Result ၄ ပွဲ အနည်းဆုံး ဆက်တိုက်လိုပါသည်"
                     CherryV2TimedSearch.StopReason.TIME_LIMIT ->
                         "ရှာဖွေချိန်ပြည့်ပါပြီ · ဆက်ရှာနိုင်သည်"
                 }
