@@ -9,74 +9,88 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Durable, draw-keyed locked evidence. Only writes while a target remains
- * strictly before its Yangon cutoff. Not a retrospective backfill mechanism.
- * Existing operational winner/history tables are never modified.
+ * Each draw has its own durable, pre-result evidence entry. Unlike a bounded
+ * discovery cursor, a confirmed draw archive must NOT silently evict older
+ * rows. Writing one new choice never reserializes the entire archive.
+ *
+ * A pre-cutoff update replaces ONLY that draw's previous provisional choice.
+ * No snapshot is backfilled after close and existing winner tables are read-only.
  */
 internal class CherrySuccessSnapshotStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(
-        "cherry_success_pre_result_snapshots_v1", Context.MODE_PRIVATE)
-    private val lock = Any()
+        "cherry_success_draw_archive_v1", Context.MODE_PRIVATE)
 
-    fun load(): List<CherrySuccessSnapshot> = synchronized(lock) {
-        val raw = prefs.getString("draws", null) ?: return@synchronized emptyList()
-        runCatching {
-            val array = JSONArray(raw)
-            require(array.length() <= 420)
-            (0 until array.length()).map { index ->
-                val item = array.getJSONObject(index)
-                val target = DrawIdentity(LocalDate.parse(item.getString("date")),
-                    DrawSession.valueOf(item.getString("session")))
-                val rulesArray = item.getJSONArray("rules")
-                require(rulesArray.length() <= 100)
-                val rules = (0 until rulesArray.length()).map { n ->
-                    val rule = rulesArray.getJSONObject(n)
-                    val predictions = rule.getJSONArray("predictions")
-                    CherrySuccessRule(rule.getString("id"), rule.getString("name"),
-                        CherryTab.valueOf(rule.getString("tab")),
-                        CherrySuccessCriterion.valueOf(rule.getString("criterion")),
-                        (0 until predictions.length()).map { predictions.getString(it) })
-                }
-                CherrySuccessSnapshot(target, item.getLong("time"), rules)
-            }.distinctBy { it.target }
-        }.getOrElse {
-            // Do not overwrite a damaged evidence archive. The caller may
-            // display an empty state, but attempts to save will fail closed.
-            throw IllegalStateException("Corrupt Cherry success snapshots", it)
-        }
+    companion object {
+        private val processLock = Any()
+        private const val PREFIX = "draw_"
+        private fun key(target: DrawIdentity): String =
+            PREFIX + target.date + "_" + target.session.name
     }
 
-    /** Preserve first timestamp if nothing changed; update only before close. */
+    private fun serialize(snap: CherrySuccessSnapshot): String {
+        val rules = JSONArray()
+        snap.rules.forEach { rule ->
+            rules.put(JSONObject().put("id", rule.id).put("name", rule.name)
+                .put("tab", rule.tab.name).put("criterion", rule.criterion.name)
+                .put("predictions", JSONArray(rule.predictions)))
+        }
+        return JSONObject().put("date", snap.target.date.toString())
+            .put("session", snap.target.session.name)
+            .put("time", snap.capturedAtMillis).put("rules", rules).toString()
+    }
+
+    private fun deserialize(encoded: String): CherrySuccessSnapshot {
+        val item = JSONObject(encoded)
+        val target = DrawIdentity(LocalDate.parse(item.getString("date")),
+            DrawSession.valueOf(item.getString("session")))
+        val rows = item.getJSONArray("rules")
+        require(rows.length() <= 1000)
+        val rules = (0 until rows.length()).map { index ->
+            val rule = rows.getJSONObject(index)
+            val predictions = rule.getJSONArray("predictions")
+            require(predictions.length() <= 100)
+            CherrySuccessRule(rule.getString("id"), rule.getString("name"),
+                CherryTab.valueOf(rule.getString("tab")),
+                CherrySuccessCriterion.valueOf(rule.getString("criterion")),
+                (0 until predictions.length()).map { predictions.getString(it) })
+        }
+        return CherrySuccessSnapshot(target, item.getLong("time"), rules)
+    }
+
+    fun load(): List<CherrySuccessSnapshot> = synchronized(processLock) {
+        prefs.all.entries.filter { it.key.startsWith(PREFIX) }.map { (key, raw) ->
+            val snap = runCatching { deserialize(raw as String) }.getOrElse {
+                // Fail closed. NEVER overwrite unreadable pre-draw evidence
+                // with fabricated or empty records.
+                throw IllegalStateException("Invalid Cherry success archive entry", it)
+            }
+            require(key == key(snap.target)) { "Snapshot draw key mismatch" }
+            snap
+        }.sortedWith(compareByDescending<CherrySuccessSnapshot> { it.target.date }
+            .thenByDescending { it.target.session.ordinal })
+    }
+
     fun recordBeforeCutoff(candidate: CherrySuccessSnapshot): List<CherrySuccessSnapshot> =
-        synchronized(lock) {
-            if (!CherrySuccessEngine.beforeCutoff(candidate.target, candidate.capturedAtMillis)) {
+        synchronized(processLock) {
+            // Both event timestamp and actual commit-time wall-clock must be
+            // before close. Protect against delayed coroutine writes.
+            if (!CherrySuccessEngine.beforeCutoff(candidate.target,candidate.capturedAtMillis) ||
+                !CherrySuccessEngine.beforeCutoff(candidate.target,System.currentTimeMillis())) {
                 return@synchronized load()
             }
-            val existing = load()
-            val previous = existing.firstOrNull { it.target == candidate.target }
-            if (previous != null && previous.rules == candidate.rules) return@synchronized existing
-            if (previous != null && candidate.capturedAtMillis < previous.capturedAtMillis) {
-                return@synchronized existing
+            val previous = prefs.getString(key(candidate.target), null)?.let {
+                deserialize(it)
             }
-            val updated = (existing.filterNot { it.target == candidate.target } + candidate)
-                .sortedWith(compareByDescending<CherrySuccessSnapshot> { it.target.date }
-                    .thenByDescending { it.target.session.ordinal })
-                .take(400)
-            val array = JSONArray()
-            updated.forEach { snap ->
-                val rules = JSONArray()
-                snap.rules.forEach { rule ->
-                    rules.put(JSONObject().put("id", rule.id).put("name", rule.name)
-                        .put("tab", rule.tab.name).put("criterion", rule.criterion.name)
-                        .put("predictions", JSONArray(rule.predictions)))
-                }
-                array.put(JSONObject().put("date", snap.target.date.toString())
-                    .put("session", snap.target.session.name)
-                    .put("time", snap.capturedAtMillis).put("rules", rules))
+            if (previous != null && previous.rules == candidate.rules) {
+                return@synchronized load()
             }
-            check(prefs.edit().putString("draws", array.toString()).commit()) {
+            if (previous != null &&
+                previous.capturedAtMillis > candidate.capturedAtMillis) {
+                return@synchronized load()
+            }
+            check(prefs.edit().putString(key(candidate.target),serialize(candidate)).commit()) {
                 "Could not persist Cherry success snapshot"
             }
-            updated
+            load()
         }
 }
