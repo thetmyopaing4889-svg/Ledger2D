@@ -87,7 +87,9 @@ internal class CherrySuccessSnapshotStore(context: Context) {
             val previous = prefs.getString(key(candidate.target), null)?.let {
                 deserialize(it)
             }
-            if (previous != null && previous.rules == candidate.rules) {
+            if (previous != null && previous.rules == candidate.rules &&
+                previous.inputEvidence == candidate.inputEvidence &&
+                previous.sourceVersion == candidate.sourceVersion) {
                 return@synchronized load()
             }
             if (previous != null &&

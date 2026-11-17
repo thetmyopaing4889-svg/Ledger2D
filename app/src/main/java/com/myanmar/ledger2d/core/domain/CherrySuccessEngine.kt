@@ -69,6 +69,8 @@ internal data class CherrySuccessRank(
     val correct: Int,
     val evaluated: Int,
     val currentStreak: Int,
+    /** Number of separately offered 2D pairs for a pair-type rule. */
+    val pairCount: Int,
 ) {
     val percent: Int get() = if (evaluated == 0) 0 else correct * 100 / evaluated
 }
@@ -208,7 +210,8 @@ internal object CherrySuccessEngine {
                 val first = ordered.first().second.rule
                 CherrySuccessRank(id, first.name, first.tab, first.criterion,
                     ordered.count { it.second.correct }, ordered.size,
-                    ordered.takeWhile { it.second.correct }.size)
+                    ordered.takeWhile { it.second.correct }.size,
+                    first.predictions.size)
             }
         }.sortedWith(compareByDescending<CherrySuccessRank> { it.percent }
             .thenByDescending { it.evaluated }

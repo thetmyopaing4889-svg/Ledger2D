@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -254,7 +256,11 @@ internal fun CherrySuccessContent(
                                 fontWeight=FontWeight.SemiBold)
                             Text(successTabName(rank.tab,en)+" • "+
                                 (if(en) "${rank.currentStreak} consecutive qualifying hits"
-                                else "အကျုံးဝင် ${rank.currentStreak} ကြိမ်ဆက်မှန်"),
+                                else "အကျုံးဝင် ${rank.currentStreak} ကြိမ်ဆက်မှန်") +
+                                (if(rank.criterion==CherrySuccessCriterion.PAIR)
+                                    if(en) " • ${rank.pairCount} pairs"
+                                    else " • ${rank.pairCount} ကွက်"
+                                else ""),
                                 style=MaterialTheme.typography.labelSmall,
                                 color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -314,27 +320,29 @@ internal fun CherrySuccessHistoryDialog(
     AlertDialog(onDismissRequest=onDismiss,
         title={Text(if(en) "Draw history" else "ပွဲစဉ်မှတ်တမ်း")},
         text={
-            Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                if(confirmed.isEmpty()) Text(if(en) "No confirmed results."
-                    else "အတည်ပြု Result မရှိသေးပါ။")
-                confirmed.take(50).forEach { draw ->
-                    val target=DrawIdentity(draw.date,draw.session)
-                    Surface(onClick={onSelected(target)},
-                        color=cherrySuccessPale,shape=RoundedCornerShape(9.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(11.dp),
-                            verticalAlignment=Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(successDrawName(target,en),
-                                    style=MaterialTheme.typography.bodySmall)
-                                Text(if(target in stored) {
-                                    if(en) "Pre-draw snapshot" else "ကြိုတင်မှတ်တမ်းရှိ"
-                                } else {
-                                    if(en) "No snapshot" else "ကြိုတင်မှတ်တမ်းမရှိ"
-                                },style=MaterialTheme.typography.labelSmall)
+            if(confirmed.isEmpty()) {
+                Text(if(en) "No confirmed results." else "အတည်ပြု Result မရှိသေးပါ။")
+            } else {
+                LazyColumn(Modifier.heightIn(max=440.dp),
+                    verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                    items(confirmed,key={it.date.toString()+"_"+it.session.name}) { draw ->
+                        val target=DrawIdentity(draw.date,draw.session)
+                        Surface(onClick={onSelected(target)},
+                            color=cherrySuccessPale,shape=RoundedCornerShape(9.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(11.dp),
+                                verticalAlignment=Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(successDrawName(target,en),
+                                        style=MaterialTheme.typography.bodySmall)
+                                    Text(if(target in stored) {
+                                        if(en) "Pre-draw snapshot" else "ကြိုတင်မှတ်တမ်းရှိ"
+                                    } else {
+                                        if(en) "No snapshot" else "ကြိုတင်မှတ်တမ်းမရှိ"
+                                    },style=MaterialTheme.typography.labelSmall)
+                                }
+                                Text(draw.digit,fontWeight=FontWeight.Bold,
+                                    color=AppColors.PrimaryDeep,fontSize=20.sp)
                             }
-                            Text(draw.digit,fontWeight=FontWeight.Bold,
-                                color=AppColors.PrimaryDeep,fontSize=20.sp)
                         }
                     }
                 }

@@ -60,6 +60,23 @@ class CherrySuccessEngineTest {
             verified, CherryTab.MATH))
     }
 
+    @Test fun snapshotKeepsRuleSourcesInputsAndOnlyExplicitMathSelections() {
+        val prior = HistoricDraw(LocalDate.of(2026,11,13),
+            DrawSession.EVENING,"80",HistoricSource.WINNER)
+        val report = CherryBetterDataEngine.calculate(listOf(prior),morning)
+        val selected = CherryV3FormulaSelection(
+            CherryDiscoveryKind.BREAK,8,4,"v4:10+0@BREAK")
+        val snap = CherrySuccessEngine.createSnapshot(
+            report,listOf(selected),before,"modern930=23;internet930=24")
+        assertEquals(morning,snap.target)
+        assertTrue(snap.sourceVersion.contains("v3.2"))
+        assertTrue(snap.inputEvidence.contains("modern930=23"))
+        assertTrue(snap.rules.any { it.tab==CherryTab.CURRENT })
+        assertTrue(snap.rules.any { it.tab==CherryTab.BORN })
+        assertEquals(1,snap.rules.count { it.tab==CherryTab.MATH })
+        assertTrue(snap.rules.none { it.tab==CherryTab.SUMMARY })
+    }
+
     @Test fun correctedWinnerRecomputesWithoutChangingLockedSnapshot() {
         val snap = CherrySuccessSnapshot(morning, before, listOf(
             rule("pair", CherryTab.CURRENT, CherrySuccessCriterion.PAIR, "80")))
