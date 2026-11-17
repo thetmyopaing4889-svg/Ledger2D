@@ -17,9 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -32,6 +30,9 @@ import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.myanmar.ledger2d.core.repository.CherrySuccessSnapshotStore
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -42,7 +43,6 @@ private val cherryBackground = Color(0xFFFFF8FA)
 fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val en = LocalLanguage.current.code == "en"
     fun tr(mm: String, english: String) = if(en) english else mm
-    val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     val originalSource=remember(context){
         runCatching {
@@ -50,8 +50,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                 .bufferedReader(Charsets.UTF_8).use{it.readText()}
         }.getOrNull()
     }
-    val prefs = remember(context) { context.getSharedPreferences("cherry_better_data_tickets",0) }
-    var saved by remember { mutableStateOf(prefs.getString("tickets","").orEmpty()) }
     var now by remember { mutableStateOf(LocalDateTime.now(cherryYangon)) }
     LaunchedEffect(Unit) {
         while(true) { delay(60_000); now=LocalDateTime.now(cherryYangon) }
@@ -61,8 +59,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val wFlow=remember(container){container.winners.observeAll()}
     val lFlow=remember(container){container.database.manualWinnerLockDao().observeAll()}
     val cFlow=remember(container){container.closedDays.observeAll()}
-    val aFlow=remember(container){container.agents.observeAll()}
-    val agents by aFlow.collectAsStateWithLifecycle(initialValue=emptyList())
     val history by hFlow.collectAsStateWithLifecycle(initialValue=null)
     val daily by dFlow.collectAsStateWithLifecycle(initialValue=null)
     val winners by wFlow.collectAsStateWithLifecycle(initialValue=null)
@@ -131,9 +127,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     }
     val v3Plan = CherryV3PairPlanner.plan(v3Choices.values)
     var showMathOther by rememberSaveable(drawKey) { mutableStateOf(false) }
-    var showSummaryMathOther by rememberSaveable(drawKey) { mutableStateOf(false) }
-    val summaryPicks = report?.visible(CherryTab.SUMMARY, 3).orEmpty()
-    val combinedSummaryPairs = (v3Plan.all + summaryPicks.map { it.pair }).distinct()
     var tab by rememberSaveable{mutableStateOf(CherryTab.SUMMARY)}
     var selectedPick by remember { mutableStateOf<CherryPick?>(null) }
     var selectedOriginal by remember { mutableStateOf<CherryOriginalReference?>(null) }
@@ -142,26 +135,24 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     var showAllBorn by rememberSaveable { mutableStateOf(false) }
     var openedCurrentRule by rememberSaveable { mutableStateOf<String?>(null) }
     var openedBornRule by rememberSaveable { mutableStateOf<String?>(null) }
-    var selectedDigit by rememberSaveable { mutableStateOf<Int?>(null) }
-    var savedOk by remember { mutableStateOf(false) }
-    var ledgerRevision by remember { mutableIntStateOf(0) }
-    val ledgerPayouts by produceState<Map<String, Long>>(
-        initialValue=emptyMap(),target,agents,tab,ledgerRevision
-    ) {
-        if(tab != CherryTab.SUMMARY) {
-            value=emptyMap()
-        } else {
-            val byDigit=mutableMapOf<String,Long>()
-            agents.forEach{agent->
-                runCatching {
-                    container.bets.getAgentScenarioPayouts(agent.id,target.date,target.session)
-                }.getOrNull()?.forEach{(pair,payout)->
-                    byDigit[pair]=runCatching {
-                        Math.addExact(byDigit[pair]?:0L,payout)
-                    }.getOrDefault(Long.MAX_VALUE)
+    // Only pre-result rule projections are recorded; historical results
+    // never backfill or silently revise earlier predictions.
+    val successStore = remember(context) { CherrySuccessSnapshotStore(context) }
+    var successSnapshots by remember(successStore) {
+        mutableStateOf(successStore.load())
+    }
+    val mathForSnapshot = v3Choices.toMap()
+    var selectedSuccessDraw by remember { mutableStateOf<DrawIdentity?>(null) }
+    LaunchedEffect(target, report, mathForSnapshot) {
+        if(report != null) {
+            val capturedAt = System.currentTimeMillis()
+            if(CherrySuccessEngine.beforeCutoff(target,capturedAt)) {
+                val snapshot = CherrySuccessEngine.createSnapshot(
+                    report,mathForSnapshot.values,capturedAt)
+                successSnapshots = withContext(Dispatchers.IO) {
+                    successStore.recordBeforeCutoff(snapshot)
                 }
             }
-            value=byDigit
         }
     }
     val subtitle="${target.date} • "+tr(
@@ -205,8 +196,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                     icon={Icon(Icons.Default.Calculate,null)},
                     label={Text(tr("သင်္ချာနည်း","Math"),maxLines=1)},colors=colors)
                 NavigationBarItem(tab==CherryTab.SUMMARY,{tab=CherryTab.SUMMARY},
-                    icon={Icon(Icons.Default.WorkspacePremium,null)},
-                    label={Text(tr("အချုပ်","Summary"),maxLines=1)},colors=colors)
+                    icon={Icon(Icons.Default.EmojiEvents,null)},
+                    label={Text(tr("အောင်ချက်","Success"),maxLines=1)},colors=colors)
             }
         }
     ){padding->
@@ -388,7 +379,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 en = en,
                                 selected = v3Choices,
                                 onFormulaSelected = { formula ->
-                                    if (formula.target == target) {
+                                    if (formula.target == target &&
+                                        CherrySuccessEngine.beforeCutoff(
+                                            target,System.currentTimeMillis())) {
                                         val selection = CherryV3FormulaSelection(
                                             formula.kind, formula.predictedDigit,
                                             formula.historicalStreak, formula.formulaId)
@@ -404,180 +397,15 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                     }
                     CherryTab.SUMMARY->{
-                        item{CherryHeading(tr("👑 ဒီအကြိမ်အတွက် နောက်ဆုံးအချုပ်",
-                            "👑 Final selections"),
-                            tr("မူနှင့်တွက်နည်းများမှ စစ်ထုတ်ရွေးချယ်မှု",
-                                "Selected across rule groups"))}
                         item {
-                            CherryPanel {
-                                Text(tr("ရွေးချယ်ထားသော ဂဏန်းတွဲများ",
-                                    "Selected number pairs"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                if (v3Plan.main.isNotEmpty()) {
-                                    Text(tr("🧮 သင်္ချာနည်း", "🧮 Math"),
-                                        fontWeight=FontWeight.SemiBold,
-                                        color=AppColors.PrimaryDeep)
-                                    CherryV3PairTiles(v3Plan.main, true)
-                                    if (v3Plan.remaining.isNotEmpty()) {
-                                        TextButton(onClick={
-                                            showSummaryMathOther = !showSummaryMathOther
-                                        }) {
-                                            Text(tr(
-                                                if (showSummaryMathOther) "ကျန်အကွက်များ ပိတ်ရန်"
-                                                else "ကျန်အကွက်များကြည့်ရန်",
-                                                if (showSummaryMathOther) "Hide other pairs"
-                                                else "View other pairs"))
-                                        }
-                                        if (showSummaryMathOther) {
-                                            CherryV3PairTiles(v3Plan.remaining, false)
-                                        }
-                                    }
-                                }
-                                if (summaryPicks.isNotEmpty()) {
-                                    if (v3Plan.main.isNotEmpty()) {
-                                        HorizontalDivider(color=Color(0xFFFFE5EC))
-                                        Text(tr("လက်ရှိမူ / မွေးမူ", "Current / Born"),
-                                            fontWeight=FontWeight.SemiBold,
-                                            color=AppColors.PrimaryDeep)
-                                    }
-                                    CherryBalls(summaryPicks,{selectedPick=it},en)
-                                } else if (v3Plan.main.isEmpty()) {
-                                    CherryEmpty(en)
-                                }
-                                val chosen=combinedSummaryPairs
-                                if(chosen.isNotEmpty()){
-                                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                                        OutlinedButton(
-                                            onClick={clipboard.setText(
-                                                AnnotatedString(chosen.joinToString(" • ")))},
-                                            modifier=Modifier.weight(1f)
-                                        ){
-                                            Icon(Icons.Default.ContentCopy,null,Modifier.size(16.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(tr("ကူးမည်","Copy"))
-                                        }
-                                        Button(onClick={
-                                            val snapshot=now.toString()
-                                            val entry="${target.date} ${target.session.name} | " +
-                                                chosen.joinToString(",") + " | $snapshot"
-                                            val next=(listOf(entry)+saved.lines().filter{it.isNotBlank()})
-                                                .distinct().take(40).joinToString("\n")
-                                            val done=prefs.edit().putString("tickets",next).commit()
-                                            if(done){saved=next;savedOk=true}
-                                        },modifier=Modifier.weight(1f)){
-                                            Icon(Icons.Default.BookmarkBorder,null,Modifier.size(16.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(tr("သိမ်းမည်","Save"))
-                                        }
-                                    }
-                                    if(savedOk)Text(tr("မှတ်တမ်းသိမ်းပြီးပါပြီ။",
-                                        "Saved to history."),
-                                        style=MaterialTheme.typography.bodySmall,
-                                        color=AppColors.PrimaryDeep)
-                                }
-                            }
-                        }
-                        item{
-                            CherryPanel {
-                                Text(tr("🔎 ဘာကြောင့် ရွေးထားသလဲ","🔎 Winning DNA"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                v3Plan.main.forEach { pair ->
-                                    Surface(color=AppColors.Blush,
-                                        shape=RoundedCornerShape(10.dp)) {
-                                        Row(Modifier.fillMaxWidth().padding(10.dp),
-                                            verticalAlignment=Alignment.CenterVertically) {
-                                            Text(pair,fontWeight=FontWeight.Black,
-                                                fontSize=24.sp,color=AppColors.PrimaryDeep)
-                                            Spacer(Modifier.width(10.dp))
-                                            Text(tr("V3 ရွေးချယ်ထားသော Formula",
-                                                "V3 selected formulas"),
-                                                style=MaterialTheme.typography.bodySmall)
-                                        }
-                                    }
-                                }
-                                summaryPicks.forEach{p->
-                                    Surface(onClick={selectedPick=p},color=AppColors.Blush,
-                                        shape=RoundedCornerShape(10.dp)){
-                                        Row(Modifier.fillMaxWidth().padding(10.dp),
-                                            verticalAlignment=Alignment.CenterVertically){
-                                            Text(p.pair,fontWeight=FontWeight.Black,
-                                                fontSize=24.sp,color=AppColors.PrimaryDeep)
-                                            Spacer(Modifier.width(10.dp))
-                                            Text(tr("${p.familyCount} မူအုပ်စု  •  ${p.sourceCount} ကဏ္ဍ",
-                                                "${p.familyCount} rule families  •  ${p.sourceCount} sections"),
-                                                modifier=Modifier.weight(1f),
-                                                style=MaterialTheme.typography.bodySmall)
-                                            Icon(Icons.Default.ChevronRight,null,
-                                                tint=AppColors.PrimaryDeep)
-                                        }
-                                    }
-                                }
-                                if(summaryPicks.isEmpty() && v3Plan.main.isEmpty())
-                                    CherryEmpty(en)
-                            }
-                        }
-                        item {
-                            CherryPanel {
-                                Text(tr("🎛️ ကိုယ်ပိုင်ဂဏန်းရွေးကြည့်ရန်",
-                                    "🎛️ Personal digit filter"),
-                                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                Row(Modifier.horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                                    (0..9).forEach{d->
-                                        FilterChip(
-                                            selected=selectedDigit==d,
-                                            onClick={selectedDigit=if(selectedDigit==d)null else d},
-                                            label={Text("$d")}
-                                        )
-                                    }
-                                }
-                                if(selectedDigit!=null){
-                                    val filtered=report.ranked.filter{
-                                        it.pair.contains(selectedDigit.toString())}.take(4)
-                                    CherryBalls(filtered,{selectedPick=it},en)
-                                } else Text(tr("ဂဏန်းတစ်လုံးကို ရွေးပြီး စာရင်းထဲမှ စစ်ကြည့်နိုင်သည်။",
-                                    "Choose a digit to filter the ranked list."),
-                                    style=MaterialTheme.typography.bodySmall,
-                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        item {
-                            CherryPanel {
-                                Row(verticalAlignment=Alignment.CenterVertically){
-                                    Text(tr("🛡️ ဒိုင်စာရင်းနှင့် နှိုင်းယှဉ်မှု",
-                                        "🛡️ Ledger payout exposure"),
-                                        fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
-                                        modifier=Modifier.weight(1f))
-                                    IconButton(onClick={ledgerRevision++}) {
-                                        Icon(Icons.Default.Refresh,null,
-                                            tint=AppColors.PrimaryDeep)
-                                    }
-                                }
-                                val selected=combinedSummaryPairs.filter{
-                                    (ledgerPayouts[it]?:0L)>0L
-                                }
-                                if(ledgerPayouts.isEmpty()) {
-                                    Text(tr("ဒီအကြိမ်အတွက် ဒိုင်စာရင်းထိုးငွေ မရှိသေးပါ။",
-                                        "No ledger stake entries for this draw."),
-                                        style=MaterialTheme.typography.bodySmall,
-                                        color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                } else if(selected.isEmpty()) {
-                                    Text(tr("ရွေးထားသောဂဏန်းများပေါ် ထိုးငွေမရှိသေးပါ။",
-                                        "No stakes on selected numbers."),
-                                        style=MaterialTheme.typography.bodySmall)
-                                } else {
-                                    selected.forEach{pair->
-                                        Row(Modifier.fillMaxWidth()){
-                                            Text(pair,fontWeight=FontWeight.Black,
-                                                color=AppColors.PrimaryDeep,
-                                                modifier=Modifier.weight(1f))
-                                            Text(tr("ပေါက်လျှင်ပေးရန် ","Payout if drawn ") +
-                                                String.format("%,d",ledgerPayouts[pair]?:0L),
-                                                style=MaterialTheme.typography.bodySmall)
-                                        }
-                                    }
-                                }
-                            }
+                            CherrySuccessContent(
+                                confirmedHistory=merged,
+                                snapshots=successSnapshots,
+                                selectedDraw=selectedSuccessDraw,
+                                onLatest={selectedSuccessDraw=null},
+                                onHistory={showHistory=true},
+                                en=en,
+                            )
                         }
                     }
                 }
@@ -692,22 +520,17 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             }
         )
     }
-    if(showHistory){
-        AlertDialog(
-            onDismissRequest={showHistory=false},
-            title={Text(tr("သိမ်းထားသော ခန့်မှန်းချက်များ","Saved selections"))},
-            text={
-                Column(Modifier.heightIn(max=430.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement=Arrangement.spacedBy(9.dp)){
-                    val entries=saved.lines().filter{it.isNotBlank()}
-                    if(entries.isEmpty())Text(tr("မှတ်တမ်းမရှိသေးပါ။","No saved selections yet."))
-                    entries.take(30).forEach{entry->
-                        Text(entry,style=MaterialTheme.typography.bodySmall)
-                        HorizontalDivider(color=AppColors.Blush)
-                    }
-                }
+    if(showHistory) {
+        CherrySuccessHistoryDialog(
+            confirmedHistory=merged,
+            snapshots=successSnapshots,
+            en=en,
+            onSelected={ draw ->
+                selectedSuccessDraw=draw
+                showHistory=false
+                tab=CherryTab.SUMMARY
             },
-            confirmButton={TextButton(onClick={showHistory=false}){Text(tr("ပိတ်","Close"))}}
+            onDismiss={showHistory=false},
         )
     }
 }
