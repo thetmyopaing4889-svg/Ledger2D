@@ -221,7 +221,7 @@ internal fun CherryBackupSettings() {
                 ) { Text(if(backingUp) tr("ဖိုင်သိမ်းရန်","Choose save location")
                     else tr("ဖိုင်ရွေးရန်","Choose backup file")) }
             },
-            dismissButton={TextButton(onClick={resetSecrets}) {
+            dismissButton={TextButton(onClick={resetSecrets()}) {
                 Text(tr("မလုပ်တော့ပါ","Cancel"))
             }}
         )
@@ -266,7 +266,7 @@ internal fun CherryBackupSettings() {
                     }
                 }) { Text(tr("Restore လုပ်မည်","Restore now")) }
             },
-            dismissButton={TextButton(enabled=!busy,onClick={resetSecrets}) {
+            dismissButton={TextButton(enabled=!busy,onClick={resetSecrets()}) {
                 Text(tr("မလုပ်တော့ပါ","Cancel"))
             }}
         )
