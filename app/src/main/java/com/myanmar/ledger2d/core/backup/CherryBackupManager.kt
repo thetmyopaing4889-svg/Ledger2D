@@ -46,7 +46,16 @@ internal class CherryBackupManager(
         fun recoverIfPending(context: Context, room: LedgerDatabase): Boolean =
             synchronized(lock) {
                 val manager=CherryBackupManager(context,room)
-                if(!manager.marker.exists()) return@synchronized false
+                // An interrupted export may leave plaintext cache fragments.
+                // They must never survive the next process startup.
+                context.cacheDir.listFiles().orEmpty()
+                    .filter { it.name.startsWith("cherry_backup_") && it.isFile }
+                    .forEach { it.delete() }
+                if(!manager.marker.exists()) {
+                    manager.recovery.delete()
+                    File(context.noBackupFilesDir,"cherry_recovery_staging.zip").delete()
+                    return@synchronized false
+                }
                 check(manager.recovery.isFile) {
                     "Incomplete restore without recovery file; refusing to open ledger"
                 }
@@ -185,6 +194,9 @@ internal class CherryBackupManager(
                     CherryBackupCipher.encrypt(input,KeepOpen(output),password)
                     output.fd.sync()
                 }
+            }
+            require(encrypted.length()<=MAX_ENCRYPTED) {
+                "Backup exceeds the maximum supported file size"
             }
             val preview=inspectPlainArchive(plain).preview
             val target=context.contentResolver.openOutputStream(uri,"wt")
