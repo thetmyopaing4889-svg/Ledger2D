@@ -47,7 +47,8 @@ internal object CherryBackupDatabase {
     private fun orderedTables(db: SupportSQLiteDatabase): List<String> {
         val names = db.query(
             "SELECT name FROM sqlite_master WHERE type='table' " +
-                "AND name NOT LIKE 'sqlite_%' AND name!='room_master_table' ORDER BY name"
+                "AND name NOT LIKE 'sqlite_%' AND name!='room_master_table' " +
+                "AND name!='android_metadata' ORDER BY name"
         ).useRows { cursor ->
             buildList {
                 while(cursor.moveToNext()) add(cursor.getString(0))

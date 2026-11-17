@@ -165,6 +165,25 @@ internal fun CherryBackupSettings() {
         }
     }
 
+    if(restartNeeded) {
+        AlertDialog(
+            onDismissRequest={},
+            title={Text(tr("Restore အောင်မြင်ပါပြီ","Restore completed"))},
+            text={Text(tr(
+                "ဒေတာဟောင်းကို အသုံးမပြုမိစေရန် App ကို ပိတ်ပါ။ " +
+                    "ပြီးလျှင် Home Screen မှ Cherry 2D ကို ပြန်ဖွင့်ပါ။",
+                "Close the app to activate restored data, then reopen Cherry 2D " +
+                    "from your home screen."))},
+            confirmButton={
+                Button(onClick={
+                    (context as? android.app.Activity)?.finishAffinity()
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }) {
+                    Text(tr("App ကိုပိတ်မည်","Close app"))
+                }
+            }
+        )
+    }
     if(mode=="backup" || mode=="restore") {
         val backingUp=mode=="backup"
         AlertDialog(
