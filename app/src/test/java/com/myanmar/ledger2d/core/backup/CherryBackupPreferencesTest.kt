@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 @Config(sdk=[33],manifest=Config.NONE,application=Application::class)
 class CherryBackupPreferencesTest {
     @Test fun allSavedValueTypesAndFormulaChoiceSurviveRoundTrip() {
-        val ctx=RuntimeEnvironment.getApplication<Application>()
+        val ctx=RuntimeEnvironment.getApplication()
         val name="cherry_backup_test_preferences"
         val file=ctx.getSharedPreferences(name,Context.MODE_PRIVATE)
         check(file.edit().clear()
