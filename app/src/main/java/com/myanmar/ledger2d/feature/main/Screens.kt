@@ -1386,6 +1386,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 is HistoryUpdateState.Error->Text(state.message,style=helperTypography,color=MaterialTheme.colorScheme.error)
             }
         }}
+        CherryBackupSettings()
         Text(language.text("ဘာသာစကား","Language"),style=sectionTypography)
         OutlinedCard{Column{ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မြန်မာ"))},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("English"))},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
         Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)

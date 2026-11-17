@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import com.myanmar.ledger2d.core.database.LedgerDatabase
+import com.myanmar.ledger2d.core.backup.CherryBackupManager
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
@@ -35,6 +36,8 @@ class LedgerApplication : Application() {
         WorkManager.getInstance(this).cancelUniqueWork(LiveRoomKeeperWorker.WORK_NAME)
 
         container = AppContainer(LedgerDatabase.create(this))
+        // Recover an interrupted manual restore before LIVE or any UI reads data.
+        CherryBackupManager.recoverIfPending(this, container.database)
 
         // Independent Room -> operational Winner route. Existing Live/Room/Calendar
         // ingestion remains unchanged; manual locks protect every user-owned draw.
