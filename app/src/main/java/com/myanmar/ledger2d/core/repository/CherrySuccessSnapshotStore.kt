@@ -58,13 +58,13 @@ internal class CherrySuccessSnapshotStore(context: Context) {
     }
 
     fun load(): List<CherrySuccessSnapshot> = synchronized(processLock) {
-        prefs.all.entries.filter { it.key.startsWith(PREFIX) }.map { (key, raw) ->
+        prefs.all.entries.filter { it.key.startsWith(PREFIX) }.map { (archiveKey, raw) ->
             val snap = runCatching { deserialize(raw as String) }.getOrElse {
                 // Fail closed. NEVER overwrite unreadable pre-draw evidence
                 // with fabricated or empty records.
                 throw IllegalStateException("Invalid Cherry success archive entry", it)
             }
-            require(key == key(snap.target)) { "Snapshot draw key mismatch" }
+            require(archiveKey == key(snap.target)) { "Snapshot draw key mismatch" }
             snap
         }.sortedWith(compareByDescending<CherrySuccessSnapshot> { it.target.date }
             .thenByDescending { it.target.session.ordinal })
