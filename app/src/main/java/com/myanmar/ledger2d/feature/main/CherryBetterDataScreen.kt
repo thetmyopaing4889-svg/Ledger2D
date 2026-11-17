@@ -148,7 +148,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             val capturedAt = System.currentTimeMillis()
             if(CherrySuccessEngine.beforeCutoff(target,capturedAt)) {
                 val snapshot = CherrySuccessEngine.createSnapshot(
-                    report,mathForSnapshot.values,capturedAt)
+                    report,mathForSnapshot.values,capturedAt,
+                    "modern930=" + (modern ?: "none") +
+                        ";internet930=" + (internet ?: "none"))
                 successSnapshots = withContext(Dispatchers.IO) {
                     successStore.recordBeforeCutoff(snapshot)
                 }

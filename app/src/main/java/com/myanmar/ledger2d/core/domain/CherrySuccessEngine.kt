@@ -17,6 +17,8 @@ internal data class CherrySuccessRule(
     val tab: CherryTab,
     val criterion: CherrySuccessCriterion,
     val predictions: List<String>,
+    /** Rule provenance from the already-completed input draw, not a score. */
+    val sourceOrigin: String = "",
 ) {
     init {
         require(id.isNotBlank() && name.isNotBlank() && predictions.isNotEmpty())
@@ -34,9 +36,12 @@ internal data class CherrySuccessSnapshot(
     val target: DrawIdentity,
     val capturedAtMillis: Long,
     val rules: List<CherrySuccessRule>,
+    val sourceVersion: String = "cherry-success-snapshot-v1",
+    val inputEvidence: String = "",
 ) {
     init {
         require(capturedAtMillis > 0L)
+        require(sourceVersion.isNotBlank() && inputEvidence.length <= 512)
         require(rules.map { it.tab.name + ":" + it.id }.distinct().size == rules.size)
     }
 }
@@ -92,6 +97,7 @@ internal object CherrySuccessEngine {
         report: CherryReport,
         selectedMath: Collection<CherryV3FormulaSelection>,
         capturedAtMillis: Long,
+        inputEvidence: String = "",
     ): CherrySuccessSnapshot {
         val rules = mutableListOf<CherrySuccessRule>()
         for ((tab, picks) in listOf(
@@ -109,7 +115,10 @@ internal object CherrySuccessEngine {
                     .distinct().sorted()
                 if (pairs.isNotEmpty()) {
                     rules.add(CherrySuccessRule(id, evidence.first().name,
-                        tab, CherrySuccessCriterion.PAIR, pairs))
+                        tab, CherrySuccessCriterion.PAIR, pairs,
+                        evidence.first().origin?.let {
+                            it.date.toString() + "/" + it.session.name
+                        }.orEmpty()))
                 }
             }
         }
@@ -128,7 +137,12 @@ internal object CherrySuccessEngine {
                 } + " · " + choice.formulaId,
                 CherryTab.MATH, criterion, listOf(choice.digit.toString())))
         }
-        return CherrySuccessSnapshot(report.target, capturedAtMillis, rules)
+        val context = "previous=" + (report.last?.let {
+            it.date.toString() + "/" + it.session.name + ":" + it.digit
+        } ?: "none") + ";has930=" + report.has930 +
+            (if(inputEvidence.isBlank()) "" else ";" + inputEvidence)
+        return CherrySuccessSnapshot(report.target, capturedAtMillis, rules,
+            sourceVersion="cherry-better-data-v3.2-success-v1",inputEvidence=context)
     }
 
     fun evaluate(snapshot: CherrySuccessSnapshot, result: String): CherrySuccessDraw? {

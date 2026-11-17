@@ -32,11 +32,14 @@ internal class CherrySuccessSnapshotStore(context: Context) {
         snap.rules.forEach { rule ->
             rules.put(JSONObject().put("id", rule.id).put("name", rule.name)
                 .put("tab", rule.tab.name).put("criterion", rule.criterion.name)
-                .put("predictions", JSONArray(rule.predictions)))
+                .put("predictions", JSONArray(rule.predictions))
+                .put("origin",rule.sourceOrigin))
         }
         return JSONObject().put("date", snap.target.date.toString())
             .put("session", snap.target.session.name)
-            .put("time", snap.capturedAtMillis).put("rules", rules).toString()
+            .put("time", snap.capturedAtMillis).put("rules", rules)
+            .put("version",snap.sourceVersion)
+            .put("inputs",snap.inputEvidence).toString()
     }
 
     private fun deserialize(encoded: String): CherrySuccessSnapshot {
@@ -52,9 +55,12 @@ internal class CherrySuccessSnapshotStore(context: Context) {
             CherrySuccessRule(rule.getString("id"), rule.getString("name"),
                 CherryTab.valueOf(rule.getString("tab")),
                 CherrySuccessCriterion.valueOf(rule.getString("criterion")),
-                (0 until predictions.length()).map { predictions.getString(it) })
+                (0 until predictions.length()).map { predictions.getString(it) },
+                rule.optString("origin", ""))
         }
-        return CherrySuccessSnapshot(target, item.getLong("time"), rules)
+        return CherrySuccessSnapshot(target, item.getLong("time"), rules,
+            item.optString("version","cherry-success-snapshot-v1"),
+            item.optString("inputs",""))
     }
 
     fun load(): List<CherrySuccessSnapshot> = synchronized(processLock) {

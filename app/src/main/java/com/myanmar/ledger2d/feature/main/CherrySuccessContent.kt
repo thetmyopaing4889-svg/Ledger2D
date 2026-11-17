@@ -185,6 +185,11 @@ internal fun CherrySuccessContent(
                                             else check.rule.predictions.joinToString(" / "),
                                             style=MaterialTheme.typography.labelSmall,
                                             color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                        if(check.rule.sourceOrigin.isNotEmpty()) {
+                                            Text(check.rule.sourceOrigin,
+                                                style=MaterialTheme.typography.labelSmall,
+                                                color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     }
                                 }
                             }
