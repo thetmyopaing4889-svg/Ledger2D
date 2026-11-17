@@ -395,6 +395,20 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                         ).apply()
                                     }
                                 },
+                                onFormulaDeselected = { formula ->
+                                    if (formula.target == target &&
+                                        CherrySuccessEngine.beforeCutoff(
+                                            target,System.currentTimeMillis()) &&
+                                        v3Choices[formula.kind]?.let {
+                                            it.formulaId == formula.formulaId &&
+                                                it.digit == formula.predictedDigit
+                                        } == true) {
+                                        if(v3ChoicePrefs.edit().remove(
+                                            drawKey + "_" + formula.kind.name).commit()) {
+                                            v3Choices.remove(formula.kind)
+                                        }
+                                    }
+                                },
                             )
                         }
                     }

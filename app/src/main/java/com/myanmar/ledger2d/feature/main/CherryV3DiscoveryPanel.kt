@@ -239,6 +239,7 @@ internal fun CherryV3DiscoveryPanel(
     en: Boolean,
     selected: Map<CherryDiscoveryKind, CherryV3FormulaSelection>,
     onFormulaSelected: (CherryV2StreakMatch) -> Unit,
+    onFormulaDeselected: (CherryV2StreakMatch) -> Unit,
 ) {
     var pendingSelection by remember(controller) {
         mutableStateOf<CherryV2StreakMatch?>(null)
@@ -381,10 +382,18 @@ internal fun CherryV3DiscoveryPanel(
         }
     }
     pendingSelection?.let { pending ->
+        val isSelected = selected[pending.kind]?.let {
+            it.formulaId == pending.formulaId &&
+                it.digit == pending.predictedDigit
+        } == true
         AlertDialog(
             onDismissRequest = { pendingSelection = null },
             title = {
-                Text(if (en) "Select this formula?" else "ဒီ Formula ကို ရွေးချယ်မလား")
+                Text(if (isSelected) {
+                    if(en) "Remove selected formula?" else "ရွေးထားသော Formula ကို ဖြုတ်မလား"
+                } else {
+                    if(en) "Select this formula?" else "ဒီ Formula ကို ရွေးချယ်မလား"
+                })
             },
             text = {
                 Text("${v3KindName(pending.kind, en)} ${pending.predictedDigit}  " +
@@ -393,16 +402,21 @@ internal fun CherryV3DiscoveryPanel(
             confirmButton = {
                 TextButton(onClick = {
                     if (pending.target == target && !controller.busy) {
-                        onFormulaSelected(pending)
+                        if (isSelected) onFormulaDeselected(pending)
+                        else onFormulaSelected(pending)
                     }
                     pendingSelection = null
                 }) {
-                    Text(if (en) "Select" else "ရွေးချယ်မည်")
+                    Text(if(isSelected) {
+                        if(en) "Deselect" else "မရွေးချယ်တော့ပါ"
+                    } else {
+                        if(en) "Select" else "ရွေးချယ်မည်"
+                    })
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingSelection = null }) {
-                    Text(if (en) "Cancel" else "မရွေးတော့ပါ")
+                    Text(if (en) "Cancel" else "မလုပ်တော့ပါ")
                 }
             },
         )

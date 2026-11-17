@@ -46,6 +46,22 @@ class CherrySuccessEngineTest {
             "80"))
     }
 
+    @Test fun removingChosenMathKindFromNextSnapshotClearsOnlyThatKind() {
+        val report = CherryBetterDataEngine.calculate(
+            listOf(HistoricDraw(LocalDate.of(2026,11,13),DrawSession.EVENING,
+                "80",HistoricSource.WINNER)), morning)
+        val lone = CherryV3FormulaSelection(CherryDiscoveryKind.LONE,2,5,"lone-formula")
+        val br = CherryV3FormulaSelection(CherryDiscoveryKind.BREAK,8,4,"break-formula")
+        val original = CherrySuccessEngine.createSnapshot(report,listOf(lone,br),before)
+        val changed = CherrySuccessEngine.createSnapshot(report,listOf(br),before+1000)
+        assertEquals(2,original.rules.count { it.tab==CherryTab.MATH })
+        assertEquals(1,changed.rules.count { it.tab==CherryTab.MATH })
+        assertTrue(changed.rules.any { it.id=="BREAK:break-formula" })
+        assertFalse(changed.rules.any { it.id=="LONE:lone-formula" })
+        assertEquals(original.rules.filter { it.tab!=CherryTab.MATH },
+            changed.rules.filter { it.tab!=CherryTab.MATH })
+    }
+
     @Test fun missingResultAndMissingCategoryNeverCountAsLoss() {
         val snap = CherrySuccessSnapshot(morning, before, listOf(
             rule("pair", CherryTab.CURRENT, CherrySuccessCriterion.PAIR, "80")))
