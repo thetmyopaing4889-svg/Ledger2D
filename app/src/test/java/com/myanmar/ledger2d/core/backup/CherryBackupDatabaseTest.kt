@@ -19,7 +19,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[33],manifest=Config.NONE,application=Application::class)
 class CherryBackupDatabaseTest {
-    @Test fun fullUserTableRestoreReplacesNewerRowsButKeepsOriginalForeignKeys()=runBlocking {
+    @Test fun fullUserTableRestoreReplacesNewerRowsButKeepsOriginalForeignKeys() {
+        runBlocking {
         val db=Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),LedgerDatabase::class.java)
             .allowMainThreadQueries().build()
@@ -60,5 +61,6 @@ class CherryBackupDatabaseTest {
                 CherryBackupDatabase.inspect(sqlite,ByteArrayInputStream(damaged))
             }
         } finally { db.close() }
+        }
     }
 }
