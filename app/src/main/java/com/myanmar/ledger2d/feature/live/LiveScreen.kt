@@ -43,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -59,6 +61,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.myanmar.ledger2d.core.database.HistoryResultEntity
 import com.myanmar.ledger2d.core.database.LiveDailyResultEntity
 import com.myanmar.ledger2d.core.domain.DeviceCalendar
@@ -140,6 +145,31 @@ fun LiveScreen(
     val liveResults by liveResultsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedTab by rememberSaveable { mutableStateOf("live") }
     var selectedDateText by rememberSaveable { mutableStateOf("") }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val appContext = LocalContext.current
+    DisposableEffect(lifecycleOwner, selectedTab) {
+        val lifecycle = lifecycleOwner.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (selectedTab == "live") {
+                when (event) {
+                    Lifecycle.Event.ON_START -> SetMorningUiCoordinator.enterLiveScreen(appContext)
+                    Lifecycle.Event.ON_STOP -> SetMorningUiCoordinator.leaveLiveScreen()
+                    else -> Unit
+                }
+            }
+        }
+        lifecycle.addObserver(observer)
+        if (selectedTab == "live" && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            SetMorningUiCoordinator.enterLiveScreen(appContext)
+        } else {
+            SetMorningUiCoordinator.leaveLiveScreen()
+        }
+        onDispose {
+            lifecycle.removeObserver(observer)
+            SetMorningUiCoordinator.leaveLiveScreen()
+        }
+    }
 
     LaunchedEffect(Unit) { collector.fetchCycle() }
 
@@ -267,7 +297,13 @@ private fun LiveContent(
             corrected = corrected && !closedDay,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
+            // The morning card mirrors a *display-only* SET result, not a Room
+            // or Luke LiveSessionData mutation. Luke final supersedes it.
+            LiveSessionCard(
+                l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL,
+                feed?.morning, Modifier.weight(1f),
+                uiOnlyResult = setVisual?.takeUnless { it.isLive }?.hero,
+            )
             LiveSessionCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening, Modifier.weight(1f))
         }
         LiveReferenceTable(feed)
@@ -688,9 +724,18 @@ private fun BlinkingBox(enabled: Boolean, content: @Composable () -> Unit) {
 // ============================================================================
 
 @Composable
-private fun LiveSessionCard(sessionLabel: String, time: String, session: LiveSessionData?, modifier: Modifier = Modifier) {
+private fun LiveSessionCard(
+    sessionLabel: String,
+    time: String,
+    session: LiveSessionData?,
+    modifier: Modifier = Modifier,
+    uiOnlyResult: LiveHeroSnapshot? = null,
+) {
     val l = LocalLanguage.current
-    val finalized = session?.finalized == true
+    val finalized = uiOnlyResult != null || session?.finalized == true
+    val visibleResult = uiOnlyResult?.result ?: session?.result ?: PENDING
+    val visibleSet = uiOnlyResult?.set ?: session?.set ?: PENDING
+    val visibleValue = uiOnlyResult?.value ?: session?.value ?: PENDING
     Card(modifier, shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Header: session name + exact final time, with Updated/Pending.
@@ -708,7 +753,7 @@ private fun LiveSessionCard(sessionLabel: String, time: String, session: LiveSes
             }
             // Prominent 2D number (or "--" while pending) — the card's focal value.
             Text(
-                if (finalized) session?.result ?: PENDING else PENDING,
+                if (finalized) visibleResult else PENDING,
                 Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.displaySmall,
                 fontSize = 38.sp,
@@ -717,8 +762,8 @@ private fun LiveSessionCard(sessionLabel: String, time: String, session: LiveSes
                 color = if (finalized) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             // SET / VALUE stay readable on half-width cards; "--" while pending.
-            LiveValueRow("SET", if (finalized) session?.set ?: PENDING else PENDING)
-            LiveValueRow(l.text("တန်ဖိုး", "VALUE"), if (finalized) session?.value ?: PENDING else PENDING)
+            LiveValueRow("SET", if (finalized) visibleSet else PENDING)
+            LiveValueRow(l.text("တန်ဖိုး", "VALUE"), if (finalized) visibleValue else PENDING)
         }
     }
 }

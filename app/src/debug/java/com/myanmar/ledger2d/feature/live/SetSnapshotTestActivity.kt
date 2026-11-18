@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.design.LedgerTheme
@@ -52,6 +53,8 @@ private fun SetSnapshotTestScreen() {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<SetProbeOutcome?>(null) }
+    var recentAudit by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
 
     Scaffold(topBar = { TopAppBar(title = { Text("SET Snapshot Test") }) }) { padding ->
         Column(
@@ -121,6 +124,13 @@ private fun SetSnapshotTestScreen() {
                     }
                 }
                 null -> Unit
+            }
+            Button(
+                onClick = { recentAudit = SetMorningAuditStore.recentLog(context) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("SET မှတ်တမ်းကြည့်ရန်") }
+            if (recentAudit != null) {
+                Text(recentAudit.orEmpty(), style = MaterialTheme.typography.bodySmall)
             }
             Text("ဒါက Connection/Parser Test သာဖြစ်ပြီး 12:01 Result စစ်ဆေးမှု မဟုတ်ပါ။",
                 style = MaterialTheme.typography.bodySmall,

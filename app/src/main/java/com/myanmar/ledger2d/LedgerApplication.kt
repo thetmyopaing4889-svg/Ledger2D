@@ -1,6 +1,10 @@
 package com.myanmar.ledger2d
 
 import android.app.Application
+import android.app.ActivityManager
+import android.content.Context
+import android.os.Build
+import android.os.Process
 import androidx.work.WorkManager
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -11,7 +15,6 @@ import com.myanmar.ledger2d.core.backup.CherryBackupManager
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
-import com.myanmar.ledger2d.feature.live.SetMorningUiCoordinator
 import com.myanmar.ledger2d.feature.live.LiveAppVisibility
 import com.myanmar.ledger2d.feature.live.LiveBackgroundSyncWorker
 import com.myanmar.ledger2d.feature.live.LiveRoomKeeperWorker
@@ -29,6 +32,15 @@ class LedgerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Debug-only one-shot probe runs in :setprobe, which must never boot
+        // the normal Room, WorkManager or winner-autosave application startup.
+        val processName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Application.getProcessName()
+        } else {
+            (getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)
+                ?.runningAppProcesses?.firstOrNull { it.pid == Process.myPid() }?.processName
+        }
+        if (BuildConfig.DEBUG && processName == packageName + ":setprobe") return
         LedgerApplicationContextHolder.context = this
         registerActivityLifecycleCallbacks(LiveAppVisibility)
 
@@ -80,8 +92,6 @@ class LedgerApplication : Application() {
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },
         )
-        // Separate UI-only SET display; never writes a Luke feed or Room final.
-        SetMorningUiCoordinator.startOnce()
     }
 }
 
