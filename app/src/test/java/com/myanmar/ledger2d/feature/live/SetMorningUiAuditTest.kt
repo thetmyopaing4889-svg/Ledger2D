@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.live
 
+import android.app.Application
 import android.content.Context
 import java.time.Instant
 import java.time.LocalDate
@@ -12,9 +13,11 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.RuntimeEnvironment
 
 @RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class SetMorningUiAuditTest {
     private lateinit var context: Context
     private val day = LocalDate.of(2026, 11, 18)
