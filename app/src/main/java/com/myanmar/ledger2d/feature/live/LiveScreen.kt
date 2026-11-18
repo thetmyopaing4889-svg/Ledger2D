@@ -188,11 +188,29 @@ fun LiveScreen(
                 }
             } else {
                 when (val s = state) {
-                    LiveUiState.Loading, is LiveUiState.Error -> LiveUnavailableState(
-                        loading = s == LiveUiState.Loading,
-                        onRetry = { collector.fetchCycle() },
-                        modifier = Modifier.padding(padding),
-                    )
+                    LiveUiState.Loading, is LiveUiState.Error -> {
+                        // SET is UI-only and may remain displayable even while the
+                        // independent Luke collector is temporarily unavailable.
+                        val setOnly = setMorningHeroPresentation(
+                            candidate = setDisplay,
+                            feed = null,
+                            today = currentYangonDate(),
+                            now = java.time.ZonedDateTime.now(YANGON),
+                            closedDay = false,
+                        )
+                        if (setOnly != null) {
+                            LiveContent(
+                                null, null, false, null, false, false,
+                                setDisplay, Modifier.padding(padding),
+                            )
+                        } else {
+                            LiveUnavailableState(
+                                loading = s == LiveUiState.Loading,
+                                onRetry = { collector.fetchCycle() },
+                                modifier = Modifier.padding(padding),
+                            )
+                        }
+                    }
                     is LiveUiState.Data -> LiveContent(
                         s.feed, s.hero, s.heroLive, s.temporaryWinner,
                         s.postClosePending, s.closedDay, setDisplay, Modifier.padding(padding),
@@ -216,14 +234,15 @@ private fun LiveContent(
 ) {
     val l = LocalLanguage.current
     val todayYangon = currentYangonDate()
+    val nowYangon = java.time.ZonedDateTime.now(YANGON)
     val setVisual = setMorningHeroPresentation(
         candidate = setDisplay,
         feed = feed,
         today = todayYangon,
-        now = java.time.ZonedDateTime.now(YANGON),
+        now = nowYangon,
         closedDay = closedDay,
     )
-    val corrected = setMorningCorrectionNeeded(setDisplay, feed, todayYangon)
+    val corrected = setMorningCorrectionNeeded(setDisplay, feed, todayYangon, nowYangon)
     val temporary = setVisual == null && postClosePending && temporaryWinner != null
     val displayHero = when {
         setVisual != null -> setVisual.hero

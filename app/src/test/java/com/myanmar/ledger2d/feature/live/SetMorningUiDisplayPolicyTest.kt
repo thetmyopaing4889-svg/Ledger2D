@@ -66,8 +66,21 @@ class SetMorningUiDisplayPolicyTest {
         val candidate = state(SetMorningSelectionPhase.UI_RESULT_READY, "60", "12:00:53")
         assertNull(setMorningHeroPresentation(candidate, luke("60"), day, clock("12:02:00"), false))
         assertNull(setMorningHeroPresentation(candidate, luke("61"), day, clock("12:02:00"), false))
-        assertFalse(setMorningCorrectionNeeded(candidate, luke("60"), day))
-        assertTrue(setMorningCorrectionNeeded(candidate, luke("61"), day))
+        assertFalse(setMorningCorrectionNeeded(candidate, luke("60"), day, clock("12:02:00")))
+        assertTrue(setMorningCorrectionNeeded(candidate, luke("61"), day, clock("12:02:00")))
+        assertFalse(setMorningCorrectionNeeded(candidate, luke("61"), day, clock("16:31:00")))
+    }
+
+    @Test fun known_nontrading_status_cannot_be_presented_as_set_live() {
+        val snapshot = source("12:00:23", "60").copy(marketStatus = "OffHour")
+        val candidate = SetMorningUiState(
+            day, SetMorningSelection(SetMorningSelectionPhase.SET_LIVE, snapshot), Instant.now(),
+        )
+        assertNull(setMorningHeroPresentation(candidate, luke("--"), day, clock("12:00:33"), false))
+        val closed = candidate.copy(selection = candidate.selection.copy(
+            snapshot = snapshot.copy(marketStatus = "Closed"),
+        ))
+        assertNull(setMorningHeroPresentation(closed, luke("--"), day, clock("12:00:33"), false))
     }
 
     @Test fun closed_day_wrong_date_and_afternoon_never_show_set() {

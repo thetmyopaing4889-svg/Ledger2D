@@ -38,6 +38,11 @@ internal fun setMorningHeroPresentation(
     val selection = candidate.selection
     val snapshot = selection.snapshot ?: return null
     if (snapshot.sourceUpdateYangon.toLocalDate() != today) return null
+    // Do not display a non-trading/off-hours market as morning LIVE, especially
+    // when Luke cannot provide a closed-day confirmation yet.
+    val market = snapshot.marketStatus?.trim()
+    if (market.equals("OffHour", ignoreCase = true) ||
+        market.equals("Closed", ignoreCase = true)) return null
 
     val live = selection.phase == SetMorningSelectionPhase.SET_LIVE
     if (!live && selection.phase != SetMorningSelectionPhase.UI_RESULT_READY) return null
@@ -66,7 +71,11 @@ internal fun setMorningCorrectionNeeded(
     candidate: SetMorningUiState?,
     feed: LiveFeedData?,
     today: LocalDate,
+    now: ZonedDateTime,
 ): Boolean {
+    // The morning correction label must not leak into the afternoon session.
+    val time = now.withZoneSameInstant(YANGON).toLocalTime()
+    if (time.isBefore(LocalTime.NOON) || !time.isBefore(LocalTime.of(13, 0))) return false
     if (candidate?.drawDate != today ||
         candidate.selection.phase != SetMorningSelectionPhase.UI_RESULT_READY ||
         !finalValid(feed?.morning, feed, today)
