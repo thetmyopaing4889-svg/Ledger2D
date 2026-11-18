@@ -17,6 +17,16 @@ internal data class SetMorningHeroPresentation(
     val isLive: Boolean,
 )
 
+internal const val MAX_SET_LIVE_SOURCE_AGE_MS = 60_000L
+
+/** Prevent an old SET number from lingering on-screen during a network outage. */
+internal fun shouldDiscardStaleSetLive(candidate: SetMorningUiState?, now: Instant): Boolean {
+    if (candidate?.selection?.phase != SetMorningSelectionPhase.SET_LIVE) return false
+    val source = candidate.selection.snapshot?.sourceUpdateYangon?.toInstant() ?: return true
+    val ageMs = java.time.Duration.between(source, now).toMillis()
+    return ageMs !in 0L..MAX_SET_LIVE_SOURCE_AGE_MS
+}
+
 /**
  * Apply SET only to the visible morning LIVE hero.
  * Luke final always wins and SET never becomes a stored or official final.
@@ -52,7 +62,7 @@ internal fun setMorningHeroPresentation(
         val ageMs = java.time.Duration.between(
             snapshot.sourceUpdateYangon.toInstant(), now.toInstant()
         ).toMillis()
-        if (ageMs !in 0L..60_000L) return null
+        if (ageMs !in 0L..MAX_SET_LIVE_SOURCE_AGE_MS) return null
     }
     return SetMorningHeroPresentation(
         hero = LiveHeroSnapshot(

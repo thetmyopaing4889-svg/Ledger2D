@@ -71,6 +71,15 @@ class SetMorningUiDisplayPolicyTest {
         assertFalse(setMorningCorrectionNeeded(candidate, luke("61"), day, clock("16:31:00")))
     }
 
+    @Test fun expired_set_live_is_cleared_on_network_failure() {
+        val live = state(SetMorningSelectionPhase.SET_LIVE, "60", "12:00:23")
+        assertFalse(shouldDiscardStaleSetLive(live, clock("12:00:40").toInstant()))
+        assertTrue(shouldDiscardStaleSetLive(live, clock("12:01:24").toInstant()))
+        assertTrue(shouldDiscardStaleSetLive(live, clock("12:00:22").toInstant()))
+        val result = state(SetMorningSelectionPhase.UI_RESULT_READY, "60", "12:00:53")
+        assertFalse(shouldDiscardStaleSetLive(result, clock("12:30:00").toInstant()))
+    }
+
     @Test fun known_nontrading_status_cannot_be_presented_as_set_live() {
         val snapshot = source("12:00:23", "60").copy(marketStatus = "OffHour")
         val candidate = SetMorningUiState(

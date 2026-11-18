@@ -89,8 +89,12 @@ internal object SetMorningUiCoordinator {
                         stoppedForDate = date
                         mutableState.value = null
                     }
-                    // Other failures cannot make any snapshot final; source-time
-                    // freshness at presentation time automatically falls back to Luke.
+                    // Force a UI state emission on stale LIVE expiration even if
+                    // Luke and SET are both offline and no other event recomposes UI.
+                    if (shouldDiscardStaleSetLive(mutableState.value, java.time.Instant.now())) {
+                        mutableState.value = null
+                    }
+                    // A transient outage never promotes SET to a final result.
                 }
             }
             val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
