@@ -11,6 +11,7 @@ import com.myanmar.ledger2d.core.backup.CherryBackupManager
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
+import com.myanmar.ledger2d.feature.live.SetMorningUiCoordinator
 import com.myanmar.ledger2d.feature.live.LiveAppVisibility
 import com.myanmar.ledger2d.feature.live.LiveBackgroundSyncWorker
 import com.myanmar.ledger2d.feature.live.LiveRoomKeeperWorker
@@ -79,6 +80,8 @@ class LedgerApplication : Application() {
             this,
             liveRoomSaver = { patches -> container.liveResults.apply(patches) },
         )
+        // Separate UI-only SET display; never writes a Luke feed or Room final.
+        SetMorningUiCoordinator.startOnce()
     }
 }
 

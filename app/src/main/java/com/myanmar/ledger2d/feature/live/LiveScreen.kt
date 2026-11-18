@@ -135,6 +135,7 @@ fun LiveScreen(
 ) {
     val collector = LiveCollector.instance
     val state by collector.state.collectAsStateWithLifecycle()
+    val setDisplay by SetMorningUiCoordinator.state.collectAsStateWithLifecycle()
     val history by historyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val liveResults by liveResultsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedTab by rememberSaveable { mutableStateOf("live") }
@@ -194,7 +195,7 @@ fun LiveScreen(
                     )
                     is LiveUiState.Data -> LiveContent(
                         s.feed, s.hero, s.heroLive, s.temporaryWinner,
-                        s.postClosePending, s.closedDay, Modifier.padding(padding),
+                        s.postClosePending, s.closedDay, setDisplay, Modifier.padding(padding),
                     )
                 }
             }
@@ -210,11 +211,22 @@ private fun LiveContent(
     temporaryWinner: LiveHeroSnapshot?,
     postClosePending: Boolean,
     closedDay: Boolean,
+    setDisplay: SetMorningUiState?,
     modifier: Modifier = Modifier,
 ) {
     val l = LocalLanguage.current
-    val temporary = postClosePending && temporaryWinner != null
+    val todayYangon = currentYangonDate()
+    val setVisual = setMorningHeroPresentation(
+        candidate = setDisplay,
+        feed = feed,
+        today = todayYangon,
+        now = java.time.ZonedDateTime.now(YANGON),
+        closedDay = closedDay,
+    )
+    val corrected = setMorningCorrectionNeeded(setDisplay, feed, todayYangon)
+    val temporary = setVisual == null && postClosePending && temporaryWinner != null
     val displayHero = when {
+        setVisual != null -> setVisual.hero
         temporary -> temporaryWinner
         postClosePending -> null // No falsely current LIVE from an old cached feed.
         else -> hero
@@ -226,7 +238,15 @@ private fun LiveContent(
         if (closedDay) {
             ClosedDayNotice(l.text("ဒီနေ့ 2D ပိတ်ရက်ဖြစ်ပါသည်", "2D is closed today"))
         }
-        LiveHero(displayHero, heroLive && !postClosePending, false, temporary, postClosePending && !temporary)
+        LiveHero(
+            displayHero,
+            setVisual?.isLive ?: (heroLive && !postClosePending),
+            false,
+            temporary,
+            setVisual == null && postClosePending && !temporary,
+            setUiResult = setVisual != null && !setVisual.isLive,
+            corrected = corrected && !closedDay,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LiveSessionCard(l.text("မနက်", "Morning"), LIVE_SESSION_MORNING_LABEL, feed?.morning, Modifier.weight(1f))
             LiveSessionCard(l.text("ညနေ", "Evening"), LIVE_SESSION_EVENING_LABEL, feed?.evening, Modifier.weight(1f))
@@ -526,7 +546,15 @@ private fun LiveDetailReferenceRow(time: String, modern: String, internet: Strin
 // ---- Hero: persistent; 🔴 LIVE only while collection is active -------------
 
 @Composable
-private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean, temporary: Boolean, waitingForFinal: Boolean) {
+private fun LiveHero(
+    hero: LiveHeroSnapshot?,
+    isLive: Boolean,
+    stale: Boolean,
+    temporary: Boolean,
+    waitingForFinal: Boolean,
+    setUiResult: Boolean,
+    corrected: Boolean,
+) {
     val l = LocalLanguage.current
     ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.elevatedCardColors(containerColor = AppColors.PrimaryDeep), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)) {
         Column(
@@ -542,6 +570,12 @@ private fun LiveHero(hero: LiveHeroSnapshot?, isLive: Boolean, stale: Boolean, t
                 } else if (isLive) {
                     LiveBlinkDot()
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("LIVE"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                } else if (corrected) {
+                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
+                    Text(l.text("ရလဒ်ပြင်ဆင်ပြီး", "Corrected result"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                } else if (setUiResult) {
+                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
+                    Text(l.text("ရလဒ်", "Result"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
                 } else {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("✓ ") + l.text("အသစ်ဖြစ်ပြီး", "Updated"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
