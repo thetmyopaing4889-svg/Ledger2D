@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
     <application
         android:name=".feature.live.SetProbeApplication"
-        android:label="Cherry 2D SET Test"
+        android:label="@string/app_name"
         tools:replace="android:name,android:label">
         <activity
             android:name=".MainActivity"
