@@ -29,8 +29,8 @@ android {
             // Never ask testers to uninstall their ledger to compare Rules layouts.
             // SET live experiment is a separate install; it never overwrites
             // the existing Cherry 2D production OR rulespreview APK.
-            applicationIdSuffix = ".setliveprobe"
-            versionNameSuffix = "-set-live-probe"
+            applicationIdSuffix = ".setliveprobe3s"
+            versionNameSuffix = "-set-live-3s-probe"
         }
         release {
             // Keep the distributable release APK complete. R8/resource shrinking

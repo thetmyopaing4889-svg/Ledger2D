@@ -14,6 +14,13 @@ class SetLiveProbeFingerprintTest {
         return SetMarketSnapshot(index, value, source, "Open", "60")
     }
 
+    @Test fun threeSecondCadenceRunsSequentiallyAndAccountsForHttpDuration() {
+        assertEquals(3_000L, setLiveProbeDelayMs(0L))
+        assertEquals(2_100L, setLiveProbeDelayMs(900L))
+        assertEquals(300L, setLiveProbeDelayMs(3_000L))
+        assertEquals(300L, setLiveProbeDelayMs(6_000L))
+    }
+
     @Test fun identical_snapshot_does_not_count_as_change() {
         val a = snapshot("2026-11-19T14:16:00", "1,461.81", "35,473.96")
         val b = snapshot("2026-11-19T14:16:00", "1,461.81", "35,473.96")

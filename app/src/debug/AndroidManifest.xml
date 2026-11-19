@@ -14,7 +14,7 @@
             android:name=".feature.live.SetSnapshotTestActivity"
             android:exported="true"
             android:process=":setprobe"
-            android:label="SET LIVE Test">
+            android:label="SET LIVE 3s Test">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

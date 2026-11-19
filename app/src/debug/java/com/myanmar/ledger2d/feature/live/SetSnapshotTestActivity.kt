@@ -62,10 +62,15 @@ class SetSnapshotTestActivity : ComponentActivity() {
     }
 }
 
-private const val LIVE_INTERVAL_MS = 15_000L
+private const val LIVE_INTERVAL_MS = 3_000L
 private const val MAX_LIVE_ATTEMPTS = 16
+
+/** No overlapping HTTP GETs; intervals are measured from request start. */
+internal fun setLiveProbeDelayMs(elapsedMs: Long): Long =
+    (LIVE_INTERVAL_MS - elapsedMs).coerceAtLeast(300L)
 private val displayTime = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")
 private val shortTime = DateTimeFormatter.ofPattern("HH:mm:ss")
+private val preciseTime = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
 
 /** Compare actual SET observations; repeat readings do not count as new data. */
 internal fun setProbeSnapshotFingerprint(snapshot: SetMarketSnapshot): String =
@@ -108,6 +113,10 @@ private fun SetContinuousLiveProbeScreen() {
         try {
             val reply = withContext(Dispatchers.IO) { SetSnapshotFetcher.probeOnce() }
             val seen = ZonedDateTime.now(YANGON)
+            val startedAt = when (reply) {
+                is SetProbeOutcome.Success -> reply.evidence.startedAt
+                is SetProbeOutcome.Failure -> reply.evidence.startedAt
+            }.atZone(YANGON).format(preciseTime)
             lastReadTime = seen.format(shortTime)
             attempts += 1
             result = reply
@@ -125,7 +134,7 @@ private fun SetContinuousLiveProbeScreen() {
                     latestSuccess = reply
                     val source = snapshot.sourceUpdateYangon.format(shortTime)
                     val kind = if (changed) "NEW" else "SAME"
-                    val entry = seen.format(shortTime) + " " + kind +
+                    val entry = "GET " + startedAt + " → " + seen.format(shortTime) + " " + kind +
                         " | SET " + snapshot.index + " | Value " +
                         snapshot.tradingValueMbaht + " | 2D " + snapshot.computed2d +
                         " | source " + source + " | " +
@@ -135,7 +144,7 @@ private fun SetContinuousLiveProbeScreen() {
                     trace = (listOf(entry) + trace).take(32)
                 }
                 is SetProbeOutcome.Failure -> {
-                    val entry = seen.format(shortTime) + " FAIL | HTTP " +
+                    val entry = "GET " + startedAt + " → " + seen.format(shortTime) + " FAIL | HTTP " +
                         (reply.httpStatus?.toString() ?: "none") + " | " +
                         reply.reason + " | " + reply.roundTripMs + "ms"
                     trace = (listOf(entry) + trace).take(32)
@@ -163,11 +172,11 @@ private fun SetContinuousLiveProbeScreen() {
                 return@LaunchedEffect
             }
             val used = android.os.SystemClock.elapsedRealtime() - begin
-            delay((LIVE_INTERVAL_MS - used).coerceAtLeast(300L))
+            delay(setLiveProbeDelayMs(used))
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("SET LIVE Test") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("SET LIVE 3s Test") }) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp, vertical = 18.dp),
@@ -177,7 +186,7 @@ private fun SetContinuousLiveProbeScreen() {
                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
                 "12:00 စောင့်ရန်မလိုပါ။ SET Website မှ တကယ့်ဒေတာကို " +
-                    "15 စက္ကန့်ခြား ဖတ်ပြီး ဂဏန်းပြောင်းလဲမှုကို ကြည့်နိုင်သည်။ " +
+                    "3 စက္ကန့်ခြား စမ်းဖတ်ပြီး ဂဏန်းပြောင်းလဲမှုကို ကြည့်နိုင်သည်။ " +
                     "စမ်းသပ်ချိန်မှာသာ အလုပ်လုပ်ပြီး Luke Result/History ကို မထိပါ။",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -215,7 +224,7 @@ private fun SetContinuousLiveProbeScreen() {
                 }
             }
             Text(
-                if (running) "LIVE TEST ဖွင့်ထားသည် • 15s interval • အများဆုံး 16 ကြိမ်"
+                if (running) "LIVE TEST ဖွင့်ထားသည် • 3s target • အများဆုံး 16 ကြိမ်"
                 else "LIVE TEST ရပ်ထားသည်",
                 color = if (running) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -285,7 +294,7 @@ private fun SetContinuousLiveProbeScreen() {
             OutlinedButton(
                 onClick = {
                     val content = buildString {
-                        appendLine("Cherry SET LIVE TEST / REAL DATA / 15s interval")
+                        appendLine("Cherry SET LIVE TEST / REAL DATA / 3s target interval")
                         appendLine("attempts=" + attempts + " successes=" +
                             successCount + " changes=" + changedCount)
                         trace.forEach { appendLine(it) }
@@ -312,7 +321,8 @@ private fun SetContinuousLiveProbeScreen() {
             }
             Text(
                 "ဤစမ်းသပ်မှုက SET ဒေတာဖတ်ပြီး LIVE UI ပြနိုင်မနိုင်သာ စစ်သည်။ " +
-                    "12:01 Cutoff၊ 3s Polling နှင့် Luke Final ကို အတည်မပြုပါ။ " +
+                    "12:01 Cutoff နှင့် Luke Final ကို အတည်မပြုပါ။ " +
+                    "3s သည် ကြိုးစားပို့မည့် interval ဖြစ်ပြီး HTTP ကြာလျှင် ပိုကြာနိုင်သည်။ " +
                     "Market ပိတ်လျှင် Snapshot မပြောင်းနိုင်ပါ။",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
