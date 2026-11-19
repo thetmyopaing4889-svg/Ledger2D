@@ -61,6 +61,28 @@ class SetMorningUiAuditTest {
         assertTrue(log.contains("luke=61,match=false"))
     }
 
+    @Test fun non_intermission_result_is_neither_saved_nor_restored() {
+        val observation = SetFetchObservation(
+            snapshot().copy(marketStatus = "Open"), Instant.now(), 100L,
+        )
+        SetMorningAuditStore.recordObservation(
+            context, day, observation,
+            SetMorningSelection(SetMorningSelectionPhase.UI_RESULT_READY, observation.snapshot),
+        )
+        assertNull(SetMorningAuditStore.restoreUiResult(context, day))
+        // Simulate display-only data persisted by a previous, less strict build.
+        val older = org.json.JSONObject()
+            .put("date", day.toString())
+            .put("index", "1,481.46")
+            .put("value", "29,810.24")
+            .put("sourceEpochMs", snapshot().sourceUpdateBangkok.toInstant().toEpochMilli())
+            .put("status", "Open")
+            .put("result", "60")
+        context.getSharedPreferences("set_ui_display_only_v1", Context.MODE_PRIVATE)
+            .edit().putString("selected_ui_result", older.toString()).commit()
+        assertNull(SetMorningAuditStore.restoreUiResult(context, day))
+    }
+
     @Test fun records_all_request_attempts_including_parser_failures() {
         val started = Instant.now()
         SetMorningAuditStore.recordRequestStart(context, day)

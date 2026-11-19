@@ -629,8 +629,10 @@ private fun LiveHero(
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
                     Text(l.text("ရလဒ်ပြင်ဆင်ပြီး", "Corrected result"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
                 } else if (setUiResult) {
-                    Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
-                    Text(l.text("ရလဒ်", "Result"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
+                    // UI-only SET cutoff number is not a verified Luke final.
+                    Text(l.text("SET ယာယီရလဒ်", "SET preview result"),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black, color = Color.White)
                 } else {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("✓ ") + l.text("အသစ်ဖြစ်ပြီး", "Updated"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
@@ -664,6 +666,7 @@ private fun LiveHero(
                     when {
                         temporary -> l.text("အတည်ပြုချက်စောင့်ဆိုင်းဆဲ", "Awaiting final") + " • " + hero.sessionLabel
                         isLive -> listOf(hero.date, hero.sessionLabel).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "LIVE" }
+                        setUiResult -> l.text("Luke အတည်ပြုချက်စောင့်", "Awaiting Luke confirmation") + " • " + hero.sessionLabel
                         else -> l.text("နောက်ဆုံးရလဒ်", "Latest final") + " • " + hero.sessionLabel
                     },
                     style = MaterialTheme.typography.labelMedium,
@@ -732,10 +735,12 @@ private fun LiveSessionCard(
     uiOnlyResult: LiveHeroSnapshot? = null,
 ) {
     val l = LocalLanguage.current
-    val finalized = uiOnlyResult != null || session?.finalized == true
-    val visibleResult = uiOnlyResult?.result ?: session?.result ?: PENDING
-    val visibleSet = uiOnlyResult?.set ?: session?.set ?: PENDING
-    val visibleValue = uiOnlyResult?.value ?: session?.value ?: PENDING
+    val officialFinal = session?.finalized == true
+    val setUiOnly = uiOnlyResult != null && !officialFinal
+    val finalized = officialFinal || setUiOnly
+    val visibleResult = if (setUiOnly) uiOnlyResult!!.result else session?.result ?: PENDING
+    val visibleSet = if (setUiOnly) uiOnlyResult!!.set else session?.set ?: PENDING
+    val visibleValue = if (setUiOnly) uiOnlyResult!!.value else session?.value ?: PENDING
     Card(modifier, shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, AppColors.Stone), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Header: session name + exact final time, with Updated/Pending.
@@ -744,7 +749,11 @@ private fun LiveSessionCard(
                     Text(sessionLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Ink)
                     Text(time, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
                 }
-                if (finalized) {
+                if (setUiOnly) {
+                    Text(l.text("SET ယာယီ", "SET preview"),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+                } else if (finalized) {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(16.dp))
                     Text(l.text("ရပြီး", "Updated"), Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Success)
                 } else {

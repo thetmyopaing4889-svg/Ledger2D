@@ -56,6 +56,7 @@ internal fun setMorningHeroPresentation(
 
     val live = selection.phase == SetMorningSelectionPhase.SET_LIVE
     if (!live && selection.phase != SetMorningSelectionPhase.UI_RESULT_READY) return null
+    if (!live && !isSetIntermission(snapshot.marketStatus)) return null
 
     if (live) {
         // Source time is used for freshness only, never to select the final result.
@@ -90,5 +91,6 @@ internal fun setMorningCorrectionNeeded(
         candidate.selection.phase != SetMorningSelectionPhase.UI_RESULT_READY ||
         !finalValid(feed?.morning, feed, today)
     ) return false
+    if (!isSetIntermission(candidate.selection.snapshot?.marketStatus)) return false
     return candidate.selection.snapshot?.computed2d != feed?.morning?.result
 }

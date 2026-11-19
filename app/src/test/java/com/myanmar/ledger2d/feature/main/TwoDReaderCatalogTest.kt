@@ -134,7 +134,11 @@ class TwoDReaderCatalogTest {
         assertTrue(mainStrings.contains("Cherry 2D Ledger"))
         // A dedicated SET LIVE debug test is intentionally a different install.
         // Keep verifying the original preview ID on all non-probe branches.
-        if (gradle.contains("applicationIdSuffix = \".setliveprobe3s\"")) {
+        if (gradle.contains("applicationIdSuffix = \".setintegrationtest\"")) {
+            assertTrue(!debugManifest.contains("android:enabled=\"false\""))
+            assertTrue(!debugManifest.contains("android.intent.action.MAIN"))
+            assertTrue(!debugManifest.contains("SET LIVE 3s Test"))
+        } else if (gradle.contains("applicationIdSuffix = \".setliveprobe3s\"")) {
             assertTrue(debugManifest.contains("android:enabled=\"false\""))
             assertTrue(debugManifest.contains("android:label=\"SET LIVE 3s Test\""))
         } else if (gradle.contains("applicationIdSuffix = \".setliveprobe\"")) {

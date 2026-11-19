@@ -122,7 +122,8 @@ internal object SetMorningAuditStore {
     }
 
     private fun saveResult(context: Context, date: LocalDate, snapshot: SetMarketSnapshot?) {
-        if (snapshot == null || snapshot.sourceUpdateYangon.toLocalDate() != date) return
+        if (snapshot == null || snapshot.sourceUpdateYangon.toLocalDate() != date ||
+            !isSetIntermission(snapshot.marketStatus)) return
         val time = snapshot.sourceUpdateYangon.toLocalTime()
         if (time.isBefore(LocalTime.NOON) || time.isAfter(LocalTime.of(12, 1))) return
         val json = JSONObject()
@@ -151,6 +152,9 @@ internal object SetMorningAuditStore {
             require(local.toLocalDate() == date)
             require(!local.toLocalTime().isBefore(LocalTime.NOON))
             require(!local.toLocalTime().isAfter(LocalTime.of(12, 1)))
+            // A display-only result saved by an older pre-Intermission build
+            // must never be restored as an eligible result.
+            require(isSetIntermission(json.optString("status")))
             val digit = json.getString("result")
             require(isValidLive2d(digit))
             val snapshot = SetMarketSnapshot(

@@ -92,6 +92,25 @@ class SetMorningUiDisplayPolicyTest {
         assertNull(setMorningHeroPresentation(closed, luke("--"), day, clock("12:00:33"), false))
     }
 
+    @Test fun open_status_can_be_live_but_cannot_be_a_ui_only_cutoff_result() {
+        val open = source("12:00:53", "60").copy(marketStatus = "Open")
+        val live = SetMorningUiState(day, SetMorningSelection(
+            SetMorningSelectionPhase.SET_LIVE, open,
+        ), Instant.now())
+        assertNotNull(setMorningHeroPresentation(
+            live, luke("--"), day, clock("12:00:59"), false,
+        ))
+        val invalidResult = live.copy(selection = SetMorningSelection(
+            SetMorningSelectionPhase.UI_RESULT_READY, open,
+        ))
+        assertNull(setMorningHeroPresentation(
+            invalidResult, luke("--"), day, clock("12:01:30"), false,
+        ))
+        assertFalse(setMorningCorrectionNeeded(
+            invalidResult, luke("61"), day, clock("12:02:00"),
+        ))
+    }
+
     @Test fun closed_day_wrong_date_and_afternoon_never_show_set() {
         val candidate = state(SetMorningSelectionPhase.UI_RESULT_READY, "60", "12:00:53")
         assertNull(setMorningHeroPresentation(candidate, luke("--"), day, clock("12:01:59"), true))

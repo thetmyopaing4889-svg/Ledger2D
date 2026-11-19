@@ -6,6 +6,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.TreeMap
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import org.jsoup.Jsoup
@@ -38,7 +39,12 @@ internal object SetSnapshotHtmlParser {
     private val index = Regex("""\bIndex\s+((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})\b""", RegexOption.IGNORE_CASE)
     private val value = Regex("""\bValue\s*\(\s*M\.?\s*Baht\s*\)\s*((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})\b""", RegexOption.IGNORE_CASE)
     private val update = Regex("""\bLast\s+Update\s*:?\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2})""", RegexOption.IGNORE_CASE)
-    private val status = Regex("""\bMarket\s+Status\s*:\s*([A-Za-z][A-Za-z0-9 ]{0,30}?)(?=\s+Last\s+Update|\s+Open\s+|\s+Index\s+|$)""", RegexOption.IGNORE_CASE)
+    // SET sometimes concatenates a nearby digit (e.g. Open2) into its visible
+    // text. Recognize only known status words; never guess Intermission.
+    private val status = Regex(
+        """\bMarket\s+Status\s*:\s*(Intermission|Off\s*Hour|Closed|Open)(?=\s|\d|$)""",
+        RegexOption.IGNORE_CASE,
+    )
     private val set50 = Regex("""\bSET50\b""", RegexOption.IGNORE_CASE)
     private val dateFormat = DateTimeFormatter.ofPattern("d MMM uuuu HH:mm:ss", Locale.ENGLISH)
     private val bangkok = ZoneId.of("Asia/Bangkok")
@@ -74,7 +80,8 @@ internal object SetSnapshotHtmlParser {
                     index = idx,
                     tradingValueMbaht = valText,
                     sourceUpdateBangkok = instant,
-                    marketStatus = status.find(panel)?.groupValues?.get(1)?.trim(),
+                    marketStatus = status.find(panel)?.groupValues?.get(1)?.trim()
+                        ?.replace(Regex("""\s+"""), ""),
                     computed2d = "$digitA$digitB",
                 )
             )
@@ -93,69 +100,98 @@ internal data class SetMorningSelection(
     val snapshot: SetMarketSnapshot?,
 )
 
+/** Only an explicitly parsed SET Intermission status qualifies for a UI result. */
+internal fun isSetIntermission(status: String?): Boolean =
+    status?.trim()?.equals("Intermission", ignoreCase = true) == true
+
 /**
- * A source timestamp > 12:01:00 Yangon seals the last unambiguous snapshot
- * observed at source time >= 12:00:00 and <= 12:01:00. Never use a post-cutoff
- * or invented snapshot as the result; Luke remains the sole official final.
+ * Select the *closest* unambiguous INTERMISSION observation at or before
+ * Yangon 12:01:00 (from 12:00 onward), and never a post-cutoff source stamp.
  *
- * If the *same* source timestamp has different prices, quarantine that
- * timestamp. A later pre-cutoff source update can recover the selector.
+ * Source HTML can regress (newer timestamp followed by an older cached page)
+ * or show different SET/Value pairs with the SAME source timestamp. Keep a
+ * small time-indexed ledger so a stale page never overrides newer evidence,
+ * a contradictory timestamp is quarantined, and a previous unambiguous
+ * Intermission candidate can be used as a safe fallback.
+ *
+ * The result is UI-only; Luke remains the sole official final authority.
  */
 internal class SetMorningSnapshotSelector(private val drawDate: LocalDate) {
     private val firstAcceptableTime = LocalTime.of(11, 59)
     private val minimumResultTime = LocalTime.NOON
     private val cutoff = LocalTime.of(12, 1)
-    private var latest: SetMarketSnapshot? = null
+    private val noonInstant = drawDate.atTime(minimumResultTime)
+        .atZone(YANGON).toInstant()
+    private val observations = TreeMap<Instant, SetMarketSnapshot?>()
     private var pastCutoffObserved = false
-    private var conflictAt: Instant? = null
+    private var contradictoryStampSeen = false
 
     fun observe(snapshot: SetMarketSnapshot): SetMorningSelection {
         val source = snapshot.sourceUpdateYangon
         if (source.toLocalDate() != drawDate) return current()
-        val time = source.toLocalTime()
+        val localTime = source.toLocalTime()
 
-        if (time.isAfter(cutoff)) {
+        if (localTime.isAfter(cutoff)) {
             pastCutoffObserved = true
             return current()
         }
-        if (pastCutoffObserved || time.isBefore(firstAcceptableTime)) return current()
-
-        val sourceInstant = source.toInstant()
-        val blocked = conflictAt
-        if (blocked != null) {
-            // A different value at exactly the same source stamp is ambiguous.
-            // A newer *pre-cutoff* stamp can recover safely.
-            if (!sourceInstant.isAfter(blocked)) return current()
-            conflictAt = null
-            latest = snapshot
+        // An actual source stamp beyond 12:01 seals the observed evidence.
+        // Do not retroactively promote an older cached HTML response.
+        if (pastCutoffObserved || localTime.isBefore(firstAcceptableTime)) {
             return current()
         }
 
-        val previous = latest
-        when {
-            previous == null ||
-                sourceInstant.isAfter(previous.sourceUpdateYangon.toInstant()) -> latest = snapshot
-            sourceInstant == previous.sourceUpdateYangon.toInstant() &&
-                (snapshot.index != previous.index ||
-                    snapshot.tradingValueMbaht != previous.tradingValueMbaht) -> {
-                conflictAt = sourceInstant
-                latest = null
+        val stamp = source.toInstant()
+        if (!observations.containsKey(stamp)) {
+            observations[stamp] = snapshot
+        } else {
+            val first = observations[stamp]
+            if (first != null && (
+                    first.index != snapshot.index ||
+                    first.tradingValueMbaht != snapshot.tradingValueMbaht ||
+                    first.marketStatus?.trim()?.lowercase() !=
+                        snapshot.marketStatus?.trim()?.lowercase()
+                )
+            ) {
+                // Never use either version of a mixed same-stamp SET/Value pair.
+                observations[stamp] = null
+                contradictoryStampSeen = true
             }
         }
+
+        // Five-minute diagnostic window is <100 requests at 3s; remain bounded.
+        while (observations.size > 160) observations.pollFirstEntry()
         return current()
     }
 
-    fun current(): SetMorningSelection = when {
-        conflictAt != null -> SetMorningSelection(SetMorningSelectionPhase.CONFLICT, null)
-        pastCutoffObserved -> {
-            val chosen = latest?.takeIf {
-                !it.sourceUpdateYangon.toLocalTime().isBefore(minimumResultTime)
+    fun current(): SetMorningSelection {
+        val latestEntry = observations.lastEntry()
+        if (pastCutoffObserved) {
+            val nearestIntermission = observations.descendingMap().entries
+                .firstOrNull { (stamp, candidate) ->
+                    !stamp.isBefore(noonInstant) &&
+                        candidate != null && isSetIntermission(candidate.marketStatus)
+                }?.value
+            if (nearestIntermission != null) {
+                return SetMorningSelection(
+                    SetMorningSelectionPhase.UI_RESULT_READY, nearestIntermission,
+                )
             }
-            if (chosen != null)
-                SetMorningSelection(SetMorningSelectionPhase.UI_RESULT_READY, chosen)
-            else SetMorningSelection(SetMorningSelectionPhase.WAITING, null)
+            return SetMorningSelection(
+                if (contradictoryStampSeen) SetMorningSelectionPhase.CONFLICT
+                else SetMorningSelectionPhase.WAITING,
+                null,
+            )
         }
-        latest != null -> SetMorningSelection(SetMorningSelectionPhase.SET_LIVE, latest)
-        else -> SetMorningSelection(SetMorningSelectionPhase.WAITING, null)
+
+        return if (latestEntry == null) {
+            SetMorningSelection(SetMorningSelectionPhase.WAITING, null)
+        } else if (latestEntry.value == null) {
+            // The latest time stamp is contradictory; fall back to Luke LIVE
+            // rather than displaying one of two conflicting prices.
+            SetMorningSelection(SetMorningSelectionPhase.CONFLICT, null)
+        } else {
+            SetMorningSelection(SetMorningSelectionPhase.SET_LIVE, latestEntry.value)
+        }
     }
 }
