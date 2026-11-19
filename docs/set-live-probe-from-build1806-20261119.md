@@ -7,6 +7,8 @@ changes in a LIVE-like preview **without waiting until Myanmar 11:59/12:01**.
 ## Limits and isolation
 - Debug-only SET LIVE Test launcher. The normal Cherry MainActivity launcher is
   disabled **in this debug APK only**; release manifest stays unchanged.
+- Debug package suffix is `.setliveprobe`, so it installs separately from both
+  the standard Cherry app and the earlier `.rulespreview` debug builds.
 - The debug process uses :setprobe, where LedgerApplication skips production
   Room / WorkManager / winner-auto-save startup. No Luke requests or writes.
 - Never fabricate a snapshot, 12:01 cutoff, official result or session settlement.
