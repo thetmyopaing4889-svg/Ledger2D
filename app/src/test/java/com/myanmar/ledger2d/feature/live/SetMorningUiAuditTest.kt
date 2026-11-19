@@ -60,4 +60,31 @@ class SetMorningUiAuditTest {
         assertTrue(log.contains("LUKE_COMPARE"))
         assertTrue(log.contains("luke=61,match=false"))
     }
+
+    @Test fun records_all_request_attempts_including_parser_failures() {
+        val started = Instant.now()
+        SetMorningAuditStore.recordRequestStart(context, day)
+        val failure = SetProbeOutcome.Failure(
+            reason = "PARSER_TRADING_VALUE_MISSING",
+            httpStatus = 200,
+            roundTripMs = 913L,
+            evidence = SetHttpEvidence(
+                startedAt = started,
+                age = "12",
+                cacheControl = "no-cache",
+                contentType = "text/html",
+                responseBytes = 461113,
+                parserStage = "TRADING_VALUE_MISSING",
+            ),
+        )
+        SetMorningAuditStore.recordRequestEnd(context, day, failure)
+        val log = SetMorningAuditStore.recentLog(context)
+        assertTrue(log.contains("REQUEST_START"))
+        assertTrue(log.contains("REQUEST_END"))
+        assertTrue(log.contains("status=200"))
+        assertTrue(log.contains("durationMs=913"))
+        assertTrue(log.contains("stage=TRADING_VALUE_MISSING"))
+        assertTrue(log.contains("age=12"))
+    }
+
 }

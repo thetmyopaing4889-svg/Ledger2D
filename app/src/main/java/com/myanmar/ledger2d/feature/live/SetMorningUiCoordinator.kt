@@ -62,6 +62,8 @@ internal object SetMorningUiCoordinator {
         var activeDate: LocalDate? = null
         var selector: SetMorningSnapshotSelector? = null
         var stoppedForDate: LocalDate? = null
+        var startedRequestsForDate = false
+        var reportedPastCutoff = false
 
         while (currentCoroutineContext().isActive) {
             // No busy loop at all after navigating away from LIVE.
@@ -75,7 +77,13 @@ internal object SetMorningUiCoordinator {
                 selector = SetMorningSnapshotSelector(date)
                 val saved = SetMorningAuditStore.restoreUiResult(applicationContext, date)
                 stoppedForDate = if (saved != null) date else null
+                startedRequestsForDate = false
+                reportedPastCutoff = false
                 mutableState.value = saved
+                SetMorningAuditStore.recordCoordinatorEvent(
+                    applicationContext, date,
+                    if (saved != null) "RESTORED_UI_CUTOFF" else "READY_FOR_1159",
+                )
             }
 
             val start = LocalTime.of(11, 59)
@@ -103,40 +111,70 @@ internal object SetMorningUiCoordinator {
                 continue
             }
             if (!liveVisible.value) continue
+            if (!startedRequestsForDate) {
+                SetMorningAuditStore.recordCoordinatorEvent(
+                    applicationContext, date, "LIVE_REQUESTS_STARTED",
+                )
+                startedRequestsForDate = true
+            }
 
             val requestStarted = System.nanoTime()
-            when (val reply = SetSnapshotFetcher.probeOnce()) {
+            SetMorningAuditStore.recordRequestStart(applicationContext, date)
+            val reply = SetSnapshotFetcher.probeOnce()
+            val selection = when (reply) {
                 is SetProbeOutcome.Success -> {
-                    val selection = selector!!.observe(reply.observation.snapshot)
+                    val picked = selector!!.observe(reply.observation.snapshot)
                     SetMorningAuditStore.recordObservation(
-                        applicationContext, date, reply.observation, selection,
+                        applicationContext, date, reply.observation, picked,
                     )
-                    mutableState.value = if (selection.snapshot != null &&
-                        selection.phase != SetMorningSelectionPhase.CONFLICT
+                    mutableState.value = picked.snapshot
+                        ?.takeUnless { picked.phase == SetMorningSelectionPhase.CONFLICT }
+                        ?.let { SetMorningUiState(date, picked, reply.observation.fetchedAt) }
+                    if (picked.phase == SetMorningSelectionPhase.UI_RESULT_READY) {
+                        stoppedForDate = date
+                        SetMorningAuditStore.recordCoordinatorEvent(
+                            applicationContext, date, "CUTOFF_RESULT_SELECTED",
+                        )
+                    } else if (
+                        !reportedPastCutoff &&
+                        reply.observation.snapshot.sourceUpdateYangon.toLocalDate() == date &&
+                        reply.observation.snapshot.sourceUpdateYangon.toLocalTime()
+                            .isAfter(LocalTime.of(12, 1))
                     ) {
-                        SetMorningUiState(date, selection, reply.observation.fetchedAt)
-                    } else null
-                    if (selection.phase == SetMorningSelectionPhase.UI_RESULT_READY ||
-                        selection.phase == SetMorningSelectionPhase.CONFLICT ||
-                        (reply.observation.snapshot.sourceUpdateYangon.toLocalDate() == date &&
-                            reply.observation.snapshot.sourceUpdateYangon.toLocalTime()
-                                .isAfter(LocalTime.of(12, 1)))
-                    ) stoppedForDate = date
+                        reportedPastCutoff = true
+                        SetMorningAuditStore.recordCoordinatorEvent(
+                            applicationContext, date, "CUTOFF_CROSSED_WITHOUT_RESULT",
+                        )
+                        // Continue the bounded diagnostic window; never
+                        // retroactively promote a post-cutoff observation.
+                    }
+                    picked
                 }
                 is SetProbeOutcome.Failure -> {
                     if (reply.httpStatus in listOf(401, 403, 429)) {
-                        // Do not retry blocked or rate-limited website requests.
                         stoppedForDate = date
                         mutableState.value = null
+                        SetMorningAuditStore.recordCoordinatorEvent(
+                            applicationContext, date, "SET_ACCESS_REJECTED_STOP_TODAY",
+                        )
                     } else if (shouldDiscardStaleSetLive(
                             mutableState.value, java.time.Instant.now()
                         )) {
                         mutableState.value = null
                     }
+                    null
                 }
             }
+            SetMorningAuditStore.recordRequestEnd(
+                applicationContext, date, reply, selection,
+            )
+            // Keep the tested 3s cadence for successful observations.
+            // Back off only on explicit server failure to avoid hammering SET.
+            val requestedGap = if (reply is SetProbeOutcome.Failure &&
+                (reply.httpStatus ?: 0) in 500..599
+            ) 15_000L else POLL_INTERVAL_MS
             val elapsedMs = (System.nanoTime() - requestStarted) / 1_000_000L
-            delay((POLL_INTERVAL_MS - elapsedMs).coerceAtLeast(500L))
+            delay((requestedGap - elapsedMs).coerceAtLeast(500L))
         }
     }
 }

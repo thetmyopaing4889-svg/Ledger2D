@@ -23,6 +23,73 @@ internal object SetMorningAuditStore {
     private var lastSnapshotKey: String? = null
     private var lastComparisonKey: String? = null
 
+    /** Every attempt is retained, even when HTTP, parsing or selection fails. */
+    fun recordRequestStart(context: Context, date: LocalDate) = synchronized(lock) {
+        appendRaw(context, listOf(Instant.now(), "REQUEST_START", date, "SET_HTML_GET").joinToString(" | "))
+    }
+
+    fun recordRequestEnd(
+        context: Context,
+        date: LocalDate,
+        result: SetProbeOutcome,
+        selection: SetMorningSelection? = null,
+    ) = synchronized(lock) {
+        val e = when (result) {
+            is SetProbeOutcome.Success -> result.evidence
+            is SetProbeOutcome.Failure -> result.evidence
+        }
+        val status = when (result) {
+            is SetProbeOutcome.Success -> result.httpStatus.toString()
+            is SetProbeOutcome.Failure -> result.httpStatus?.toString() ?: "NONE"
+        }
+        val duration = when (result) {
+            is SetProbeOutcome.Success -> result.observation.roundTripMs
+            is SetProbeOutcome.Failure -> result.roundTripMs
+        }
+        val outcome = when (result) {
+            is SetProbeOutcome.Success -> "PARSE_OK"
+            is SetProbeOutcome.Failure -> "FAIL_" + result.reason
+        }
+        val source = when (result) {
+            is SetProbeOutcome.Success -> result.observation.snapshot.sourceUpdateYangon.toString()
+            is SetProbeOutcome.Failure -> "NONE"
+        }
+        val detail = listOf(
+            "status=" + status,
+            "durationMs=" + duration,
+            "bytes=" + e.responseBytes,
+            "source=" + source,
+            "phase=" + (selection?.phase?.name ?: "NONE"),
+            "dateHeader=" + (e.serverDate ?: "NONE"),
+            "age=" + (e.age ?: "NONE"),
+            "cache=" + (e.cacheControl ?: "NONE"),
+            "type=" + (e.contentType ?: "NONE"),
+            "retryAfter=" + (e.retryAfter ?: "NONE"),
+            "stage=" + (e.parserStage ?: "NONE"),
+            "outcome=" + outcome,
+        ).joinToString(" | ")
+        appendRaw(context, listOf(e.startedAt, "REQUEST_END", date, detail).joinToString(" | "))
+    }
+
+    fun recordCoordinatorEvent(context: Context, date: LocalDate, event: String) = synchronized(lock) {
+        appendRaw(
+            context,
+            listOf(Instant.now(), "COORDINATOR", date, event).joinToString(" | "),
+        )
+    }
+
+    private fun appendRaw(context: Context, line: String) {
+        runCatching {
+            val file = File(context.filesDir, LOG_FILE)
+            if (file.exists() && file.length() > MAX_BYTES) {
+                val kept = file.readText().takeLast(RETAIN_BYTES).substringAfter('\n', "")
+                file.writeText(kept)
+            }
+            val safe = line.replace(Regex("[\r\n]"), " ").take(1600)
+            file.appendText(safe + "\n")
+        }
+    }
+
     fun recordObservation(
         context: Context,
         date: LocalDate,
@@ -106,11 +173,21 @@ internal object SetMorningAuditStore {
         )
     }
 
-    fun recentLog(context: Context, maxChars: Int = 6000): String = synchronized(lock) {
+    fun recentLog(context: Context, maxChars: Int = 24000): String = synchronized(lock) {
         val content = runCatching {
             File(context.filesDir, LOG_FILE).takeIf { it.exists() }?.readText().orEmpty()
         }.getOrDefault("")
-        content.takeLast(maxChars).ifEmpty { "No SET observations recorded yet" }
+        val today = LocalDate.now(YANGON).toString()
+        val daily = content.lineSequence().filter { it.contains(" | " + today + " | ") }
+            .joinToString("\n")
+        val selected = daily.ifEmpty { content }
+        when {
+            selected.isEmpty() -> "No SET observations recorded yet"
+            selected.length <= maxChars -> selected
+            else -> selected.take(maxChars / 2) +
+                "\n... middle entries omitted in preview ...\n" +
+                selected.takeLast(maxChars / 2)
+        }
     }
 
     private fun append(

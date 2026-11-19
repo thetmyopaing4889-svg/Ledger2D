@@ -109,6 +109,10 @@ private fun SetSnapshotTestScreen() {
                             ProbeLine("HTTP", state.httpStatus.toString())
                             ProbeLine("Response Time", state.observation.roundTripMs.toString() + " ms")
                             ProbeLine("HTML Size", state.htmlBytes.toString() + " bytes")
+                            ProbeLine("HTTP Date", state.evidence.serverDate ?: "—")
+                            ProbeLine("HTTP Age", state.evidence.age ?: "—")
+                            ProbeLine("Cache-Control", state.evidence.cacheControl ?: "—")
+                            ProbeLine("Content-Type", state.evidence.contentType ?: "—")
                         }
                     }
                 }
@@ -120,6 +124,12 @@ private fun SetSnapshotTestScreen() {
                             ProbeLine("Error", state.reason)
                             ProbeLine("HTTP", state.httpStatus?.toString() ?: "—")
                             ProbeLine("Response Time", state.roundTripMs.toString() + " ms")
+                            ProbeLine("Parser Stage", state.evidence.parserStage ?: "—")
+                            ProbeLine("HTML Size", state.evidence.responseBytes.toString() + " bytes")
+                            ProbeLine("HTTP Date", state.evidence.serverDate ?: "—")
+                            ProbeLine("HTTP Age", state.evidence.age ?: "—")
+                            ProbeLine("Cache-Control", state.evidence.cacheControl ?: "—")
+                            ProbeLine("Content-Type", state.evidence.contentType ?: "—")
                         }
                     }
                 }
@@ -130,6 +140,18 @@ private fun SetSnapshotTestScreen() {
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("SET မှတ်တမ်းကြည့်ရန်") }
             if (recentAudit != null) {
+                Button(
+                    onClick = {
+                        val clipboard = context.getSystemService(
+                            android.content.Context.CLIPBOARD_SERVICE
+                        ) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                            "Cherry SET Audit",
+                            SetMorningAuditStore.recentLog(context, 120000),
+                        ))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("SET မှတ်တမ်း ကူးယူရန်") }
                 Text(recentAudit.orEmpty(), style = MaterialTheme.typography.bodySmall)
             }
             Text("ဒါက Connection/Parser Test သာဖြစ်ပြီး 12:01 Result စစ်ဆေးမှု မဟုတ်ပါ။",

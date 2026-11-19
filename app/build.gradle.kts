@@ -49,6 +49,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // Tolerant HTML5 parser; mirrors the Colab HTMLParser's visible-text extraction.
+    implementation("org.jsoup:jsoup:1.17.2")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

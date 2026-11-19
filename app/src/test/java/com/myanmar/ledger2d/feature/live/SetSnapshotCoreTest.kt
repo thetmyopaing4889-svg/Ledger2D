@@ -103,4 +103,56 @@ class SetSnapshotCoreTest {
             snapshot("12:00:59", "1,481.46", "29,812.24")
         ).snapshot?.computed2d)
     }
+
+    @Test fun html_entities_and_nested_tags_match_colab_visible_text() {
+        val fixture = html()
+            .replace("SET Index Series", "SET&nbsp;Index&nbsp;Series")
+            .replace("Index 1,481.46", "Index&nbsp;<strong>1,481.46</strong>")
+            .replace("Value (M.Baht) 29,810.24", "Value&nbsp;(M.Baht)&nbsp;<b>29,810.24</b>")
+        val parsed = SetSnapshotHtmlParser.parseDetailed(fixture)
+        assertNull(parsed.failureStage)
+        assertEquals("60", parsed.snapshot?.computed2d)
+        assertEquals("1,481.46", parsed.snapshot?.index)
+    }
+
+    @Test fun parse_details_identify_real_missing_fields() {
+        assertEquals("SET_PANEL_MISSING", SetSnapshotHtmlParser.parseDetailed(
+            "<html><body>SET50 Index 1,481.46</body></html>"
+        ).failureStage)
+        assertEquals("TRADING_VALUE_MISSING", SetSnapshotHtmlParser.parseDetailed(
+            html().replace("Value (M.Baht)", "Trading Value")
+        ).failureStage)
+        assertEquals("SOURCE_TIME_MISSING", SetSnapshotHtmlParser.parseDetailed(
+            html().replace("Last Update", "Unknown Time")
+        ).failureStage)
+    }
+
+    @Test fun conflict_recovers_on_newer_source_timestamp_before_cutoff() {
+        val selector = SetMorningSnapshotSelector(drawDate)
+        assertEquals(SetMorningSelectionPhase.SET_LIVE, selector.observe(
+            snapshot("12:00:23", "1,481.46", "29,802.34")
+        ).phase)
+        assertEquals(SetMorningSelectionPhase.CONFLICT, selector.observe(
+            snapshot("12:00:23", "1,481.46", "29,803.34")
+        ).phase)
+        // New source timestamp resolves only this conflict, no stale old snapshot.
+        assertEquals(SetMorningSelectionPhase.SET_LIVE, selector.observe(
+            snapshot("12:00:53", "1,481.46", "29,810.24")
+        ).phase)
+        val selected = selector.observe(snapshot("12:01:23", "1,481.46", "29,811.21"))
+        assertEquals(SetMorningSelectionPhase.UI_RESULT_READY, selected.phase)
+        assertEquals("60", selected.snapshot?.computed2d)
+    }
+
+    @Test fun cutoff_crossing_first_never_promotes_later_stale_html() {
+        val selector = SetMorningSnapshotSelector(drawDate)
+        assertEquals(SetMorningSelectionPhase.WAITING, selector.observe(
+            snapshot("12:01:44", "1,461.81", "35,473.96")
+        ).phase)
+        assertEquals(SetMorningSelectionPhase.WAITING, selector.observe(
+            snapshot("12:00:53", "1,461.81", "35,471.77")
+        ).phase)
+        assertNull(selector.current().snapshot)
+    }
+
 }
