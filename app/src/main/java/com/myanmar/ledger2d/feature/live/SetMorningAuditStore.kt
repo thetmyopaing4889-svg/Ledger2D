@@ -54,11 +54,16 @@ internal object SetMorningAuditStore {
             is SetProbeOutcome.Success -> result.observation.snapshot.sourceUpdateYangon.toString()
             is SetProbeOutcome.Failure -> "NONE"
         }
+        val marketStatus = when (result) {
+            is SetProbeOutcome.Success -> result.observation.snapshot.marketStatus ?: "NONE"
+            is SetProbeOutcome.Failure -> "NONE"
+        }
         val detail = listOf(
             "status=" + status,
             "durationMs=" + duration,
             "bytes=" + e.responseBytes,
             "source=" + source,
+            "market=" + marketStatus,
             "phase=" + (selection?.phase?.name ?: "NONE"),
             "dateHeader=" + (e.serverDate ?: "NONE"),
             "age=" + (e.age ?: "NONE"),
@@ -105,7 +110,8 @@ internal object SetMorningAuditStore {
             lastSnapshotKey = key
             append(
                 context, "SNAPSHOT", date, snapshot,
-                "phase=" + selection.phase + ",durationMs=" + observation.roundTripMs,
+                "phase=" + selection.phase + ",durationMs=" + observation.roundTripMs +
+                    ",market=" + (snapshot.marketStatus ?: "NONE"),
             )
         }
         if (selection.phase == SetMorningSelectionPhase.UI_RESULT_READY) {
