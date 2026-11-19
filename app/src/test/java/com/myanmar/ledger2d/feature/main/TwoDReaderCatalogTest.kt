@@ -132,7 +132,14 @@ class TwoDReaderCatalogTest {
         val gradle = File("build.gradle.kts").readText()
         assertTrue(debugManifest.contains("android:label=\"@string/app_name\""))
         assertTrue(mainStrings.contains("Cherry 2D Ledger"))
-        assertTrue(gradle.contains("applicationIdSuffix = \".rulespreview\""))
+        // A dedicated SET LIVE debug test is intentionally a different install.
+        // Keep verifying the original preview ID on all non-probe branches.
+        if (gradle.contains("applicationIdSuffix = \".setliveprobe\"")) {
+            assertTrue(debugManifest.contains("android:enabled=\"false\""))
+            assertTrue(debugManifest.contains("android:label=\"SET LIVE Test\""))
+        } else {
+            assertTrue(gradle.contains("applicationIdSuffix = \".rulespreview\""))
+        }
     }
 
     @Test fun selectedExamplesArePreservedAndNoBetterDataIsIncluded() {
