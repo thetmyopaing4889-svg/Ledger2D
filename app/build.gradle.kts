@@ -27,8 +27,10 @@ android {
         debug {
             // Preview only: install alongside the existing production Ledger2D app.
             // Never ask testers to uninstall their ledger to compare Rules layouts.
-            applicationIdSuffix = ".rulespreview"
-            versionNameSuffix = "-rules-preview"
+            // SET live experiment is a separate install; it never overwrites
+            // the existing Cherry 2D production OR rulespreview APK.
+            applicationIdSuffix = ".setliveprobe"
+            versionNameSuffix = "-set-live-probe"
         }
         release {
             // Keep the distributable release APK complete. R8/resource shrinking
