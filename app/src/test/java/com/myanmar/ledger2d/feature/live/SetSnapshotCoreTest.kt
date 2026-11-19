@@ -198,9 +198,9 @@ class SetSnapshotCoreTest {
 
         val exact = SetMorningSnapshotSelector(drawDate)
         exact.observe(snapshot("12:01:00", "1,481.46", "29,810.24", "Intermission"))
-        assertEquals("12:01:00", exact.observe(
+        assertEquals(java.time.LocalTime.parse("12:01:00"), exact.observe(
             snapshot("12:01:01", "1,481.47", "29,811.21", "Intermission")
-        ).snapshot?.sourceUpdateYangon?.toLocalTime().toString())
+        ).snapshot?.sourceUpdateYangon?.toLocalTime())
     }
 
     @Test fun never_selects_open_only_even_when_closest_to_cutoff() {
