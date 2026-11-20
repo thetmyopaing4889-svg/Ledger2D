@@ -57,6 +57,21 @@ class CherryRuleSourcesTest {
         assertTrue(born.quote.contains("2479 အပြီးခွေ"))
     }
 
+    @Test fun extraImageSourceRulesExposeOnlyTheirOwnOriginalExcerpt() {
+        val mob=requireNotNull(CherryRuleSources.lookup(source,"new-mob-wheel"))
+        assertEquals(1,mob.section)
+        assertTrue(mob.quote.contains("1267"))
+        assertFalse(mob.quote.contains("00 မှ 99"))
+        val born=requireNotNull(CherryRuleSources.lookup(source,
+            "new-born-75@2026-11-09-MORNING"))
+        assertEquals(1,born.section)
+        assertTrue(born.quote.contains("၂ ရက်"))
+        val breakRef=requireNotNull(CherryRuleSources.lookup(source,"new-bk-19r"))
+        assertEquals(3,breakRef.section)
+        assertTrue(breakRef.quote.contains("1 ဘရိတ်"))
+        assertNull(CherryRuleSources.lookup(source,"new-bk-six"))
+    }
+
     @Test fun missingReferencesAreHiddenRatherThanFabricated(){
         assertNull(CherryRuleSources.lookup(source,"not-a-rule"))
         assertNull(CherryRuleSources.lookup(source,"s6-80"))

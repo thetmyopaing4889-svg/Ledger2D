@@ -1,6 +1,6 @@
 package com.myanmar.ledger2d.feature.main
 
-/** Source excerpts always come from the bundled unmodified rules text. */
+/** Source excerpts come from the original bundled rules or explicitly supplied new source pages. */
 internal data class CherryOriginalReference(
     val section: Int,
     val label: String,
@@ -10,6 +10,30 @@ internal data class CherryOriginalReference(
 internal object CherryRuleSources {
     private val digits = listOf("၀","၁","၂","၃","၄","၅","၆","၇","၈","၉")
     private val heading = Regex("""^အပိုင်း \([၁၂၃၄၅၆၇၈၉]\)""")
+
+    /** New user-supplied image excerpts, separate from immutable legacy source. */
+    private fun addedSource(id: String): CherryOriginalReference? {
+        val pageAndQuote = when (id) {
+            "new-mob-double" -> 1 to
+                "လူမိုက်ကြီးအပူး 17, 20, 80, 56, 51 ထဲမှ တစ်ကွက်ထွက်ပြီး အပူးလိုက် ဆတိုးထွက်တတ်သည်။"
+            "new-mob-wheel" -> 1 to
+                "လူမိုက်ကွက်များထဲမှ ၁ ကွက်ထွက်လျှင် 1267 အခွေလိုက် ထွက်တတ်သည်။"
+            "new-born-75" -> 1 to
+                "မနက်ပိုင်း 75 ပြန်ထွက်လျှင် နောက် ၂ ရက်အတွင်း 45789 အခွေ လာတတ်သည်။"
+            "new-bk-19r" -> 3 to
+                "19R ထွက်တိုင်း ၅ ရက်အတွင်း 1 ဘရိတ် (01, 29, 38, 47, 56)R လိုက်တတ်သည်။"
+            "new-special-khant" -> 3 to
+                "2D Ko Khant — 98, 11, 91 ကျပြီးတိုင်း 0 ထိပ် ဆက်စပ်မူ။"
+            "s6-12-wheel" -> 3 to
+                "12R ထွက်ပြီးတိုင်း 48R မွေးထိုး (4789 အပြီးခွေ)။"
+            else -> null
+        } ?: return null
+        return CherryOriginalReference(
+            pageAndQuote.first,
+            "ထပ်တိုးမူ • စာမျက်နှာ ${pageAndQuote.first}",
+            pageAndQuote.second,
+        )
+    }
 
     private fun section(source:String,number:Int):List<String> {
         if(number !in 1..9)return emptyList()
@@ -27,6 +51,7 @@ internal object CherryRuleSources {
     fun lookup(source:String?,ruleId:String,detail:String=""):CherryOriginalReference? {
         if(source.isNullOrBlank())return null
         val id=ruleId.substringBefore('@')
+        addedSource(id)?.let { return it }
         val part:Int
         val label:String
         val raw:List<String>

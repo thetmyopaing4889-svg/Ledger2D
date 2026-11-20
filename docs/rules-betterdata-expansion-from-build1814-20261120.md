@@ -31,3 +31,8 @@
 - Book count / original 75 preservation / new 23 / total 98.
 - Mob outcome exact pair sets; born rule two-day and five-day bounds; 0-head trigger.
 - Existing app-wide Gradle unit tests, lint, debug and release packaging must pass before device acceptance.
+
+## Reader presentation final pass
+- Reader entries contain concise formula content only. Unverified duration, contradictory source parentheses and parser-review notes remain in this document, not reader UI.
+- New rule cards in Better Data show traceable names, triggers and pair-generation explanations, with a source-page excerpt link where the source is unambiguous.
+- Page 3's opening line (46,56,50,70 and 0-break group) was retained alongside the continued Friday rule.
