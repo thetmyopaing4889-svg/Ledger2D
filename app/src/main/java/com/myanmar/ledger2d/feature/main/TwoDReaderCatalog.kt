@@ -130,7 +130,7 @@ internal object TwoDReaderCatalog {
                 rules = members,
             ).also { require(members.isNotEmpty()) }
         }
-        require(books.size == 9)
+        require(books.size == 10)
         require(books.map { it.id }.distinct().size == books.size)
         require(books.map { it.title }.distinct().size == books.size)
         // Cross-listed entries point to the same canonical source. No source

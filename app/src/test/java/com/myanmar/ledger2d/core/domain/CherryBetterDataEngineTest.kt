@@ -106,6 +106,56 @@ class CherryBetterDataEngineTest {
         assertFalse(pm.current.any{p->p.evidence.any{it.id=="s1-930"}})
     }
 
+
+    @Test fun mobTriggerGeneratesDoublesAnd1267WheelNotOtherGroupNumbers() {
+        val history=listOf(d("2026-11-09",DrawSession.EVENING,"17"))
+        val report=CherryBetterDataEngine.calculate(
+            history,target("2026-11-10",DrawSession.MORNING))
+        val doublePairs=report.current.filter { p ->
+            p.evidence.any { it.id == "new-mob-double" }
+        }.map{it.pair}.toSet()
+        val wheelPairs=report.current.filter { p ->
+            p.evidence.any { it.id == "new-mob-wheel" }
+        }.map{it.pair}.toSet()
+        assertEquals((0..9).map{"$it$it"}.toSet(),doublePairs)
+        assertEquals(12,wheelPairs.size)
+        assertTrue(wheelPairs.containsAll(listOf("12","21","16","61","27","72")))
+        assertFalse(wheelPairs.contains("20"))
+        assertFalse(wheelPairs.contains("80"))
+    }
+
+    @Test fun morning75CreatesOnlyTwoDayBornWheel() {
+        val input=listOf(d("2026-11-09",DrawSession.MORNING,"75"))
+        val next=CherryBetterDataEngine.calculate(input,target("2026-11-10",DrawSession.MORNING))
+        val born=next.activeRules.single { it.id.startsWith("new-born-75@") }
+        assertEquals(20,born.produced.size)
+        assertTrue(born.produced.containsAll(listOf("45","54","47","74")))
+        val expired=CherryBetterDataEngine.calculate(input,target("2026-11-12",DrawSession.MORNING))
+        assertFalse(expired.activeRules.any{it.id.startsWith("new-born-75@")})
+        val sameDay=CherryBetterDataEngine.calculate(input,target("2026-11-09",DrawSession.EVENING))
+        assertFalse(sameDay.activeRules.any{it.id.startsWith("new-born-75@")})
+    }
+
+    @Test fun nineteenReverseBirthCreatesOneBreakAndExpires() {
+        val input=listOf(d("2026-11-09",DrawSession.EVENING,"91"))
+        val next=CherryBetterDataEngine.calculate(input,target("2026-11-10",DrawSession.MORNING))
+        val born=next.activeRules.single{it.id.startsWith("new-bk-19r@")}
+        assertEquals(10,born.produced.size)
+        assertTrue(born.produced.containsAll(listOf("01","10","29","92")))
+        val expired=CherryBetterDataEngine.calculate(input,target("2026-11-17",DrawSession.MORNING))
+        assertFalse(expired.activeRules.any{it.id.startsWith("new-bk-19r@")})
+    }
+
+    @Test fun khantTriggerShowsOnlyDocumentedZeroHead() {
+        val report=CherryBetterDataEngine.calculate(
+            listOf(d("2026-11-09",DrawSession.EVENING,"98")),
+            target("2026-11-10",DrawSession.MORNING))
+        val pairs=report.current.filter{p->p.evidence.any{
+            it.id=="new-special-khant"
+        }}.map{it.pair}.toSet()
+        assertEquals((0..9).map{"0$it"}.toSet(),pairs)
+    }
+
     @Test fun missingImmediateResultDisablesStaleCurrentMath() {
         val report=CherryBetterDataEngine.calculate(
             listOf(d("2026-11-06",DrawSession.MORNING,"80")),

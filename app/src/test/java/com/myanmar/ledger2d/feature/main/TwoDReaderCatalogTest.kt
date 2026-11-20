@@ -21,9 +21,10 @@ class TwoDReaderCatalogTest {
     private val books: List<TwoDReaderBook>
         get() = TwoDReaderCatalog.booksFromJson(source)
 
-    @Test fun allSeventyFiveSourceRulesSurviveNineFunctionalBooks() {
+    @Test fun originalSeventyFiveRulesAndTwentyThreeAdditionsSurviveTenFunctionalBooks() {
         val covers = books
         val expectedTitles = listOf(
+            "လူမိုက်အုပ်စု",
             "အသေဂဏန်းမူ",
             "မွေးဂဏန်းမူ",
             "ပတ်သီးနှင့် တည်ဘောမူ",
@@ -35,17 +36,31 @@ class TwoDReaderCatalogTest {
             "အထူးတွက်နည်းမူ",
         )
         assertEquals(expectedTitles, covers.map { it.title })
-        assertEquals(9, covers.size)
-        assertEquals(75, rules.size)
-        assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9), rules.map { it.section }.toSet())
+        assertEquals(10, covers.size)
+        assertEquals(98, rules.size)
+        assertEquals(setOf(1, 2, 3, 4, 5, 6, 8, 9, 10), rules.map { it.section }.toSet())
+        assertEquals(75, rules.count { Regex("cherry-[0-9]{3}").matches(it.id) })
+        assertEquals(23, rules.count { it.id.startsWith("new-") })
         assertTrue(covers.none { it.title.startsWith("အပိုင်း (") ||
             it.title.startsWith("(က)") || Regex("""^[0-9]+\.\s""").containsMatchIn(it.title) })
         assertEquals(covers.size, covers.map { it.id }.distinct().size)
-        assertEquals(9, covers.map { it.pastel }.distinct().size)
+        assertEquals(10, covers.map { it.pastel }.distinct().size)
         assertEquals(rules.map { it.id }.toSet(),
             covers.flatMap { it.rules }.map { it.id }.toSet())
         val born = covers.single { it.id == "category-born" }
         assertEquals(26, born.rules.count { it.source.section == 6 })
+    }
+
+    @Test fun mobBookPreservesDistinctDoubleAndWheelTriggers() {
+        val mob = books.single { it.id == "category-mob" }
+        assertEquals(2, mob.rules.size)
+        assertTrue(mob.rules.any { it.id == "new-mob-double" })
+        assertTrue(mob.rules.any { it.id == "new-mob-wheel" })
+        assertTrue(mob.rules.all { it.text.contains("17, 20, 80, 56, 51") })
+        assertTrue(mob.rules.any { it.text.contains("1267") })
+        assertTrue(TwoDReaderSearch.find(books, "လူမိုက်").any {
+            it.bookId == "category-mob"
+        })
     }
 
     @Test fun sourceTablesAreProjectedWithoutAlteringCanonicalCells() {
@@ -122,8 +137,8 @@ class TwoDReaderCatalogTest {
         assertTrue(TwoDReaderSearch.find(books, "+7").any {
             it.bookId == "category-dead"
         })
-        assertEquals(9, books.size)
-        assertEquals(75, rules.size)
+        assertEquals(10, books.size)
+        assertEquals(98, rules.size)
     }
 
     @Test fun debugPreviewRetainsOriginalLauncherNameAndSeparatePackageId() {

@@ -342,6 +342,8 @@ object CherryBetterDataEngine {
     private val astrology = listOf("07","70","18","81","24","42","35","53","69","96")
     private val weeklyEight = listOf("27","82","48","54","65","46","94","92")
     private val groupSix = listOf("34","38","39","48","49","89")
+    // User-supplied additional Rules Library, source page 1.
+    private val mobGroup = setOf("17","20","80","56","51")
     private fun before(d: HistoricDraw, x: DrawIdentity): Boolean =
         d.date < x.date || (d.date == x.date && d.session.ordinal < x.session.ordinal)
     private fun identity(d: HistoricDraw) = DrawIdentity(d.date,d.session)
@@ -445,6 +447,27 @@ object CherryBetterDataEngine {
                 }
             }
             section6[last]?.let{rule("s6-$last","အပိုင်း (၆) သီးသန့်မွေး",it)}
+            if(last in mobGroup) {
+                // The source gives TWO outcomes for the same group trigger,
+                // not a rule to bet the other four source pairs.
+                rule("new-mob-double","လူမိုက်ကြီးအပူး",
+                    (0..9).map{"$it$it"},
+                    "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး အပူးအုပ်စု လိုက်မူ။ သက်တမ်းမပေးထားသဖြင့် နောက်တစ်ပွဲအတွက်သာ ပြ။")
+                rule("new-mob-wheel","လူမိုက်အခွေ 1267",
+                    CherryPairExpander.wheel("1267"),
+                    "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး 1267 အခွေ (ဒဲ့/R)။ နောက်တစ်ပွဲအတွက်သာ ပြ။")
+            }
+            if(last in setOf("98","11","91"))
+                rule("new-special-khant","2D Ko Khant — 0 ထိပ်",
+                    CherryPairExpander.top(0),
+                    "98 / 11 / 91 ထွက်ပြီး 0 ထိပ်ကို စောင့်ကြည့်သော အပိုင်းသာ တွက်ထားသည်။")
+            if(last=="12"||last=="21") {
+                // Already exists as reader rule cherry-038; this fills only
+                // the previously missing Better Data calculation.
+                rule("s6-12","12R → 48R",listOf("48","84"))
+                rule("s6-12-wheel","12R → 4789 အခွေ",
+                    CherryPairExpander.wheel("4789"))
+            }
             if(last=="70")rule("s6-70","70 R နောက် ပါဝါ",power)
             if(last=="80")rule("s8-80","80 R → 1264 အပူးခွေ",
                 CherryPairExpander.wheel("1264",true))
@@ -503,6 +526,14 @@ object CherryBetterDataEngine {
         }
         rows.takeLast(20).forEach{d->
             val x=d.digit
+            // Explicit durations in the supplied image: next two days,
+            // or a five-working-day 1-break birth after 19R.
+            if(x=="75"&&d.session==DrawSession.MORNING&&d.date<target.date)
+                birth(d,"new-born-75","75 နောက် 45789 အခွေ",
+                    CherryPairExpander.wheel("45789"),limit=2)
+            if(x=="19"||x=="91")
+                birth(d,"new-bk-19r","19R နောက် 1 ဘရိတ်",
+                    CherryPairExpander.bk(1),limit=5)
             if(x[0]==x[1]) {
                 wheels[x].orEmpty().forEachIndexed{i,w->
                     birth(d,"s4-wheel-$x-$i","${x} အပူး → ${w} ခွေ",
