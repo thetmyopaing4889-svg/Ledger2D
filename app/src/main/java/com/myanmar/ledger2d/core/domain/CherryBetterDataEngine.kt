@@ -447,15 +447,24 @@ object CherryBetterDataEngine {
                 }
             }
             section6[last]?.let{rule("s6-$last","အပိုင်း (၆) သီးသန့်မွေး",it)}
+            // Explicit page-2 6-BK => 1649 wheel; current draw only.
+            if(bk(last)==6)
+                rule("new-bk-six","6 ဘရိတ်နောက် 1649 အခွေ",
+                    CherryPairExpander.wheel("1649"),
+                    "$last သည် 6 ဘရိတ်။ 1649 အခွေ ဒဲ့/ပြန် 12 တွဲ။")
+            // Page 3: only 50 is a new rule; 12R / 27R pre-exist.
+            if(last=="50")
+                rule("new-born-50","50 နောက် 3/8 ထိပ်",
+                    CherryPairExpander.top(3)+CherryPairExpander.top(8),
+                    "50 ထွက်ပြီး 3 ထိပ်/8 ထိပ် (37,82) ဆက်စပ်မူ။")
             if(last in mobGroup) {
                 // The source gives TWO outcomes for the same group trigger,
                 // not a rule to bet the other four source pairs.
                 rule("new-mob-double","လူမိုက်ကြီးအပူး",
                     (0..9).map{"$it$it"},
                     "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး အပူးအုပ်စု လိုက်မူ။ သက်တမ်းမပေးထားသဖြင့် နောက်တစ်ပွဲအတွက်သာ ပြ။")
-                rule("new-mob-wheel","လူမိုက်အခွေ 1267",
-                    CherryPairExpander.wheel("1267"),
-                    "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး 1267 အခွေ (ဒဲ့/R)။ နောက်တစ်ပွဲအတွက်သာ ပြ။")
+                // The 1267 rule references a separate mob group whose
+                // members are not listed in the user's source image.
             }
             if(last in setOf("98","11","91"))
                 rule("new-special-khant","2D Ko Khant — 0 ထိပ်",

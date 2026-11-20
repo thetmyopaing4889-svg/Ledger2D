@@ -107,7 +107,7 @@ class CherryBetterDataEngineTest {
     }
 
 
-    @Test fun mobTriggerGeneratesDoublesAnd1267WheelNotOtherGroupNumbers() {
+    @Test fun mobTriggerNeverGuessesUnspecified1267Group() {
         val history=listOf(d("2026-11-09",DrawSession.EVENING,"17"))
         val report=CherryBetterDataEngine.calculate(
             history,target("2026-11-10",DrawSession.MORNING))
@@ -118,10 +118,34 @@ class CherryBetterDataEngineTest {
             p.evidence.any { it.id == "new-mob-wheel" }
         }.map{it.pair}.toSet()
         assertEquals((0..9).map{"$it$it"}.toSet(),doublePairs)
-        assertEquals(12,wheelPairs.size)
-        assertTrue(wheelPairs.containsAll(listOf("12","21","16","61","27","72")))
-        assertFalse(wheelPairs.contains("20"))
-        assertFalse(wheelPairs.contains("80"))
+        assertTrue(wheelPairs.isEmpty())
+    }
+
+    @Test fun sixBreakTriggers1649WheelButSevenBreakDoesNot() {
+        val yes=CherryBetterDataEngine.calculate(
+            listOf(d("2026-11-09",DrawSession.EVENING,"24")),
+            target("2026-11-10",DrawSession.MORNING))
+        val pairs=yes.current.filter{p->p.evidence.any{it.id=="new-bk-six"}}
+            .map{it.pair}.toSet()
+        assertEquals(12,pairs.size)
+        assertTrue(pairs.containsAll(listOf("16","61","49","94","14","41")))
+        val no=CherryBetterDataEngine.calculate(
+            listOf(d("2026-11-09",DrawSession.EVENING,"25")),
+            target("2026-11-10",DrawSession.MORNING))
+        assertFalse(no.current.any{p->p.evidence.any{it.id=="new-bk-six"}})
+    }
+
+    @Test fun fiftyTriggersThreeEightHeadsWithoutDuplicateReaderRule() {
+        val report=CherryBetterDataEngine.calculate(
+            listOf(d("2026-11-09",DrawSession.EVENING,"50")),
+            target("2026-11-10",DrawSession.MORNING))
+        val pairs=report.current.filter{p->p.evidence.any{it.id=="new-born-50"}}
+            .map{it.pair}.toSet()
+        assertEquals(20,pairs.size)
+        assertTrue(pairs.containsAll(listOf("30","37","39","80","82","89")))
+        assertFalse(report.current.any{p->p.evidence.any{
+            it.id=="new-born-12-27-50"
+        }})
     }
 
     @Test fun morning75CreatesOnlyTwoDayBornWheel() {
