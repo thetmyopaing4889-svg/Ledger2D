@@ -186,7 +186,7 @@ internal object TwoDReaderCatalog {
         }
         require(rules.isNotEmpty())
         require(rules.map { it.id }.distinct().size == rules.size)
-        require(rules.map { it.section }.toSet() == setOf(1, 2, 3, 4, 5, 6, 8, 9))
+        require(rules.map { it.section }.toSet() == setOf(1, 2, 3, 4, 5, 6, 8, 9, 10))
         return rules
     }
 
