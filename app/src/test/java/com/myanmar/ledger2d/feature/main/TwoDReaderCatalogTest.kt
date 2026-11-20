@@ -56,11 +56,26 @@ class TwoDReaderCatalogTest {
         assertEquals(2, mob.rules.size)
         assertTrue(mob.rules.any { it.id == "new-mob-double" })
         assertTrue(mob.rules.any { it.id == "new-mob-wheel" })
-        assertTrue(mob.rules.all { it.text.contains("17, 20, 80, 56, 51") })
-        assertTrue(mob.rules.any { it.text.contains("1267") })
+        assertTrue(mob.rules.any { it.id=="new-mob-double" &&
+            it.text.contains("17, 20, 80, 56, 51") })
+        assertTrue(mob.rules.any { it.id=="new-mob-wheel" &&
+            it.text.contains("1267") &&
+            !it.text.contains("17, 20, 80, 56, 51") })
         assertTrue(TwoDReaderSearch.find(books, "လူမိုက်").any {
             it.bookId == "category-mob"
         })
+    }
+
+    @Test fun newRulesAreFoundByExactNumberTokens() {
+        val hits=TwoDReaderSearch.find(books,"17")
+            .filter{it.sourceRuleId.startsWith("new-")}
+        assertTrue(hits.any{it.sourceRuleId=="new-mob-double"})
+        assertFalse(hits.any{it.sourceRuleId=="new-mob-wheel"})
+        assertTrue(TwoDReaderSearch.find(books,"50").any{
+            it.sourceRuleId=="new-born-50"
+        })
+        assertFalse(rules.any{it.id=="new-born-12-27-50"})
+        assertTrue(rules.any{it.id=="new-bk-six"&&it.text.contains("1649")})
     }
 
     @Test fun sourceTablesAreProjectedWithoutAlteringCanonicalCells() {

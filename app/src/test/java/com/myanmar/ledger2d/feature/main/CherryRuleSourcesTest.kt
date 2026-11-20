@@ -69,7 +69,13 @@ class CherryRuleSourcesTest {
         val breakRef=requireNotNull(CherryRuleSources.lookup(source,"new-bk-19r"))
         assertEquals(3,breakRef.section)
         assertTrue(breakRef.quote.contains("1 ဘရိတ်"))
-        assertNull(CherryRuleSources.lookup(source,"new-bk-six"))
+        val six=requireNotNull(CherryRuleSources.lookup(source,"new-bk-six"))
+        assertEquals(2,six.section)
+        assertTrue(six.quote.contains("1649"))
+        val fifty=requireNotNull(CherryRuleSources.lookup(source,"new-born-50"))
+        assertEquals(3,fifty.section)
+        assertTrue(fifty.quote.contains("37, 82"))
+        assertFalse(mob.quote.contains("17, 20, 80, 56, 51"))
     }
 
     @Test fun missingReferencesAreHiddenRatherThanFabricated(){
