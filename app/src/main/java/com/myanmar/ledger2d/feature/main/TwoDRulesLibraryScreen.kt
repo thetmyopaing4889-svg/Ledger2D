@@ -508,6 +508,14 @@ internal fun TwoDRulesLibraryScreen(
                 if (numberExperience == "lookup") {
                     NumberFirstLookupScreen(
                         catalog = catalog,
+                        addedBooks = books,
+                        onOpenAddedRule = { hit ->
+                            view = "books"
+                            openedBookId = hit.bookId
+                            focusedRuleIndex = hit.entryIndex
+                            highlightedQuery = if (lookupKind=="digit") digit
+                                else lookupPairInput
+                        },
                         en = en,
                         colors = colors,
                         selectedDigit = digit,
@@ -785,6 +793,8 @@ internal fun TwoDRulesLibraryScreen(
 @Composable
 private fun NumberFirstLookupScreen(
     catalog: TwoDRulesCatalog,
+    addedBooks: List<TwoDReaderBook>,
+    onOpenAddedRule: (TwoDReaderSearchHit) -> Unit,
     en: Boolean,
     colors: BookColors,
     selectedDigit: String,
@@ -801,6 +811,14 @@ private fun NumberFirstLookupScreen(
         else pairInput.takeIf { it.length == 2 }
     val result = remember(catalog, picked) {
         picked?.let { catalog.lookup(it) }
+    }
+    // Use exact-token source mentions, not guesses about rule triggers.
+    val addedReferences = remember(addedBooks, picked) {
+        picked?.let { number ->
+            TwoDReaderSearch.find(addedBooks, number).filter {
+                it.sourceRuleId.startsWith("new-")
+            }
+        }.orEmpty()
     }
     var showMentions by rememberSaveable { mutableStateOf(false) }
     val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -966,11 +984,20 @@ private fun NumberFirstLookupScreen(
                                 )
                             }
                             IconButton(onClick = {
-                                val full = (result.direct + result.mentioned)
+                                val oldText = (result.direct + result.mentioned)
                                     .joinToString("\n\n") {
                                         it.groupTitle + "\n" + it.rule.original
                                     }
-                                clipboard.setText(AnnotatedString(full))
+                                val addedText = addedReferences.mapNotNull { hit ->
+                                    addedBooks.firstOrNull { it.id == hit.bookId }
+                                        ?.rules?.getOrNull(hit.entryIndex)?.let { entry ->
+                                            hit.bookTitle + "\n" + entry.originalText
+                                        }
+                                }.joinToString("\n\n")
+                                clipboard.setText(AnnotatedString(
+                                    listOf(oldText, addedText)
+                                        .filter { it.isNotBlank() }.joinToString("\n\n")
+                                ))
                             }) {
                                 Icon(
                                     Icons.Default.ContentCopy,
@@ -1014,6 +1041,53 @@ private fun NumberFirstLookupScreen(
                                 colors = colors,
                                 en = en,
                             )
+                        }
+                    }
+                    if (addedReferences.isNotEmpty()) {
+                        item(key = "added-number-references") {
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                HorizontalDivider(color = colors.border)
+                                Text(
+                                    tr("မူအသစ်များတွင် ပါဝင်သောဂဏန်း",
+                                        "Numbers mentioned in new rules"),
+                                    color = colors.accent,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                )
+                                Text(
+                                    tr("စာသားထဲ ပါဝင်ရုံဖြင့် မူ၏ရှေ့ခံဂဏန်း မဟုတ်ပါ။",
+                                        "Mentioned in source does not imply a rule trigger."),
+                                    color = colors.softInk,
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        }
+                        listItems(addedReferences, key = {
+                            "added:" + it.bookId + ":" + it.entryIndex
+                        }) { hit ->
+                            Surface(
+                                onClick = { onOpenAddedRule(hit) },
+                                color = colors.panel,
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(hit.bookTitle,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colors.softInk)
+                                    Text(hit.ruleTitle,
+                                        fontWeight = FontWeight.Bold, color = colors.ink)
+                                    ReaderDigitsText(
+                                        value = hit.excerpt,
+                                        color = colors.softInk,
+                                        fontSize = 14.sp,
+                                        lineHeight = 21.sp,
+                                        highlightQuery = result.number,
+                                    )
+                                }
+                            }
                         }
                     }
                     item(key = "related-toggle") {

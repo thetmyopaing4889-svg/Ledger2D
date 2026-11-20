@@ -36,3 +36,10 @@
 - Reader entries contain concise formula content only. Unverified duration, contradictory source parentheses and parser-review notes remain in this document, not reader UI.
 - New rule cards in Better Data show traceable names, triggers and pair-generation explanations, with a source-page excerpt link where the source is unambiguous.
 - Page 3's opening line (46,56,50,70 and 0-break group) was retained alongside the continued Friday rule.
+
+## Build 1817 corrections (20 November 2026)
+- **Separate mob conditions:** the user-supplied page 1 explicitly lists 17/20/80/56/51 for လူမိုက်ကြီးအပူး but does not list member pairs for the separate အပေါက်လူမိုက် => 1267 wheel. The latter stays readable, but is disabled in Better Data until its exact input list is known.
+- **6 BK:** page 2 explicitly says 6 break => 1649 (1, 6, 4, 9) wheel. Current next-draw calculation outputs all 12 non-double direct/reverse pairs. Do not invent longer duration.
+- **50:** page 3 contains previously catalogued 12R / 27R and a distinct new 50 => 3 head/8 head (37/82 examples). The added reader uses one 50-only ID; existing 12R/27R source remains unchanged, while Better Data expands both heads into 20 pairs for next draw.
+- **Number First lookup:** source mentions from new reader entries are visible under a separate heading and open their books; not misrepresented as directly triggered rules. Copy includes source text from both old and new libraries.
+- All uncertain formulas remain reference-only until conditions are clarified and tested against data. Historical win-rate claims are not independently proven.
