@@ -47,11 +47,29 @@ class SetMorningUiDisplayPolicyTest {
         assertTrue(visual!!.isLive)
         assertEquals("60", visual.hero.result)
         assertEquals("1,481.46", visual.hero.set)
+        assertEquals("11:59:53", visual.hero.sessionLabel)
     }
 
     @Test fun stale_set_reverts_to_luke_without_promotion() {
         assertNull(setMorningHeroPresentation(state(SetMorningSelectionPhase.SET_LIVE, "60", "11:59:05"),
             luke("--"), day, clock("12:00:14"), false))
+    }
+
+    @Test fun set_live_hero_time_follows_updated_set_source_seconds() {
+        val first = setMorningHeroPresentation(
+            state(SetMorningSelectionPhase.SET_LIVE, "60", "12:00:02"),
+            luke("--"), day, clock("12:00:04"), false,
+        )
+        val next = setMorningHeroPresentation(
+            state(SetMorningSelectionPhase.SET_LIVE, "61", "12:00:07"),
+            luke("--"), day, clock("12:00:09"), false,
+        )
+        assertNotNull(first)
+        assertNotNull(next)
+        assertTrue(first!!.isLive)
+        assertTrue(next!!.isLive)
+        assertEquals("12:00:02", first.hero.sessionLabel)
+        assertEquals("12:00:07", next.hero.sessionLabel)
     }
 
     @Test fun cutoff_snapshot_animates_no_more_after_source_crossing() {
@@ -60,6 +78,7 @@ class SetMorningUiDisplayPolicyTest {
         assertNotNull(visual)
         assertFalse(visual!!.isLive)
         assertEquals("60", visual.hero.result)
+        assertEquals(LIVE_SESSION_MORNING_LABEL, visual.hero.sessionLabel)
     }
 
     @Test fun luke_final_wins_even_when_set_ui_has_result() {
@@ -78,6 +97,18 @@ class SetMorningUiDisplayPolicyTest {
         assertTrue(shouldDiscardStaleSetLive(live, clock("12:00:22").toInstant()))
         val result = state(SetMorningSelectionPhase.UI_RESULT_READY, "60", "12:00:53")
         assertFalse(shouldDiscardStaleSetLive(result, clock("12:30:00").toInstant()))
+    }
+
+    @Test fun set_result_uses_regular_result_status_in_both_hero_and_morning_card() {
+        val screen = java.io.File(
+            "src/main/java/com/myanmar/ledger2d/feature/live/LiveScreen.kt",
+        ).readText(Charsets.UTF_8)
+        assertFalse(screen.contains("SET ယာယီ"))
+        assertFalse(screen.contains("SET preview"))
+        assertFalse(screen.contains("Luke အတည်ပြုချက်စောင့်"))
+        assertFalse(screen.contains("Awaiting Luke confirmation"))
+        assertFalse(screen.contains("setUiResult"))
+        assertTrue(screen.contains("if (finalized) {"))
     }
 
     @Test fun known_nontrading_status_cannot_be_presented_as_set_live() {

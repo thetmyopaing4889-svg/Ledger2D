@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.feature.live
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.time.ZonedDateTime
 
 /** Snapshot-only state: never travels through Luke feeds, Room or auto-save. */
@@ -17,6 +18,7 @@ internal data class SetMorningHeroPresentation(
     val isLive: Boolean,
 )
 
+private val SET_SOURCE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss")
 internal const val MAX_SET_LIVE_SOURCE_AGE_MS = 60_000L
 
 /** Prevent an old SET number from lingering on-screen during a network outage. */
@@ -70,7 +72,10 @@ internal fun setMorningHeroPresentation(
             result = snapshot.computed2d,
             set = snapshot.index,
             value = snapshot.tradingValueMbaht,
-            sessionLabel = LIVE_SESSION_MORNING_LABEL,
+            // A SET LIVE observation displays the actual source update time,
+            // while a selected result keeps the regular morning session label.
+            sessionLabel = if (live) snapshot.sourceUpdateYangon.format(SET_SOURCE_TIME_FORMAT)
+                else LIVE_SESSION_MORNING_LABEL,
             date = today.toString(),
         ),
         isLive = live,

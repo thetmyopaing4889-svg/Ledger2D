@@ -293,7 +293,6 @@ private fun LiveContent(
             false,
             temporary,
             setVisual == null && postClosePending && !temporary,
-            setUiResult = setVisual != null && !setVisual.isLive,
             corrected = corrected && !closedDay,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -607,7 +606,6 @@ private fun LiveHero(
     stale: Boolean,
     temporary: Boolean,
     waitingForFinal: Boolean,
-    setUiResult: Boolean,
     corrected: Boolean,
 ) {
     val l = LocalLanguage.current
@@ -628,11 +626,6 @@ private fun LiveHero(
                 } else if (corrected) {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
                     Text(l.text("ရလဒ်ပြင်ဆင်ပြီး", "Corrected result"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
-                } else if (setUiResult) {
-                    // UI-only SET cutoff number is not a verified Luke final.
-                    Text(l.text("SET ယာယီရလဒ်", "SET preview result"),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Black, color = Color.White)
                 } else {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(20.dp))
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("✓ ") + l.text("အသစ်ဖြစ်ပြီး", "Updated"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = Color.White)
@@ -666,7 +659,6 @@ private fun LiveHero(
                     when {
                         temporary -> l.text("အတည်ပြုချက်စောင့်ဆိုင်းဆဲ", "Awaiting final") + " • " + hero.sessionLabel
                         isLive -> listOf(hero.date, hero.sessionLabel).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "LIVE" }
-                        setUiResult -> l.text("Luke အတည်ပြုချက်စောင့်", "Awaiting Luke confirmation") + " • " + hero.sessionLabel
                         else -> l.text("နောက်ဆုံးရလဒ်", "Latest final") + " • " + hero.sessionLabel
                     },
                     style = MaterialTheme.typography.labelMedium,
@@ -737,6 +729,7 @@ private fun LiveSessionCard(
     val l = LocalLanguage.current
     val officialFinal = session?.finalized == true
     val setUiOnly = uiOnlyResult != null && !officialFinal
+    // SET only mirrors a visually finalized result; Luke remains the sole stored final.
     val finalized = officialFinal || setUiOnly
     val visibleResult = if (setUiOnly) uiOnlyResult!!.result else session?.result ?: PENDING
     val visibleSet = if (setUiOnly) uiOnlyResult!!.set else session?.set ?: PENDING
@@ -749,11 +742,7 @@ private fun LiveSessionCard(
                     Text(sessionLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = AppColors.Ink)
                     Text(time, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
                 }
-                if (setUiOnly) {
-                    Text(l.text("SET ယာယီ", "SET preview"),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-                } else if (finalized) {
+                if (finalized) {
                     Icon(Icons.Default.CheckCircle, null, tint = AppColors.Success, modifier = Modifier.size(16.dp))
                     Text(l.text("ရပြီး", "Updated"), Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.Success)
                 } else {
