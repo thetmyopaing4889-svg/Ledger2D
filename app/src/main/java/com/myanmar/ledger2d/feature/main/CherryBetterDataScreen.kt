@@ -485,7 +485,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 ){
                                     Icon(Icons.Default.MenuBook,null,Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(tr("မူရင်း • ${ref.label} · ကြည့်ရန်",
+                                    Text(if(ref.label.startsWith("ဓာတ်ပုံအကျဉ်းချုပ်"))
+                                        tr("ရင်းမြစ် • ${ref.label} · ကြည့်ရန်",
+                                            "Source summary • Read")
+                                    else tr("မူရင်း • ${ref.label} · ကြည့်ရန်",
                                         "Original • ${ref.label} · Read"),
                                         style=MaterialTheme.typography.labelSmall)
                                 }
@@ -520,7 +523,9 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     selectedOriginal?.let{ref->
         AlertDialog(
             onDismissRequest={selectedOriginal=null},
-            title={Text(tr("မူရင်းမူကို ဖတ်ရန်","Read original rule"),
+            title={Text(if(ref.label.startsWith("ဓာတ်ပုံအကျဉ်းချုပ်"))
+                    tr("ရင်းမြစ်အကျဉ်းချုပ်", "Source summary")
+                else tr("မူရင်းမူကို ဖတ်ရန်","Read original rule"),
                 color=AppColors.PrimaryDeep)},
             text={
                 Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),

@@ -43,3 +43,10 @@
 - **50:** page 3 contains previously catalogued 12R / 27R and a distinct new 50 => 3 head/8 head (37/82 examples). The added reader uses one 50-only ID; existing 12R/27R source remains unchanged, while Better Data expands both heads into 20 pairs for next draw.
 - **Number First lookup:** source mentions from new reader entries are visible under a separate heading and open their books; not misrepresented as directly triggered rules. Copy includes source text from both old and new libraries.
 - All uncertain formulas remain reference-only until conditions are clarified and tested against data. Historical win-rate claims are not independently proven.
+
+## Follow-up: source-day units and reference labels (2026-11-21)
+
+- Additional source image pages 1 and 3 say **၂ ရက်** (75 -> 45789) and **၅ ရက်** (19R -> 1-break), without a special "trading days" qualifier. This build interprets those as **calendar-day bounds**, and does not change the pre-existing born rules' trading-day windows. The meaning is a source interpretation, not a proven forecast.
+- The historical test explicitly covers a Thursday-to-Monday 75 signal (expired after two calendar days), a Friday-to-Wednesday 19R signal (five days), and unchanged Friday-to-Monday legacy double birth.
+- Better Data's source link calls added image summaries **ဓာတ်ပုံအကျဉ်းချုပ်**, not verbatim original quotations. Existing legacy excerpts remain labeled original.
+- Source-ambiguous 17 other added references remain reader-only; do not invent trigger/expiry until source instructions specify them.

@@ -160,6 +160,33 @@ class CherryBetterDataEngineTest {
         assertFalse(sameDay.activeRules.any{it.id.startsWith("new-born-75@")})
     }
 
+    @Test fun newSourceTwoCalendarDaysExpireAcrossWeekendWithoutChangingOldBornRules() {
+        val source75=listOf(d("2026-11-19",DrawSession.MORNING,"75"))
+        val friday=CherryBetterDataEngine.calculate(
+            source75,target("2026-11-20",DrawSession.MORNING))
+        val rule=friday.activeRules.single{it.id.startsWith("new-born-75@")}
+        assertEquals(LocalDate.parse("2026-11-21"),rule.expires)
+        val monday=CherryBetterDataEngine.calculate(
+            source75,target("2026-11-23",DrawSession.MORNING))
+        assertFalse(monday.activeRules.any{it.id.startsWith("new-born-75@")})
+
+        val legacy=listOf(d("2026-11-20",DrawSession.EVENING,"11"))
+        val nextTradingDay=CherryBetterDataEngine.calculate(
+            legacy,target("2026-11-23",DrawSession.MORNING))
+        assertTrue(nextTradingDay.activeRules.any{it.id.startsWith("s4-wheel-11-")})
+    }
+
+    @Test fun nineteenBreakHasFiveCalendarDaysNotFiveTradingDays() {
+        val origin=listOf(d("2026-11-20",DrawSession.EVENING,"91"))
+        val within=CherryBetterDataEngine.calculate(
+            origin,target("2026-11-25",DrawSession.MORNING))
+        val born=within.activeRules.single{it.id.startsWith("new-bk-19r@")}
+        assertEquals(LocalDate.parse("2026-11-25"),born.expires)
+        val after=CherryBetterDataEngine.calculate(
+            origin,target("2026-11-26",DrawSession.MORNING))
+        assertFalse(after.activeRules.any{it.id.startsWith("new-bk-19r@")})
+    }
+
     @Test fun nineteenReverseBirthCreatesOneBreakAndExpires() {
         val input=listOf(d("2026-11-09",DrawSession.EVENING,"91"))
         val next=CherryBetterDataEngine.calculate(input,target("2026-11-10",DrawSession.MORNING))

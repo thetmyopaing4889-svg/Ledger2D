@@ -1,6 +1,6 @@
 package com.myanmar.ledger2d.feature.main
 
-/** Source excerpts come from the original bundled rules or explicitly supplied new source pages. */
+/** Source references are original legacy excerpts or labeled summaries of the user-supplied images. */
 internal data class CherryOriginalReference(
     val section: Int,
     val label: String,
@@ -11,7 +11,7 @@ internal object CherryRuleSources {
     private val digits = listOf("၀","၁","၂","၃","၄","၅","၆","၇","၈","၉")
     private val heading = Regex("""^အပိုင်း \([၁၂၃၄၅၆၇၈၉]\)""")
 
-    /** New user-supplied image excerpts, separate from immutable legacy source. */
+    /** Concise editorial summaries of user-supplied images, not verbatim quotations. */
     private fun addedSource(id: String): CherryOriginalReference? {
         val pageAndQuote = when (id) {
             "new-mob-double" -> 1 to
@@ -34,7 +34,7 @@ internal object CherryRuleSources {
         } ?: return null
         return CherryOriginalReference(
             pageAndQuote.first,
-            "ထပ်တိုးမူ • စာမျက်နှာ ${pageAndQuote.first}",
+            "ဓာတ်ပုံအကျဉ်းချုပ် • စာမျက်နှာ ${pageAndQuote.first}",
             pageAndQuote.second,
         )
     }

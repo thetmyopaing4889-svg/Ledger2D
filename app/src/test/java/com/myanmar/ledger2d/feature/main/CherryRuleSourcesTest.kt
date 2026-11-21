@@ -35,6 +35,7 @@ class CherryRuleSourcesTest {
         val ref=requireNotNull(CherryRuleSources.lookup(source,"s2-p-8"))
         assertEquals(2,ref.section)
         assertTrue(ref.label.contains("+4 ပတ်သီး"))
+        assertFalse(ref.label.startsWith("ဓာတ်ပုံအကျဉ်းချုပ်"))
         assertTrue(ref.quote.contains("ဂဏန်း 8"))
         assertTrue(ref.quote.contains("2 ပတ်သီး"))
         assertFalse(ref.quote.contains("84 - 86"))
@@ -61,6 +62,7 @@ class CherryRuleSourcesTest {
         val mob=requireNotNull(CherryRuleSources.lookup(source,"new-mob-wheel"))
         assertEquals(1,mob.section)
         assertTrue(mob.quote.contains("1267"))
+        assertTrue(mob.label.startsWith("ဓာတ်ပုံအကျဉ်းချုပ်"))
         assertFalse(mob.quote.contains("00 မှ 99"))
         val born=requireNotNull(CherryRuleSources.lookup(source,
             "new-born-75@2026-11-09-MORNING"))

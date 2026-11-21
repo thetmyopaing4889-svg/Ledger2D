@@ -519,8 +519,13 @@ object CherryBetterDataEngine {
                         "Modern $modern / Internet $internet")
             }
         }
-        fun birth(origin:HistoricDraw,code:String,name:String,pairs:List<String>,limit:Int=5) {
-            val elapsed=daysAfter(origin.date,target.date,closed)
+        fun birth(origin:HistoricDraw,code:String,name:String,pairs:List<String>,
+                  limit:Int=5,calendarDays:Boolean=false) {
+            // The original legacy born rules use trading days. The user-supplied
+            // 75 and 19R rules say "days" with no trading-day qualification.
+            val elapsed=if(calendarDays)
+                (target.date.toEpochDay()-origin.date.toEpochDay()).toInt()
+            else daysAfter(origin.date,target.date,closed)
             if(elapsed>limit || elapsed<0)return
             val values=pairs.filter(::validHistoric2D).toSet()
             if(values.isEmpty())return
@@ -528,21 +533,21 @@ object CherryBetterDataEngine {
             if(after.any{it.digit in values})return
             val key="$code@${origin.date}-${origin.session.name}"
             births+=CherryBirth(key,name,identity(origin),
-                plusWorkingDays(origin.date,limit,closed),values)
+                if(calendarDays) origin.date.plusDays(limit.toLong())
+                else plusWorkingDays(origin.date,limit,closed),values)
             add(born,key,code,name,
                 "${origin.date} ${origin.session.label}: ${origin.digit} → $name",
                 values,identity(origin),CherryTab.BORN)
         }
         rows.takeLast(20).forEach{d->
             val x=d.digit
-            // Explicit durations in the supplied image: next two days,
-            // or a five-working-day 1-break birth after 19R.
+            // Source page 1/3: plain "2 days" and "5 days", not working days.
             if(x=="75"&&d.session==DrawSession.MORNING&&d.date<target.date)
                 birth(d,"new-born-75","75 နောက် 45789 အခွေ",
-                    CherryPairExpander.wheel("45789"),limit=2)
+                    CherryPairExpander.wheel("45789"),limit=2,calendarDays=true)
             if(x=="19"||x=="91")
                 birth(d,"new-bk-19r","19R နောက် 1 ဘရိတ်",
-                    CherryPairExpander.bk(1),limit=5)
+                    CherryPairExpander.bk(1),limit=5,calendarDays=true)
             if(x[0]==x[1]) {
                 wheels[x].orEmpty().forEachIndexed{i,w->
                     birth(d,"s4-wheel-$x-$i","${x} အပူး → ${w} ခွေ",
