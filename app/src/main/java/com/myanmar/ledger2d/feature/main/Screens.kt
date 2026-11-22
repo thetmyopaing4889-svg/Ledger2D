@@ -35,6 +35,8 @@ import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -222,12 +224,13 @@ fun transactionDisplayText(format: String, raw: String): String {
                     HomeCherryWatermarks(Modifier.matchParentSize())
                     Column(
                         Modifier.fillMaxSize()
-                            .padding(start=14.dp,end=14.dp,top=18.dp,bottom=0.dp),
-                        verticalArrangement=Arrangement.spacedBy(10.dp),
+                            .verticalScroll(rememberScrollState())
+                            .padding(start=14.dp,end=14.dp,top=18.dp,bottom=18.dp),
+                        verticalArrangement=Arrangement.spacedBy(8.dp),
                     ) {
                         HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
                         HomeWeeklyResults(vm)
-                        HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
+                        HomeCommissionCard(vm, onCommissionDetails)
                         HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis, onBetterData)
                         HomeFooter()
                     }
@@ -316,26 +319,40 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 
-/** Subtle illustrated backdrop visible through 70%-opaque cards. */
+/** Faint cherry motifs with soft radial halos; no blur-layer rectangles. */
 @Composable private fun HomeCherryWatermarks(modifier: Modifier = Modifier) {
     Box(modifier) {
+        Canvas(Modifier.matchParentSize()) {
+            val w = size.width
+            val h = size.height
+            val upper = Offset(w*.82f,h*.23f)
+            val lower = Offset(w*.08f,h*.80f)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0x2FD94D82),Color.Transparent),
+                    center=upper,radius=w*.50f),
+                radius=w*.50f,center=upper
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0x21C73366),Color.Transparent),
+                    center=lower,radius=w*.46f),
+                radius=w*.46f,center=lower
+            )
+        }
         Image(
-            painter = painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
-            contentDescription = null,
-            modifier = Modifier.align(Alignment.TopEnd)
-                .offset(x = 43.dp, y = 52.dp)
-                .size(236.dp).blur(22.dp),
-            alpha = .11f,
-            contentScale = ContentScale.Fit,
+            painter=painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
+            contentDescription=null,
+            modifier=Modifier.align(Alignment.TopEnd)
+                .offset(x=34.dp,y=72.dp).size(195.dp),
+            alpha=.09f,
         )
         Image(
-            painter = painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
-            contentDescription = null,
-            modifier = Modifier.align(Alignment.BottomStart)
-                .offset(x = (-52).dp, y = 22.dp)
-                .size(212.dp).blur(22.dp),
-            alpha = .10f,
-            contentScale = ContentScale.Fit,
+            painter=painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
+            contentDescription=null,
+            modifier=Modifier.align(Alignment.BottomStart)
+                .offset(x=(-45).dp,y=(-93).dp).size(176.dp),
+            alpha=.08f,
         )
     }
 }
@@ -371,47 +388,46 @@ fun transactionDisplayText(format: String, raw: String): String {
                     ))
                 )
             ) {
-                // Deep silk ribbons: broad translucent gradient strokes with flowing
-                // curves, instead of Build 1826's four thin outline lines.
-                // Painting is static, lightweight, and clipped by the card.
+                // Layered flowing silk folds: soft filled surfaces rather than stripes.
                 Canvas(Modifier.matchParentSize()) {
                     val w = size.width
                     val h = size.height
-                    repeat(4) { i ->
-                        val x = w * (.48f + i * .14f)
-                        val ribbon = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(x - w * .13f, -h * .28f)
-                            cubicTo(
-                                x + w * .28f, h * .18f,
-                                x - w * .24f, h * .56f,
-                                x + w * .11f, h * 1.31f,
-                            )
-                        }
-                        drawPath(
-                            path = ribbon,
-                            brush = Brush.linearGradient(listOf(
-                                Color(0x00FFB1D1),
-                                Color(0x60FF4D90),
-                                Color(0x45FC104E),
-                                Color(0x602B0023),
-                            )),
-                            style = Stroke(width = h * (.24f + i * .04f),
-                                cap = StrokeCap.Round),
-                        )
-                        drawPath(
-                            path = ribbon,
-                            color = Color(0x50FFA3C0),
-                            style = Stroke(width = 1.5.dp.toPx()),
-                        )
+                    val darkFold = Path().apply {
+                        moveTo(w*.62f,-h*.12f)
+                        cubicTo(w*1.04f,h*.15f,w*.49f,h*.69f,w*.88f,h*1.18f)
+                        lineTo(w*1.20f,h*1.18f)
+                        cubicTo(w*.74f,h*.57f,w*1.22f,h*.05f,w*.77f,-h*.18f)
+                        close()
                     }
-                    drawCircle(
-                        brush = Brush.radialGradient(listOf(
-                            Color.White.copy(alpha = .21f),
-                            Color(0x00FFFFFF),
-                        )),
-                        radius = h * .73f,
-                        center = androidx.compose.ui.geometry.Offset(w * .13f, h * .01f),
-                    )
+                    drawPath(darkFold,Brush.horizontalGradient(listOf(
+                        Color(0x00F54280),Color(0x8DC10D53),Color(0xB044002C)
+                    )))
+                    val lightFold = Path().apply {
+                        moveTo(w*.34f,-h*.18f)
+                        cubicTo(w*.96f,h*.17f,w*.30f,h*.56f,w*.77f,h*1.16f)
+                        lineTo(w*.96f,h*1.18f)
+                        cubicTo(w*.50f,h*.60f,w*1.12f,h*.17f,w*.53f,-h*.17f)
+                        close()
+                    }
+                    drawPath(lightFold,Brush.linearGradient(listOf(
+                        Color(0x04FFE6F1),Color(0x84FF87B1),
+                        Color(0x53DE1A62),Color(0x00420024)
+                    )))
+                    val ribbon = Path().apply {
+                        moveTo(w*.75f,-h*.23f)
+                        cubicTo(w*.44f,h*.34f,w*1.07f,h*.57f,w*.69f,h*1.20f)
+                        lineTo(w*.79f,h*1.19f)
+                        cubicTo(w*1.14f,h*.48f,w*.60f,h*.18f,w*.88f,-h*.20f)
+                        close()
+                    }
+                    drawPath(ribbon,Brush.horizontalGradient(listOf(
+                        Color(0x12FFB2CE),Color(0x9DD91560),Color(0x32400022)
+                    )))
+                    val center=Offset(w*.22f,h*.07f)
+                    drawCircle(Brush.radialGradient(
+                        listOf(Color(0x38FFE0EA),Color.Transparent),
+                        center=center,radius=h*.87f
+                    ),radius=h*.87f,center=center)
                 }
                 Box(
                     Modifier.align(Alignment.TopCenter).fillMaxWidth(.80f)
@@ -479,11 +495,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         shadowElevation = 6.dp,
     ) {
         Column(
-            Modifier.fillMaxWidth().background(
-                Brush.verticalGradient(listOf(
-                    Color.White.copy(alpha = .17f), Color(0xFFFFEAF1).copy(alpha = .09f)
-                ))
-            ).padding(horizontal = 7.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -569,10 +581,21 @@ fun transactionDisplayText(format: String, raw: String): String {
                     val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
                     val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
                     Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
-                        Surface(Modifier.size(40.dp),shape=CircleShape,
-                            color=circleColor.copy(alpha=.75f),
-                            border=eveningStroke ?: BorderStroke(1.dp,Color.White.copy(alpha=.94f)),
-                            shadowElevation=3.dp){Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
+                        Box(Modifier.size(40.dp), contentAlignment=Alignment.Center) {
+                            Canvas(Modifier.matchParentSize()) {
+                                val radius=size.minDimension/2f-1.dp.toPx()
+                                drawCircle(Brush.radialGradient(
+                                    listOf(Color.White.copy(alpha=.97f),
+                                           circleColor.copy(alpha=.67f),
+                                           Color(0xFFEDCFDA).copy(alpha=.42f)),
+                                    center=Offset(size.width*.33f,size.height*.26f),
+                                    radius=size.minDimension*.75f
+                                ),radius=radius)
+                                drawCircle(Color.White.copy(alpha=.98f),radius=radius,
+                                    style=Stroke(width=1.dp.toPx()))
+                            }
+                            Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)
+                        }
                     }
                 }
             }
@@ -658,55 +681,126 @@ fun transactionDisplayText(format: String, raw: String): String {
     )
 }
 
+/**
+ * A glass sphere with curved specular reflection and edge depth; unlike a
+ * one-pass flat radial-gradient disk, this is rendered in stacked optical
+ * layers. The FAB stays in Scaffold's floating layer to avoid nav clipping.
+ */
 @Composable private fun QuickCenterFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val (interaction, scale) = rememberPressScale("quickFab")
-    Box(
-        modifier.size(82.dp),
-        contentAlignment = Alignment.Center,
-    ) {
+    Box(modifier.size(82.dp), contentAlignment = Alignment.Center) {
         Box(
-            Modifier.size(82.dp)
-                .background(Brush.radialGradient(listOf(
-                    Color(0x66BF1B57), Color.Transparent,
-                )), CircleShape)
+            Modifier.size(82.dp).background(
+                Brush.radialGradient(listOf(
+                    Color(0x66A00A41), Color(0x22B70B4A), Color.Transparent
+                )), CircleShape
+            )
         )
         Surface(
             onClick = onClick,
             interactionSource = interaction,
             shape = CircleShape,
-            color = Color(0xFF9B093A),
-            border = BorderStroke(2.dp, Color.White.copy(alpha = .98f)),
-            shadowElevation = 12.dp,
-            modifier = Modifier.size(76.dp)
-                .graphicsLayer { scaleX = scale; scaleY = scale },
+            color = Color(0xFF740429),
+            border = BorderStroke(1.5.dp, Color(0xFFFFF3F7)),
+            shadowElevation = 14.dp,
+            modifier = Modifier.size(76.dp).graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         ) {
-            Box(
-                Modifier.fillMaxSize().background(Brush.radialGradient(listOf(
-                    Color(0xFFFFF1F6), Color(0xFFFFA7C4),
-                    Color(0xFFFF4385), Color(0xFFCF0B54),
-                    Color(0xFF6A0731),
-                )), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    Modifier.align(Alignment.TopStart)
-                        .padding(start = 10.dp, top = 6.dp)
-                        .size(width = 48.dp, height = 28.dp)
-                        .background(Brush.radialGradient(listOf(
-                            Color.White.copy(alpha = .88f),
-                            Color.White.copy(alpha = .25f),
-                            Color.Transparent,
-                        )), CircleShape),
-                )
-                Box(
-                    Modifier.align(Alignment.BottomCenter)
-                        .padding(bottom = 5.dp)
-                        .size(width = 48.dp, height = 9.dp)
-                        .background(Brush.verticalGradient(listOf(
-                            Color.Transparent, Color(0x66470020),
-                        )), RoundedCornerShape(50)),
-                )
-                CherryBrandMark(Modifier.size(39.dp))
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.matchParentSize()) {
+                    val w = size.width
+                    val h = size.height
+                    val radius = size.minDimension * .50f
+                    val middle = Offset(w*.5f,h*.5f)
+                    // Ruby body: shifted light source and darker curved rim.
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                .0f to Color(0xFFFFF3F8),
+                                .19f to Color(0xFFFFA7C6),
+                                .45f to Color(0xFFFF397D),
+                                .74f to Color(0xFFD0064C),
+                                1f to Color(0xFF540020),
+                            ),
+                            center = Offset(w*.33f,h*.26f),
+                            radius = radius * 1.58f,
+                        ),
+                        radius = radius,
+                        center = middle,
+                    )
+                    // Inner translucent ruby lens gives the glass real depth.
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color(0x72FFB9D1), Color(0x35FF2975),
+                                Color(0x04FF2E6C), Color(0x8D470020),
+                            ),
+                            center = Offset(w*.37f,h*.22f),
+                            radius = radius * 1.60f,
+                        ),
+                        radius = radius * .92f,
+                        center = middle,
+                    )
+                    // Deep lower hemisphere where the glass thickens.
+                    drawArc(
+                        brush = Brush.verticalGradient(listOf(
+                            Color.Transparent, Color(0xA63D001C)
+                        )),
+                        startAngle = 20f, sweepAngle = 141f,
+                        useCenter = false,
+                        style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round),
+                    )
+                    val upperCrescent = Path().apply {
+                        moveTo(w*.14f,h*.30f)
+                        cubicTo(w*.20f,h*.07f,w*.57f,h*.03f,w*.78f,h*.24f)
+                        cubicTo(w*.56f,h*.12f,w*.32f,h*.17f,w*.16f,h*.36f)
+                        close()
+                    }
+                    drawPath(
+                        upperCrescent,
+                        brush = Brush.verticalGradient(listOf(
+                            Color.White.copy(alpha=.90f),
+                            Color(0xAAFFD4E5),
+                            Color.Transparent
+                        ))
+                    )
+                    // Oval room-light reflection, curving across the surface.
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha=.78f),
+                                Color.White.copy(alpha=.24f),
+                                Color.Transparent,
+                            ),
+                            center = Offset(w*.34f,h*.19f),
+                            radius = w*.35f,
+                        ),
+                        topLeft = Offset(w*.16f,h*.08f),
+                        size = Size(w*.61f,h*.34f),
+                    )
+                    // Polished rim: bright upper-left and dim lower-right.
+                    drawArc(
+                        color = Color.White.copy(alpha=.84f),
+                        startAngle = 183f, sweepAngle = 130f,
+                        useCenter = false,
+                        style = Stroke(width = 1.9.dp.toPx(),cap=StrokeCap.Round),
+                    )
+                    drawArc(
+                        color = Color(0xA13C0021),
+                        startAngle = 32f, sweepAngle = 114f,
+                        useCenter = false,
+                        style = Stroke(width = 2.5.dp.toPx(),cap=StrokeCap.Round),
+                    )
+                    drawCircle(
+                        color=Color.White.copy(alpha=.64f),
+                        radius=2.8.dp.toPx(),
+                        center=Offset(w*.22f,h*.25f),
+                    )
+                }
+                // Keep the Cherry branding sharp above the optical layers.
+                CherryBrandMark(Modifier.size(34.dp))
             }
         }
     }
@@ -799,7 +893,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         }
         Text(
             label,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp),
             style = HomeTypography.quickAction(LocalLanguage.current.code),
             color = AppColors.Ink,
             maxLines = 3, textAlign = TextAlign.Center,
@@ -808,7 +902,8 @@ fun transactionDisplayText(format: String, raw: String): String {
 }
 @Composable private fun rememberPressScale(label:String):Pair<MutableInteractionSource,Float>{val interaction=remember{MutableInteractionSource()};val pressed by interaction.collectIsPressedAsState();val scale by animateFloatAsState(if(pressed).965f else 1f,tween(AppMotion.Short),label=label);return interaction to scale}
 @Composable private fun HomeFooter(){
-    Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+    // Pull the footer above the Ruby button's floating footprint.
+    Row(Modifier.fillMaxWidth().offset(y=(-24).dp).padding(top=2.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=HomeTypography.footer(LocalLanguage.current.code),color=Color(0xFFB98DA0),maxLines=2,softWrap=true,textAlign=TextAlign.Center)
     }

@@ -74,10 +74,6 @@ internal fun HomeCommissionCard(
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(
-                    Color.White.copy(alpha = .12f),
-                    Color(0xFFFFE9F1).copy(alpha = .08f),
-                )))
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -134,14 +130,14 @@ internal fun HomeCommissionCard(
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xC5F8DBE6),
+                    color = Color(0xB6F8DDE7),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = .96f)),
                     shadowElevation = 3.dp,
                 ) {
                 Column(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 7.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Text(
                         language.text("ယနေ့အထိ", "Total to date"),
