@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -366,6 +367,14 @@ fun transactionDisplayText(format: String, raw: String): String {
 ) {
     val l = LocalLanguage.current
     val compact = LocalConfiguration.current.screenWidthDp < 360
+    // Animate only this tiny indicator; the wave image is a static resource.
+    val pulse = rememberInfiniteTransition(label = "homeLiveGlow")
+    val liveGlowAlpha by pulse.animateFloat(
+        initialValue = .78f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(1700), repeatMode = RepeatMode.Reverse),
+        label = "homeLiveGlowAlpha",
+    )
     val (liveInteraction, liveScale) = rememberPressScale("liveCard")
     Row(
         Modifier.fillMaxWidth(),
@@ -376,12 +385,36 @@ fun transactionDisplayText(format: String, raw: String): String {
             onClick = onLive,
             interactionSource = liveInteraction,
             modifier = Modifier.weight(1.35f).height(88.dp)
+                .shadow(
+                    12.dp, RoundedCornerShape(23.dp),
+                    ambientColor = Color(0x66B71C1C), spotColor = Color(0x66B71C1C)
+                )
                 .graphicsLayer { scaleX = liveScale; scaleY = liveScale },
             shape = RoundedCornerShape(23.dp),
             colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp),
         ) {
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp))) {
+            Box(
+                Modifier.fillMaxSize()
+                    .clip(RoundedCornerShape(23.dp))
+                    .drawWithContent {
+                        drawContent()
+                        // Beveled highlight follows the rounded glass edge, not a rectangle.
+                        drawRoundRect(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xCCFFFFFF),
+                                    Color(0x66FFFFFF),
+                                    Color(0x1AFFFFFF),
+                                ),
+                                start = Offset.Zero,
+                                end = Offset(size.width, size.height),
+                            ),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(23.dp.toPx()),
+                            style = Stroke(width = 1.dp.toPx()),
+                        )
+                    }
+            ) {
                 // Exact Gemini Liquid Silk artwork: no hand-drawn ribbons or disks.
                 Image(
                     painter = painterResource(com.myanmar.ledger2d.R.drawable.bg_live_wave),
@@ -394,13 +427,21 @@ fun transactionDisplayText(format: String, raw: String): String {
                         Color(0x440F0010), Color(0x1C36001B), Color(0x360F0010)
                     ))
                 ))
+                // Acrylic sheen stays over the silk, below all labels and controls.
+                Box(Modifier.matchParentSize().background(
+                    Brush.verticalGradient(
+                        0f to Color(0x22FFFFFF),
+                        .40f to Color.Transparent,
+                        1f to Color.Transparent,
+                    )
+                ))
                 Row(
                     Modifier.fillMaxSize().padding(horizontal = if (compact) 8.dp else 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp),
                 ) {
                     // A border-free glowing live indicator, not a white outline ring.
-                    Canvas(Modifier.size(if (compact) 31.dp else 40.dp)) {
+                    Canvas(Modifier.size(if (compact) 31.dp else 40.dp).graphicsLayer { alpha = liveGlowAlpha }) {
                         val mid = Offset(size.width * .5f, size.height * .5f)
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -446,15 +487,21 @@ fun transactionDisplayText(format: String, raw: String): String {
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String, value: Int, iconTint: Color, modifier: Modifier,
 ) {
-    Surface(
-        modifier.height(88.dp),
-        color = Color(0xB8FFFFFF),
-        shape = RoundedCornerShape(23.dp),
-        border = BorderStroke(1.dp, Color(0xE6FFFFFF)),
-        shadowElevation = 2.dp,
+    // One painted glass surface: no nested Material3 Surface behind the count.
+    Box(
+        modifier.height(88.dp)
+            .shadow(
+                3.dp, RoundedCornerShape(23.dp),
+                ambientColor = Color(0x33D81B60), spotColor = Color(0x33D81B60)
+            )
+            .clip(RoundedCornerShape(23.dp))
+            .background(Color(0xB8FFFFFF))
+            .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(23.dp)),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().background(Color.Transparent)
+                .padding(horizontal = 7.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -465,7 +512,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                 overflow = TextOverflow.Ellipsis, softWrap = false,
             )
             Row(
-                Modifier.padding(top = 5.dp),
+                Modifier.padding(top = 5.dp).background(Color.Transparent),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
@@ -503,8 +550,26 @@ fun transactionDisplayText(format: String, raw: String): String {
     data class DigitDetail(val date:LocalDate,val session:DrawSession,val digit:String,val stake:Long,val commission:Long); var selectedDigit by remember{mutableStateOf<DigitDetail?>(null)}
     val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,revision){value=(0L..4L).flatMap{offset->DrawSession.entries.map{session->val date=monday.plusDays(offset);var stake=0L;var commission=0L;agents.forEach{agent->val report=vm.agentReport(agent.id,date,session,true);stake+=report.calculation.totalBet;commission+=report.calculation.commission};(date to session) to(stake to commission)}}.toMap()}
     val weekEnd=monday.plusDays(4); val weekLabel="${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
-    Card(Modifier.fillMaxWidth().pointerInput(Unit){var distance=0f;detectDragGestures(onDragStart={distance=0f},onDrag={change,amount->change.consume();distance+=amount.x},onDragEnd={if(kotlin.math.abs(distance)>72f)weekOffset+=if(distance<0)1 else -1})},colors=CardDefaults.cardColors(containerColor=Color(0xB8FFFFFF)),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,Color(0xE6FFFFFF)),elevation=CardDefaults.cardElevation(defaultElevation=2.dp)){
-        Column(Modifier.padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+    // Draw the transparent weekly grid on one glass pane, not a nested Card surface.
+    Box(
+        modifier.fillMaxWidth()
+            .pointerInput(Unit) {
+                var distance = 0f
+                detectDragGestures(
+                    onDragStart = { distance = 0f },
+                    onDrag = { change, amount -> change.consume(); distance += amount.x },
+                    onDragEnd = { if (kotlin.math.abs(distance) > 72f) weekOffset += if (distance < 0) 1 else -1 },
+                )
+            }
+            .shadow(
+                3.dp, RoundedCornerShape(24.dp),
+                ambientColor = Color(0x33D81B60), spotColor = Color(0x33D81B60)
+            )
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xB8FFFFFF))
+            .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(24.dp)),
+    ) {
+        Column(Modifier.background(Color.Transparent).padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=HomeTypography.weeklyHeading(l.code),color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
         }
@@ -649,19 +714,24 @@ fun transactionDisplayText(format: String, raw: String): String {
     val (interaction, scale) = rememberPressScale("quickFab")
     // Keep this in Scaffold's FAB layer so neither the bottom bar nor card clips it.
     Box(modifier.size(82.dp), contentAlignment = Alignment.Center) {
+        // Offset, diffused colored halo physically separates the ruby sphere
+        // from the lower frosted navigation glass.
         Box(
-            Modifier.size(81.dp).background(
-                Brush.radialGradient(listOf(
-                    Color(0x66C30A55), Color(0x22CB205B), Color.Transparent
-                )), CircleShape
-            )
+            Modifier.offset(y = 6.dp).size(76.dp)
+                .shadow(
+                    16.dp, CircleShape,
+                    ambientColor = Color(0x77D81B60), spotColor = Color(0x77D81B60)
+                )
+                .blur(10.dp)
+                .background(Color(0x66D81B60), CircleShape)
         )
         Surface(
             onClick = onClick,
             interactionSource = interaction,
             shape = CircleShape,
             color = Color.Transparent,
-            shadowElevation = 9.dp,
+            border = BorderStroke(1.5.dp, Color(0xCCFFFFFF)),
+            shadowElevation = 0.dp,
             modifier = Modifier.size(78.dp).graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -671,7 +741,8 @@ fun transactionDisplayText(format: String, raw: String): String {
             Image(
                 painter = painterResource(com.myanmar.ledger2d.R.drawable.btn_cherry_orb),
                 contentDescription = LocalLanguage.current.translate("အမြန်စာရင်းသွင်းရန်"),
-                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    .graphicsLayer { scaleX = 1.06f; scaleY = 1.06f },
                 contentScale = ContentScale.Crop,
             )
         }
