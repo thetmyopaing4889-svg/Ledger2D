@@ -34,11 +34,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -186,34 +188,49 @@ fun transactionDisplayText(format: String, raw: String): String {
     val revision by vm.revision.collectAsStateWithLifecycle()
     val today=DeviceCalendar.today()
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
-    val heroHeight=(LocalConfiguration.current.screenWidthDp*.43f).dp.coerceIn(172.dp,188.dp)
-    // The background art must continue under the *entire* rounded-sheet corner.
-    // The sheet starts 36dp above the art's lower edge; its 30dp corners
-    // can never expose a pale, unpainted gutter at the seam.
-    val sheetOverlap=36.dp
-    Scaffold(containerColor=Color(0xFFFBEFF3),contentWindowInsets=WindowInsets(0,0,0,0),bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)}){p->
+    // Give the illustrated header enough breathing room for title, tagline,
+    // and the real date; Build 1826's 172dp/36dp stack hid the date.
+    val heroHeight=(LocalConfiguration.current.screenWidthDp*.55f).dp.coerceIn(198.dp,226.dp)
+    val sheetOverlap=24.dp
+    Scaffold(
+        containerColor=Color(0xFFFBEFF3),
+        contentWindowInsets=WindowInsets(0,0,0,0),
+        bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)},
+        // Scaffold lays out the floating button outside the NavigationBar's
+        // clipping/measurement bounds, then draws it above the bar.
+        floatingActionButton={
+            QuickCenterFab(onQuickEntry, Modifier.offset(y=60.dp))
+        },
+        floatingActionButtonPosition=FabPosition.Center,
+    ){p->
         BoxWithConstraints(Modifier.fillMaxSize().padding(p)) {
             // Keep the original header, live, weekly grid and both 76dp feature rows.
             // Reserve the real visible height (above NavigationBar), not an infinite scroll.
             Box(Modifier.fillMaxSize()) {
                 HomeHeader(today,onSettings,Modifier.align(Alignment.TopCenter),heroHeight)
-                Column(
+                Box(
                     Modifier.fillMaxWidth().padding(top=heroHeight-sheetOverlap)
                         .height(this@BoxWithConstraints.maxHeight-(heroHeight-sheetOverlap))
                         .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                         .background(Brush.verticalGradient(listOf(
-                            Color(0xFFFEF8FA), Color(0xFFFBEAF0), Color(0xFFFCF1F5)
+                            Color(0xFFFCF5F8), Color(0xFFFCEBF1), Color(0xFFFAEFF4)
                         )))
-                        .padding(start=14.dp,end=14.dp,top=18.dp,bottom=0.dp),
-                    verticalArrangement=Arrangement.spacedBy(10.dp),
                 ) {
-                    HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
-                    HomeWeeklyResults(vm)
-                    // Only the commission area and quick actions change; retain original
-                    // Header, LIVE, Weekly Results, bottom navigation and footer.
-                    HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
-                    HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis, onBetterData)
-                    HomeFooter()
+                    // Actual frosted layers need a visible soft backdrop.
+                    // Apply blur ONLY to two tiny, static brand silhouettes;
+                    // never blur scrolling text, result digits or the whole UI.
+                    HomeCherryWatermarks(Modifier.matchParentSize())
+                    Column(
+                        Modifier.fillMaxSize()
+                            .padding(start=14.dp,end=14.dp,top=18.dp,bottom=0.dp),
+                        verticalArrangement=Arrangement.spacedBy(10.dp),
+                    ) {
+                        HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)
+                        HomeWeeklyResults(vm)
+                        HomeCommissionCard(vm, onCommissionDetails, Modifier.weight(1f, fill=false))
+                        HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis, onBetterData)
+                        HomeFooter()
+                    }
                 }
             }
         }
@@ -244,15 +261,15 @@ fun transactionDisplayText(format: String, raw: String): String {
         Box(
             Modifier.matchParentSize().background(
                 Brush.verticalGradient(listOf(
-                    Color(0xFF280714).copy(alpha = .48f),
-                    Color(0xFF350914).copy(alpha = .20f),
-                    Color(0xFF270514).copy(alpha = .14f),
+                    Color(0xFF210612).copy(alpha = .12f),
+                    Color.Transparent,
+                    Color(0xFF270514).copy(alpha = .08f),
                 ))
             )
         )
         Column(
             modifier = Modifier.fillMaxWidth().statusBarsPadding()
-                .padding(top = 13.dp, start = 47.dp, end = 47.dp),
+                .padding(top = 17.dp, start = 47.dp, end = 47.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -286,10 +303,8 @@ fun transactionDisplayText(format: String, raw: String): String {
         IconButton(
             onClick = onSettings,
             modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding()
-                .padding(top = 8.dp, end = 12.dp)
-                .size(42.dp)
-                .background(Color(0x882E0C20), CircleShape)
-                .border(1.dp, Color.White.copy(alpha = .42f), CircleShape),
+                .padding(top = 2.dp, end = 9.dp)
+                .size(48.dp),
         ) {
             Icon(
                 Icons.Default.MoreHoriz,
@@ -298,6 +313,30 @@ fun transactionDisplayText(format: String, raw: String): String {
                 modifier = Modifier.size(23.dp),
             )
         }
+    }
+}
+
+/** Subtle illustrated backdrop visible through 70%-opaque cards. */
+@Composable private fun HomeCherryWatermarks(modifier: Modifier = Modifier) {
+    Box(modifier) {
+        Image(
+            painter = painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.TopEnd)
+                .offset(x = 43.dp, y = 52.dp)
+                .size(236.dp).blur(22.dp),
+            alpha = .11f,
+            contentScale = ContentScale.Fit,
+        )
+        Image(
+            painter = painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.BottomStart)
+                .offset(x = (-52).dp, y = 22.dp)
+                .size(212.dp).blur(22.dp),
+            alpha = .10f,
+            contentScale = ContentScale.Fit,
+        )
     }
 }
 
@@ -332,21 +371,47 @@ fun transactionDisplayText(format: String, raw: String): String {
                     ))
                 )
             ) {
-                // Static, cheap satin waves: no runtime blur or new animation.
+                // Deep silk ribbons: broad translucent gradient strokes with flowing
+                // curves, instead of Build 1826's four thin outline lines.
+                // Painting is static, lightweight, and clipped by the card.
                 Canvas(Modifier.matchParentSize()) {
                     val w = size.width
                     val h = size.height
                     repeat(4) { i ->
-                        val p = androidx.compose.ui.graphics.Path().apply {
-                            val x = w * (.36f + i * .12f)
-                            moveTo(x, -h * .12f)
-                            cubicTo(x + w * .42f, h * .17f,
-                                x - w * .20f, h * .61f,
-                                x + w * .20f, h * 1.10f)
+                        val x = w * (.48f + i * .14f)
+                        val ribbon = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(x - w * .13f, -h * .28f)
+                            cubicTo(
+                                x + w * .28f, h * .18f,
+                                x - w * .24f, h * .56f,
+                                x + w * .11f, h * 1.31f,
+                            )
                         }
-                        drawPath(p, Color.White.copy(alpha = .08f),
-                            style = Stroke(width = 2.dp.toPx()))
+                        drawPath(
+                            path = ribbon,
+                            brush = Brush.linearGradient(listOf(
+                                Color(0x00FFB1D1),
+                                Color(0x60FF4D90),
+                                Color(0x45FC104E),
+                                Color(0x602B0023),
+                            )),
+                            style = Stroke(width = h * (.24f + i * .04f),
+                                cap = StrokeCap.Round),
+                        )
+                        drawPath(
+                            path = ribbon,
+                            color = Color(0x50FFA3C0),
+                            style = Stroke(width = 1.5.dp.toPx()),
+                        )
                     }
+                    drawCircle(
+                        brush = Brush.radialGradient(listOf(
+                            Color.White.copy(alpha = .21f),
+                            Color(0x00FFFFFF),
+                        )),
+                        radius = h * .73f,
+                        center = androidx.compose.ui.geometry.Offset(w * .13f, h * .01f),
+                    )
                 }
                 Box(
                     Modifier.align(Alignment.TopCenter).fillMaxWidth(.80f)
@@ -360,10 +425,12 @@ fun transactionDisplayText(format: String, raw: String): String {
                 ) {
                     Box(
                         Modifier.size(if (compact) 31.dp else 40.dp)
+                            .shadow(7.dp, CircleShape)
                             .background(Brush.radialGradient(listOf(
-                                Color(0xFFFFD7E4), Color(0xFFFC3D73), Color(0xFFAA073D),
+                                Color(0xFFFFFFFF), Color(0xFFFFA6C4),
+                                Color(0xFFFF2D72), Color(0xFF800A39),
                             )), CircleShape)
-                            .border(1.dp, Color.White.copy(alpha = .62f), CircleShape),
+                            .border(1.dp, Color.White.copy(alpha = .90f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Box(
@@ -406,15 +473,15 @@ fun transactionDisplayText(format: String, raw: String): String {
 ) {
     Surface(
         modifier.height(88.dp),
-        color = Color(0xFFFDF7FA).copy(alpha = .95f),
+        color = Color.White.copy(alpha = .70f),
         shape = RoundedCornerShape(23.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .98f)),
-        shadowElevation = 5.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .94f)),
+        shadowElevation = 6.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().background(
                 Brush.verticalGradient(listOf(
-                    Color.White.copy(alpha = .36f), Color(0xFFFFEAF1).copy(alpha = .33f)
+                    Color.White.copy(alpha = .17f), Color(0xFFFFEAF1).copy(alpha = .09f)
                 ))
             ).padding(horizontal = 7.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -465,7 +532,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     data class DigitDetail(val date:LocalDate,val session:DrawSession,val digit:String,val stake:Long,val commission:Long); var selectedDigit by remember{mutableStateOf<DigitDetail?>(null)}
     val totals by produceState(emptyMap<Pair<LocalDate,DrawSession>,Pair<Long,Long>>(),agents,monday,revision){value=(0L..4L).flatMap{offset->DrawSession.entries.map{session->val date=monday.plusDays(offset);var stake=0L;var commission=0L;agents.forEach{agent->val report=vm.agentReport(agent.id,date,session,true);stake+=report.calculation.totalBet;commission+=report.calculation.commission};(date to session) to(stake to commission)}}.toMap()}
     val weekEnd=monday.plusDays(4); val weekLabel="${monday.format(java.time.format.DateTimeFormatter.ofPattern("d MMM",Locale.ENGLISH))} – ${weekEnd.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ENGLISH))}"
-    Card(Modifier.fillMaxWidth().pointerInput(Unit){var distance=0f;detectDragGestures(onDragStart={distance=0f},onDrag={change,amount->change.consume();distance+=amount.x},onDragEnd={if(kotlin.math.abs(distance)>72f)weekOffset+=if(distance<0)1 else -1})},colors=CardDefaults.cardColors(containerColor=Color(0xFFFEF8FB).copy(alpha=.94f)),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,Color.White.copy(alpha=.96f)),elevation=CardDefaults.cardElevation(defaultElevation=5.dp)){
+    Card(Modifier.fillMaxWidth().pointerInput(Unit){var distance=0f;detectDragGestures(onDragStart={distance=0f},onDrag={change,amount->change.consume();distance+=amount.x},onDragEnd={if(kotlin.math.abs(distance)>72f)weekOffset+=if(distance<0)1 else -1})},colors=CardDefaults.cardColors(containerColor=Color.White.copy(alpha=.71f)),shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,Color.White.copy(alpha=.97f)),elevation=CardDefaults.cardElevation(defaultElevation=6.dp)){
         Column(Modifier.padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=HomeTypography.weeklyHeading(l.code),color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
             AnimatedContent(targetState=monday,transitionSpec={val forward=targetState.isAfter(initialState);(slideInHorizontally(tween(260)){if(forward)it else -it}+fadeIn(tween(180))) togetherWith(slideOutHorizontally(tween(260)){if(forward)-it else it}+fadeOut(tween(180)))},label="weekly-page"){pageMonday->HomeWeeklyPage(pageMonday,winnerMap,closedSet,totals){date,session,digit,stake,commission->selectedDigit=DigitDetail(date,session,digit,stake,commission)}}
@@ -474,7 +541,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     selectedDigit?.let{item->AlertDialog(onDismissRequest={selectedDigit=null},confirmButton={TextButton(onClick={selectedDigit=null}){Text(l.translate("ပိတ်မည်"))}},title={Text("${item.date.displayDate()} • ${l.translate(if(item.session == DrawSession.MORNING) "မနက်" else "ညနေ")}")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(l.translate("ပေါက်ဂဏန်း"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(item.digit,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);HorizontalDivider();Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ထိုးကြေး"));Text(item.stake.mmk(),fontWeight=FontWeight.Bold)};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(l.translate("ကော်မရှင်"));Text(item.commission.mmk(),fontWeight=FontWeight.Bold)}}})}
 }
 
-@Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=Color(0xFFFFECF3),border=BorderStroke(1.dp,Color.White.copy(alpha=.9f)),shadowElevation=2.dp){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
+@Composable private fun HomeWeekArrows(onPrev:()->Unit,onNext:()->Unit){Surface(shape=RoundedCornerShape(22.dp),color=Color.White.copy(alpha=.70f),border=BorderStroke(1.dp,Color.White.copy(alpha=.95f)),shadowElevation=3.dp){Row(verticalAlignment=Alignment.CenterVertically){HomeWeekArrow(Icons.Default.ChevronLeft,onPrev);Box(Modifier.size(1.dp,18.dp).background(AppColors.Stone.copy(alpha=.8f)));HomeWeekArrow(Icons.Default.ChevronRight,onNext)}}}
 @Composable private fun HomeWeekArrow(icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Box(Modifier.size(38.dp).clickable(onClick=onClick),contentAlignment=Alignment.Center){Icon(icon,null,tint=AppColors.PrimaryDeep,modifier=Modifier.size(22.dp))}}
 
 @Composable private fun HomeWeeklyPage(monday:LocalDate,winnerMap:Map<Pair<LocalDate,DrawSession>,String>,closedSet:Set<LocalDate>,totals:Map<Pair<LocalDate,DrawSession>,Pair<Long,Long>>,onSelect:(LocalDate,DrawSession,String,Long,Long)->Unit){
@@ -502,7 +569,10 @@ fun transactionDisplayText(format: String, raw: String): String {
                     val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
                     val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
                     Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
-                        Surface(Modifier.size(40.dp),shape=CircleShape,color=circleColor,border=eveningStroke){Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
+                        Surface(Modifier.size(40.dp),shape=CircleShape,
+                            color=circleColor.copy(alpha=.75f),
+                            border=eveningStroke ?: BorderStroke(1.dp,Color.White.copy(alpha=.94f)),
+                            shadowElevation=3.dp){Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)}
                     }
                 }
             }
@@ -520,11 +590,22 @@ fun transactionDisplayText(format: String, raw: String): String {
     val l = LocalLanguage.current
     Box(
         Modifier.fillMaxWidth()
-            .shadow(7.dp, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+            .shadow(5.dp, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+            .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
             .background(Brush.verticalGradient(listOf(
-                Color(0xFFFFF7FA), Color(0xFFFBE5ED),
+                Color.White.copy(alpha=.77f),
+                Color(0xFFFBE5EF).copy(alpha=.82f),
             )), RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+            .border(1.dp,Color.White.copy(alpha=.94f),
+                RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
     ) {
+        Image(
+            painter = painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.CenterEnd)
+                .offset(x = 35.dp, y = (-6).dp).size(116.dp).blur(18.dp),
+            alpha = .09f,
+        )
         // Retain NavigationBar's bottom system-inset handling and all five
         // destinations. Only the presentation changes.
         NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
@@ -543,7 +624,6 @@ fun transactionDisplayText(format: String, raw: String): String {
             HomeNavItem(l.translate("ပိတ်"), Icons.Default.EventBusy, onClosedDays)
             HomeNavItem(l.translate("ရလဒ်"), Icons.Default.EmojiEvents, onWinning)
         }
-        QuickCenterFab(onQuickEntry, Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -581,7 +661,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun QuickCenterFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val (interaction, scale) = rememberPressScale("quickFab")
     Box(
-        modifier.offset(y = (-31).dp).size(82.dp),
+        modifier.size(82.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -601,20 +681,22 @@ fun transactionDisplayText(format: String, raw: String): String {
                 .graphicsLayer { scaleX = scale; scaleY = scale },
         ) {
             Box(
-                Modifier.fillMaxSize().background(Brush.linearGradient(listOf(
-                    Color(0xFFFF92B1), Color(0xFFEE346D),
-                    Color(0xFFC81150), Color(0xFF71092D),
+                Modifier.fillMaxSize().background(Brush.radialGradient(listOf(
+                    Color(0xFFFFF1F6), Color(0xFFFFA7C4),
+                    Color(0xFFFF4385), Color(0xFFCF0B54),
+                    Color(0xFF6A0731),
                 )), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
                     Modifier.align(Alignment.TopStart)
-                        .padding(start = 14.dp, top = 8.dp)
-                        .size(width = 41.dp, height = 18.dp)
-                        .background(Brush.verticalGradient(listOf(
-                            Color.White.copy(alpha = .82f),
-                            Color.White.copy(alpha = .02f),
-                        )), RoundedCornerShape(50)),
+                        .padding(start = 10.dp, top = 6.dp)
+                        .size(width = 48.dp, height = 28.dp)
+                        .background(Brush.radialGradient(listOf(
+                            Color.White.copy(alpha = .88f),
+                            Color.White.copy(alpha = .25f),
+                            Color.Transparent,
+                        )), CircleShape),
                 )
                 Box(
                     Modifier.align(Alignment.BottomCenter)

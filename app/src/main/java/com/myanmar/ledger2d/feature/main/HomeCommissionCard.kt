@@ -68,15 +68,15 @@ internal fun HomeCommissionCard(
         onClick = onDetails,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(19.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF8FB).copy(alpha = .95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .98f)),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .70f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .97f)),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(
-                    Color.White.copy(alpha = .40f),
-                    Color(0xFFFFE9F1).copy(alpha = .22f),
+                    Color.White.copy(alpha = .12f),
+                    Color(0xFFFFE9F1).copy(alpha = .08f),
                 )))
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -131,8 +131,16 @@ internal fun HomeCommissionCard(
                     HomeCommissionAmountRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
                 }
                 VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
-                Column(
+                Surface(
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xC5F8DBE6),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = .96f)),
+                    shadowElevation = 3.dp,
+                ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 7.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
@@ -148,6 +156,7 @@ internal fun HomeCommissionCard(
                         color = AppColors.PrimaryDeep, maxLines = 2,
                         softWrap = true,
                     )
+                }
                 }
             }
             }
