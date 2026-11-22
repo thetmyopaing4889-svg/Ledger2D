@@ -2,6 +2,7 @@ package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -12,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -64,16 +67,21 @@ internal fun HomeCommissionCard(
     val isClosed = today.dayOfWeek == DayOfWeek.SATURDAY ||
         today.dayOfWeek == DayOfWeek.SUNDAY || closedDays.any { it.date == today }
 
-    Card(
-        onClick = onDetails,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(19.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xB8FFFFFF)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, Color(0xE6FFFFFF)),
+    // The content is painted on the same translucent pane as its outline.
+    // No Material3 Card surface or child Surface can flatten it to opaque white.
+    Box(
+        modifier = modifier.fillMaxWidth()
+            .shadow(
+                3.dp, RoundedCornerShape(19.dp),
+                ambientColor = Color(0x33D81B60), spotColor = Color(0x33D81B60)
+            )
+            .clip(RoundedCornerShape(19.dp))
+            .background(Color(0xB8FFFFFF))
+            .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(19.dp))
+            .clickable(onClick = onDetails),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().background(Color.Transparent)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -127,15 +135,15 @@ internal fun HomeCommissionCard(
                     HomeCommissionAmountRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
                 }
                 VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
-                Surface(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color(0x90F8DDE7),
-                    border = BorderStroke(1.dp, Color(0xE6FFFFFF)),
-                    shadowElevation = 1.dp,
+                // Single pink translucent panel without a rectangular inner Surface.
+                Box(
+                    modifier = Modifier.weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0x90F8DDE7))
+                        .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(14.dp)),
                 ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().background(Color.Transparent)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
