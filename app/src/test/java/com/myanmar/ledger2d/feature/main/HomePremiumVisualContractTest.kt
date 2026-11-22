@@ -49,7 +49,7 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("color = Color.White.copy(alpha = .70f)"))
         assertTrue(screen.contains("containerColor=Color.White.copy(alpha=.71f)"))
         assertTrue(screen.contains("shadowElevation=3.dp"))
-        assertTrue(commission.contains("color = Color.White.copy(alpha = .70f)"))
+        assertTrue(commission.contains("containerColor = Color.White.copy(alpha = .70f)"))
         assertTrue(commission.contains("language.text(\"ယနေ့အထိ\", \"Total to date\")"))
         assertTrue(commission.contains("Color(0xC5F8DBE6)"))
     }
