@@ -66,11 +66,11 @@ class CherryLibrarySuccessBridgeTest {
     @Test fun twoRulesAndTwoTabsOneLibraryRuleOnlyOneDrawOnePoint() {
         val target = draw(0)
         val snap = snapshot(target,
-            pair("s6-12", CherryTab.CURRENT, "48"),
-            pair("s6-12-wheel", CherryTab.BORN, "47", "74"))
+            pair("s3-9to7", CherryTab.CURRENT, "07"),
+            pair("s3-9to7", CherryTab.BORN, "70", "61"))
         val actual = CherryLibrarySuccessBridge.scoredCompleted(
-            CherrySuccessEngine.completed(listOf(snap), mapOf(target to "47")), known)
-        val score = actual.getValue("cherry-038")
+            CherrySuccessEngine.completed(listOf(snap), mapOf(target to "70")), known)
+        val score = actual.getValue("cherry-017")
         assertEquals(1, score.eligible)
         assertEquals(1, score.correct)
         assertEquals(3, score.events.single().pairCount)
@@ -115,7 +115,43 @@ class CherryLibrarySuccessBridgeTest {
         assertEquals("new-born-75", CherryLibrarySuccessBridge.libraryRuleId("new-born-75@2026-11-16-MORNING"))
         assertEquals("new-bk-19r", CherryLibrarySuccessBridge.libraryRuleId("new-bk-19r@2026-11-16-EVENING"))
         assertEquals("cherry-017", CherryLibrarySuccessBridge.libraryRuleId("s3-7to4"))
-        assertEquals("cherry-038", CherryLibrarySuccessBridge.libraryRuleId("s6-12"))
+        assertNull(CherryLibrarySuccessBridge.libraryRuleId("s6-12"))
+    }
+
+    @Test fun weeklyAndPartialRuleSignalsCannotEarnWholeSourcePoints() {
+        val withheld = listOf(
+            "s3-power", "s3-six", "s3-week", "s5-mon", "s5-wed",
+            "s6-70", "s6-12", "s6-12-wheel", "s6-am92", "s6-92",
+            "s8-00-bk", "s6-78",
+        )
+        withheld.forEach { assertNull("Must not award a whole-rule score for $it",
+            CherryLibrarySuccessBridge.libraryRuleId(it)) }
+        val target=draw(0)
+        val snap=snapshot(target, *withheld.map {
+            pair(it, CherryTab.CURRENT, "47")
+        }.toTypedArray())
+        val actual=CherryLibrarySuccessBridge.scoredCompleted(
+            CherrySuccessEngine.completed(listOf(snap), mapOf(target to "47")),
+            setOf("cherry-011","cherry-019","cherry-020","cherry-028",
+                "cherry-029","cherry-035","cherry-038","cherry-051",
+                "cherry-056","cherry-074"))
+        assertTrue(actual.isEmpty())
+        assertTrue(CherryLibrarySuccessBridge.successful(actual).isEmpty())
+    }
+
+    @Test fun unsupportedOriginalsDoNotPretendToHaveZeroEligibleHistory() {
+        assertFalse(CherryLibrarySuccessBridge.isSupportedSource(
+            "category-groups","cherry-019"))
+        assertFalse(CherryLibrarySuccessBridge.isSupportedSource(
+            "category-groups","cherry-020"))
+        assertFalse(CherryLibrarySuccessBridge.isSupportedSource(
+            "category-born","cherry-038"))
+        assertTrue(CherryLibrarySuccessBridge.isSupportedSource(
+            "category-double","cherry-021"))
+        assertTrue(CherryLibrarySuccessBridge.isSupportedSource(
+            "category-born","cherry-021"))
+        assertTrue(CherryLibrarySuccessBridge.isSupportedSource(
+            "category-bk","new-bk-six"))
     }
 
     @Test fun mappedIdsExistInSourceLibraryNotInDisplayOnlyBook() {
@@ -126,8 +162,8 @@ class CherryLibrarySuccessBridgeTest {
             .findAll(source).map { it.groupValues[1] }.toSet()
         val allMapped = listOf(
             "new-mob-double", "new-bk-six", "new-born-75", "new-bk-19r",
-            "new-born-50", "s1-930", "s3-ten", "s3-week", "s5-wed",
-            "s6-12", "s6-78", "s8-80", "s4-born-11", "s4-wheel-44-0",
+            "new-born-50", "s1-930", "s3-ten", "s3-astro", "s5-fri",
+            "s6-65", "s8-80", "s4-born-11", "s4-wheel-44-0",
         ).mapNotNull { CherryLibrarySuccessBridge.libraryRuleId(it) }
         assertTrue(allMapped.all { it.substringBefore('#') in ids })
         assertEquals(98, ids.size)

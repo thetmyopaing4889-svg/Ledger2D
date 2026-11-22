@@ -1559,7 +1559,8 @@ private fun RulesOpenedBook(
                                             tint = colors.accent, modifier = Modifier.size(17.dp))
                                     }
                                 }
-                            } else if (successReady) {
+                            } else if (successReady &&
+                                CherryLibrarySuccessBridge.isSupportedSource(book.id, rule.id)) {
                                 Text(
                                     if (en) "No eligible draw recorded yet"
                                     else "အကျုံးဝင်မှတ်တမ်း မရှိသေး",

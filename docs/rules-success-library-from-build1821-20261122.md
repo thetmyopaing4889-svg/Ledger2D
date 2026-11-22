@@ -35,3 +35,15 @@ Branch: feature/rules-success-library-from-build1821-20261122.
 - The canonical source rule cherry-021 appears as two distinct reader projections: category-double (wheel column) and category-born (born-pairs column).
 - Scoring treats them as separate display keys cherry-021#wheel and cherry-021#born, each from its own pre-draw Success evidence. No wheel hit can mark the born-pairs column correct or vice versa.
 - Other cross-listed source entries are only shared when they describe the same canonical condition; unresolved mixed conditions remain unmapped rather than inflated.
+
+## Build 1824 whole-rule mapping correction (2026-11-22)
+- The original Library rule is authoritative. A Better Data rule that computes only one output branch of a multi-outcome source does not certify success of the whole source.
+- Do not map s3-power => cherry-011: the original requires ပါဝါ / ဆယ်ပြည့် but the recorded signal covers only ပါဝါ.
+- Do not map s3-six or s3-week => cherry-019/020: these are group/whole-week conditions, and an isolated pre-draw 2D pair result cannot establish the original rule-level success.
+- Do not map s5-mon or s5-wed => cherry-028/029 yet: these depend on week/remaining-sessions expiry conditions and should have a source-faithful horizon evaluator before awarding a whole-rule score.
+- Do not map s6-70, s6-12, s6-12-wheel, s6-am92 or s6-92 => cherry-035/038/056: they implement only portions of combined source outcomes.
+- Do not map s8-00-bk => cherry-074 yet: 5 working days in the existing engine is not the plain 5-day duration asserted in the original source.
+- Do not map s6-78 => cherry-051 yet: the source says R (reverse), which is not fully expressed in the current signal's 8 direct pairs.
+- These signals **remain usable in Better Data and its existing Success history**; only the inaccurate whole-Library-rule awarding is suspended. Original 98 rule entries and books are not altered.
+- An unmapped original rule no longer claims 'No eligible draw recorded yet'; the no-record message is reserved for actually supported score IDs.
+- Regression tests verify all withheld IDs, supported IDs, and that CURRENT/BORN duplicate evidence yields at most one draw-level score.
