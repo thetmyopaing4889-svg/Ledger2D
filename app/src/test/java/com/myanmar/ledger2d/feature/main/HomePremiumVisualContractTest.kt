@@ -44,7 +44,10 @@ class HomePremiumVisualContractTest {
             .substringBefore("@Composable private fun HomeMetric(")
         assertTrue(orb.contains("modifier.size(82.dp)"))
         assertTrue(orb.contains("R.drawable.btn_cherry_orb"))
-        assertTrue(orb.contains("shadowElevation = 9.dp"))
+        assertTrue(orb.contains("shadowElevation = 0.dp"))
+        assertTrue(orb.contains("Color(0x77D81B60)"))
+        assertTrue(orb.contains("scaleX = 1.06f"))
+        assertTrue(orb.contains("border = BorderStroke(1.5.dp, Color(0xCCFFFFFF))"))
         assertTrue(orb.contains("contentScale = ContentScale.Crop"))
         assertTrue(orb.contains(".clip(CircleShape)"))
         assertTrue(orb.contains("onClick = onClick"))
@@ -55,10 +58,9 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("HomeCherryWatermarks(Modifier.matchParentSize())"))
         assertTrue(screen.contains("Faint cherry motifs"))
         assertFalse(screen.contains(".blur(22.dp)"))
-        assertTrue(screen.contains("color = Color(0xB8FFFFFF)"))
-        assertTrue(screen.contains("containerColor=Color(0xB8FFFFFF)"))
-        assertTrue(commission.contains("containerColor = Color(0xB8FFFFFF)"))
-        assertTrue(commission.contains("color = Color(0x90F8DDE7)"))
+        assertTrue(screen.contains(".background(Color(0xB8FFFFFF))"))
+        assertTrue(commission.contains(".background(Color(0xB8FFFFFF))"))
+        assertTrue(commission.contains(".background(Color(0x90F8DDE7))"))
         assertTrue(commission.contains("language.text(\"ယနေ့အထိ\", \"Total to date\")"))
     }
 
@@ -76,6 +78,10 @@ class HomePremiumVisualContractTest {
     @Test fun liveUsesGeminiSilkImageAndBusinessNavigationUnchanged() {
         assertTrue(screen.contains("R.drawable.bg_live_wave"))
         assertTrue(screen.contains("contentScale = ContentScale.Crop"))
+        assertTrue(screen.contains("homeLiveGlowAlpha"))
+        assertTrue(screen.contains("Color(0x66B71C1C)"))
+        assertTrue(screen.contains("drawRoundRect("))
+        assertTrue(screen.contains("0f to Color(0x22FFFFFF)"))
         assertFalse(screen.contains("drawPath(darkFold"))
         assertTrue(screen.contains("HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)"))
         assertTrue(screen.contains("HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis, onBetterData)"))
@@ -88,5 +94,23 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("val digit=winnerMap[date to session] ?: \"--\""))
         assertTrue(screen.contains("onSelect(date,session,digit,stats.first,stats.second)"))
         assertTrue(screen.contains("val radius=size.minDimension/2f-1.dp.toPx()"))
+    }
+
+    @Test fun homeGlassIsPaintedAsSinglePanesWithoutNestedOpaqueContainers() {
+        val count = screen.substringAfter("@Composable private fun HomeCountCard(")
+            .substringBefore("@Composable private fun HomeWeeklyResults(")
+        val weekly = screen.substringAfter("@Composable private fun HomeWeeklyResults(")
+            .substringBefore("@Composable private fun HomeWeekArrows(")
+        assertTrue(count.contains("One painted glass surface"))
+        assertFalse(count.contains("Surface("))
+        assertTrue(weekly.contains("transparent weekly grid on one glass pane"))
+        assertFalse(weekly.contains("Card("))
+        assertTrue(count.contains(".background(Color.Transparent)"))
+        assertTrue(weekly.contains(".background(Color.Transparent)"))
+        assertTrue(commission.contains("No Material3 Card surface"))
+        assertFalse(commission.contains("    Card("))
+        assertFalse(commission.contains("                Surface("))
+        assertTrue(commission.contains(".clickable(onClick = onDetails)"))
+        assertTrue(commission.contains("background(Color(0x90F8DDE7))"))
     }
 }
