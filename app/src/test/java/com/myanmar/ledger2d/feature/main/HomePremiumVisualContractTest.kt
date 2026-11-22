@@ -91,7 +91,8 @@ class HomePremiumVisualContractTest {
         assertTrue(commission.contains("fillMaxHeight().heightIn(min = 82.dp)"))
         assertTrue(commission.contains("Color(0x22D81B60)"))
         assertTrue(commission.contains("19.sp"))
-        assertTrue(commission.contains("homeCommissionWrapNumber(totals.toDateTotal)"))
+        assertTrue(commission.contains("homeCommissionWrapNumber(shownToDate)"))
+        assertTrue(commission.contains("CommissionLedgerCalculator.overview(lines, today)"))
     }
 
     @Test fun liveUsesGeminiSilkImageAndBusinessNavigationUnchanged() {

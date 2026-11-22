@@ -271,6 +271,8 @@ fun transactionDisplayText(format: String, raw: String): String {
                 ))
             )
         )
+        // Decorative animation stays clipped to the illustrated header.
+        HomeDriftingPetals(Modifier.matchParentSize())
         Column(
             modifier = Modifier.fillMaxWidth().statusBarsPadding()
                 .padding(top = 17.dp, start = 47.dp, end = 47.dp),
@@ -375,7 +377,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         animationSpec = infiniteRepeatable(animation = tween(1700), repeatMode = RepeatMode.Reverse),
         label = "homeLiveGlowAlpha",
     )
-    val (liveInteraction, liveScale) = rememberPressScale("liveCard")
+    val (liveInteraction, liveScale) = rememberHomePressScale("liveCard")
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -435,6 +437,8 @@ fun transactionDisplayText(format: String, raw: String): String {
                         1f to Color.Transparent,
                     )
                 ))
+                // Rare light sweep; already clipped to the 2D LIVE card.
+                HomeLiveLightSweep(Modifier.matchParentSize())
                 Row(
                     Modifier.fillMaxSize().padding(horizontal = if (compact) 8.dp else 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -521,7 +525,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                     Icon(icon, null, tint = iconTint, modifier = Modifier.size(14.dp))
                 }
                 Text(
-                    value.toString(),
+                    rememberHomeRollingCount(value).toString(),
                     style = MaterialTheme.typography.headlineSmall,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Black,
@@ -700,7 +704,7 @@ fun transactionDisplayText(format: String, raw: String): String {
  * layers. The FAB stays in Scaffold's floating layer to avoid nav clipping.
  */
 @Composable private fun QuickCenterFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val (interaction, scale) = rememberPressScale("quickFab")
+    val (interaction, scale) = rememberHomePressScale("quickFab")
     // Keep this in Scaffold's FAB layer so neither the bottom bar nor card clips it.
     Box(modifier.size(82.dp), contentAlignment = Alignment.Center) {
         // Offset, diffused colored halo physically separates the ruby sphere
@@ -737,6 +741,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                 contentScale = ContentScale.Crop,
             )
         }
+        HomeOrbBubbles(Modifier.size(74.dp).clip(CircleShape))
     }
 }
 
@@ -786,7 +791,12 @@ fun transactionDisplayText(format: String, raw: String): String {
     modifier: Modifier = Modifier,
     comingSoon: Boolean = false,
 ) {
-    val tapModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
+    val (pressInteraction, pressScale) = rememberHomePressScale("homeQuickAction")
+    val tapModifier = if (onClick == null) Modifier else Modifier.clickable(
+        interactionSource = pressInteraction,
+        indication = LocalIndication.current,
+        onClick = onClick,
+    )
     Column(
         modifier.then(tapModifier).padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -794,7 +804,10 @@ fun transactionDisplayText(format: String, raw: String): String {
     ) {
         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
             Surface(
-                modifier = Modifier.size(45.dp),
+                modifier = Modifier.size(45.dp).graphicsLayer {
+                    scaleX = pressScale
+                    scaleY = pressScale
+                },
                 shape = CircleShape,
                 color = Color(0xFFFEEDF3),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = .95f)),
@@ -835,7 +848,6 @@ fun transactionDisplayText(format: String, raw: String): String {
         )
     }
 }
-@Composable private fun rememberPressScale(label:String):Pair<MutableInteractionSource,Float>{val interaction=remember{MutableInteractionSource()};val pressed by interaction.collectIsPressedAsState();val scale by animateFloatAsState(if(pressed).965f else 1f,tween(AppMotion.Short),label=label);return interaction to scale}
 @Composable private fun HomeFooter(){
     // Pull the footer above the Ruby button's floating footprint.
     Row(Modifier.fillMaxWidth().offset(y=(-20).dp).padding(top=2.dp,bottom=2.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){

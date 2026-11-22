@@ -65,6 +65,11 @@ internal fun HomeCommissionCard(
     val closedDays by vm.closedDays.collectAsStateWithLifecycle()
     val totals = CommissionLedgerCalculator.overview(lines, today)
     val showWideRows = homeCommissionNeedsWideRows(totals.morning, totals.evening, totals.todayTotal, totals.toDateTotal)
+    // Visual-only counters: never feed animated values back to ledger calculations.
+    val shownMorning = rememberHomeRollingAmount(totals.morning)
+    val shownEvening = rememberHomeRollingAmount(totals.evening)
+    val shownTodayTotal = rememberHomeRollingAmount(totals.todayTotal)
+    val shownToDate = rememberHomeRollingAmount(totals.toDateTotal)
     val isClosed = today.dayOfWeek == DayOfWeek.SATURDAY ||
         today.dayOfWeek == DayOfWeek.SUNDAY || closedDays.any { it.date == today }
 
@@ -107,13 +112,13 @@ internal fun HomeCommissionCard(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    HomeCommissionWideRow(language.text("မနက်အကြိမ်", "AM"), totals.morning, false)
-                    HomeCommissionWideRow(language.text("ညနေအကြိမ်", "PM"), totals.evening, false)
+                    HomeCommissionWideRow(language.text("မနက်အကြိမ်", "AM"), shownMorning, false)
+                    HomeCommissionWideRow(language.text("ညနေအကြိမ်", "PM"), shownEvening, false)
                     HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
-                    HomeCommissionWideRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
+                    HomeCommissionWideRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), shownTodayTotal, true)
                     HomeCommissionWideRow(
                         language.text("ယနေ့အထိ", "Total to date"),
-                        totals.toDateTotal, true, cumulative = true,
+                        shownToDate, true, cumulative = true,
                         suffix = language.text(" ကျပ်", " MMK"),
                     )
                 }
@@ -127,10 +132,10 @@ internal fun HomeCommissionCard(
                     modifier = Modifier.weight(1.12f),
                     verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    HomeCommissionAmountRow(language.text("မနက်အကြိမ်", "AM"), totals.morning, false)
-                    HomeCommissionAmountRow(language.text("ညနေအကြိမ်", "PM"), totals.evening, false)
+                    HomeCommissionAmountRow(language.text("မနက်အကြိမ်", "AM"), shownMorning, false)
+                    HomeCommissionAmountRow(language.text("ညနေအကြိမ်", "PM"), shownEvening, false)
                     HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
-                    HomeCommissionAmountRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
+                    HomeCommissionAmountRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), shownTodayTotal, true)
                 }
                 VerticalDivider(modifier = Modifier.fillMaxHeight(), color = AppColors.Stone)
                 // Single pink translucent panel without a rectangular inner Surface.
@@ -143,6 +148,7 @@ internal fun HomeCommissionCard(
                         )))
                         .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(14.dp)),
                 ) {
+                HomeCommissionShimmer(Modifier.matchParentSize())
                 Column(
                     modifier = Modifier.fillMaxWidth().background(Color.Transparent)
                         .padding(horizontal = 9.dp, vertical = 8.dp),
@@ -155,7 +161,7 @@ internal fun HomeCommissionCard(
                         maxLines = 2,
                     )
                     Text(
-                        homeCommissionWrapNumber(totals.toDateTotal) + language.text(" ကျပ်", " MMK"),
+                        homeCommissionWrapNumber(shownToDate) + language.text(" ကျပ်", " MMK"),
                         fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 19.sp,
                         lineHeight = 20.sp, fontWeight = FontWeight.Black,
                         color = AppColors.PrimaryDeep, maxLines = 2,
