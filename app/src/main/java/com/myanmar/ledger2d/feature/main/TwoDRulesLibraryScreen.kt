@@ -149,9 +149,13 @@ internal fun TwoDRulesLibraryScreen(
     val shelfBooks = remember(books, scores) {
         if (books.isEmpty()) emptyList()
         else {
-            val originalById = books.flatMap { it.rules }.associateBy { it.id }
+            val originalByScoreKey = books.flatMap { book ->
+                book.rules.map { rule ->
+                    CherryLibrarySuccessBridge.entryScoreKey(book.id, rule.id) to rule
+                }
+            }.toMap()
             val awarded = CherryLibrarySuccessBridge.successful(scores)
-                .mapNotNull { originalById[it.libraryRuleId] }
+                .mapNotNull { originalByScoreKey[it.libraryRuleId] }
             books + TwoDReaderBook(
                 id = "category-success", title = "အောင်ခဲ့သောမူများ",
                 pastel = "#FADDE5", legacyBookIds = emptyList(),
@@ -199,6 +203,9 @@ internal fun TwoDRulesLibraryScreen(
     var highlightedQuery by rememberSaveable { mutableStateOf("") }
     var sheet by remember { mutableStateOf<String?>(null) }
     var selectedScoreRuleId by remember { mutableStateOf<String?>(null) }
+    val successRuleKeys = remember(scores) {
+        CherryLibrarySuccessBridge.successful(scores).map { it.libraryRuleId }
+    }
     val openedBook = shelfBooks.firstOrNull { it.id == openedBookId }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -503,6 +510,7 @@ internal fun TwoDRulesLibraryScreen(
                     colors = colors,
                     scores = scores,
                     successReady = successReady,
+                    successRuleKeys = successRuleKeys,
                     onScoreSelected = { selectedScoreRuleId = it },
                     en = en,
                     favorite = "book:" + openedBook.id in favorites,
@@ -836,7 +844,11 @@ internal fun TwoDRulesLibraryScreen(
 
     selectedScoreRuleId?.let { id ->
         scores[id]?.let { score ->
-            val original = books.flatMap { it.rules }.firstOrNull { it.id == id }
+            val original = books.flatMap { book ->
+                book.rules.map { entry ->
+                    CherryLibrarySuccessBridge.entryScoreKey(book.id, entry.id) to entry
+                }
+            }.firstOrNull { it.first == id }?.second
             AlertDialog(
                 onDismissRequest = { selectedScoreRuleId = null },
                 title = {
@@ -1416,6 +1428,7 @@ private fun RulesOpenedBook(
     en: Boolean,
     scores: Map<String, CherryLibrarySuccessScore>,
     successReady: Boolean,
+    successRuleKeys: List<String>,
     onScoreSelected: (String) -> Unit,
     favorite: Boolean,
     onClose: () -> Unit,
@@ -1518,10 +1531,15 @@ private fun RulesOpenedBook(
                                     highlightQuery = highlightedQuery,
                                 )
                             }
-                            val score = scores[rule.id]
+                            // 021 is displayed in two separate books, with
+                            // independent wheel and born success evidence.
+                            val scoreKey = if (book.id == "category-success")
+                                successRuleKeys.getOrNull(index) ?: rule.id
+                            else CherryLibrarySuccessBridge.entryScoreKey(book.id, rule.id)
+                            val score = scores[scoreKey]
                             if (score != null) {
                                 Surface(
-                                    onClick = { onScoreSelected(rule.id) },
+                                    onClick = { onScoreSelected(scoreKey) },
                                     color = colors.panel,
                                     shape = RoundedCornerShape(9.dp),
                                 ) {

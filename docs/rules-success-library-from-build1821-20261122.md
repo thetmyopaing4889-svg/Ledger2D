@@ -30,3 +30,8 @@ Branch: feature/rules-success-library-from-build1821-20261122.
 - App Gradle unit tests, lint, debug APK, release APK, and artifact upload must pass.
 - Manual phone QA: all ten old covers intact, success cover appears even when empty, 0/4 only in source book, hits enter success book on confirmed result, number lookup/search/bookmarks work, all scores survive navigation/restart, winner correction updates without double-counting.
 - No edits to main, Research Workspace, LIVE, or formula-discovery engines.
+
+## Cross-listed 00–99 table accuracy pass
+- The canonical source rule cherry-021 appears as two distinct reader projections: category-double (wheel column) and category-born (born-pairs column).
+- Scoring treats them as separate display keys cherry-021#wheel and cherry-021#born, each from its own pre-draw Success evidence. No wheel hit can mark the born-pairs column correct or vice versa.
+- Other cross-listed source entries are only shared when they describe the same canonical condition; unresolved mixed conditions remain unmapped rather than inflated.

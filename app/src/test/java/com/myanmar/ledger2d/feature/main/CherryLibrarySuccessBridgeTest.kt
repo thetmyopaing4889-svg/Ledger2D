@@ -107,9 +107,11 @@ class CherryLibrarySuccessBridgeTest {
         assertTrue(score.isEmpty())
         assertNull(CherryLibrarySuccessBridge.libraryRuleId("new-mob-wheel"))
         assertNull(CherryLibrarySuccessBridge.libraryRuleId("new-special-khant"))
-        assertEquals("cherry-021", CherryLibrarySuccessBridge.libraryRuleId("s4-wheel-44-0"))
-        assertEquals("cherry-021", CherryLibrarySuccessBridge.libraryRuleId("s4-wheel-44-0@2026-11-16-MORNING"))
-        assertEquals("cherry-021", CherryLibrarySuccessBridge.libraryRuleId("s4-born-11@2026-11-16-EVENING"))
+        assertEquals("cherry-021#wheel", CherryLibrarySuccessBridge.libraryRuleId("s4-wheel-44-0"))
+        assertEquals("cherry-021#wheel", CherryLibrarySuccessBridge.libraryRuleId("s4-wheel-44-0@2026-11-16-MORNING"))
+        assertEquals("cherry-021#born", CherryLibrarySuccessBridge.libraryRuleId("s4-born-11@2026-11-16-EVENING"))
+        assertEquals("cherry-021#wheel", CherryLibrarySuccessBridge.entryScoreKey("category-double","cherry-021"))
+        assertEquals("cherry-021#born", CherryLibrarySuccessBridge.entryScoreKey("category-born","cherry-021"))
         assertEquals("new-born-75", CherryLibrarySuccessBridge.libraryRuleId("new-born-75@2026-11-16-MORNING"))
         assertEquals("new-bk-19r", CherryLibrarySuccessBridge.libraryRuleId("new-bk-19r@2026-11-16-EVENING"))
         assertEquals("cherry-017", CherryLibrarySuccessBridge.libraryRuleId("s3-7to4"))
@@ -124,7 +126,7 @@ class CherryLibrarySuccessBridgeTest {
             "new-born-50", "s1-930", "s3-ten", "s3-week", "s5-wed",
             "s6-12", "s6-78", "s8-80", "s4-born-11", "s4-wheel-44-0",
         ).mapNotNull { CherryLibrarySuccessBridge.libraryRuleId(it) }
-        assertTrue(allMapped.all { it in ids })
+        assertTrue(allMapped.all { it.substringBefore('#') in ids })
         assertEquals(98, ids.size)
     }
 
@@ -139,6 +141,21 @@ class CherryLibrarySuccessBridgeTest {
         assertEquals(1,single.eligible)
         assertEquals(1,single.correct)
         assertEquals(2,single.events.single().pairCount)
+    }
+
+    @Test fun doubleWheelAndDoubleBornColumnsAreNotGivenEachOthersPoints() {
+        val target=draw(0)
+        val snap=snapshot(target,
+            pair("s4-wheel-44-0@2026-11-13-EVENING",CherryTab.BORN,"12"),
+            pair("s4-born-44@2026-11-13-EVENING",CherryTab.BORN,"81"))
+        val scores=CherryLibrarySuccessBridge.scoredCompleted(
+            CherrySuccessEngine.completed(listOf(snap),mapOf(target to "81")),known)
+        assertEquals(0,scores.getValue("cherry-021#wheel").correct)
+        assertEquals(1,scores.getValue("cherry-021#wheel").eligible)
+        assertEquals(1,scores.getValue("cherry-021#born").correct)
+        assertEquals(1,scores.getValue("cherry-021#born").eligible)
+        assertEquals(listOf("cherry-021#born"),
+            CherryLibrarySuccessBridge.successful(scores).map { it.libraryRuleId })
     }
 
     @Test fun snapshotSavedAfterCutoffCannotBackfillScores() {

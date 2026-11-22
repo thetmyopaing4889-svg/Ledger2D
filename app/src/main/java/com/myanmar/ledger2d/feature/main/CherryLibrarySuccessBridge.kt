@@ -98,10 +98,17 @@ internal object CherryLibrarySuccessBridge {
         // stable suffix, never match by a rule's display name.
         val normalized = successRuleId.substringBefore('@')
         return direct[normalized] ?: when {
-            doubleWheel.matches(normalized) -> "cherry-021"
-            doubleBorn.matches(normalized) -> "cherry-021"
+            doubleWheel.matches(normalized) -> "cherry-021#wheel"
+            doubleBorn.matches(normalized) -> "cherry-021#born"
             else -> null
         }
+    }
+
+    /** Only the cross-listed 021 table needs a distinct presentation key. */
+    fun entryScoreKey(bookId: String, ruleId: String): String = when {
+        ruleId == "cherry-021" && bookId == "category-double" -> "cherry-021#wheel"
+        ruleId == "cherry-021" && bookId == "category-born" -> "cherry-021#born"
+        else -> ruleId
     }
 
     fun scored(
@@ -132,7 +139,7 @@ internal object CherryLibrarySuccessBridge {
                     check.rule.tab != CherryTab.BORN) continue
                 if (check.rule.criterion != CherrySuccessCriterion.PAIR) continue
                 val libraryId = libraryRuleId(check.rule.id) ?: continue
-                if (libraryId !in allowedLibraryIds) continue
+                if (libraryId.substringBefore('#') !in allowedLibraryIds) continue
                 grouped.getOrPut(libraryId) { linkedMapOf() }
                     .getOrPut(draw.snapshot.target) { mutableListOf() }.add(check)
             }
