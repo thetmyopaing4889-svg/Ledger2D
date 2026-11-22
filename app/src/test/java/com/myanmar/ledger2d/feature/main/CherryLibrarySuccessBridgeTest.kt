@@ -120,7 +120,10 @@ class CherryLibrarySuccessBridgeTest {
 
     @Test fun mappedIdsExistInSourceLibraryNotInDisplayOnlyBook() {
         val source = java.io.File("src/main/assets/two_d_rules_reader.json").readText(Charsets.UTF_8)
-        val ids = TwoDReaderCatalog.fromJson(source).map { it.id }.toSet()
+        // Android's org.json methods are not available in plain JVM tests.
+        // Collect stable rule IDs directly from the source text instead.
+        val ids = Regex("\"id\"\\s*:\\s*\"(cherry-[0-9]{3}|new-[a-z0-9-]+)\"")
+            .findAll(source).map { it.groupValues[1] }.toSet()
         val allMapped = listOf(
             "new-mob-double", "new-bk-six", "new-born-75", "new-bk-19r",
             "new-born-50", "s1-930", "s3-ten", "s3-week", "s5-wed",
