@@ -68,9 +68,9 @@ internal fun HomeCommissionCard(
         onClick = onDetails,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(19.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .70f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .97f)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xB8FFFFFF)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, Color(0xE6FFFFFF)),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -130,9 +130,9 @@ internal fun HomeCommissionCard(
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xB6F8DDE7),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = .96f)),
-                    shadowElevation = 3.dp,
+                    color = Color(0x90F8DDE7),
+                    border = BorderStroke(1.dp, Color(0xE6FFFFFF)),
+                    shadowElevation = 1.dp,
                 ) {
                 Column(
                     modifier = Modifier.fillMaxWidth()

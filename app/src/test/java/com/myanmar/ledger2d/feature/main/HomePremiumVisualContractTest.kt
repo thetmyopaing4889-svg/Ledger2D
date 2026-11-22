@@ -33,7 +33,7 @@ class HomePremiumVisualContractTest {
         assertFalse(header.contains("Icons.Default.Notifications"))
     }
 
-    @Test fun rubyOrbIsUnclippedScaffoldFabWithCurvedOpticalLayers() {
+    @Test fun rubyOrbUsesExactAssetAndCircularScaffoldFab() {
         assertTrue(screen.contains("floatingActionButtonPosition=FabPosition.Center"))
         assertTrue(screen.contains("QuickCenterFab(onQuickEntry, Modifier.offset(y=60.dp))"))
         val bar=screen.substringAfter("@Composable private fun HomeBottomBar(")
@@ -43,10 +43,10 @@ class HomePremiumVisualContractTest {
         val orb=screen.substringAfter("@Composable private fun QuickCenterFab(")
             .substringBefore("@Composable private fun HomeMetric(")
         assertTrue(orb.contains("modifier.size(82.dp)"))
-        assertTrue(orb.contains("upperCrescent"))
-        assertTrue(orb.contains("shadowElevation = 14.dp"))
-        assertTrue(orb.contains("drawOval("))
-        assertTrue(orb.contains("drawArc("))
+        assertTrue(orb.contains("R.drawable.btn_cherry_orb"))
+        assertTrue(orb.contains("shadowElevation = 9.dp"))
+        assertTrue(orb.contains("contentScale = ContentScale.Crop"))
+        assertTrue(orb.contains(".clip(CircleShape)"))
         assertTrue(orb.contains("onClick = onClick"))
         assertFalse(orb.contains("offset(y = (-31).dp)"))
     }
@@ -55,10 +55,10 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("HomeCherryWatermarks(Modifier.matchParentSize())"))
         assertTrue(screen.contains("Faint cherry motifs"))
         assertFalse(screen.contains(".blur(22.dp)"))
-        assertTrue(screen.contains("color = Color.White.copy(alpha = .70f)"))
-        assertTrue(screen.contains("containerColor=Color.White.copy(alpha=.71f)"))
-        assertTrue(commission.contains("containerColor = Color.White.copy(alpha = .70f)"))
-        assertTrue(commission.contains("color = Color(0xB6F8DDE7)"))
+        assertTrue(screen.contains("color = Color(0xB8FFFFFF)"))
+        assertTrue(screen.contains("containerColor=Color(0xB8FFFFFF)"))
+        assertTrue(commission.contains("containerColor = Color(0xB8FFFFFF)"))
+        assertTrue(commission.contains("color = Color(0x90F8DDE7)"))
         assertTrue(commission.contains("language.text(\"ယနေ့အထိ\", \"Total to date\")"))
     }
 
@@ -73,10 +73,10 @@ class HomePremiumVisualContractTest {
         assertTrue(commission.contains("homeCommissionWrapNumber(totals.toDateTotal)"))
     }
 
-    @Test fun liveHasFilledSilkFoldsAndBusinessNavigationUnchanged() {
-        assertTrue(screen.contains("val darkFold = Path()"))
-        assertTrue(screen.contains("val lightFold = Path()"))
-        assertTrue(screen.contains("drawPath(darkFold"))
+    @Test fun liveUsesGeminiSilkImageAndBusinessNavigationUnchanged() {
+        assertTrue(screen.contains("R.drawable.bg_live_wave"))
+        assertTrue(screen.contains("contentScale = ContentScale.Crop"))
+        assertFalse(screen.contains("drawPath(darkFold"))
         assertTrue(screen.contains("HomeLiveAndSummary(agents.size,customerCount,onLive,onWinning)"))
         assertTrue(screen.contains("HomeQuickActionsRow(onAddAgent, onAddCustomer, onAnalysis, onBetterData)"))
         assertTrue(screen.contains("HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)"))
