@@ -3,7 +3,16 @@ pluginManagement {
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories { google(); mavenCentral() }
+    repositories {
+        google()
+        // Google-hosted Maven Central mirror for Robolectric test artifacts.
+        // Shared GitHub Actions egress is receiving Maven Central HTTP 429.
+        maven {
+            url = uri("https://maven-central.storage-download.googleapis.com/maven2/")
+            content { includeGroup("org.robolectric") }
+        }
+        mavenCentral()
+    }
 }
 rootProject.name = "Ledger2D"
 include(":app")
