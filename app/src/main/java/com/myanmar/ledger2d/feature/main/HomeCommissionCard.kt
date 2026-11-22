@@ -73,18 +73,18 @@ internal fun HomeCommissionCard(
     Box(
         modifier = modifier.fillMaxWidth()
             .shadow(
-                3.dp, RoundedCornerShape(19.dp),
-                ambientColor = Color(0x33D81B60), spotColor = Color(0x33D81B60)
+                2.dp, RoundedCornerShape(19.dp),
+                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
             )
             .clip(RoundedCornerShape(19.dp))
             .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(19.dp))
+            .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(19.dp))
             .clickable(onClick = onDetails),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().background(Color.Transparent)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -122,30 +122,33 @@ internal fun HomeCommissionCard(
                 }
             } else {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
                     modifier = Modifier.weight(1.12f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     HomeCommissionAmountRow(language.text("မနက်အကြိမ်", "AM"), totals.morning, false)
                     HomeCommissionAmountRow(language.text("ညနေအကြိမ်", "PM"), totals.evening, false)
                     HorizontalDivider(color = AppColors.Stone.copy(alpha = .75f))
                     HomeCommissionAmountRow(language.text("ဒီနေ့စုစုပေါင်း", "Today total"), totals.todayTotal, true)
                 }
-                VerticalDivider(modifier = Modifier.height(62.dp), color = AppColors.Stone)
+                VerticalDivider(modifier = Modifier.fillMaxHeight(), color = AppColors.Stone)
                 // Single pink translucent panel without a rectangular inner Surface.
                 Box(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 82.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0x90F8DDE7))
-                        .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(14.dp)),
+                        .background(Brush.verticalGradient(listOf(
+                            Color(0x22D81B60), Color(0x0DD81B60)
+                        )))
+                        .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(14.dp)),
                 ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().background(Color.Transparent)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 9.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Text(
@@ -156,7 +159,7 @@ internal fun HomeCommissionCard(
                     )
                     Text(
                         homeCommissionWrapNumber(totals.toDateTotal) + language.text(" ကျပ်", " MMK"),
-                        fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 17.sp,
+                        fontSize = if (totals.toDateTotal.cardAmount().length > 13) 13.sp else 19.sp,
                         lineHeight = 20.sp, fontWeight = FontWeight.Black,
                         color = AppColors.PrimaryDeep, maxLines = 2,
                         softWrap = true,

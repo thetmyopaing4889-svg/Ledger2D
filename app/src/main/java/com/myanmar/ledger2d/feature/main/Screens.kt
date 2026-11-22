@@ -193,7 +193,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     // Give the illustrated header enough breathing room for title, tagline,
     // and the real date; Build 1826's 172dp/36dp stack hid the date.
-    val heroHeight=(LocalConfiguration.current.screenWidthDp*.53f).dp.coerceIn(194.dp,218.dp)
+    val heroHeight=((LocalConfiguration.current.screenWidthDp*.53f).dp - 10.dp).coerceIn(184.dp,208.dp)
     val sheetOverlap=24.dp
     Scaffold(
         containerColor=Color(0xFFFBEFF3),
@@ -491,12 +491,12 @@ fun transactionDisplayText(format: String, raw: String): String {
     Box(
         modifier.height(88.dp)
             .shadow(
-                3.dp, RoundedCornerShape(23.dp),
-                ambientColor = Color(0x33D81B60), spotColor = Color(0x33D81B60)
+                2.dp, RoundedCornerShape(23.dp),
+                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
             )
             .clip(RoundedCornerShape(23.dp))
             .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(23.dp)),
+            .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(23.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -562,12 +562,12 @@ fun transactionDisplayText(format: String, raw: String): String {
                 )
             }
             .shadow(
-                3.dp, RoundedCornerShape(24.dp),
-                ambientColor = Color(0x33D81B60), spotColor = Color(0x33D81B60)
+                2.dp, RoundedCornerShape(24.dp),
+                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
             )
             .clip(RoundedCornerShape(24.dp))
             .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0xE6FFFFFF), RoundedCornerShape(24.dp)),
+            .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(24.dp)),
     ) {
         Column(Modifier.background(Color.Transparent).padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=HomeTypography.weeklyHeading(l.code),color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
@@ -600,22 +600,14 @@ fun transactionDisplayText(format: String, raw: String): String {
                 dates.forEach { date ->
                     val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session] ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
-                    val circleColor=when { date in closedSet -> Color(0xFFFFE1EA); digit=="--" -> Color(0xFFF4F0F1); morning -> AppColors.Blush; else -> Color.White }
                     val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
-                    val todayRing:BorderStroke? = if(date==today&&digit=="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Primary.copy(alpha=.5f)) else null
-                    val eveningStroke:BorderStroke? = if(!morning&&digit!="--"&&date !in closedSet) BorderStroke(1.dp,AppColors.Stone.copy(alpha=.55f)) else todayRing
                     Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0x36FFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
                         Box(Modifier.size(40.dp), contentAlignment=Alignment.Center) {
                             Canvas(Modifier.matchParentSize()) {
                                 val radius=size.minDimension/2f-1.dp.toPx()
-                                drawCircle(Brush.radialGradient(
-                                    listOf(Color.White.copy(alpha=.97f),
-                                           circleColor.copy(alpha=.67f),
-                                           Color(0xFFEDCFDA).copy(alpha=.42f)),
-                                    center=Offset(size.width*.33f,size.height*.26f),
-                                    radius=size.minDimension*.75f
-                                ),radius=radius)
-                                drawCircle(Color.White.copy(alpha=.98f),radius=radius,
+                                // Consistent, readable translucent badges on all five days.
+                                drawCircle(Color(0xB3FFFFFF),radius=radius)
+                                drawCircle(Color(0x33C2185B),radius=radius,
                                     style=Stroke(width=1.dp.toPx()))
                             }
                             Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)
@@ -635,45 +627,35 @@ fun transactionDisplayText(format: String, raw: String): String {
     onWinning: () -> Unit,
 ) {
     val l = LocalLanguage.current
-    Box(
-        Modifier.fillMaxWidth()
-            .shadow(5.dp, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
-            .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
-            .background(Brush.verticalGradient(listOf(
-                Color.White.copy(alpha=.77f),
-                Color(0xFFFBE5EF).copy(alpha=.82f),
-            )), RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
-            .border(1.dp,Color.White.copy(alpha=.94f),
-                RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
-    ) {
-        Image(
-            painter = painterResource(com.myanmar.ledger2d.R.drawable.ic_cherry_mark),
-            contentDescription = null,
-            modifier = Modifier.align(Alignment.CenterEnd)
-                .offset(x = 35.dp, y = (-6).dp).size(116.dp).blur(18.dp),
-            alpha = .09f,
-        )
-        // Retain NavigationBar's bottom system-inset handling and all five
-        // destinations. Only the presentation changes.
-        NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
-            HomeNavItem(l.translate("ဒိုင်"), Icons.Default.Store, onAgentDashboard)
-            HomeNavItem(l.translate("ထိုးသား"), Icons.Default.People, onCustomerDashboard)
-            NavigationBarItem(
-                selected = false, onClick = onQuickEntry,
-                colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
-                icon = { Spacer(Modifier.size(42.dp)) },
-                label = {
-                    Text(l.translate("အမြန်"), maxLines = 1, softWrap = false,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
-                },
+    // One frosted Surface, one rounded edge: no separate rounded Box behind NavigationBar.
+    val barShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
+    NavigationBar(
+        modifier = Modifier.fillMaxWidth()
+            .shadow(
+                3.dp, barShape,
+                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
             )
-            HomeNavItem(l.translate("ပိတ်"), Icons.Default.EventBusy, onClosedDays)
-            HomeNavItem(l.translate("ရလဒ်"), Icons.Default.EmojiEvents, onWinning)
-        }
+            .clip(barShape)
+            .border(1.dp, Color(0xF2FFFFFF), barShape),
+        containerColor = Color(0xD9FFFFFF),
+        tonalElevation = 0.dp,
+    ) {
+        HomeNavItem(l.translate("ဒိုင်"), Icons.Default.Store, onAgentDashboard)
+        HomeNavItem(l.translate("ထိုးသား"), Icons.Default.People, onCustomerDashboard)
+        NavigationBarItem(
+            selected = false, onClick = onQuickEntry,
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+            icon = { Spacer(Modifier.size(42.dp)) },
+            label = {
+                Text(l.translate("အမြန်"), maxLines = 1, softWrap = false,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+            },
+        )
+        HomeNavItem(l.translate("ပိတ်"), Icons.Default.EventBusy, onClosedDays)
+        HomeNavItem(l.translate("ရလဒ်"), Icons.Default.EmojiEvents, onWinning)
     }
 }
-
 @Composable private fun RowScope.HomeNavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -686,11 +668,9 @@ fun transactionDisplayText(format: String, raw: String): String {
         icon = {
             Box(
                 Modifier.size(42.dp)
-                    .shadow(3.dp, CircleShape)
-                    .background(Brush.verticalGradient(listOf(
-                        Color(0xFFFFFFFF), Color(0xFFF7DEE7)
-                    )), CircleShape)
-                    .border(1.dp, Color.White.copy(alpha = .96f), CircleShape),
+                    // Keep the round icon affordance, remove the extra halo/shadow.
+                    .background(Color(0x5CFFFFFF), CircleShape)
+                    .border(1.dp, Color(0xC7FFFFFF), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null,
@@ -717,20 +697,21 @@ fun transactionDisplayText(format: String, raw: String): String {
         // Offset, diffused colored halo physically separates the ruby sphere
         // from the lower frosted navigation glass.
         Box(
-            Modifier.offset(y = 6.dp).size(76.dp)
+            Modifier.offset(y = 7.dp).size(72.dp)
                 .shadow(
                     16.dp, CircleShape,
                     ambientColor = Color(0x77D81B60), spotColor = Color(0x77D81B60)
                 )
-                .blur(10.dp)
-                .background(Color(0x66D81B60), CircleShape)
+                // Near-clear host is enough for the shadow; an opaque extra disk
+                // caused the pink/white sticker halo in Build 1832.
+                .background(Color(0x15D81B60), CircleShape)
         )
         Surface(
             onClick = onClick,
             interactionSource = interaction,
             shape = CircleShape,
             color = Color.Transparent,
-            border = BorderStroke(1.5.dp, Color(0xCCFFFFFF)),
+            border = BorderStroke(1.dp, Color(0x80FFFFFF)),
             shadowElevation = 0.dp,
             modifier = Modifier.size(78.dp).graphicsLayer {
                 scaleX = scale
@@ -741,8 +722,9 @@ fun transactionDisplayText(format: String, raw: String): String {
             Image(
                 painter = painterResource(com.myanmar.ledger2d.R.drawable.btn_cherry_orb),
                 contentDescription = LocalLanguage.current.translate("အမြန်စာရင်းသွင်းရန်"),
-                modifier = Modifier.fillMaxSize().clip(CircleShape)
-                    .graphicsLayer { scaleX = 1.06f; scaleY = 1.06f },
+                modifier = Modifier.fillMaxSize()
+                    .graphicsLayer { scaleX = 1.13f; scaleY = 1.13f }
+                    .clip(CircleShape),
                 contentScale = ContentScale.Crop,
             )
         }
@@ -847,7 +829,7 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable private fun rememberPressScale(label:String):Pair<MutableInteractionSource,Float>{val interaction=remember{MutableInteractionSource()};val pressed by interaction.collectIsPressedAsState();val scale by animateFloatAsState(if(pressed).965f else 1f,tween(AppMotion.Short),label=label);return interaction to scale}
 @Composable private fun HomeFooter(){
     // Pull the footer above the Ruby button's floating footprint.
-    Row(Modifier.fillMaxWidth().offset(y=(-24).dp).padding(top=2.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+    Row(Modifier.fillMaxWidth().offset(y=(-20).dp).padding(top=2.dp,bottom=2.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
         CherryBrandMark(Modifier.size(15.dp))
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=HomeTypography.footer(LocalLanguage.current.code),color=Color(0xFFB98DA0),maxLines=2,softWrap=true,textAlign=TextAlign.Center)
     }

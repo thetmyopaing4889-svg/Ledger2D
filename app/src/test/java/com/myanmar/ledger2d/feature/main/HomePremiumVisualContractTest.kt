@@ -21,6 +21,7 @@ class HomePremiumVisualContractTest {
 
     @Test fun headerPreservesArtworkBrandDateAndPlainSettings() {
         assertTrue(screen.contains("screenWidthDp*.53f"))
+        assertTrue(screen.contains("- 10.dp).coerceIn(184.dp,208.dp)"))
         assertTrue(screen.contains("val sheetOverlap=24.dp"))
         assertTrue(screen.contains("R.drawable.cherry_header_art"))
         assertTrue(screen.contains("Color(0xFF210612).copy(alpha = .12f)"))
@@ -46,8 +47,10 @@ class HomePremiumVisualContractTest {
         assertTrue(orb.contains("R.drawable.btn_cherry_orb"))
         assertTrue(orb.contains("shadowElevation = 0.dp"))
         assertTrue(orb.contains("Color(0x77D81B60)"))
-        assertTrue(orb.contains("scaleX = 1.06f"))
-        assertTrue(orb.contains("border = BorderStroke(1.5.dp, Color(0xCCFFFFFF))"))
+        assertTrue(orb.contains("scaleX = 1.13f"))
+        assertTrue(orb.contains("border = BorderStroke(1.dp, Color(0x80FFFFFF))"))
+        assertFalse(orb.contains(".blur(10.dp)"))
+        assertTrue(orb.contains("Color(0x15D81B60)"))
         assertTrue(orb.contains("contentScale = ContentScale.Crop"))
         assertTrue(orb.contains(".clip(CircleShape)"))
         assertTrue(orb.contains("onClick = onClick"))
@@ -59,6 +62,8 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("Faint cherry motifs"))
         assertFalse(screen.contains(".blur(22.dp)"))
         assertTrue(screen.contains(".background(Color(0xB8FFFFFF))"))
+        assertTrue(screen.contains("Color(0xF2FFFFFF)"))
+        assertTrue(screen.contains("Color(0x24AD1457)"))
         assertTrue(commission.contains(".background(Color(0xB8FFFFFF))"))
         assertTrue(commission.contains(".background(Color(0x90F8DDE7))"))
         assertTrue(commission.contains("language.text(\"ယနေ့အထိ\", \"Total to date\")"))
@@ -68,10 +73,14 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("HomeCommissionCard(vm, onCommissionDetails)"))
         assertFalse(screen.contains("HomeCommissionCard(vm, onCommissionDetails, Modifier.weight"))
         assertTrue(screen.contains(".verticalScroll(rememberScrollState())"))
-        assertTrue(screen.contains("offset(y=(-24).dp)"))
+        assertTrue(screen.contains("offset(y=(-20).dp)"))
         assertTrue(screen.contains("heightIn(min = 30.dp)"))
         assertTrue(commission.contains("CommissionLedgerCalculator.overview(lines, today)"))
-        assertTrue(commission.contains("padding(horizontal = 8.dp, vertical = 4.dp)"))
+        assertTrue(commission.contains("padding(horizontal = 9.dp, vertical = 8.dp)"))
+        assertTrue(commission.contains("height(IntrinsicSize.Min)"))
+        assertTrue(commission.contains("fillMaxHeight().heightIn(min = 82.dp)"))
+        assertTrue(commission.contains("Color(0x22D81B60)"))
+        assertTrue(commission.contains("19.sp"))
         assertTrue(commission.contains("homeCommissionWrapNumber(totals.toDateTotal)"))
     }
 
@@ -94,6 +103,25 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("val digit=winnerMap[date to session] ?: \"--\""))
         assertTrue(screen.contains("onSelect(date,session,digit,stats.first,stats.second)"))
         assertTrue(screen.contains("val radius=size.minDimension/2f-1.dp.toPx()"))
+        assertTrue(screen.contains("drawCircle(Color(0xB3FFFFFF),radius=radius)"))
+        assertTrue(screen.contains("drawCircle(Color(0x33C2185B),radius=radius"))
+    }
+
+    @Test fun navIsSingleRoundedGlassSurfaceWithoutSideIconHalos() {
+        val bar = screen.substringAfter("@Composable private fun HomeBottomBar(")
+            .substringBefore("@Composable private fun RowScope.HomeNavItem(")
+        val sideIcons = screen.substringAfter("@Composable private fun RowScope.HomeNavItem(")
+            .substringBefore("@Composable private fun QuickCenterFab(")
+        assertTrue(bar.contains("One frosted Surface, one rounded edge"))
+        assertTrue(bar.contains("containerColor = Color(0xD9FFFFFF)"))
+        assertTrue(bar.contains("Color(0xF2FFFFFF)"))
+        assertTrue(bar.split("NavigationBar(").size == 2)
+        assertFalse(bar.contains("    Box("))
+        assertFalse(bar.contains(".blur(18.dp)"))
+        assertFalse(sideIcons.contains(".shadow(3.dp, CircleShape)"))
+        assertTrue(sideIcons.contains("Color(0x5CFFFFFF)"))
+        assertTrue(bar.contains("onClick = onQuickEntry"))
+        assertTrue(bar.contains("onClosedDays"))
     }
 
     @Test fun homeGlassIsPaintedAsSinglePanesWithoutNestedOpaqueContainers() {
