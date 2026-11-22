@@ -196,7 +196,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val heroHeight=((LocalConfiguration.current.screenWidthDp*.53f).dp - 10.dp).coerceIn(184.dp,208.dp)
     val sheetOverlap=24.dp
     Scaffold(
-        containerColor=Color(0xFFFBEFF3),
+        containerColor=Color(0xFFFCEEF3),
         contentWindowInsets=WindowInsets(0,0,0,0),
         bottomBar={HomeBottomBar(onAgentDashboard,onCustomerDashboard,onQuickEntry,onClosedDays,onWinning)},
         // Scaffold lays out the floating button outside the NavigationBar's
@@ -216,7 +216,7 @@ fun transactionDisplayText(format: String, raw: String): String {
                         .height(this@BoxWithConstraints.maxHeight-(heroHeight-sheetOverlap))
                         .clip(RoundedCornerShape(topStart=30.dp,topEnd=30.dp))
                         .background(Brush.verticalGradient(listOf(
-                            Color(0xFFFCF5F8), Color(0xFFFCEBF1), Color(0xFFFAEFF4)
+                            Color(0xFFF6DCE5), Color(0xFFF9E3EB), Color(0xFFFCEEF3)
                         )))
                 ) {
                     // Actual frosted layers need a visible soft backdrop.
@@ -490,13 +490,10 @@ fun transactionDisplayText(format: String, raw: String): String {
     // One painted glass surface: no nested Material3 Surface behind the count.
     Box(
         modifier.height(88.dp)
-            .shadow(
-                2.dp, RoundedCornerShape(23.dp),
-                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
-            )
+            .homeRubyShadow(radius = 23.dp)
             .clip(RoundedCornerShape(23.dp))
-            .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(23.dp)),
+            .background(Color(0xEBFFFFFF))
+            .border(1.5.dp, Color.White, RoundedCornerShape(23.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -561,13 +558,10 @@ fun transactionDisplayText(format: String, raw: String): String {
                     onDragEnd = { if (kotlin.math.abs(distance) > 72f) weekOffset += if (distance < 0) 1 else -1 },
                 )
             }
-            .shadow(
-                2.dp, RoundedCornerShape(24.dp),
-                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
-            )
+            .homeRubyShadow(radius = 24.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(24.dp)),
+            .background(Color(0xEBFFFFFF))
+            .border(1.5.dp, Color.White, RoundedCornerShape(24.dp)),
     ) {
         Column(Modifier.background(Color.Transparent).padding(horizontal=10.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Surface(Modifier.size(42.dp),shape=CircleShape,color=AppColors.Blush){Icon(Icons.Default.BarChart,null,tint=AppColors.PrimaryDeep,modifier=Modifier.padding(9.dp))};Column(Modifier.weight(1f).padding(start=8.dp)){Text(l.translate("အပတ်စဉ် ရလဒ်အချက်အလက်"),style=HomeTypography.weeklyHeading(l.code),color=AppColors.Ink);Text(weekLabel,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)};HomeWeekArrows({weekOffset--},{weekOffset++})}
@@ -628,16 +622,22 @@ fun transactionDisplayText(format: String, raw: String): String {
 ) {
     val l = LocalLanguage.current
     // One frosted Surface, one rounded edge: no separate rounded Box behind NavigationBar.
+    // The glass gradient is on NavigationBar itself; no secondary dock wrapper.
     val barShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
     NavigationBar(
         modifier = Modifier.fillMaxWidth()
-            .shadow(
-                3.dp, barShape,
-                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
+            .homeRubyShadow(
+                radius = 26.dp, blur = 12.dp, offsetY = (-4).dp,
+                tint = Color(0x26880E4F),
             )
             .clip(barShape)
-            .border(1.dp, Color(0xF2FFFFFF), barShape),
-        containerColor = Color(0xD9FFFFFF),
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xF5FFFFFF), Color(0xFFFCE8F0))
+                ), barShape
+            )
+            .border(1.5.dp, Color.White, barShape),
+        containerColor = Color.Transparent,
         tonalElevation = 0.dp,
     ) {
         HomeNavItem(l.translate("ဒိုင်"), Icons.Default.Store, onAgentDashboard)
@@ -661,16 +661,25 @@ fun transactionDisplayText(format: String, raw: String): String {
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
 ) {
+    // No destination is selected on Home. Give a real pressed tab
+    // a soft-pink pill, rather than claiming a destination is active.
+    val tabInteraction = remember { MutableInteractionSource() }
+    val tabPressed by tabInteraction.collectIsPressedAsState()
+    val iconShape = if (tabPressed) RoundedCornerShape(17.dp) else CircleShape
     NavigationBarItem(
         selected = false,
         onClick = onClick,
+        interactionSource = tabInteraction,
         colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
         icon = {
             Box(
                 Modifier.size(42.dp)
-                    // Keep the round icon affordance, remove the extra halo/shadow.
-                    .background(Color(0x5CFFFFFF), CircleShape)
-                    .border(1.dp, Color(0xC7FFFFFF), CircleShape),
+                    // Press feedback is translucent; no circular halo shadows.
+                    .background(
+                        if (tabPressed) Color(0x40D81B60) else Color(0x28FFFFFF),
+                        iconShape
+                    )
+                    .border(1.dp, Color(0x95FFFFFF), iconShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null,

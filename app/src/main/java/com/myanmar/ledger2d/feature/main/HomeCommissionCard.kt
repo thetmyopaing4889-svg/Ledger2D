@@ -72,13 +72,10 @@ internal fun HomeCommissionCard(
     // No Material3 Card surface or child Surface can flatten it to opaque white.
     Box(
         modifier = modifier.fillMaxWidth()
-            .shadow(
-                2.dp, RoundedCornerShape(19.dp),
-                ambientColor = Color(0x24AD1457), spotColor = Color(0x24AD1457)
-            )
+            .homeRubyShadow(radius = 19.dp)
             .clip(RoundedCornerShape(19.dp))
-            .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0xF2FFFFFF), RoundedCornerShape(19.dp))
+            .background(Color(0xEBFFFFFF))
+            .border(1.5.dp, Color.White, RoundedCornerShape(19.dp))
             .clickable(onClick = onDetails),
     ) {
         Column(
