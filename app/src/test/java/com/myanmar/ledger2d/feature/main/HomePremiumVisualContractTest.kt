@@ -20,7 +20,7 @@ class HomePremiumVisualContractTest {
     }
 
     @Test fun headerPreservesArtworkBrandDateAndPlainSettings() {
-        assertTrue(screen.contains("screenWidthDp*.55f"))
+        assertTrue(screen.contains("screenWidthDp*.53f"))
         assertTrue(screen.contains("val sheetOverlap=24.dp"))
         assertTrue(screen.contains("R.drawable.cherry_header_art"))
         assertTrue(screen.contains("Color(0xFF210612).copy(alpha = .12f)"))

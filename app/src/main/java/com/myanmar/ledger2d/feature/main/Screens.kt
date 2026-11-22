@@ -192,7 +192,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     val customerCount by produceState(0, agents, revision) { value=agents.sumOf { vm.customers(it.id).first().size } }
     // Give the illustrated header enough breathing room for title, tagline,
     // and the real date; Build 1826's 172dp/36dp stack hid the date.
-    val heroHeight=(LocalConfiguration.current.screenWidthDp*.55f).dp.coerceIn(198.dp,226.dp)
+    val heroHeight=(LocalConfiguration.current.screenWidthDp*.53f).dp.coerceIn(194.dp,218.dp)
     val sheetOverlap=24.dp
     Scaffold(
         containerColor=Color(0xFFFBEFF3),
@@ -272,7 +272,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         )
         Column(
             modifier = Modifier.fillMaxWidth().statusBarsPadding()
-                .padding(top = 12.dp, start = 47.dp, end = 47.dp),
+                .padding(top = 17.dp, start = 47.dp, end = 47.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
