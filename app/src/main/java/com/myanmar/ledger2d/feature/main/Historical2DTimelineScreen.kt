@@ -28,6 +28,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.myanmar.ledger2d.core.repository.CherrySuccessSnapshotStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
@@ -148,6 +152,16 @@ fun Historical2DTimelineScreen(
     var openGroup by rememberSaveable { mutableStateOf("1") }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var activeTwoDTab by rememberSaveable { mutableStateOf("analysis") }
+    val archiveContext = LocalContext.current
+    val successArchive by produceState<Result<List<CherrySuccessSnapshot>>?>(
+        initialValue = null, activeTwoDTab
+    ) {
+        value = if (activeTwoDTab == "rules") {
+            withContext(Dispatchers.IO) {
+                runCatching { CherrySuccessSnapshotStore(archiveContext).load() }
+            }
+        } else null
+    }
     // Research state belongs to the parent, surviving tab switches within this session.
     val researchSession = remember { ResearchLabSessionState(defaultTarget.date) }
     var streakStream by remember(target.session) { mutableStateOf(
@@ -330,6 +344,10 @@ fun Historical2DTimelineScreen(
         } else if (openCheck.isEmpty() && activeTwoDTab == "rules") {
             TwoDRulesLibraryScreen(
                 en = en,
+                confirmedHistory = if (inputsReady) merged.draws else emptyList(),
+                historyReady = inputsReady,
+                successSnapshots = successArchive?.getOrNull(),
+                archiveError = successArchive?.isFailure == true,
                 modifier = Modifier.fillMaxSize().padding(inset),
             )
         } else if (openCheck.isEmpty() && activeTwoDTab == "research") {

@@ -4,6 +4,9 @@ package com.myanmar.ledger2d.feature.main
 
 import android.content.Context
 import com.myanmar.ledger2d.core.design.AppColors
+import com.myanmar.ledger2d.core.domain.CherrySuccessSnapshot
+import com.myanmar.ledger2d.core.domain.HistoricDraw
+import com.myanmar.ledger2d.core.model.DrawSession
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -100,6 +103,10 @@ private fun readerColors(): BookColors =
 @Composable
 internal fun TwoDRulesLibraryScreen(
     en: Boolean,
+    confirmedHistory: List<HistoricDraw>,
+    historyReady: Boolean,
+    successSnapshots: List<CherrySuccessSnapshot>?,
+    archiveError: Boolean,
     modifier: Modifier = Modifier,
 ) {
     fun tr(mm: String, english: String) = if (en) english else mm
@@ -128,6 +135,30 @@ internal fun TwoDRulesLibraryScreen(
     }
     val books = library?.first.orEmpty()
     val catalog = library?.second
+    val successReady = successSnapshots != null && historyReady
+    val scores = remember(books, confirmedHistory, successSnapshots, historyReady) {
+        if (!successReady) emptyMap()
+        else CherryLibrarySuccessBridge.scored(
+            successSnapshots.orEmpty(),
+            confirmedHistory,
+            books.flatMap { it.rules }.map { it.id }.toSet(),
+        )
+    }
+    // A derived display shelf: no copied source rules and no new saved score
+    // table. The canonical 10 books and 98 rules remain exactly as shipped.
+    val shelfBooks = remember(books, scores) {
+        if (books.isEmpty()) emptyList()
+        else {
+            val originalById = books.flatMap { it.rules }.associateBy { it.id }
+            val awarded = CherryLibrarySuccessBridge.successful(scores)
+                .mapNotNull { originalById[it.libraryRuleId] }
+            books + TwoDReaderBook(
+                id = "category-success", title = "အောင်ခဲ့သောမူများ",
+                pastel = "#FADDE5", legacyBookIds = emptyList(),
+                rules = awarded,
+            )
+        }
+    }
     val prefs = remember(context) {
         context.getSharedPreferences("two_d_rules_favorites", Context.MODE_PRIVATE)
     }
@@ -167,7 +198,8 @@ internal fun TwoDRulesLibraryScreen(
     var focusedRuleIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var highlightedQuery by rememberSaveable { mutableStateOf("") }
     var sheet by remember { mutableStateOf<String?>(null) }
-    val openedBook = books.firstOrNull { it.id == openedBookId }
+    var selectedScoreRuleId by remember { mutableStateOf<String?>(null) }
+    val openedBook = shelfBooks.firstOrNull { it.id == openedBookId }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     if (sheet != null) {
@@ -301,7 +333,7 @@ internal fun TwoDRulesLibraryScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
-                    val saved = books.filter { "book:" + it.id in favorites }
+                    val saved = shelfBooks.filter { "book:" + it.id in favorites }
                     LazyColumn(
                         Modifier.fillMaxWidth().heightIn(max = 450.dp),
                         contentPadding = PaddingValues(bottom = 20.dp),
@@ -416,6 +448,20 @@ internal fun TwoDRulesLibraryScreen(
             }
         }
 
+        if (archiveError) {
+            Text(
+                tr("အောင်ချက်မှတ်တမ်း ဖတ်၍မရပါ။ မူအမှတ်ကို ယာယီမပြပါ။",
+                    "Success archive unavailable; scores are hidden."),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        } else if (!successReady) {
+            Text(
+                tr("အောင်ချက်မှတ်တမ်း ဖတ်နေသည်…", "Reading success archive…"),
+                color = colors.softInk,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
         if (library == null) {
             Surface(
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -439,7 +485,7 @@ internal fun TwoDRulesLibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 15.dp, top = 3.dp),
                 ) {
-                    gridItems(books, key = { it.id }) { book ->
+                    gridItems(shelfBooks, key = { it.id }) { book ->
                         RulesBookCover(
                             book = book, colors = colors,
                             onClick = {
@@ -455,6 +501,9 @@ internal fun TwoDRulesLibraryScreen(
                 RulesOpenedBook(
                     book = openedBook,
                     colors = colors,
+                    scores = scores,
+                    successReady = successReady,
+                    onScoreSelected = { selectedScoreRuleId = it },
                     en = en,
                     favorite = "book:" + openedBook.id in favorites,
                     onClose = {
@@ -782,6 +831,59 @@ internal fun TwoDRulesLibraryScreen(
                     }
                 }
             }
+        }
+    }
+
+    selectedScoreRuleId?.let { id ->
+        scores[id]?.let { score ->
+            val original = books.flatMap { it.rules }.firstOrNull { it.id == id }
+            AlertDialog(
+                onDismissRequest = { selectedScoreRuleId = null },
+                title = {
+                    Text(original?.title ?: id, color = colors.accent)
+                },
+                text = {
+                    Column(
+                        Modifier.heightIn(max = 430.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            tr("အောင်ချက်", "Success") +
+                                "  ${score.correct}/${score.eligible}  (${score.percent}%)",
+                            fontWeight = FontWeight.Bold, color = colors.ink,
+                        )
+                        score.events.forEach { event ->
+                            Column(
+                                Modifier.fillMaxWidth()
+                                    .background(colors.panel, RoundedCornerShape(8.dp))
+                                    .padding(9.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                Text(
+                                    "${event.target.date} • " +
+                                        (if (event.target.session == DrawSession.MORNING)
+                                            tr("မနက်", "AM") else tr("ညနေ", "PM")) +
+                                        " • ${event.winning}",
+                                    color = colors.ink,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    (if (event.correct) tr("မှန်", "Hit") else tr("လွဲ", "Miss")) +
+                                        " • ${event.pairCount} " +
+                                        tr("ကွက်", "pairs"),
+                                    color = if (event.correct) Color(0xFF16854E) else colors.softInk,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { selectedScoreRuleId = null }) {
+                        Text(tr("ပိတ်", "Close"))
+                    }
+                },
+            )
         }
     }
 }
@@ -1312,6 +1414,9 @@ private fun RulesOpenedBook(
     book: TwoDReaderBook,
     colors: BookColors,
     en: Boolean,
+    scores: Map<String, CherryLibrarySuccessScore>,
+    successReady: Boolean,
+    onScoreSelected: (String) -> Unit,
     favorite: Boolean,
     onClose: () -> Unit,
     highlightedQuery: String,
@@ -1374,6 +1479,14 @@ private fun RulesOpenedBook(
                                 fontWeight = FontWeight.Bold, color = colors.accent,
                             )
                             HorizontalDivider(color = colors.border)
+                            if (book.id == "category-success" && book.rules.isEmpty()) {
+                                Text(
+                                    if (en) "No rule has a verified success record yet."
+                                    else "မှန်ကန်ခဲ့သော မူမှတ်တမ်း မရှိသေးပါ။",
+                                    color = colors.softInk,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
                         }
                     }
                     listItemsIndexed(
@@ -1403,6 +1516,37 @@ private fun RulesOpenedBook(
                                     color = colors.accent,
                                     fontWeight = FontWeight.SemiBold,
                                     highlightQuery = highlightedQuery,
+                                )
+                            }
+                            val score = scores[rule.id]
+                            if (score != null) {
+                                Surface(
+                                    onClick = { onScoreSelected(rule.id) },
+                                    color = colors.panel,
+                                    shape = RoundedCornerShape(9.dp),
+                                ) {
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(9.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            (if (en) "Success " else "အောင်ချက် ") +
+                                                "${score.correct}/${score.eligible}  (${score.percent}%)",
+                                            color = colors.accent,
+                                            fontWeight = FontWeight.SemiBold,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Icon(Icons.Default.History, null,
+                                            tint = colors.accent, modifier = Modifier.size(17.dp))
+                                    }
+                                }
+                            } else if (successReady) {
+                                Text(
+                                    if (en) "No eligible draw recorded yet"
+                                    else "အကျုံးဝင်မှတ်တမ်း မရှိသေး",
+                                    color = colors.softInk,
+                                    style = MaterialTheme.typography.labelSmall,
                                 )
                             }
                             if (rule.text.isNotBlank()) {
