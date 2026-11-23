@@ -586,6 +586,7 @@ private fun PeriodLedger(
  */
 @Composable
 private fun CustomerGroupLedger(
+    vm: LedgerViewModel,
     page:CustomerReportPage,period:StatementPeriod,session:DrawSession?,
     customers:List<Pair<Long,String>>,draws:List<StatementDraw>,
     winners:Map<Pair<LocalDate,DrawSession>,String>,closed:Set<LocalDate>,
@@ -637,9 +638,8 @@ private fun CustomerGroupLedger(
                         horizontalArrangement=Arrangement.spacedBy(4.dp),
                         verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1.25f)) {
-                            Text(name,style=MaterialTheme.typography.labelMedium,
-                                fontWeight=FontWeight.Bold,color=ReportPalette.WineDark,
-                                maxLines=2)
+                            CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,id,name,Modifier.fillMaxWidth(),avatarSize=28.dp,
+                                textStyle=MaterialTheme.typography.labelMedium)
                             Icon(if(open)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 null,modifier=Modifier.size(15.dp),tint=ReportPalette.Wine)
                         }
@@ -957,7 +957,7 @@ fun CustomerLedgerReportResults(
                         .thenBy{it.first}).toList()
                 item {
                     CustomerGroupLedger(
-                        page,period,session,list,pageDraws,winnerMap,closed,
+                        vm, page,period,session,list,pageDraws,winnerMap,closed,
                         tableView,expandedCustomer,
                         onToggle={id->expandedCustomer=if(expandedCustomer==id)-1L else id},
                         onToggleView={tableView=if(tableView=="stake")"win" else "stake"},
