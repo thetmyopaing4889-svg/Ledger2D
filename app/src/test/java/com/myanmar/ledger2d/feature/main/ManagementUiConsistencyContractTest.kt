@@ -14,13 +14,39 @@ class ManagementUiConsistencyContractTest {
     private val path = "src/main/java/com/myanmar/ledger2d/feature/main/"
     private fun source(name: String) = File(path + name).readText()
 
-    @Test fun bothDashboardsKeepOneApprovedSharedLandingCard() {
+    @Test fun bothDashboardsShareOneHomeInspiredPremiumCard() {
         val dashboard = source("DashboardScreens.kt")
-        assertEquals(1, Regex("DashboardLandingCard\\(action, forCustomer = false").findAll(dashboard).count())
-        assertEquals(1, Regex("DashboardLandingCard\\(action, forCustomer = true").findAll(dashboard).count())
-        assertTrue(dashboard.contains("Modifier.fillMaxWidth().heightIn(min = 78.dp)"))
-        assertTrue(dashboard.contains("DashboardCardTypography.title(l.code)"))
-        assertTrue(dashboard.contains("DashboardCardTypography.subtitle(l.code)"))
+        val card = dashboard.substringAfter("private fun DashboardLandingCard(")
+            .substringBefore("fun AgentDashboardScreen(")
+        assertEquals(1, Regex("DashboardLandingCard\\\\(action, forCustomer = false")
+            .findAll(dashboard).count())
+        assertEquals(1, Regex("DashboardLandingCard\\\\(action, forCustomer = true")
+            .findAll(dashboard).count())
+        assertTrue(card.contains("Modifier.fillMaxWidth().heightIn(min = 78.dp)"))
+        assertTrue(card.contains("DashboardCardTypography.title(l.code)"))
+        assertTrue(card.contains("DashboardCardTypography.subtitle(l.code)"))
+        assertTrue(card.contains(".background(Color(0xEBFFFFFF))"))
+        assertTrue(card.contains(".shadow("))
+        assertTrue(card.contains(".border(1.5.dp, Color.White.copy(alpha = 0.95f)"))
+        assertTrue(card.contains(".clickable(onClick = { onFeature(action.key) })"))
+        assertTrue(card.contains("Brush.verticalGradient("))
+        assertTrue(card.contains("Icon(action.icon"))
+        assertTrue(card.contains("Icons.Default.ChevronRight"))
+        assertTrue(!card.contains("CardDefaults.elevatedCardColors(containerColor = Color.White)"))
+    }
+
+    @Test fun bothDashboardListsUseHomesCherryBlushAtmosphere() {
+        val dashboard = source("DashboardScreens.kt")
+        val agent = dashboard.substringAfter("fun AgentDashboardScreen(")
+            .substringBefore("fun AgentScopeScreen(")
+        val customer = dashboard.substringAfter("fun CustomerDashboardScreen(")
+            .substringBefore("fun CustomerScopeScreen(")
+        for (screen in listOf(agent, customer)) {
+            assertTrue(screen.contains("Color(0xFFF6DCE5)"))
+            assertTrue(screen.contains("Color(0xFFF9E3EB)"))
+            assertTrue(screen.contains("Color(0xFFFCEEF3)"))
+            assertTrue(screen.contains("PaddingValues(horizontal = 16.dp, vertical = 14.dp)"))
+        }
     }
 
     @Test fun bothInformationScreensHaveStableLoadingHeaderAndScrollableDetails() {
