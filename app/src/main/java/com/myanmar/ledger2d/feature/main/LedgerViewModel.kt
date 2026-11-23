@@ -6,6 +6,8 @@ import com.myanmar.ledger2d.AppContainer
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.*
+import com.myanmar.ledger2d.core.profile.ProfileKind
+import com.myanmar.ledger2d.core.profile.ProfilePhotoChange
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -132,33 +134,68 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
     fun agentTotals(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotals(agentId,date,session)
     fun agentTotalsWithCommission(agentId:Long,date:LocalDate,session:DrawSession)=container.bets.observeAgentTotalsWithCommission(agentId,date,session)
     fun commissionLedger(through: LocalDate) = container.database.betDao().observeCommissionLedger(through)
-    fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean=false,onDone:()->Unit,onError:(String)->Unit={}){
-        val clean=name.trim();val parsed=rate.toLongOrNull()
-        if(clean.isEmpty()||parsed==null||parsed<=0)return
+    // Existing entry points remain source-compatible with all other workspaces.
+    fun saveAgent(id:Long,name:String,address:String,phone:String,rate:String,remark:String,
+        effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean=false,
+        onDone:()->Unit,onError:(String)->Unit={}) {
+        saveAgentWithPhoto(id,name,address,phone,rate,remark,effectiveDate,effectiveSession,
+            forceSessionReprice,ProfilePhotoChange.Keep,onDone,onError)
+    }
+    fun saveAgentWithPhoto(id:Long,name:String,address:String,phone:String,rate:String,remark:String,
+        effectiveDate:LocalDate,effectiveSession:DrawSession,forceSessionReprice:Boolean,
+        photoChange:ProfilePhotoChange,onDone:()->Unit,onError:(String)->Unit={}) {
+        val clean=name.trim()
+        val parsed=rate.toLongOrNull()
+        if(clean.isEmpty() || parsed==null || parsed<=0L) {
+            onError("အမည်နှင့် နှုန်းထားကို မှန်ကန်စွာဖြည့်ပါ")
+            return
+        }
         viewModelScope.launch {
-            val old=if(id>0)container.agents.get(id) else null
-            val now=System.currentTimeMillis()
-            val entity=AgentEntity(id=id,name=clean,address=address.trim(),phone=phone.trim(),rate=parsed,remark=remark.trim(),createdAt=old?.createdAt?:now,updatedAt=now)
-            runCatching { container.agents.saveWithRateSchedule(entity,effectiveDate,effectiveSession,forceSessionReprice) }
-                .onSuccess { changed();onDone() }
-                .onFailure { onError(it.message?:"ဒိုင်အချက်အလက် သိမ်း၍မရပါ") }
+            var prepared:com.myanmar.ledger2d.core.profile.ProfilePhotoStore.PreparedPhoto?=null
+            try {
+                prepared=container.profilePhotos.prepare(photoChange)
+                val old=if(id>0)container.agents.get(id) else null
+                val now=System.currentTimeMillis()
+                val entity=AgentEntity(id=id,name=clean,address=address.trim(),phone=phone.trim(),
+                    rate=parsed,remark=remark.trim(),createdAt=old?.createdAt?:now,updatedAt=now)
+                val savedId=container.agents.saveWithRateSchedule(entity,effectiveDate,effectiveSession,forceSessionReprice)
+                container.profilePhotos.apply(ProfileKind.AGENT,if(id>0)id else savedId,prepared)
+                changed()
+                onDone()
+            } catch(error:Exception) {
+                onError(error.message?:"ဒိုင်အချက်အလက် သိမ်း၍မရပါ")
+            } finally { prepared?.cleanup() }
         }
     }
-    fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,commissionPercent:String,
+    fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,
+        commissionPercent:String,onDone:()->Unit,onError:(String)->Unit={}) {
+        saveCustomerWithPhoto(id,agentId,name,address,phone,remark,commissionPercent,
+            ProfilePhotoChange.Keep,onDone,onError)
+    }
+    fun saveCustomerWithPhoto(id:Long,agentId:Long,name:String,address:String,phone:String,
+        remark:String,commissionPercent:String,photoChange:ProfilePhotoChange,
         onDone:()->Unit,onError:(String)->Unit={}) {
         val clean=name.trim()
         if(clean.isEmpty()) return onError("ထိုးသားအမည် ထည့်ပါ")
-        val openingRate=if(id==0L) commissionBasisPoints(commissionPercent) ?:return onError("ကော်မရှင် 0 မှ 100% အထိ သေချာသတ်မှတ်ပါ") else null
+        val openingRate=if(id==0L) commissionBasisPoints(commissionPercent)
+            ?:return onError("ကော်မရှင် 0 မှ 100% အထိ သေချာသတ်မှတ်ပါ") else null
         viewModelScope.launch {
-            runCatching {
+            var prepared:com.myanmar.ledger2d.core.profile.ProfilePhotoStore.PreparedPhoto?=null
+            try {
+                prepared=container.profilePhotos.prepare(photoChange)
                 val old=if(id>0L)container.customers.get(id) ?:error("Customer not found") else null
                 val now=System.currentTimeMillis()
-                // Editing profile details never silently changes historical/active commission.
-                container.customers.save(CustomerEntity(id=id,agentId=agentId,name=clean,
+                // Profile updates never silently modify historical commission or payout.
+                val savedId=container.customers.save(CustomerEntity(id=id,agentId=agentId,name=clean,
                     address=address.trim(),phone=phone.trim(),remark=remark.trim(),
                     commissionRateBasisPoints=old?.commissionRateBasisPoints?:openingRate!!,
                     createdAt=old?.createdAt?:now,updatedAt=now))
-            }.onSuccess { changed();onDone() }.onFailure { onError(it.message?:"ထိုးသားသိမ်းမရပါ") }
+                container.profilePhotos.apply(ProfileKind.CUSTOMER,if(id>0)id else savedId,prepared)
+                changed()
+                onDone()
+            } catch(error:Exception) {
+                onError(error.message?:"ထိုးသားသိမ်းမရပါ")
+            } finally { prepared?.cleanup() }
         }
     }
     /** Existing call retained only for compatibility with older UI entry points. */
