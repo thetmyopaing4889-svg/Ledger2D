@@ -29,6 +29,8 @@ class CherryProfileIntegrationContractTest {
         assertTrue(forms.contains("LocalQuickEntryAction.current"))
         assertTrue(forms.contains("QuickEntryFab(it)"))
         assertTrue(forms.contains("onRemove: (() -> Unit)? = null"))
+        assertTrue(forms.contains("photos.draftFile(pickedUri)"))
+        assertTrue(forms.contains("BackHandler(onBack = onBack)"))
     }
 
     @Test fun saveValidationIsExplicitAndBusinessRatesDoNotChange() {
@@ -48,8 +50,13 @@ class CherryProfileIntegrationContractTest {
         assertTrue(store.contains("kind.stem + \"-\" + id + \".jpg\""))
         assertTrue(store.contains("512f / max(w, h)"))
         assertTrue(store.contains("StandardCopyOption.ATOMIC_MOVE"))
-        assertTrue(vm.contains("ProfileKind.AGENT,if(id>0)id else savedId"))
-        assertTrue(vm.contains("ProfileKind.CUSTOMER,if(id>0)id else savedId"))
+        assertTrue(vm.contains("saveProfileAtomically(container.database, container.profilePhotos,"))
+        assertTrue(vm.contains("ProfileKind.AGENT, photoChange"))
+        assertTrue(vm.contains("ProfileKind.CUSTOMER, photoChange"))
+        assertTrue(store.contains("applyReversible("))
+        assertTrue(store.contains("class AppliedChange"))
+        assertTrue(screen.contains("stageGallery(uri,draftKey)"))
+        assertTrue(screen.contains("ProfilePhotoChange.ReplaceDraft(selectedPhoto!!)"))
         assertTrue(lists.contains("ProfileKind.AGENT,agent.id"))
         assertTrue(lists.contains("ProfileKind.CUSTOMER,customer.id"))
         assertTrue(lists.contains("ProfileKind.AGENT,id"))
