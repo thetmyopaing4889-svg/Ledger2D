@@ -76,10 +76,49 @@ class ManagementUiConsistencyContractTest {
 
     @Test fun listsPreserveProfilePhotosAndClickableNavigation() {
         val list = source("ListWorkspaceScreens.kt")
-        assertTrue(list.contains("ElevatedCard(onClick = onInfo"))
-        assertTrue(list.contains("ElevatedCard(onClick = { onInfo(customer.id) }"))
+        assertTrue(list.contains("ManagementListGlassCard(onClick = onInfo)"))
+        assertTrue(list.contains("ManagementListGlassCard(onClick = { onInfo(customer.id) })"))
         assertTrue(list.contains("ProfileKind.AGENT,agent.id,Modifier.size(42.dp)"))
         assertTrue(list.contains("ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)"))
         assertTrue(list.contains("contentDescription = l.translate(\"ထိုးသားအချက်အလက်ကြည့်ရန်\")"))
+        assertTrue(list.contains("colors = ListItemDefaults.colors(containerColor = Color.Transparent)"))
     }
+
+    @Test fun managementListAndInformationSurfacesMatchHomeGlassWithoutBlurringRows() {
+        val list = source("ListWorkspaceScreens.kt")
+        val agentList = list.substringAfter("fun AgentListWorkspaceScreen(")
+            .substringBefore("private fun AgentListRow(")
+        val customerList = list.substringAfter("fun CustomerListWorkspaceScreen(")
+            .substringBefore("internal fun nextAgentListDraw(")
+        val info = list.substringAfter("private fun InformationCard(")
+        val glass = list.substringAfter("private fun Modifier.managementGlassPane(")
+            .substringBefore("private fun ManagementListGlassCard(")
+        assertTrue(list.contains("Color(0xFFF6DCE5)"))
+        assertTrue(list.contains("Color(0xFFF9E3EB)"))
+        assertTrue(list.contains("Color(0xFFFCEEF3)"))
+        assertTrue(agentList.contains(".background(managementBlushBackground)"))
+        assertTrue(customerList.contains(".background(managementBlushBackground)"))
+        assertTrue(info.contains(".background(managementBlushBackground)"))
+        assertTrue(info.contains(".managementGlassPane(managementProfileShape, shadowDepth = 5.dp)"))
+        assertTrue(glass.contains(".background(Color(0xEBFFFFFF))"))
+        assertTrue(glass.contains(".border(1.5.dp, Color.White.copy(alpha = 0.95f)"))
+        assertTrue(glass.contains(".shadow("))
+        assertTrue(!glass.contains("homeRubyShadow("))
+        assertTrue(!glass.contains("BlurMaskFilter"))
+    }
+
+    @Test fun agentAndCustomerSelectorsAddButtonsAndProfileScrollArePreserved() {
+        val list = source("ListWorkspaceScreens.kt")
+        val customerList = list.substringAfter("fun CustomerListWorkspaceScreen(")
+            .substringBefore("internal fun nextAgentListDraw(")
+        assertTrue(customerList.contains("rememberSaveable(initialAgentId)"))
+        assertTrue(customerList.contains("ScopeDropdown("))
+        assertTrue(customerList.contains("onAdd(selectedAgent)"))
+        assertTrue(list.contains("filterAgentsForList(agents, search)"))
+        assertTrue(list.contains("if (profile == null)"))
+        assertTrue(list.contains("scrollContent = true"))
+        assertTrue(list.contains("Modifier.weight(0.38f)"))
+        assertTrue(list.contains("Modifier.weight(0.62f)"))
+    }
+
 }
