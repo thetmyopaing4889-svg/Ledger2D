@@ -130,6 +130,7 @@ fun AgentDigitTotalsWorkspace(
                     "ဒိုင်ရွေးရန်", selectedName,
                     listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                     selectedAgent,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                 ) { selectedAgent = it }
                 Spacer(Modifier.height(8.dp))
                 DateInput(dateText, {
