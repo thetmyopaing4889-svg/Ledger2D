@@ -926,7 +926,8 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         else if (selectedPhoto != null && !vm.profilePhotos.hasDraft(selectedPhoto!!)) selectedPhoto=null
     }
     fun cancelForm(){
-        photoScope.launch { vm.profilePhotos.discardDraft(draftKey) }
+        // Navigation disposes the composable scope; delete before leaving.
+        vm.profilePhotos.discardDraft(draftKey)
         onBack()
     }
     val picker=androidx.activity.compose.rememberLauncherForActivityResult(
@@ -987,7 +988,7 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         onRemove={
             selectedPhoto=null
             photoRemoved=true
-            photoScope.launch {vm.profilePhotos.discardDraft(draftKey)}
+            vm.profilePhotos.discardDraft(draftKey)
         },
         canSave=canSave&&!picking,saving=saving,
         onSave={if(rateIsChanging)pendingRateChange=true else applyChange()},
@@ -1038,7 +1039,8 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         else if (selectedPhoto != null && !vm.profilePhotos.hasDraft(selectedPhoto!!)) selectedPhoto=null
     }
     fun cancelForm(){
-        photoScope.launch { vm.profilePhotos.discardDraft(draftKey) }
+        // Navigation disposes the composable scope; delete before leaving.
+        vm.profilePhotos.discardDraft(draftKey)
         onBack()
     }
     val picker=androidx.activity.compose.rememberLauncherForActivityResult(
@@ -1081,7 +1083,7 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         onRemove={
             selectedPhoto=null
             photoRemoved=true
-            photoScope.launch {vm.profilePhotos.discardDraft(draftKey)}
+            vm.profilePhotos.discardDraft(draftKey)
         },
         canSave=canSave&&!picking,saving=saving,onSave={applyChange()},
     ) {
