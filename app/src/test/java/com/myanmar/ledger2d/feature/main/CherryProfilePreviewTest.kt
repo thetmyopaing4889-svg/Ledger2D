@@ -61,7 +61,7 @@ class CherryProfilePreviewTest {
         }
     }
 
-    @Test fun profileFormsReuseStandardHeaderWithSeparatedPhotoAndSingleFieldFrames() {
+    @Test fun profileFormsKeepStandardHeaderAndPinPhotoOutsideScrollableInputs() {
         val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
             .readText()
         val page=source.substringAfter("internal fun CherryProfileFormPage(")
@@ -69,19 +69,21 @@ class CherryProfilePreviewTest {
         val field=source.substringAfter("internal fun CherryProfileField(")
         assertTrue(page.contains("AppScaffold(title=title, onBack=onBack)"))
         assertTrue(page.contains("BackHandler(onBack = onBack)"))
-        assertTrue(page.contains("Modifier.size(126.dp)"))
+        assertTrue(page.contains("WindowInsets.ime.getBottom(LocalDensity.current) > 0"))
+        assertTrue(page.contains("if (!keyboardVisible)"))
+        assertTrue(page.contains("Modifier.size(128.dp)"))
+        assertTrue(page.indexOf("CherryProfileAvatar(") < page.indexOf(".verticalScroll(rememberScrollState())"))
+        assertTrue(page.contains("Modifier.fillMaxWidth().weight(1f)"))
+        assertTrue(page.contains(".imePadding()"))
         assertFalse(page.contains("cherry_header_art"))
         assertFalse(page.contains("height(274.dp)"))
-        assertFalse(page.contains("start=141.dp"))
-        assertFalse(page.contains("TextAlign.End"))
+        assertFalse(page.contains("Spacer(Modifier.height(104.dp))"))
         assertTrue(field.contains("BasicTextField("))
-        assertTrue(field.contains("Text("))
         assertTrue(field.contains("language.translate(label)"))
         assertFalse(field.contains("OutlinedTextField("))
+        assertTrue(field.contains("heightIn(min=64.dp)"))
         assertTrue(field.contains("if(focused) 1.5.dp else 1.dp"))
         assertTrue(field.contains("singleLine=label!=\"မှတ်ချက်\""))
-        assertTrue(page.contains("val saveEnabled=canSave&&!saving"))
-        assertTrue(page.contains("Spacer(Modifier.height(104.dp))"))
     }
 
     @Test fun agentAndCustomerUseTheSameFormAndKeepCropCallbacks() {
@@ -93,17 +95,36 @@ class CherryProfilePreviewTest {
         assertTrue(screens.contains("vm.saveCustomerWithPhoto("))
     }
 
-    @Test fun premiumFormUsesLayeredGlassAndRaisedGlossySaveInsteadOfFlatWhite() {
+    @Test fun saveButtonHasOneGradientSurfaceAndMatchesCancelHeight() {
         val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
             .readText()
-        assertTrue(source.contains("Color(0xFFFEF8FB)"))
-        assertTrue(source.contains("Color(0xFFF4DFE9)"))
-        assertTrue(source.contains(".homeRubyShadow(radius=26.dp"))
-        assertTrue(source.contains(".homeRubyShadow(radius=29.dp"))
-        assertTrue(source.contains("Color(0xFFFF5E93)"))
-        assertTrue(source.contains("Color(0xFF78072E)"))
-        assertTrue(source.contains("Color(0xB9FFFFFF)"))
-        assertTrue(source.contains("AppScaffold(title=title, onBack=onBack)"))
+        val page=source.substringAfter("internal fun CherryProfileFormPage(")
+            .substringBefore("@Composable\ninternal fun CherryProfileField(")
+        assertTrue(page.contains("Color(0xFFFEF8FB)"))
+        assertTrue(page.contains("Color(0xFFF4DFE9)"))
+        assertTrue(page.contains(".homeRubyShadow(radius=24.dp"))
+        assertTrue(page.contains(".homeRubyShadow(radius=27.dp"))
+        assertTrue(page.contains("Color(0xFFF44982)"))
+        assertTrue(page.contains("Color(0xFF820A38)"))
+        assertFalse(page.contains("Color(0xB9FFFFFF)"))
+        assertFalse(page.contains("val saveShape="))
+        assertTrue(page.contains("onClick=onSave,enabled=saveEnabled"))
+        assertTrue(page.contains("disabledContainerColor=Color.Transparent"))
+        assertTrue(page.contains("val saveEnabled=canSave&&!saving"))
+        assertEquals(2, page.split("height(54.dp)").size - 1)
+        assertTrue(page.contains("if (!keyboardVisible) Spacer(Modifier.height(64.dp))"))
         assertTrue(source.contains("dimensions.use { BitmapFactory.decodeStream(it, null, bounds) }"))
+    }
+
+    @Test fun editPhotoControlsHaveCompactArtworkAndAccessibleHitAreas() {
+        val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
+            .readText()
+        val avatar=source.substringAfter("internal fun CherryProfileAvatar(")
+            .substringBefore("internal fun CherryProfileFormPage(")
+        assertTrue(avatar.contains("Modifier.padding(9.dp)"))
+        assertTrue(avatar.contains("Modifier.align(Alignment.BottomEnd).size(48.dp)"))
+        assertTrue(avatar.contains("Modifier.size(34.dp)"))
+        assertTrue(avatar.contains("Modifier.align(Alignment.TopEnd).size(44.dp)"))
+        assertTrue(avatar.contains("Modifier.size(27.dp)"))
     }
 }
