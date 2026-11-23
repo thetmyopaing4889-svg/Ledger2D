@@ -606,15 +606,25 @@ fun transactionDisplayText(format: String, raw: String): String {
                         Box(Modifier.size(40.dp), contentAlignment=Alignment.Center) {
                             Canvas(Modifier.matchParentSize()) {
                                 val radius=size.minDimension/2f-1.dp.toPx()
-                                // Restore working-day result status coloring under the rose outline.
+                                // Both working-day sessions have their OWN color, even before
+                                // the result arrives. Closed days use a separate rose shade.
                                 val dayTint=when {
-                                    date in closedSet -> Color(0xFFFFE1EA)
-                                    digit=="--" -> Color(0xFFF4F0F1)
-                                    morning -> AppColors.Blush
-                                    else -> Color.White
+                                    date in closedSet -> Color(0xFFFFD4E0)
+                                    morning && digit=="--" -> Color(0xFFF9DEE8)
+                                    !morning && digit=="--" -> Color(0xFFEBDCED)
+                                    morning -> Color(0xFFF6BFD3)
+                                    else -> Color(0xFFE3CDE7)
                                 }
-                                drawCircle(dayTint.copy(alpha=.87f),radius=radius)
-                                drawCircle(Color(0x33C2185B),radius=radius,
+                                drawCircle(dayTint,radius=radius)
+                                // One gentle specular glint; do not wash the tint back to white.
+                                drawCircle(
+                                    Brush.radialGradient(
+                                        listOf(Color(0x66FFFFFF),Color.Transparent),
+                                        center=Offset(size.width*.31f,size.height*.23f),
+                                        radius=size.minDimension*.72f
+                                    ),radius=radius
+                                )
+                                drawCircle(Color(0x66C2185B),radius=radius,
                                     style=Stroke(width=1.dp.toPx()))
                             }
                             Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)
