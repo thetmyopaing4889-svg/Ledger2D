@@ -589,7 +589,7 @@ fun transactionDisplayText(format: String, raw: String): String {
         Row(Modifier.fillMaxWidth().height(38.dp),verticalAlignment=Alignment.CenterVertically){
             Spacer(Modifier.width(48.dp))
             dates.forEach { date ->
-                Column(Modifier.weight(1f).fillMaxHeight().background(if(date==today) AppColors.Blush.copy(alpha=.40f) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+                Column(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF1F6) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
                     Row(horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){Text(date.format(dateFormat),style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Black,color=if(date==today) AppColors.PrimaryDeep else AppColors.Ink);Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT,Locale.ENGLISH),style=MaterialTheme.typography.labelSmall,color=if(date==today) AppColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant)}
                     Box(Modifier.padding(top=1.dp).size(4.dp).background(if(date==today) AppColors.Primary else Color.Transparent,CircleShape))
                 }
@@ -602,30 +602,37 @@ fun transactionDisplayText(format: String, raw: String): String {
                     val stats=totals[date to session] ?: (0L to 0L); val digit=winnerMap[date to session] ?: "--"; val shown=if(date in closedSet) l.translate("ပိတ်") else digit
                     val morning=session == DrawSession.MORNING
                     val digitColor=when { date in closedSet -> AppColors.PrimaryDeep; digit=="--" -> MaterialTheme.colorScheme.onSurfaceVariant; morning -> AppColors.Primary; else -> AppColors.Ink }
-                    Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0x36FFF4F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
+                    Box(Modifier.weight(1f).fillMaxHeight().background(if(date==today) Color(0xFFFFF3F7) else Color.Transparent).border(1.dp,AppColors.Stone.copy(alpha=.35f)).clickable{onSelect(date,session,digit,stats.first,stats.second)},contentAlignment=Alignment.Center){
                         Box(Modifier.size(40.dp), contentAlignment=Alignment.Center) {
                             Canvas(Modifier.matchParentSize()) {
                                 val radius=size.minDimension/2f-1.dp.toPx()
-                                // Both working-day sessions have their OWN color, even before
-                                // the result arrives. Closed days use a separate rose shade.
+                                // Match the original Nov 6 Home screen precisely:
+                                // completed AM: light-pink filled circle and red digits;
+                                // completed PM: white circle and black digits;
+                                // pending: neutral grey; today's pending: rose outline.
+                                val isPending = digit=="--" && date !in closedSet
+                                val isTodayPending = date==today && isPending
                                 val dayTint=when {
-                                    date in closedSet -> Color(0xFFFFD4E0)
-                                    morning && digit=="--" -> Color(0xFFF9DEE8)
-                                    !morning && digit=="--" -> Color(0xFFEBDCED)
-                                    morning -> Color(0xFFF6BFD3)
-                                    else -> Color(0xFFE3CDE7)
+                                    date in closedSet -> Color(0xFFFFE1EA)
+                                    isPending -> Color(0xFFF3F0F1)
+                                    morning -> Color(0xFFFFF0F5)
+                                    else -> Color.White
                                 }
                                 drawCircle(dayTint,radius=radius)
-                                // One gentle specular glint; do not wash the tint back to white.
+                                if(!isPending && date !in closedSet) {
+                                    drawCircle(
+                                        Brush.radialGradient(
+                                            listOf(Color(0x55FFFFFF), Color.Transparent),
+                                            center=Offset(size.width*.29f,size.height*.24f),
+                                            radius=size.minDimension*.72f),
+                                        radius=radius)
+                                }
                                 drawCircle(
-                                    Brush.radialGradient(
-                                        listOf(Color(0x66FFFFFF),Color.Transparent),
-                                        center=Offset(size.width*.31f,size.height*.23f),
-                                        radius=size.minDimension*.72f
-                                    ),radius=radius
-                                )
-                                drawCircle(Color(0x66C2185B),radius=radius,
-                                    style=Stroke(width=1.dp.toPx()))
+                                    if(isTodayPending) Color(0xFFEA93B0)
+                                    else if(isPending) Color(0x2FC2185B)
+                                    else if(morning) Color(0x21F4A2BF)
+                                    else Color(0x4CE7CAD6),
+                                    radius=radius,style=Stroke(width=1.dp.toPx()))
                             }
                             Text(shown,style=if(shown.length>2) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Black,color=digitColor,maxLines=1,softWrap=false,textAlign=TextAlign.Center)
                         }
