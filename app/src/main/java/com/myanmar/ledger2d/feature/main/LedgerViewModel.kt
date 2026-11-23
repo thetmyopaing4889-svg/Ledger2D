@@ -21,6 +21,7 @@ data class AgentCustomerReportRow(val customer:CustomerEntity, val calculation:D
 data class ScopeSummary(val id:Long, val name:String, val totalBet:Long, val winningStake:Long, val payout:Long, val profitLoss:Long, val commission:Long)
 sealed interface HistoryUpdateState { data object Idle: HistoryUpdateState; data object Working: HistoryUpdateState; data class Success(val message:String): HistoryUpdateState; data class Error(val message:String): HistoryUpdateState }
 class LedgerViewModel(private val container: AppContainer):ViewModel(){
+    val profilePhotos get() = container.profilePhotos
     val agents=container.agents.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val winners=container.winners.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val historyResults=container.history.observeAll().stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
