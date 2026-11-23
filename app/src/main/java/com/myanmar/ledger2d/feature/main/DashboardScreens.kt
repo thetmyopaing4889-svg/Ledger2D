@@ -148,7 +148,7 @@ fun AgentScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit, o
     AppScaffold(featureTitle, onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = LedgerControlDimensions.fabSafeBottom), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(language.text("ဒိုင်ရွေးရန်", "Select agent"), style = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, language.code))
-            ScopeDropdown(language.text("ဒိုင်ရွေးရန်", "Select agent"), selectedLabel, listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected) { selected = it }
+            ScopeDropdown(language.text("ဒိုင်ရွေးရန်", "Select agent"), selectedLabel, listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }) { selected = it }
             if (selected == 0L) {
                 UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ"))
             } else {
@@ -190,8 +190,8 @@ fun CustomerScopeScreen(vm: LedgerViewModel, feature: String, onBack: () -> Unit
     AppScaffold(featureTitle, onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = LedgerControlDimensions.fabSafeBottom), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(language.text("ဒိုင်နှင့် ထိုးသားရွေးရန်", "Select agent and customer"), style = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, language.code))
-            ScopeDropdown(language.text("ဒိုင်ရွေးရန်", "Select agent"), agentLabel, agents.map { it.id to it.name }, agentId) { agentId = it }
-            ScopeDropdown(language.text("ထိုးသားရွေးရန်", "Select customer"), customerLabel, if (agentId == 0L) emptyList() else listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name }, customerId, enabled = agentId != 0L) { customerId = it }
+            ScopeDropdown(language.text("ဒိုင်ရွေးရန်", "Select agent"), agentLabel, agents.map { it.id to it.name }, agentId, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }) { agentId = it }
+            ScopeDropdown(language.text("ထိုးသားရွေးရန်", "Select customer"), customerLabel, if (agentId == 0L) emptyList() else listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name }, customerId, enabled = agentId != 0L, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) }) { customerId = it }
             if (agentId == 0L || customerId == 0L) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက်နှင့် Customer အားလုံး သို့မဟုတ် Customer တစ်ယောက်ကို ရွေးပါ"))
             else {
                 Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text("$agentLabel • $customerLabel", Modifier.fillMaxWidth().padding(14.dp), fontWeight = FontWeight.Bold) }
@@ -233,7 +233,7 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
         LazyColumn(Modifier.fillMaxSize().padding(padding), state = pageScroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!resultPage) {
             item { SelectionCard {
-                ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), if (selected == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး") else agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected) { selected = it }
+                ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), if (selected == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး") else agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name }, selected, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }) { selected = it }
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -324,7 +324,8 @@ fun CustomerFeatureWorkspaceScreen(
                     ScopeDropdown(
                         language.text("ဒိုင်ရွေးရန်", "Select agent"),
                         agents.firstOrNull { it.id == agentId }?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent"),
-                        agents.map { it.id to it.name }, agentId
+                        agents.map { it.id to it.name }, agentId,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }
                     ) { agentId = it; customerId = if (it == language.defaultAgentId) language.defaultCustomerId else 0L }
                     ScopeDropdown(
                         language.text("ထိုးသားရွေးရန်", "Select customer"),
@@ -335,7 +336,8 @@ fun CustomerFeatureWorkspaceScreen(
                         },
                         if (agentId == 0L) emptyList()
                             else listOf(-1L to language.text("ထိုးသားအားလုံး", "All customers")) + customers.map { it.id to it.name },
-                        customerId, enabled = agentId > 0L
+                        customerId, enabled = agentId > 0L,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) }
                     ) { customerId = it }
                 }
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -668,7 +670,7 @@ fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate:
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားအသစ်ထည့်ရန်"), onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = LedgerControlDimensions.fabSafeBottom), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer ကို ဘယ် Agent အောက်မှာထည့်မလဲ"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), agents.map { it.id to it.name }, selected) { selected = it }
+            ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), agents.map { it.id to it.name }, selected, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }) { selected = it }
             Button(onClick = { onCreate(selected) }, enabled = selected > 0, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer form သို့သွားရန်")) }
         }
     }
