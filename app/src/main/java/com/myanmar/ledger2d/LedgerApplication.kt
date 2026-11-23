@@ -97,7 +97,7 @@ class LedgerApplication : Application() {
 }
 
 class AppContainer(val database: LedgerDatabase) {
-    val profilePhotos = ProfilePhotoStore(LedgerApplicationContextHolder.context)
+    val profilePhotos by lazy { ProfilePhotoStore(LedgerApplicationContextHolder.context) }
     val workingContext = WorkingContextStore()
     val agents: AgentRepository = RoomAgentRepository(database)
     val customers: CustomerRepository = RoomCustomerRepository(database.customerDao())
