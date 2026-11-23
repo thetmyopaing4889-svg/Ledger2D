@@ -61,36 +61,49 @@ class CherryProfilePreviewTest {
         }
     }
 
-    @Test fun formHeaderAndInputsHaveNoOverlappingOrDuplicateFrames() {
+    @Test fun profileFormsReuseStandardHeaderWithSeparatedPhotoAndSingleFieldFrames() {
         val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
             .readText()
         val page=source.substringAfter("internal fun CherryProfileFormPage(")
             .substringBefore("@Composable\ninternal fun CherryProfileField(")
         val field=source.substringAfter("internal fun CherryProfileField(")
-        assertTrue(page.contains("Modifier.align(Alignment.BottomStart)"))
-        assertTrue(page.contains(".padding(start=141.dp,end=18.dp,top=23.dp)"))
-        assertTrue(page.contains("modifier=Modifier.fillMaxWidth().statusBarsPadding()"))
-        assertTrue(page.contains("Icon(Icons.AutoMirrored.Filled.ArrowBack"))
-        assertFalse(page.contains("Modifier.align(Alignment.TopEnd)"))
+        assertTrue(page.contains("AppScaffold(title=title, onBack=onBack)"))
+        assertTrue(page.contains("BackHandler(onBack = onBack)"))
+        assertTrue(page.contains("Modifier.size(126.dp)"))
+        assertFalse(page.contains("cherry_header_art"))
+        assertFalse(page.contains("height(274.dp)"))
+        assertFalse(page.contains("start=141.dp"))
+        assertFalse(page.contains("TextAlign.End"))
         assertTrue(field.contains("BasicTextField("))
-        assertTrue(field.contains("if(value.isEmpty())"))
+        assertTrue(field.contains("Text("))
+        assertTrue(field.contains("language.translate(label)"))
         assertFalse(field.contains("OutlinedTextField("))
-        assertTrue(field.contains("if(focused) 1.4.dp else 1.dp"))
+        assertTrue(field.contains("if(focused) 1.5.dp else 1.dp"))
         assertTrue(field.contains("singleLine=label!=\"မှတ်ချက်\""))
-        assertTrue(page.contains("QuickEntryFab(it)"))
+        assertTrue(page.contains("val saveEnabled=canSave&&!saving"))
+        assertTrue(page.contains("Spacer(Modifier.height(104.dp))"))
+    }
+
+    @Test fun agentAndCustomerUseTheSameFormAndKeepCropCallbacks() {
+        val screens=File("src/main/java/com/myanmar/ledger2d/feature/main/Screens.kt").readText()
+        assertEquals(2, Regex("CherryProfileFormPage\\(").findAll(screens).count())
+        assertEquals(2, Regex("CherryProfileCropDialog\\(").findAll(screens).count())
+        assertEquals(2, Regex("vm.profilePhotos.cropStaged\\(").findAll(screens).count())
+        assertTrue(screens.contains("vm.saveAgentWithPhoto("))
+        assertTrue(screens.contains("vm.saveCustomerWithPhoto("))
     }
 
     @Test fun premiumFormUsesLayeredGlassAndRaisedGlossySaveInsteadOfFlatWhite() {
         val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
             .readText()
-        assertTrue(source.contains("Brush.radialGradient("))
-        assertTrue(source.contains("Color(0x9EFFFFFF)"))
-        assertTrue(source.contains(".homeRubyShadow(radius=28.dp"))
+        assertTrue(source.contains("Color(0xFFFEF8FB)"))
+        assertTrue(source.contains("Color(0xFFF4DFE9)"))
+        assertTrue(source.contains(".homeRubyShadow(radius=26.dp"))
         assertTrue(source.contains(".homeRubyShadow(radius=29.dp"))
         assertTrue(source.contains("Color(0xFFFF5E93)"))
         assertTrue(source.contains("Color(0xFF78072E)"))
         assertTrue(source.contains("Color(0xB9FFFFFF)"))
-        assertTrue(source.contains("textAlign=TextAlign.End"))
+        assertTrue(source.contains("AppScaffold(title=title, onBack=onBack)"))
         assertTrue(source.contains("dimensions.use { BitmapFactory.decodeStream(it, null, bounds) }"))
     }
 }
