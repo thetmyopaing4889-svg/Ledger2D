@@ -109,7 +109,12 @@ class ProfilePhotoStore(private val context: Context) {
                 .roundToInt().coerceIn(0, remainingX)
             val top = (remainingY * (panY.coerceIn(-1f, 1f) + 1f) / 2f)
                 .roundToInt().coerceIn(0, remainingY)
-            return Bitmap.createBitmap(source, left, top, side, side)
+            val selection = Bitmap.createBitmap(source, left, top, side, side)
+            // Android may return the original instance when a square image is
+            // cropped at 1x. The caller recycles its input before JPEG encoding.
+            return if (selection === source)
+                selection.copy(Bitmap.Config.ARGB_8888, false)
+            else selection
         }
     }
 
