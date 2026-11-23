@@ -448,10 +448,15 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
             options.forEach { (id, title) ->
                 DropdownMenuItem(
                     text = {
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            if (id > 0L) avatar?.invoke(id)
+                        if (avatar == null || id <= 0L) {
+                            // Unrelated dropdowns and All Agents/Customers retain their old UI.
                             Text(title, style = MaterialTheme.typography.bodyMedium, softWrap = true)
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                                avatar(id)
+                                Text(title, style = MaterialTheme.typography.bodyMedium, softWrap = true)
+                            }
                         }
                     },
                     onClick = { onSelect(id); expanded = false }
