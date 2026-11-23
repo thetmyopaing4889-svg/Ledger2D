@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** HOME-FIRST DESIGN DIRECTION RE-APPROVED, PLAN REVISED 2026-11-23; A03–A06 pilot compiled in successful Build 1865 but device acceptance PENDING. A01/A02 premium redesign NOT YET IMPLEMENTED.  
+**Status:** HOME-FIRST PHASE A01/A02 PREMIUM DASHBOARD UI COMMITTED; CI and device visual acceptance PENDING. Previous A03–A06 structure pilot passed Build 1865 but still needs Home visual restyling.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -259,7 +259,7 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | Milestone | Exit gate | Status |
 |---|---|---|
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
-| M1 — Home-first Management audit and UI changes | Home-derived A01/A02 premium dashboard first; then A03–A09; accepted Form untouched; CI+device QA | IN PROGRESS — Build 1865 source pilot passed CI, no device acceptance; **A01/A02 premium redesign pending** |
+| M1 — Home-first Management audit and UI changes | Home-derived A01/A02 premium dashboard first; then A03–A09; accepted Form untouched; CI+device QA | IN PROGRESS — A01/A02 premium styling committed; latest CI/device validation pending |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+device QA | NOT STARTED |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
@@ -278,6 +278,15 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**Home-first Dashboard implementation checkpoint — 2026-11-23 (A01/A02, awaiting CI + phone QA):**
+- **Branch:** `feature/design-consistency-from-build1864-20261123`, based on Build 1865 accepted-to-build source; do not merge to `main`.
+- **A01/A02 UI commit:** `4c1fb549cbb0d150efbccab7d1b2a5444b31126e` modifies `DashboardScreens.kt` only, replacing the opaque low-elevation dashboard landing card with a shared Home-like `Box` glass pane: `#EBFFFFFF` translucent surface, 22dp radius, soft cherry/ruby-tinted 5dp native Compose shadow, 1.5dp white rim, gentle inner highlight, 42dp pink-gradient icon cell. Both landing lists get a Home-blush vertical gradient `#F6DCE5 → #F9E3EB → #FCEEF3`. Cards retain 78dp minimum, natural text-driven growth, original labels/icons/feature order and `onFeature(action.key)` routing.
+- **Performance rationale:** `shadow` only, no expensive `BlurMaskFilter`/Home orb/silk/counter animation copied per card; `clickable` retains standard ripple/tap semantics.
+- **Contract tests:** `ManagementUiConsistencyContractTest.kt` extended to assert both dashboards use exactly one shared component, preserved 78dp minimum, glass surface, border, shadow, route click, background gradient and role typography. Test/fix commits: `a177d6ba2108a1046f4a85229ac332e23c8d218c` and `59a36c46f002b23bae910dd6b8341cb32ecb39a4`.
+- **Not modified:** Home `Screens.kt` / HomeGlassDepth / HomeCommissionCard and all Form / Research / Historical2DTimeline / Rules / BetterData / Live / database / domain / JPEG / LedgerNav / global theme files.
+- **Status:** source implementation & diff reviewed. CI jobs launched; at checkpoint **not yet declared passing**. No Home-vs-dashboard phone screenshots or user sign-off. **DO NOT declare complete until CI passes and visual QA confirms** translucent glass is apparent on physical device, button/card touch works, MM/EN fonts fit, small-width/large-font scrolling is smooth.
+- **Next step:** verify the latest HEAD CI run and artifacts; if CI fails, fix only the dashboard UI/test. If green, send APK for physical comparison with current Home and collect approval. Only then proceed to A03–A06 list/detail premium surfaces, preserving Build 1865 fixes.
 
 **Home-first design re-audit / corrected decision — 2026-11-23 (DOCUMENTATION UPDATE ONLY):**
 - **Authoritative user direction:** The **CURRENT approved Home Design**, with translucent glass, soft ruby shadows, blush atmosphere, white highlight borders, premium rounded geometry and tasteful feedback, becomes the **PRIMARY reference for other eligible screens**. Cross-Agent/Customer similarity is not sufficient. This corrects the former overly narrow Dashboard pilot conclusion.
