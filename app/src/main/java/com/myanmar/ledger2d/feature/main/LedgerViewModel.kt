@@ -8,6 +8,7 @@ import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.*
 import com.myanmar.ledger2d.core.profile.ProfileKind
 import com.myanmar.ledger2d.core.profile.ProfilePhotoChange
+import com.myanmar.ledger2d.core.profile.saveProfileAtomically
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -152,20 +153,21 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
             return
         }
         viewModelScope.launch {
-            var prepared:com.myanmar.ledger2d.core.profile.ProfilePhotoStore.PreparedPhoto?=null
             try {
-                prepared=container.profilePhotos.prepare(photoChange)
+                saveProfileAtomically(container.database, container.profilePhotos,
+                    ProfileKind.AGENT, photoChange) {
                 val old=if(id>0)container.agents.get(id) else null
                 val now=System.currentTimeMillis()
                 val entity=AgentEntity(id=id,name=clean,address=address.trim(),phone=phone.trim(),
                     rate=parsed,remark=remark.trim(),createdAt=old?.createdAt?:now,updatedAt=now)
                 val savedId=container.agents.saveWithRateSchedule(entity,effectiveDate,effectiveSession,forceSessionReprice)
-                container.profilePhotos.apply(ProfileKind.AGENT,if(id>0)id else savedId,prepared)
+                if(id>0) id else savedId
+                }
                 changed()
                 onDone()
             } catch(error:Exception) {
                 onError(error.message?:"ဒိုင်အချက်အလက် သိမ်း၍မရပါ")
-            } finally { prepared?.cleanup() }
+            }
         }
     }
     fun saveCustomer(id:Long,agentId:Long,name:String,address:String,phone:String,remark:String,
@@ -181,9 +183,9 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
         val openingRate=if(id==0L) commissionBasisPoints(commissionPercent)
             ?:return onError("ကော်မရှင် 0 မှ 100% အထိ သေချာသတ်မှတ်ပါ") else null
         viewModelScope.launch {
-            var prepared:com.myanmar.ledger2d.core.profile.ProfilePhotoStore.PreparedPhoto?=null
             try {
-                prepared=container.profilePhotos.prepare(photoChange)
+                saveProfileAtomically(container.database, container.profilePhotos,
+                    ProfileKind.CUSTOMER, photoChange) {
                 val old=if(id>0L)container.customers.get(id) ?:error("Customer not found") else null
                 val now=System.currentTimeMillis()
                 // Profile updates never silently modify historical commission or payout.
@@ -191,12 +193,13 @@ class LedgerViewModel(private val container: AppContainer):ViewModel(){
                     address=address.trim(),phone=phone.trim(),remark=remark.trim(),
                     commissionRateBasisPoints=old?.commissionRateBasisPoints?:openingRate!!,
                     createdAt=old?.createdAt?:now,updatedAt=now))
-                container.profilePhotos.apply(ProfileKind.CUSTOMER,if(id>0)id else savedId,prepared)
+                if(id>0) id else savedId
+                }
                 changed()
                 onDone()
             } catch(error:Exception) {
                 onError(error.message?:"ထိုးသားသိမ်းမရပါ")
-            } finally { prepared?.cleanup() }
+            }
         }
     }
     /** Existing call retained only for compatibility with older UI entry points. */
