@@ -255,6 +255,11 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
             } else {
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (selected > 0L) {
+                            CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,
+                                selected, Modifier.size(40.dp))
+                            Spacer(Modifier.width(7.dp))
+                        }
                         Text("$scopeLabel • $dateText • ${language.translate(session.label)}", Modifier.weight(1f),
                             style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
@@ -363,6 +368,11 @@ fun CustomerFeatureWorkspaceScreen(
             } else {
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (customerId > 0L) {
+                            CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,
+                                customerId, Modifier.size(40.dp))
+                            Spacer(Modifier.width(7.dp))
+                        }
                         Text("$scopeAgent • $scopeCustomer • $dateText • ${language.translate(session.label)}",
                             modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
