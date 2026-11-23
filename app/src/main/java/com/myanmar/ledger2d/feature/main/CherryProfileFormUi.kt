@@ -160,34 +160,25 @@ internal fun CherryProfileFormPage(
                 Box(Modifier.fillMaxWidth().height(213.dp)
                     .clip(RoundedCornerShape(bottomStart=54.dp,bottomEnd=54.dp))
                     .background(Brush.verticalGradient(listOf(Color(0x44000000),Color.Transparent))))
-                Row(
-                    Modifier.fillMaxWidth().statusBarsPadding()
-                        .padding(top=18.dp,start=16.dp,end=19.dp),
-                    verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(11.dp),
-                ) {
+                // Keep the cherry artwork unobstructed: a small bare Back arrow
+                // sits at the far right, NOT in a giant frosted circle over the fruit.
+                Box(Modifier.fillMaxWidth().statusBarsPadding()) {
                     IconButton(
                         onClick=onBack,
-                        modifier=Modifier.size(50.dp)
-                            .shadow(6.dp,CircleShape,
-                                ambientColor=Color(0x66880E4F),spotColor=Color(0x66880E4F))
-                            .clip(CircleShape)
-                            .background(Brush.verticalGradient(listOf(
-                                Color(0xE8FFFFFF),Color(0x92FFEAF2))))
-                            .border(1.5.dp,Color.White,CircleShape),
+                        modifier=Modifier.align(Alignment.TopEnd)
+                            .padding(top=6.dp,end=14.dp).size(38.dp),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription="နောက်သို့",tint=cherryWine,
-                            modifier=Modifier.size(27.dp))
+                            contentDescription="နောက်သို့",tint=Color.White,
+                            modifier=Modifier.size(28.dp))
                     }
-                    // The title gets its own bounded right-aligned area instead of
-                    // spilling back over the back button and cherry artwork.
                     Text(
                         LocalLanguage.current.translate(title),
-                        modifier=Modifier.weight(1f).padding(start=24.dp),
+                        modifier=Modifier.fillMaxWidth()
+                            .padding(start=138.dp,end=18.dp,top=74.dp),
                         color=Color.White,
                         style=MaterialTheme.typography.titleLarge.copy(
-                            fontSize=21.sp,lineHeight=29.sp),
+                            fontSize=21.sp,lineHeight=28.sp),
                         fontWeight=FontWeight.Black,
                         textAlign=TextAlign.End,
                         maxLines=2,
@@ -317,20 +308,19 @@ internal fun CherryProfileField(
     val fieldShape=RoundedCornerShape(28.dp)
     OutlinedTextField(
         value=value,onValueChange=onValue,
+        // Only ONE outline: Material's OutlinedTextField draws it.
+        // No second outer white capsule or mask/shadow to create doubled frames.
         modifier=Modifier.fillMaxWidth().heightIn(min=70.dp)
-            .shadow(2.dp,fieldShape,
-                ambientColor=Color(0x21880E4F),spotColor=Color(0x21880E4F))
             .clip(fieldShape)
             .background(Brush.linearGradient(listOf(
-                Color(0xDFFFFFFF),Color(0x9EFFFFFF),Color(0xB7FFE9F1))),fieldShape)
-            .border(1.dp,Color(0xE6FFFFFF),fieldShape),
+                Color(0x88FFFFFF),Color(0x53FFFFFF),Color(0x82FFF4F8))),fieldShape),
         singleLine=label!="မှတ်ချက်",
         label={Text(language.translate(label)+(if(required)" *" else ""))},
         leadingIcon={Icon(icon,contentDescription=null,tint=cherryWine)},
         keyboardOptions=KeyboardOptions(keyboardType=keyboard),
         shape=fieldShape,
         colors=OutlinedTextFieldDefaults.colors(
-            focusedBorderColor=cherryRed,unfocusedBorderColor=Color(0xCBE29EBC),
+            focusedBorderColor=cherryRed,unfocusedBorderColor=Color(0x7AC88EA8),
             focusedContainerColor=Color.Transparent,
             unfocusedContainerColor=Color.Transparent,
             focusedLabelColor=cherryWine,unfocusedLabelColor=Color(0xFF7E6270),
