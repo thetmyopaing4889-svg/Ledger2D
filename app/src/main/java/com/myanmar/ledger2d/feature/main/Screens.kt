@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import android.content.Context
 import com.myanmar.ledger2d.core.database.*
