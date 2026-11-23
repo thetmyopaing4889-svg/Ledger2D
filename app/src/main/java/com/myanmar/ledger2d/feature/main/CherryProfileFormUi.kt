@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -93,7 +94,9 @@ internal fun CherryProfileAvatar(
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(
             Modifier.fillMaxSize()
-                .shadow(8.dp, shape, ambientColor = Color(0x55880E4F), spotColor = Color(0x55880E4F))
+                // Reserve a narrow rim for form-only edit controls; list avatars stay unchanged.
+                .then(if (onPick != null) Modifier.padding(9.dp) else Modifier)
+                .shadow(6.dp, shape, ambientColor = Color(0x44880E4F), spotColor = Color(0x44880E4F))
                 .clip(shape)
                 .background(Brush.verticalGradient(listOf(Color.White, gentleBlush)))
                 .border(2.dp, Color.White, shape)
@@ -105,34 +108,46 @@ internal fun CherryProfileAvatar(
             else Icon(Icons.Default.Person, contentDescription = "Profile Photo",
                 tint = Color(0xB6AE6C83), modifier = Modifier.fillMaxSize(.67f))
         }
-        if(onPick != null) {
-            Box(Modifier.align(Alignment.BottomEnd).size(40.dp)
-                .shadow(6.dp, CircleShape)
-                .clip(CircleShape)
-                .background(Brush.verticalGradient(listOf(Color(0xFFED3B78), cherryRed)))
-                .clickable(onClick=onPick),
-                contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.PhotoLibrary, contentDescription = "Gallery မှ ပုံရွေးရန်",
-                    tint=Color.White,modifier=Modifier.size(22.dp))
+        if (onPick != null) {
+            // 48dp tap target; only the inner 34dp circle is painted.
+            Box(
+                Modifier.align(Alignment.BottomEnd).size(48.dp)
+                    .clickable(onClick=onPick),
+                contentAlignment=Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size(34.dp).shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(Brush.verticalGradient(listOf(Color(0xFFED3B78),cherryRed))),
+                    contentAlignment=Alignment.Center,
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription="Gallery မှ ပုံရွေးရန်",
+                        tint=Color.White, modifier=Modifier.size(18.dp))
+                }
             }
             if (onRemove != null && (bitmap != null || pickedUri != null)) {
                 Box(
-                    Modifier.align(Alignment.TopEnd).size(29.dp)
-                        .clip(CircleShape).background(Color(0xEAFFFFFF))
-                        .border(1.dp, Color(0xE0FFFFFF), CircleShape)
+                    Modifier.align(Alignment.TopEnd).size(44.dp)
                         .clickable(onClick=onRemove),
                     contentAlignment=Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Close, contentDescription="Profile ပုံဖယ်ရှားရန်",
-                        tint=cherryWine,modifier=Modifier.size(16.dp))
+                    Box(
+                        Modifier.size(27.dp).clip(CircleShape)
+                            .background(Color(0xF5FFFFFF))
+                            .border(1.dp,Color(0xFFE8BECE),CircleShape),
+                        contentAlignment=Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription="Profile ပုံဖယ်ရှားရန်",
+                            tint=cherryWine,modifier=Modifier.size(16.dp))
+                    }
                 }
             }
         }
     }
 }
 
-/** Profile forms share the same centered title and left Back arrow as other inner screens.
- * Only HomeScreen uses the large illustrated Cherry header.
+/** The same centered title and left Back action as the other inner screens.
+ * Keep the Home cherry artwork exclusive to HomeScreen.
  */
 @Composable
 internal fun CherryProfileFormPage(
@@ -143,93 +158,96 @@ internal fun CherryProfileFormPage(
     canSave: Boolean, saving: Boolean = false, onSave: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // System Back, top-bar Back, and Cancel share the caller's cleanup action.
     BackHandler(onBack = onBack)
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     AppScaffold(title=title, onBack=onBack) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding)
                 .background(Brush.verticalGradient(listOf(gentleBlush, Color(0xFFFCEEF3))))
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal=17.dp,vertical=18.dp),
+                .imePadding(),
             horizontalAlignment=Alignment.CenterHorizontally,
-            verticalArrangement=Arrangement.spacedBy(18.dp),
         ) {
-            // The avatar is in the scrollable content, never overlapping the header.
-            CherryProfileAvatar(
-                photos, kind, id, Modifier.size(126.dp),
-                pickedUri, removed, onPick, onRemove,
-            )
-            val paneShape=RoundedCornerShape(26.dp)
-            Box(
-                Modifier.fillMaxWidth()
-                    .homeRubyShadow(radius=26.dp,blur=16.dp,offsetY=7.dp,
-                        tint=Color(0x32880E4F))
-                    .clip(paneShape)
-                    .background(Brush.verticalGradient(listOf(
-                        Color(0xFFFEF8FB),Color(0xFFF4DFE9))))
-                    .border(1.dp,Color(0xF5FFFFFF),paneShape),
-            ) {
-                // One soft gloss and one outer border; no layered inner frames.
-                Box(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                    .padding(horizontal=18.dp).height(2.dp)
-                    .background(Brush.horizontalGradient(listOf(
-                        Color.Transparent,Color(0xCEFFFFFF),Color.Transparent))))
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal=15.dp,vertical=19.dp),
-                    verticalArrangement=Arrangement.spacedBy(14.dp),
-                    content=content,
-                )
+            // Pinned above the field scroller: scrolling cannot cut the portrait in half.
+            // Hide it while the keyboard is open so the editable area stays usable.
+            if (!keyboardVisible) {
+                Box(
+                    Modifier.fillMaxWidth().padding(top=12.dp,bottom=4.dp),
+                    contentAlignment=Alignment.Center,
+                ) {
+                    CherryProfileAvatar(
+                        photos, kind, id, Modifier.size(128.dp),
+                        pickedUri, removed, onPick, onRemove,
+                    )
+                }
             }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start=17.dp,end=17.dp,top=10.dp,bottom=9.dp),
+            ) {
+                val paneShape=RoundedCornerShape(24.dp)
+                Box(
+                    Modifier.fillMaxWidth()
+                        .homeRubyShadow(radius=24.dp,blur=14.dp,offsetY=5.dp,
+                            tint=Color(0x28880E4F))
+                        .clip(paneShape)
+                        .background(Brush.verticalGradient(listOf(
+                            Color(0xFFFEF8FB),Color(0xFFF4DFE9))))
+                        .border(1.dp,Color(0xE6FFFFFF),paneShape),
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal=15.dp,vertical=16.dp),
+                        verticalArrangement=Arrangement.spacedBy(11.dp),
+                        content=content,
+                    )
+                }
+            }
+            // Keep both actions at one height, outside the scroller; one Save surface.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal=17.dp,vertical=10.dp),
+                horizontalArrangement=Arrangement.spacedBy(12.dp),
+            ) {
+                val actionShape=RoundedCornerShape(27.dp)
                 OutlinedButton(
                     onClick=onBack,
                     modifier=Modifier.weight(1f).height(54.dp),
-                    shape=RoundedCornerShape(28.dp),
-                    border=androidx.compose.foundation.BorderStroke(1.5.dp,cherryWine),
+                    shape=actionShape,
+                    border=androidx.compose.foundation.BorderStroke(1.3.dp,cherryWine),
                 ) {
-                    Text(LocalLanguage.current.text("မလုပ်တော့ပါ","Cancel"),color=cherryWine,
-                        fontWeight=FontWeight.Bold)
+                    Text(LocalLanguage.current.text("မလုပ်တော့ပါ","Cancel"),
+                        color=cherryWine,fontWeight=FontWeight.Bold)
                 }
                 val saveEnabled=canSave&&!saving
-                val saveShape=RoundedCornerShape(29.dp)
-                Box(
-                    Modifier.weight(1f).height(58.dp)
-                        .homeRubyShadow(radius=29.dp,blur=13.dp,offsetY=6.dp,
-                            tint=if(saveEnabled)Color(0x72880E4F)else Color(0x12880E4F))
-                        .clip(saveShape)
+                Button(
+                    onClick=onSave,enabled=saveEnabled,
+                    modifier=Modifier.weight(1f).height(54.dp)
+                        .homeRubyShadow(radius=27.dp,blur=10.dp,offsetY=4.dp,
+                            tint=if(saveEnabled) Color(0x52880E4F) else Color(0x16880E4F))
+                        .clip(actionShape)
                         .background(Brush.verticalGradient(
-                            if(saveEnabled)listOf(
-                                Color(0xFFFF5E93),Color(0xFFBD064B),Color(0xFF78072E))
+                            if(saveEnabled) listOf(
+                                Color(0xFFF44982),Color(0xFFBC0C50),Color(0xFF820A38))
                             else listOf(
-                                Color(0xFFE2D7DC),Color(0xFFD4C8CE),Color(0xFFCDC1C7))))
-                        .border(1.2.dp,Color(0xE6FFFFFF),saveShape),
+                                Color(0xFFE9E1E5),Color(0xFFDAD1D6),Color(0xFFCAC0C7))))
+                        .border(1.dp,if(saveEnabled) Color(0xBBFFD7E5)
+                            else Color(0xA6FFFFFF),actionShape),
+                    shape=actionShape,
+                    colors=ButtonDefaults.buttonColors(
+                        containerColor=Color.Transparent,
+                        disabledContainerColor=Color.Transparent,
+                        contentColor=Color.White,
+                        disabledContentColor=Color(0xFF857782)),
+                    elevation=null,
                 ) {
-                    // A real specular highlight creates the raised lacquered pill.
-                    Box(Modifier.fillMaxWidth().fillMaxHeight(.43f)
-                        .padding(horizontal=10.dp,vertical=4.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Brush.verticalGradient(listOf(
-                            Color(0xB9FFFFFF),Color(0x26FFFFFF),Color.Transparent))))
-                    Button(
-                        onClick=onSave,enabled=saveEnabled,
-                        modifier=Modifier.fillMaxSize(),
-                        shape=saveShape,
-                        colors=ButtonDefaults.buttonColors(
-                            containerColor=Color.Transparent,
-                            disabledContainerColor=Color.Transparent,
-                            contentColor=Color.White,
-                            disabledContentColor=Color(0xFF857782)),
-                        elevation=null,
-                    ) {
-                        if(saving) CircularProgressIndicator(Modifier.size(18.dp),
-                            strokeWidth=2.dp,color=Color.White)
-                        else Text(LocalLanguage.current.text("သိမ်းမည်","Save"),
-                            style=MaterialTheme.typography.titleMedium,
-                            fontWeight=FontWeight.Black)
-                    }
+                    if(saving) CircularProgressIndicator(Modifier.size(18.dp),
+                        strokeWidth=2.dp,color=Color.White)
+                    else Text(LocalLanguage.current.text("သိမ်းမည်","Save"),
+                        style=MaterialTheme.typography.titleMedium,
+                        fontWeight=FontWeight.Black)
                 }
             }
-            Spacer(Modifier.height(104.dp)) // Keep the global Quick Entry FAB reachable.
+            // Small FAB clearance, not an extra 104dp inside the form scroller.
+            if (!keyboardVisible) Spacer(Modifier.height(64.dp))
         }
     }
 }
@@ -242,12 +260,12 @@ internal fun CherryProfileField(
     keyboard: KeyboardType = KeyboardType.Text,
 ) {
     val language=LocalLanguage.current
-    val fieldShape=RoundedCornerShape(20.dp)
+    val fieldShape=RoundedCornerShape(19.dp)
     val interaction=remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     // A single border encloses the always-visible label and editable text.
     Row(
-        modifier=Modifier.fillMaxWidth().heightIn(min=72.dp)
+        modifier=Modifier.fillMaxWidth().heightIn(min=64.dp)
             .clip(fieldShape)
             .background(Brush.verticalGradient(listOf(
                 Color(0xFFFDFBFC),Color(0xFFF8EDF2))))
@@ -258,10 +276,10 @@ internal fun CherryProfileField(
         verticalAlignment=Alignment.CenterVertically,
     ) {
         Icon(icon,contentDescription=null,tint=cherryWine,
-            modifier=Modifier.padding(start=16.dp).size(22.dp))
+            modifier=Modifier.padding(start=15.dp).size(21.dp))
         Column(
-            Modifier.weight(1f).padding(start=13.dp,end=15.dp,top=12.dp,bottom=12.dp),
-            verticalArrangement=Arrangement.spacedBy(4.dp),
+            Modifier.weight(1f).padding(start=12.dp,end=14.dp,top=8.dp,bottom=8.dp),
+            verticalArrangement=Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 language.translate(label)+(if(required)" *" else ""),
