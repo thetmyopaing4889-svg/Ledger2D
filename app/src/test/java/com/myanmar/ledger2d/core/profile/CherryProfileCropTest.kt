@@ -41,6 +41,20 @@ class CherryProfileCropTest {
         } finally { original.recycle() }
     }
 
+    @Test fun squareSourceAtOneTimesZoomMustReturnIndependentBitmap() {
+        val source=Bitmap.createBitmap(120,120,Bitmap.Config.ARGB_8888)
+        source.eraseColor(Color.MAGENTA)
+        try {
+            val cropped=ProfilePhotoStore.CropMath.squareCrop(source,1f,0f,0f)
+            try {
+                assertNotSame("Crop must survive recycling original square image",source,cropped)
+                source.recycle()
+                assertFalse(cropped.isRecycled)
+                assertEquals(Color.MAGENTA,cropped.getPixel(50,50))
+            } finally { cropped.recycle() }
+        } finally { if(!source.isRecycled)source.recycle() }
+    }
+
     @Test fun cropStagedDoesNotOverwriteAcceptedPhotoBeforeConfirmation() = runBlocking {
         val context=RuntimeEnvironment.getApplication() as Application
         val photos=ProfilePhotoStore(context)
