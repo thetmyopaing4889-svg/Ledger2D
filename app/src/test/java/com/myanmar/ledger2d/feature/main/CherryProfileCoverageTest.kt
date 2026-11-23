@@ -42,6 +42,7 @@ class CherryProfileCoverageTest {
     @Test fun allScopeIdentityHasNoPersonPhotoAndGroupsUseTheirOwnIds() {
         val identity = file("CherryProfileIdentity.kt")
         assertTrue(identity.contains("if (id > 0L) CherryProfileAvatar"))
+        assertTrue(file("DashboardScreens.kt").contains("options.any { it.first == value }"))
         val commission = file("CommissionReviewScreen.kt")
         assertTrue(commission.contains("agentId, avatar ="))
         assertTrue(commission.contains("first.agentId,first.agentName"))
