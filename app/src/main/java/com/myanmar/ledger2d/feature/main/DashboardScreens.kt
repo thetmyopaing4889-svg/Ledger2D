@@ -4,6 +4,8 @@ package com.myanmar.ledger2d.feature.main
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.combinedClickable
@@ -17,6 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -58,9 +63,14 @@ private val customerActions = listOf(
 )
 
 /**
- * Landing cards only. Both dashboards deliberately use the same
- * structure, spacing, typography and color; routes and business logic are unchanged.
+ * The current Home is the primary design benchmark. Both landing dashboards
+ * share a single soft Cherry glass surface, not a stock opaque Material card.
+ * Keep the original feature order, labels, icons and onFeature route contracts.
+ * No per-card blur, continuous motion, or extra background Surface.
  */
+private val dashboardGlassShape = RoundedCornerShape(22.dp)
+private val dashboardIconShape = RoundedCornerShape(14.dp)
+
 @Composable
 private fun DashboardLandingCard(
     action: DashboardAction,
@@ -91,27 +101,52 @@ private fun DashboardLandingCard(
         "customer:commission" -> l.text("ထိုးသားကော်မရှင်", "Customer commission")
         else -> l.translate(action.subtitle)
     }
-    ElevatedCard(
-        onClick = { onFeature(action.key) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            // Lightweight tinted Compose shadow; avoid the heavier Home paint blur on every list item.
+            .shadow(
+                elevation = 5.dp,
+                shape = dashboardGlassShape,
+                ambientColor = Color(0x26880E4F),
+                spotColor = Color(0x35880E4F),
+            )
+            .clip(dashboardGlassShape)
+            .background(Color(0xEBFFFFFF))
+            .border(1.5.dp, Color.White.copy(alpha = 0.95f), dashboardGlassShape)
+            .clickable(onClick = { onFeature(action.key) }),
     ) {
+        // One glass pane with a soft internal highlight; no opaque child Card.
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.verticalGradient(
+                    listOf(Color(0x66FFFFFF), Color(0x00FFFFFF), Color(0x12D81B60))
+                )
+            )
+        )
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(color = AppColors.GoldSoft, shape = MaterialTheme.shapes.small,
-                border = BorderStroke(1.dp, AppColors.Stone)) {
+            Box(
+                modifier = Modifier.size(42.dp)
+                    .clip(dashboardIconShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFFFFF7FA), Color(0xFFFFDDE9))
+                        )
+                    )
+                    .border(1.dp, Color.White, dashboardIconShape),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(action.icon, null, tint = AppColors.PrimaryDeep,
-                    modifier = Modifier.padding(9.dp).size(22.dp))
+                    modifier = Modifier.size(22.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = DashboardCardTypography.title(l.code),
-                    color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
+                    color = MaterialTheme.colorScheme.onSurface, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis)
                 Text(description, style = DashboardCardTypography.subtitle(l.code),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -126,8 +161,13 @@ fun AgentDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onAgentInfo: (
     val l = LocalLanguage.current
     AppScaffold(l.translate("Agent Dashboard"), onBack) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            Modifier.fillMaxSize().padding(padding)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFFF6DCE5), Color(0xFFF9E3EB), Color(0xFFFCEEF3))
+                    )
+                ),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(agentActions) { action ->
@@ -164,8 +204,13 @@ fun CustomerDashboardScreen(vm: LedgerViewModel, onBack: () -> Unit, onCustomerI
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Dashboard"), onBack) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            Modifier.fillMaxSize().padding(padding)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFFF6DCE5), Color(0xFFF9E3EB), Color(0xFFFCEEF3))
+                    )
+                ),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(customerActions) { action ->
