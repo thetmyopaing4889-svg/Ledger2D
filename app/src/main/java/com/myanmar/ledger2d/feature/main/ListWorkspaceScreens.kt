@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
@@ -161,7 +162,7 @@ fun CustomerListWorkspaceScreen(
                 if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
                 else items(customers, key = { it.id }) { customer ->
                     ElevatedCard(onClick = { onInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) {
-                        ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(customer.phone) }, leadingContent = { CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                        ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(customer.phone) }, leadingContent = { CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)) }, trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = l.translate("ထိုးသားအချက်အလက်ကြည့်ရန်")) })
                     }
                 }
                 item { OutlinedButton(onClick = { onAdd(selectedAgent) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(l.translate("ထိုးသားအသစ်ထည့်ရန်")) } }
@@ -264,11 +265,21 @@ fun AgentInformationScreen(
 @Composable
 fun CustomerInformationScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit, onEdit: (Long, Long) -> Unit) {
     val customer by vm.customer(id).collectAsStateWithLifecycle(initialValue = null)
-    val profile = customer ?: return
     val l = LocalLanguage.current
+    val profile = customer
+    if (profile == null) {
+        // Match the agent information page: keep a stable header while the profile loads.
+        AppScaffold(l.translate("Customer Information"), onBack) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        return
+    }
     AppScaffold(l.translate("Customer Information"), onBack, action = { IconButton({ onEdit(profile.agentId, id) }) { Icon(Icons.Default.Edit, l.translate("ပြင်ရန်")) } }) { padding ->
         InformationCard(padding, profile.name,
             listOf("Phone" to profile.phone, "Address" to profile.address, "Remark" to profile.remark),
+            scrollContent = true,
             avatar = {
                 Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
                     CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,id,Modifier.size(104.dp))
@@ -294,7 +305,23 @@ private fun InformationCard(
                 avatar?.invoke()
                 Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontWeight = FontWeight.SemiBold) }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Text(
+                            label,
+                            modifier = Modifier.weight(0.38f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            value,
+                            modifier = Modifier.weight(0.62f),
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.End,
+                        )
+                    }
                 }
                 footer()
             }
