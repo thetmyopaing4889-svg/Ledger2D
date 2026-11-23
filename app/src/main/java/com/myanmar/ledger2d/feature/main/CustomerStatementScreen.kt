@@ -167,6 +167,7 @@ fun CustomerStatementScreen(
                         com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
                         agents.firstOrNull { it.id == agentId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
                         agents.map { it.id to it.name }, agentId,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                     ) { agentId = it; customerId = -1L; view = "summary"; search = "" }
                     ScopeDropdown(
                         com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား ရွေးရန်"),
@@ -174,6 +175,7 @@ fun CustomerStatementScreen(
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name },
                         customerId,
                         enabled = agentId > 0L,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
                     ) { customerId = it; search = "" }
                 }
             }
