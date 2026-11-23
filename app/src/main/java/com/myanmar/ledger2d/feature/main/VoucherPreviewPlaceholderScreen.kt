@@ -28,6 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.BetEntryWithLines
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.model.DrawSession
+import com.myanmar.ledger2d.core.profile.ProfileKind
+import com.myanmar.ledger2d.core.profile.ProfilePhotoStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -63,16 +65,21 @@ fun VoucherPreviewScreen(
     }
     val selectionValid = selected != null && selected.isNotEmpty() &&
         selected.size == selectedIds.distinct().size
+    val photoRevision by ProfilePhotoStore.revision.collectAsStateWithLifecycle()
     val document = remember(selected, customer, selectionValid) {
         if (selectionValid && customer != null && customer!!.id == customerId) {
             voucherDocument(customer!!.name, date, session, selected!!)
         } else null
     }
     // Measure all multiline rows outside the Compose UI thread.
-    val preparation by produceState<VoucherPreparation?>(null, document, sourceTypeface) {
+    val preparation by produceState<VoucherPreparation?>(null, document, sourceTypeface, photoRevision) {
+        value = null
         if (document != null) {
+            val headerPhoto = withContext(Dispatchers.IO) {
+                loadJpegProfilePhoto(vm.profilePhotos, ProfileKind.CUSTOMER, customerId)
+            }
             value = withContext(Dispatchers.Default) {
-                runCatching { VoucherRenderer(document, sourceTypeface) }.fold(
+                runCatching { VoucherRenderer(document, sourceTypeface, headerPhoto) }.fold(
                     onSuccess = { VoucherPreparation(it, null) },
                     onFailure = { VoucherPreparation(null, it.message ?: "စာမျက်နှာပြုလုပ်၍ မရပါ") },
                 )
