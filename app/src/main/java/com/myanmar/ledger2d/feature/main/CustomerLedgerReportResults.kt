@@ -883,10 +883,15 @@ fun CustomerLedgerReportResults(
                 Row(Modifier.fillMaxWidth().padding(horizontal=11.dp,vertical=10.dp),
                     verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                    if (customerId > 0L) {
+                        CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,
+                            customerId, Modifier.size(42.dp))
+                    } else {
                     Surface(color=ReportPalette.SoftPink,shape=RoundedCornerShape(32.dp)) {
                         Box(Modifier.size(38.dp),contentAlignment=Alignment.Center) {
                             Icon(Icons.Default.Person,null,tint=ReportPalette.Wine,modifier=Modifier.size(22.dp))
                         }
+                    }
                     }
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
                         Text(subtitle,style=LedgerTypographyStandard.style(LedgerTextRole.APP_HEADER,lang.code)
