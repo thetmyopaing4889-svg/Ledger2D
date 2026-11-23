@@ -17,6 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -27,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -160,30 +164,30 @@ internal fun CherryProfileFormPage(
                 Box(Modifier.fillMaxWidth().height(213.dp)
                     .clip(RoundedCornerShape(bottomStart=54.dp,bottomEnd=54.dp))
                     .background(Brush.verticalGradient(listOf(Color(0x44000000),Color.Transparent))))
-                // Keep the cherry artwork unobstructed: a small bare Back arrow
-                // sits at the far right, NOT in a giant frosted circle over the fruit.
-                Box(Modifier.fillMaxWidth().statusBarsPadding()) {
-                    IconButton(
-                        onClick=onBack,
-                        modifier=Modifier.align(Alignment.TopEnd)
-                            .padding(top=6.dp,end=14.dp).size(38.dp),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription="နောက်သို့",tint=Color.White,
-                            modifier=Modifier.size(28.dp))
-                    }
-                    Text(
-                        LocalLanguage.current.translate(title),
-                        modifier=Modifier.fillMaxWidth()
-                            .padding(start=138.dp,end=18.dp,top=74.dp),
-                        color=Color.White,
-                        style=MaterialTheme.typography.titleLarge.copy(
-                            fontSize=21.sp,lineHeight=28.sp),
-                        fontWeight=FontWeight.Black,
-                        textAlign=TextAlign.End,
-                        maxLines=2,
-                        overflow=TextOverflow.Ellipsis,
-                    )
+                // Title belongs entirely inside the crimson hero, ABOVE the avatar.
+                // Cherry illustration lives on the left, so bound the title on the right.
+                Text(
+                    LocalLanguage.current.translate(title),
+                    modifier=Modifier.fillMaxWidth().statusBarsPadding()
+                        .padding(start=141.dp,end=18.dp,top=23.dp),
+                    color=Color.White,
+                    style=MaterialTheme.typography.titleLarge.copy(
+                        fontSize=20.sp,lineHeight=28.sp),
+                    fontWeight=FontWeight.Black,
+                    textAlign=TextAlign.End,
+                    maxLines=2,
+                    overflow=TextOverflow.Ellipsis,
+                )
+                // The arrow sits in the blush strip BELOW the cherry artwork:
+                // no white circular button, no fruit obstruction or title collision.
+                IconButton(
+                    onClick=onBack,
+                    modifier=Modifier.align(Alignment.BottomStart)
+                        .padding(start=12.dp,bottom=17.dp).size(40.dp),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription="နောက်သို့",tint=cherryWine,
+                        modifier=Modifier.size(27.dp))
                 }
                 CherryProfileAvatar(photos,kind,id,Modifier.align(Alignment.BottomCenter).size(136.dp),
                     pickedUri,removed,onPick,onRemove)
@@ -306,24 +310,47 @@ internal fun CherryProfileField(
 ) {
     val language=LocalLanguage.current
     val fieldShape=RoundedCornerShape(28.dp)
-    OutlinedTextField(
-        value=value,onValueChange=onValue,
-        // Only ONE outline: Material's OutlinedTextField draws it.
-        // No second outer white capsule or mask/shadow to create doubled frames.
+    val interaction=remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    // One glass pill owns both its fill and its SINGLE outline.
+    // Do not nest Material OutlinedTextField's decorated capsule here:
+    // that created the extra white crescent visible above every input.
+    Row(
         modifier=Modifier.fillMaxWidth().heightIn(min=70.dp)
+            .shadow(2.dp,fieldShape,
+                ambientColor=Color(0x23880E4F),spotColor=Color(0x23880E4F))
+            .clip(fieldShape)
             .background(Brush.linearGradient(listOf(
-                Color(0x88FFFFFF),Color(0x53FFFFFF),Color(0x82FFF4F8))),fieldShape),
-        singleLine=label!="မှတ်ချက်",
-        label={Text(language.translate(label)+(if(required)" *" else ""))},
-        leadingIcon={Icon(icon,contentDescription=null,tint=cherryWine)},
-        keyboardOptions=KeyboardOptions(keyboardType=keyboard),
-        shape=fieldShape,
-        colors=OutlinedTextFieldDefaults.colors(
-            focusedBorderColor=cherryRed,unfocusedBorderColor=Color(0x7AC88EA8),
-            focusedContainerColor=Color.Transparent,
-            unfocusedContainerColor=Color.Transparent,
-            focusedLabelColor=cherryWine,unfocusedLabelColor=Color(0xFF7E6270),
-            focusedTextColor=cherryWine,unfocusedTextColor=cherryWine,
+                Color(0xD8FFFFFF),Color(0x9AFFFFFF),Color(0xB7FFF4F8))))
+            .border(
+                if(focused) 1.4.dp else 1.dp,
+                if(focused) cherryRed else Color(0xA6DCA3BA),
+                fieldShape),
+        verticalAlignment=Alignment.CenterVertically,
+    ) {
+        Icon(icon,contentDescription=null,tint=cherryWine,
+            modifier=Modifier.padding(start=18.dp).size(24.dp))
+        BasicTextField(
+            value=value,
+            onValueChange=onValue,
+            modifier=Modifier.weight(1f)
+                .padding(start=15.dp,end=17.dp,top=17.dp,bottom=17.dp),
+            singleLine=label!="မှတ်ချက်",
+            keyboardOptions=KeyboardOptions(keyboardType=keyboard),
+            interactionSource=interaction,
+            cursorBrush=SolidColor(cherryWine),
+            textStyle=MaterialTheme.typography.bodyLarge.copy(
+                color=cherryWine,fontWeight=FontWeight.Medium),
+            decorationBox={ innerTextField ->
+                Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterStart) {
+                    if(value.isEmpty()) {
+                        Text(language.translate(label)+(if(required)" *" else ""),
+                            color=Color(0xFF806B75),
+                            style=MaterialTheme.typography.bodyLarge)
+                    }
+                    innerTextField()
+                }
+            },
         )
-    )
+    }
 }
