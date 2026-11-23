@@ -49,11 +49,13 @@ private val cherryWine = Color(0xFF8D0C3D)
 private val cherryRed = Color(0xFFB40B48)
 private val gentleBlush = Color(0xFFF6DCE5)
 
-private fun decodeThumbnail(context: Context, uri: Uri?, file: File?): ImageBitmap? {
+/** Bounds-only decode returns null by design; dimensions, not bitmap, are the result. */
+internal fun decodeThumbnail(context: Context, uri: Uri?, file: File?): ImageBitmap? {
     fun open() = if (uri != null) context.contentResolver.openInputStream(uri)
         else file?.takeIf { it.isFile }?.inputStream()
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    open()?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+    val dimensions = open() ?: return null
+    dimensions.use { BitmapFactory.decodeStream(it, null, bounds) }
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
     var sample = 1
     while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 640) sample *= 2
