@@ -397,7 +397,8 @@ fun CustomerFeatureWorkspaceScreen(
 }
 
 @Composable
-fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, compact: Boolean = true, onSelect: (Long) -> Unit) {
+fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, compact: Boolean = true,
+    avatar: (@Composable (Long) -> Unit)? = null, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }, modifier = modifier) {
         if (compact) {
@@ -422,15 +423,22 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
                         )
                     )
                 },
+                leadingIcon = avatar?.takeIf { value > 0L }?.let { photo -> { photo(value) } },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) }
             )
         } else {
-        OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
+        OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) }, leadingIcon = avatar?.takeIf { value > 0L }?.let { photo -> { photo(value) } }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
         }
         ExposedDropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
             options.forEach { (id, title) ->
                 DropdownMenuItem(
-                    text = { Text(title, style = MaterialTheme.typography.bodyMedium, softWrap = true) },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            if (id > 0L) avatar?.invoke(id)
+                            Text(title, style = MaterialTheme.typography.bodyMedium, softWrap = true)
+                        }
+                    },
                     onClick = { onSelect(id); expanded = false }
                 )
             }
