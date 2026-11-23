@@ -58,6 +58,7 @@ internal class VoucherRenderer(
     // Optional to keep existing renderer tests and external callers compatible.
     // The preview injects the bundled Noto Sans Myanmar UI typeface.
     sourceTypeface: Typeface? = null,
+    private val headerPhoto: Bitmap? = null,
 ) {
     companion object {
         const val width = 1080
@@ -140,6 +141,7 @@ internal class VoucherRenderer(
         if (customerLayout.height > 92) canvas.scale(1f, 92f / customerLayout.height)
         customerLayout.draw(canvas)
         canvas.restore()
+        drawJpegProfileAvatar(canvas, headerPhoto)
 
         stroke(canvas, 44f, 333f, 1036f, 333f, rule, 2f)
         val month = document.date.monthValue
@@ -217,7 +219,7 @@ internal class VoucherRenderer(
         do {
             val headerPaint = textPaint(size, ink, bold = true)
             layout = StaticLayout.Builder.obtain(
-                label, 0, label.length, headerPaint, 986,
+                label, 0, label.length, headerPaint, 830,
             ).setIncludePad(false).build()
             if (layout.height <= 92 || size <= 18f) break
             size -= 1f
