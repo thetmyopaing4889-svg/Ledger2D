@@ -153,7 +153,8 @@ fun CustomerListWorkspaceScreen(
     AppScaffold(l.translate("Customer List"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text(l.translate("Agent ကိုအရင်ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent) { selectedAgent = it } }
+            item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },) { selectedAgent = it } }
             if (selectedAgent == 0L) item { UnavailableState(l.translate("Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ")) }
             else {
                 item { Text("$agentName ${l.translate("အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
