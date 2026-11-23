@@ -1,7 +1,7 @@
 # Cherry 2D — Design Consistency Master Plan (Build 1864)
 
 **Created:** 2026-11-23  
-**Status:** APPROVED FOR PLANNING; implementation NOT STARTED.  
+**Status:** IMPLEMENTATION IN PROGRESS — first Management UI pilot A01–A06 committed; CI and device acceptance PENDING.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -195,7 +195,7 @@ For each changed screen, record a before/after screenshot and verify:
 | Milestone | Exit gate | Status |
 |---|---|---|
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
-| M1 — Management audit and UI changes | A01–A09 checked/fixed or explicitly NO CHANGE; accepted Form untouched; CI+device QA | NOT STARTED |
+| M1 — Management audit and UI changes | A01–A09 checked/fixed or explicitly NO CHANGE; accepted Form untouched; CI+device QA | IN PROGRESS — A01–A06 source pilot; CI/device review pending |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+device QA | NOT STARTED |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
@@ -214,6 +214,16 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**Management pilot checkpoint, 2026-11-23 (A01–A06, NOT YET DEVICE-ACCEPTED):**
+- **A01/A02 Agent/Customer Dashboard:** reviewed `DashboardLandingCard` and `docs/ui/AgentCustomerDashboardCardsPilot.md`. Both use the same approved card component, padding, icon/chevron, 78dp minimum and opt-in bilingual typography. **NO CODE CHANGE**; preserve earlier user-approved appearance. Real-device bilingual screenshots still needed.
+- **A03 Agent List:** already uses the shared `ElevatedCard + ListItem`, a 42dp avatar, a Chevron, Search and Add action. **NO CODE CHANGE** in this first pass.
+- **A04 Customer List:** same avatar/card structure already present; updated the decorative trailing Chevron with a localized accessibility content description only; no filtering, click route or list data changes.
+- **A05/A06 Agent/Customer Information:** both use the same `InformationCard`. Customer Information now has a stable shared `AppScaffold` + loading progress on null (like Agent Information), scrollable details (like Agent), and the shared detail rows use weighted label/value columns with 12dp separation and right-aligned values for long strings. Agent and Customer profile photo sizes remain 104dp. Text content, record lookup, edit/routing callbacks are unchanged.
+- **Files changed:** `feature/main/ListWorkspaceScreens.kt`, plus `app/src/test/java/com/myanmar/ledger2d/feature/main/ManagementUiConsistencyContractTest.kt` source-contract checks for dashboards and list/detail invariants.
+- **Explicitly NOT changed:** `DashboardScreens.kt`, `DashboardCardTypography.kt`, Home, any form/crop/photo persistence source, all Research/Analysis sources (including `Historical2DTimelineScreen.kt`), Live, Better Data, reports, database, domain, JPEG renderers/exporters, `LedgerNav.kt`, and global `Theme.kt`.
+- **Test state:** Source diff reviewed, CI not yet completed at this checkpoint. Do NOT mark as accepted/finished from source-only review. Android build, Burmese/English screenshots, long strings, larger font scales, phone Back and scrolling remain to be verified.
+- **Next:** run Android CI from this isolated branch; if successful, obtain phone feedback and sign off A01–A06 before continuing A07 Quick Entry, A08 Settings, A09 Add Customer from Home.
 
 **Initial checkpoint, 2026-11-23:**
 - Base Build **1864** = SUCCESS, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`.
