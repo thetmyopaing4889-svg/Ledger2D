@@ -131,6 +131,7 @@ fun AgentClosedPatternWorkspace(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,agentName,Modifier.fillMaxWidth())
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$agentName • $date • ${session.label} အတွက်သာ", "$agentName • $date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} only"),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session အတွက် ပိတ်ထားတာက နောက် Session နဲ့ တခြားဒိုင်ဆီ မကူးပါ။ ") +
@@ -234,6 +235,7 @@ fun AgentLimitPatternWorkspace(
                 dismissButton={TextButton(onClick={pendingOne=null}) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) }})
         }
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,agentName,Modifier.fillMaxWidth())
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$agentName • $date • ${session.label} အတွက်သာ", "$agentName • $date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} only"),
                 style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံးအတွက် Limit"),style=MaterialTheme.typography.titleMedium,
