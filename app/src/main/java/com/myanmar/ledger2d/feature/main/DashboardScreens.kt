@@ -412,7 +412,7 @@ fun CustomerFeatureWorkspaceScreen(
 fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, compact: Boolean = true,
     avatar: (@Composable (Long) -> Unit)? = null, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    val leadingPhoto: (@Composable () -> Unit)? = if (avatar != null && value > 0L) {
+    val leadingPhoto: (@Composable () -> Unit)? = if (avatar != null && value > 0L && options.any { it.first == value }) {
         { avatar(value) }
     } else null
     ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }, modifier = modifier) {
