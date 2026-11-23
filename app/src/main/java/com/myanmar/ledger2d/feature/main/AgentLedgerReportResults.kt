@@ -653,12 +653,17 @@ fun AgentLedgerReportResults(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (agentId > 0L) {
+                        CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,
+                            agentId, Modifier.size(42.dp))
+                    } else {
                     Surface(color = AgentLedgerColors.SoftPink,
                         shape = RoundedCornerShape(32.dp)) {
                         Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.Paid, null, tint = AgentLedgerColors.Wine,
                                 modifier = Modifier.size(22.dp))
                         }
+                    }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(subtitle,
