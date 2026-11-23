@@ -71,6 +71,8 @@ import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.design.*
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawSession
+import com.myanmar.ledger2d.core.profile.ProfileKind
+import com.myanmar.ledger2d.core.profile.ProfilePhotoChange
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -81,7 +83,7 @@ fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
 fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH))
 val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
 
-@Composable private fun QuickEntryFab(onClick: () -> Unit) {
+@Composable internal fun QuickEntryFab(onClick: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences("ledger_ui", Context.MODE_PRIVATE) }
     var x by rememberSaveable { mutableStateOf(prefs.getFloat("quick_entry_x", 0f)) }
@@ -603,8 +605,14 @@ fun transactionDisplayText(format: String, raw: String): String {
                         Box(Modifier.size(40.dp), contentAlignment=Alignment.Center) {
                             Canvas(Modifier.matchParentSize()) {
                                 val radius=size.minDimension/2f-1.dp.toPx()
-                                // Consistent, readable translucent badges on all five days.
-                                drawCircle(Color(0xB3FFFFFF),radius=radius)
+                                // Restore working-day result status coloring under the rose outline.
+                                val dayTint=when {
+                                    date in closedSet -> Color(0xFFFFE1EA)
+                                    digit=="--" -> Color(0xFFF4F0F1)
+                                    morning -> AppColors.Blush
+                                    else -> Color.White
+                                }
+                                drawCircle(dayTint.copy(alpha=.87f),radius=radius)
                                 drawCircle(Color(0x33C2185B),radius=radius,
                                     style=Stroke(width=1.dp.toPx()))
                             }
