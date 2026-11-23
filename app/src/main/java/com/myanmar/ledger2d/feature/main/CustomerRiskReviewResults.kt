@@ -205,7 +205,7 @@ fun CustomerRiskReviewResults(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(subtitle, fontWeight = FontWeight.SemiBold)
+                    CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,customerId,subtitle,Modifier.fillMaxWidth())
                     Text("${date.reviewDate()} • ${session.reviewLabel()}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
