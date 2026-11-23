@@ -11,6 +11,8 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.UUID
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,13 +61,25 @@ class ProfilePhotoStore(private val context: Context) {
         return File(drafts(context), token + ".jpg")
     }
     fun hasDraft(token: String): Boolean = draftFile(token).let { it.isFile && it.length() > 3L }
+    fun stagedFile(token: String): File {
+        require(validDraft.matches(token)) { "Invalid photo draft key" }
+        return File(drafts(context), token + ".stage.jpg")
+    }
+    fun hasStaged(token: String): Boolean = stagedFile(token).let { it.isFile && it.length() > 3L }
+    fun discardStaged(token: String) {
+        synchronized(fileLock) { stagedFile(token).delete() }
+    }
     fun discardDraft(token: String) {
-        synchronized(fileLock) { draftFile(token).delete() }
+        synchronized(fileLock) {
+            draftFile(token).delete()
+            stagedFile(token).delete()
+        }
     }
 
     /** Copy and downsample while the Gallery URI grant is still alive. */
     suspend fun stageGallery(uri: Uri, token: String): String = withContext(Dispatchers.IO) {
-        val output = draftFile(token)
+        // Do not overwrite the previously accepted crop until the user confirms.
+        val output = stagedFile(token)
         val photo = prepare(ProfilePhotoChange.Replace(uri))
         try {
             val directory = drafts(context)
@@ -79,6 +93,57 @@ class ProfilePhotoStore(private val context: Context) {
             token
         } finally { photo.cleanup() }
     }
+
+    /**
+     * Shared by the crop dialog and the persisted output; no mismatch between
+     * preview framing and saved pixels. Pan is normalized [-1, 1].
+     */
+    object CropMath {
+        fun squareCrop(source: Bitmap, zoom: Float, panX: Float, panY: Float): Bitmap {
+            require(source.width > 0 && source.height > 0)
+            val side = (min(source.width, source.height) / zoom.coerceIn(1f, 3f))
+                .roundToInt().coerceIn(1, min(source.width, source.height))
+            val remainingX = source.width - side
+            val remainingY = source.height - side
+            val left = (remainingX * (panX.coerceIn(-1f, 1f) + 1f) / 2f)
+                .roundToInt().coerceIn(0, remainingX)
+            val top = (remainingY * (panY.coerceIn(-1f, 1f) + 1f) / 2f)
+                .roundToInt().coerceIn(0, remainingY)
+            return Bitmap.createBitmap(source, left, top, side, side)
+        }
+    }
+
+    /** Write the confirmed square portrait atomically; cancelled crop retains prior draft. */
+    suspend fun cropStaged(token: String, zoom: Float, panX: Float, panY: Float): String =
+        withContext(Dispatchers.IO) {
+            val source = stagedFile(token)
+            require(source.isFile && source.length() in 4L..(2L * 1024 * 1024)) {
+                "Crop လုပ်မည့်ပုံ မတွေ့ပါ"
+            }
+            val bitmap = BitmapFactory.decodeFile(source.absolutePath)
+                ?: error("Crop လုပ်မည့်ပုံ မဖတ်နိုင်ပါ")
+            val cropped = try {
+                squareCrop(bitmap, zoom, panX, panY)
+            } finally { bitmap.recycle() }
+            val destination = draftFile(token)
+            val intermediate = File(destination.parentFile,
+                "." + token + "." + UUID.randomUUID() + ".crop.partial")
+            try {
+                intermediate.outputStream().use {
+                    check(cropped.compress(Bitmap.CompressFormat.JPEG, 90, it))
+                }
+                check(intermediate.length() in 4L..(2L * 1024 * 1024)) {
+                    "Crop ပုံဖိုင် မမှန်ကန်ပါ"
+                }
+                synchronized(fileLock) { atomicMove(intermediate, destination) }
+                source.delete()
+                notifyChanged()
+                token
+            } finally {
+                cropped.recycle()
+                intermediate.delete()
+            }
+        }
 
     data class PreparedPhoto(
         val change: ProfilePhotoChange, val temp: File? = null, val owned: Boolean = false,
