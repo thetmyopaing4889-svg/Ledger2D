@@ -1,12 +1,14 @@
-# Cherry 2D — Design Consistency Master Plan (Build 1864)
+# Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** IMPLEMENTATION IN PROGRESS — first Management UI pilot A01–A06 committed; CI and device acceptance PENDING.  
+**Status:** HOME-FIRST DESIGN DIRECTION RE-APPROVED, PLAN REVISED 2026-11-23; A03–A06 pilot compiled in successful Build 1865 but device acceptance PENDING. A01/A02 premium redesign NOT YET IMPLEMENTED.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
 **Working branch:** `feature/design-consistency-from-build1864-20261123`  
-**CI baseline:** https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45159707810
+**CI baseline:** https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45159707810  
+**Latest completed pilot CI:** Build **1865**, commit `1e7d4a375193cd4b5c10289f087cefa35ccde35e`, https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45174179816 — successful (tests/lint/debug/release, both APK artifacts). **Device visual acceptance has not occurred.**  
+**Home-first decision:** The approved CURRENT Home appearance is the **primary visual benchmark**, not merely a cherry color reference. Supersedes the prior A01/A02 `NO CHANGE` conclusion.
 
 > **NON-NEGOTIABLE:** Cherry 2D ရဲ့ ပြီးထားပြီးသားအပိုင်းတွေကို မဖျက်၊ မပျက်စေဘဲ UI လိုအပ်ချက်ရှိတဲ့နေရာတွေကိုသာ အဆင့်လိုက်ပြင်ရမယ်။ 2D Analysis → **Research Workspace** ဟာ အသုံးပြုသူအတွက် အထူးလက်ဆောင်ဖြစ်ပြီး **လုံးဝမထိရ**။ `main` မှာ မပြင်ရ။
 >
@@ -16,9 +18,9 @@
 
 ## 0. Purpose and scope
 
-- Goal: Make active non-protected Cherry 2D Android screens visually consistent in header/back, bilingual typography, cherry accent colors, card styling, spacing, avatar/name alignment, selectors, buttons and feedback.
+- Goal: Carry the **approved/current Home's Cherry Premium visual identity and perceived build quality** into active, non-protected app screens: translucent/frosted surfaces where appropriate, ruby shadow depth, soft blush backgrounds, light rim highlights, cherry icon accents, balanced rounded corners, bilingual typography, spacing, avatars, navigation and feedback. Ensure consistency *with Home first* and then between equivalent Agent/Customer screens.
 - This is **UI consistency**, not a rebrand, navigation redesign, data migration, financial behavior change, or rebuild from scratch.
-- Use **Home's accepted Cherry brand** and **accepted Agent/Customer Add/Edit Form polish** as reference **only**. The reference screens themselves must not change.
+- **Home is the mandatory primary design reference (visual north star)**, not an optional inspiration. Existing accepted Agent/Customer Add/Edit Form supplies a secondary example of a premium glass form treatment. The reference Home/Form screens **remain completely frozen**. Home-first parity is mandatory for all eligible screen families, with density/readability exceptions explicitly documented below.
 - Existing shared Compose components and design tokens should be **reused selectively**, not globally redefined.
 - Source audit found **47 navigation route declarations** in `LedgerNav.kt`; this is not a claim that all 47 are unique current user-facing destinations. Distinguish active, alias and legacy routes before touching any implementation.
 - Source audit indicates opportunities for consistency; actual defects and layout acceptance still require screenshots/device QA.
@@ -51,7 +53,65 @@
 
 ---
 
-## 1. Current design system (reuse, do not redesign)
+## 0A. APPROVED DECISION — HOME-FIRST PREMIUM DESIGN CONTRACT (2026-11-23)
+
+**User correction:** The earlier plan compared Agent and Customer Dashboards only with each other, declared them matching, and incorrectly treated A01/A02 as `NO CHANGE`. This was **incomplete**. **Home is the primary standard for all other eligible screens.** A01 and A02 must be redesigned to convey the same premium Cherry quality, while keeping their current feature order, names, icon semantics, routing, and readable information density.
+
+### 0A.1 Actual current Home source evidence (read only; preserve exact appearance)
+
+| Home element | Existing code | Extractable design rule |
+|---|---|---|
+| Main shell / atmosphere | `Screens.kt` `HomeScreen`: `#FCEEF3` background; content gradient `#F6DCE5 → #F9E3EB → #FCEEF3`; sheet top corners 30dp | Warm cherry/blush layered background with a deliberate sense of depth; NOT a generic flat grey/white content screen |
+| Stats glass | `HomeCountCard`: `homeRubyShadow(23.dp)`, rounded 23dp, `#EBFFFFFF` white translucency, white 1.5dp rim | One unified translucent glass surface with soft ruby depth; no nested opaque child Card hiding the effect |
+| Weekly glass | `HomeWeeklyResults`: `homeRubyShadow(24.dp)`, translucent white glass and white rim, 24dp corners | Spacious high-contrast card with coherent cherry accents; preserve weekly interactions and status colors |
+| Commission glass | `HomeCommissionCard.kt`: `homeRubyShadow(19.dp)`, `#EBFFFFFF` surface, 1.5dp white rim | Premium depth on a readable *summary*, not a shadow on each number/transaction |
+| Live hero | `HomeLiveAndSummary`: 23dp rounded card, image-backed silk art, angled white bezel, soft shadow, press-scale | Special visual treatment is unique to Home hero; DO NOT copy silk image, giant glow, or hero animation onto ordinary forms/reports |
+| Navigation glass | `HomeBottomBar`: blush/white vertical glass gradient, white rim, soft shadow, rounded upper 26dp, dedicated cherry 78dp FAB | Cherry-branded atmosphere and safe insets, but DO NOT replicate Home's unique center orb/bottom dock on inner screens |
+| Quick action | `HomeQuickAction`: cherry-tinted rounded/circular light surface, gradient/shadow, 45dp icon area, restrained touch scaling | Lightweight icon treatment and responsive touch affordance, not a permanent bulky 3D button everywhere |
+| Detail form (secondary accepted reference) | `CherryProfileFormUi.kt`: soft blush gradient, 24dp gradient/glass pane, shadow and rim, pinned avatar and 54dp bottom actions | Premium form treatment is already accepted; DO NOT edit or wholesale copy its save/crop mechanics |
+
+**Reference source files:** `Screens.kt` (Home-only functions), `HomeCommissionCard.kt`, `HomeGlassDepth.kt`, `HomeMicroAnimations.kt`, `HomeTypography.kt`, and accepted `CherryProfileFormUi.kt`. These are **read-only visual references** in this workstream. `homeRubyShadow` is existing Home code; use a narrowly scoped look-equivalent component for other screens if necessary and do not alter the original helper or accidentally increase cost on scrolling financial lists.
+
+### 0A.2 Explicit visual translation, NOT literal clone
+
+1. **Shell:** Inner operational screens should feel cherry-blush rather than flat stock Material, **without replacing their shared centered Header/Back or showing Home's hero artwork**. Preserve keyboard, system bar and FAB behavior.
+2. **Elevated action/card:** Use a subtle single-surface frosted/translucent treatment with a restrained white edge and berry-shadow depth for key Dashboard/Card/Summary surfaces. Avoid double backgrounds and heavy blur; test clipping and scroll performance.
+3. **Card icons:** Cherry/Wine accent, soft pink icon container, balanced icon/name/chevron alignment. Do not invent new icons or change destination meaning.
+4. **Type:** Existing English SansSerif / Noto Sans Myanmar UI and approved type roles remain baseline. Do not shrink Burmese to force an opaque card into 78dp; allow height to grow where 2-line text and font scaling require.
+5. **Controls:** Selector label/value, avatar circle, filters and primary actions share shape/spacing/cherry focus. Maintain distinct selected/unselected/disabled/error states and 68dp selector minimum.
+6. **Motion:** Only modest touch feedback on eligible action cards, optional after phone QA; no Home-specific bubble/orb/shimmer animations duplicated into each list item. Avoid slow global startup or continuous recomposition.
+7. **Content hierarchy:** Premium card at *navigation/summary level*; internal transaction rows, 00–99 grids, ledger amount columns and tabular numeric data remain high-contrast, stable, readable and restrained.
+8. **Protection:** Keep Home, accepted Forms, Research and core engine/data logic completely unchanged. A design match must be accomplished **outside** protected source.
+
+### 0A.3 Family-by-family visual target (compared against Home)
+
+| Family / IDs | Current source-level contrast | Home-first target | Limits |
+|---|---|---|---|
+| **Dashboard A01/A02** | Shared `DashboardLandingCard` is opaque white `ElevatedCard`, medium shape 18dp, 1dp elevation; plain `AppScaffold` theme background. Both dashboards MATCH EACH OTHER but NOT Home's frosted depth. | **P1 REDESIGN REQUIRED:** cherry-blush inner screen atmosphere + restrained Home-like glass surface, ruby shadow, rim highlight, premium icon cell and press affordance. Keep same shared component, icon/title/description/chevron, order and click destinations. | Never touch Home; retain dynamic card height and proper text wrapping; no heavy Home hero effects |
+| **Lists A03/A04** | Current `ListWorkspaceScreens.kt`: opaque ElevatedCard/ListItem, avatars 42dp, plain search and add buttons | Cherry glass/soft surface on **list cards and surrounding chrome**; consistent avatar and search/action styling as secondary tier below dashboard | Avoid shadow/blur per item that makes long scroll lag; data order/search unchanged |
+| **Information A05/A06** | `InformationCard` is one opaque ElevatedCard; Build 1865 aligned Customer loading/scrolling and weighted detail labels | Premium profile shell and card surface, 104dp avatar, readable detail rows; keep Build 1865 wrapping/scroll fix | Long address/remark, accessibility scale, existing editing and agent rate logic unchanged |
+| **Quick Entry A07** | Shared ScopeDropdown and person-photo selection/summary; plain operational shell | Home-inherited cherry/glass **selection group** and premium continue action, stable image/name, no layout crowding | Do not change Home's original Quick Entry FAB, parsing or routing |
+| **Settings A08** | OutlinedCard, ScopeDropdown and system controls | Cherry-tinted grouped setting panels and clear button/section hierarchy | Languages/backup/history update functionality stays intact |
+| **Add Customer A09** | Standalone agent picker and continue screen | Consistent selection-pane depth, CTA, empty state | Route to protected form unchanged |
+| **Financial B01–B11** | Mostly stock AppScaffold, standard cards/filters plus separately themed report tables | Blush atmosphere; premium **section header, selected scope and high-level totals**; consistent cherry icons/controls. Table core stays neutral/clear with semantic money colors | No shadow on every row, no numeric truncation; no calculation/transaction change |
+| **Export C01–C04** | Functional selectors and previews on standard operational surfaces | Premium selection/toolbar/button chrome surrounding preview; subtle blush backdrop | Exported JPEG pixels/layout/pagination/math completely frozen |
+| **Live / Better Data D** | Specialized navigation and layout for live feed and 4 Better Data tabs | Review contrast/title/chrome for cherry feel only if safe; preserve specialized navigation and mechanics | No Live result timing/SET integrations or formula engine changes |
+| **2D Analysis → Research** | Intentionally distinct Research visuals and shared timeline parent | **NO CHANGE, NO EDIT, NO RESTYLE** | Entire shared `Historical2DTimelineScreen.kt` and all Research sources frozen |
+
+**Interpretation:** An existing shared component being identical on two screens is **not** sufficient evidence of Home-first consistency. `NO CHANGE` is allowed only after comparing the component's *visual quality* to Home and explicitly explaining why a functional/readability exception is appropriate.
+
+### 0A.4 Workflow order and proof
+
+- **First implement A01/A02** in a small **Dashboard-only premium pass** after this documentation-only correction is committed. Add tests to protect shared cards/feature routes and preserve accessibility. CI + Android screenshot review.
+- Then **revisit A03/A04 and A05/A06** with the same approved premium treatment. Do not undo the Build 1865 Information scrolling, loading, or label-width fix.
+- Then A07–A09; only after Management acceptance move to B, C, D family-by-family.
+- For each pass save **Home reference screenshot vs target screenshot** at the same device scale, plus Myanmar/English and larger font scale, instead of just comparing Agent vs Customer.
+- Home source code is a standard to *read*, not a screen to modify. Prefer limited local style props / dedicated non-Home Compose visual helper over global Theme changes.
+- **Build 1865** CI succeeded (unit tests, lint, debug/release APK). That confirms compilation and packaging, **not** that the Dashboard matched Home or that the phone signed off on any Management visuals.
+
+---
+
+## 1. Current design system (reuse, do not redesign globally)
 
 Source paths:
 - `core/design/Theme.kt` — `AppColors`, `AppDimens`, `AppShapes`, `LedgerTheme`.
@@ -72,7 +132,7 @@ Source paths:
 - Standard operational screen: existing centered `AppScaffold`; do not change it globally during this pass.
 - Standard agent/customer picker: existing `ScopeDropdown` (min 68dp, avatar optional); preserve the guard against displaying stale IDs.
 - Standard operational identity: `CherryProfileIdentity` or `CherryProfileAvatar`, only for positive individual IDs, never for an aggregate -1/0 selection.
-- Cards: dashboard landing cards stay approved white/small-elevation style. Form keeps unique cherry glass. Finance/report tables favor readability, not unnecessary 3D effects.
+- Cards: **dashboard landing cards must be visually upgraded to the current Home premium Cherry Glass language** (A01/A02 are no longer `NO CHANGE`). Keep their shared route/content structure. Forms remain untouched; finance/report tables keep neutral numeric readability and receive premium treatment only on outer panels/summary headers.
 - Buttons: align primary/secondary/destructive roles within each screen group, respecting existing device-approved forms and accessibility hit targets.
 - Back/top actions: no duplicate Back button, oversized circle, logo overlap, or changed back semantics.
 - Feedback: consistent localized loading/empty/error/success visuals without debug text or unnecessary prose.
@@ -85,18 +145,18 @@ Source paths:
 
 | ID | Active screen | Source files (candidate) | Check / planned UI-only correction | Preserve |
 |---|---|---|---|---|
-| A01 | Agent Dashboard | `DashboardScreens.kt`, `DashboardCardTypography.kt` | Card title/subtitle/bilingual wrapping, icon/chevron alignment, card padding/height, list spacing | Existing card order, route targets, approved shared landing-card structure |
-| A02 | Customer Dashboard | same | Match Agent Dashboard's equivalent card geometry; verify Burmese long labels and font scale | Existing feature keys and routes |
-| A03 | Agent List | `ListWorkspaceScreens.kt` | Avatar 42dp alignment, search box, card spacing, long names, Add action, empty state | Search behavior, selection, records, list tap |
-| A04 | Customer List | `ListWorkspaceScreens.kt` | Match Agent List card geometry, agent picker, avatar, phone/address text handling | Agent/customer filtering, add/selection |
-| A05 | Agent Information | `ListWorkspaceScreens.kt` | 104dp avatar/header, label/value alignment, report/customer navigation buttons, title | Details, agent rates, links |
-| A06 | Customer Information | `ListWorkspaceScreens.kt` | Shared `InformationCard`, label/value alignment, long text/phone, edit action | Details, customer relationships |
-| A07 | Quick Entry | **only** `QuickEntryScreen` / `SelectionField` regions in `Screens.kt` | Two scope selectors with portraits, name overflow, selection-summary wrap, Continue button, narrow screen & keyboard | Selected IDs, default selection, route, betting behavior |
-| A08 | Settings | **only** `SettingsScreen` region in `Screens.kt`, `CherryBackupSettings.kt` if relevant | Group headings, default selectors, history update feedback, language/backup row spacing and button hierarchy | Locale state, default IDs, backup/restore functionality |
-| A09 | Add Customer from Home | `DashboardScreens.kt` | Agent picker, Continue action, empty state, safe padding | Route to existing approved Customer Form |
+| A01 | Agent Dashboard | `DashboardScreens.kt`, `DashboardCardTypography.kt` | **REQUIRED PREMIUM UPGRADE:** compare against Home glass, blush atmosphere, ruby shadow, white rim, rounded card, cherry icon and restrained touch feedback; ensure EN/MM text fits | Existing card order, feature labels, route targets, 78dp minimum unless text requires more height |
+| A02 | Customer Dashboard | same | **REQUIRED PREMIUM UPGRADE:** same new Home-derived shared premium card as Agent; visually compare with Home, not only A01 | Existing feature keys, names, routing, long descriptions, scrolling |
+| A03 | Agent List | `ListWorkspaceScreens.kt` | Compare opaque ElevatedCard with Home glass; premium lightweight list card, tint/rim and avatar 42dp alignment; search/add/empty state | Fast scrolling, search behavior, selection, records, list tap |
+| A04 | Customer List | `ListWorkspaceScreens.kt` | Match Home-derived A03 visual tier, agent picker/portrait, phone/long name layout and add action | Agent/customer filtering, add/selection |
+| A05 | Agent Information | `ListWorkspaceScreens.kt` | Upgrade opaque detail card to premium profile surface, 104dp avatar, contrast, label/value alignment; retain Build 1865 wrapped detail rows | Details, agent rates, links, scrolling and loading |
+| A06 | Customer Information | `ListWorkspaceScreens.kt` | Use same Home-derived profile card tier as A05, preserve Build 1865 stable loading + scroll and long detail rows | Details, customer relationships, editing and photo |
+| A07 | Quick Entry | **only** `QuickEntryScreen` / `SelectionField` regions in `Screens.kt` | Premium Home-derived selection-pane surface, proper photo/name overflow and cherry CTA; narrow screen & keyboard | Selected IDs, defaults, navigation, betting behavior, Home Quick Entry design |
+| A08 | Settings | **only** `SettingsScreen` region in `Screens.kt`, `CherryBackupSettings.kt` if relevant | Premium grouped cherry panels and accent contrast on default selectors, history and language/backup rows | Locale state, default IDs, backup/restore functionality |
+| A09 | Add Customer from Home | `DashboardScreens.kt` | Home-derived selection panel and Continue button styling, empty state, safe padding | Route to existing approved Customer Form |
 | A10 | Agent/Customer Add/Edit Form | `Screens.kt` form regions, `CherryProfileFormUi.kt` | **NO CHANGES**; screenshot regression only for avatar/crop, frame, back/save, keyboard | All approved form UI and data behavior |
 
-**Acceptance for A:** both dashboards read as one family; list/info cards and avatar positions are predictable; MM/EN titles do not clip; selectors show the correct person or no person on aggregate; all navigation/save behavior remains intact.
+**Acceptance for A:** Dashboard **and** List/Information/Quick Entry/Settings premium visual language is recognizably descended from the **current Home**, not just mutually identical. Agent/Customer screens still match each other; MM/EN text and avatars are readable, all routes/data preserved, performance stays smooth. Each pass needs Home-vs-screen phone screenshots.
 
 ---
 
@@ -116,7 +176,7 @@ Source paths:
 | B10 | Agent Closed/Limit | `AgentPatternRulesScreens.kt` and caller | Header, input/status/Date/Session alignment | Closed/limit persistence and logic |
 | B11 | Risk Analysis | `CustomerReviewScreens.kt`, `CustomerRiskReviewResults.kt` | Group summary hierarchy, filters, long names, money contrast | Risk/coverage calculation |
 
-**Financial acceptance:** amounts and totals are unchanged; numeric values are never ellipsized; money columns align consistently; group rows can have avatars, individual transaction/amount rows cannot.
+**Home-derived financial styling:** use a restrained cherry glass/background treatment on *filters, section shells, selected scope and summary/total cards only*; inner rows, figures, grid cells and tables remain neutral and high-contrast. Do not use a translucent background behind every line. **Financial acceptance:** amounts and totals are unchanged; numeric values are never ellipsized; money columns align consistently; group rows can have avatars, individual transaction/amount rows cannot.
 
 ---
 
@@ -129,7 +189,7 @@ Source paths:
 | C03 | Customer settlement picker/preview | `CustomerSettlementJpegScreen.kt` | Mirror C02 selection/preview geometry; avoid bottom/action clipping |
 | C04 | Gallery feedback | UI only | Localized success/error messages, no duplicate action, no silent failure |
 
-**Hard rule:** Do **not** edit `VoucherRenderer.kt`, `AgentSettlementJpegRenderer.kt`, `CustomerSettlementJpegRenderer.kt`, exporter or pagination/math classes. Validate exported JPEG amounts/pages/photos remain identical to Build 1864 for identical fixtures.
+**Home-derived export styling:** use cherry-blush pane / button / picker hierarchy in selection and preview chrome, never tint or manipulate the pixels of the exported document. **Hard rule:** Do **not** edit `VoucherRenderer.kt`, `AgentSettlementJpegRenderer.kt`, `CustomerSettlementJpegRenderer.kt`, exporter or pagination/math classes. Validate exported JPEG amounts/pages/photos remain identical to Build 1864 for identical fixtures.
 
 ---
 
@@ -145,7 +205,7 @@ Source paths:
 
 ## 6. Per-screen visual QA checklist
 
-For each changed screen, record a before/after screenshot and verify:
+For each changed screen, record a **current Home reference screenshot** and the screen's before/after screenshot; verify:
 
 1. Header/back consistent with its *screen family*, never obscures controls/logo; back behavior unchanged.
 2. Burmese/English fonts readable, no cut glyphs, unintended truncation, overlap, awkward 1-line overflow or mismatched baselines.
@@ -159,6 +219,10 @@ For each changed screen, record a before/after screenshot and verify:
 10. Tables: right-aligned monetary values, stable digit-width, visible full totals, meaningful semantic win/loss/closed colors.
 11. Portrait add/change/remove survives navigation; no accidental photo in transaction rows.
 12. Existing list search, category filters, period/session selection, back navigation and screenshots remain functionally correct.
+13. Against current Home: cherry/blush backdrop, premium single glass surface, softened ruby shadow, white rim and radius feel consistent in the **appropriate** component tier.
+14. Dashboard and List cards do not look like unrelated stock Material white tiles; verify translucent surface is visible against blush and does not introduce opaque nested layers.
+15. Performance: long Lists/Reports do not stutter from per-row Blur/Shadow/Animation; no Home orb/silk assets copied into standard screens.
+16. Home, Form, Research frozen: compare changed path list and protected code ranges; no global theme/typography/regression.
 
 **Screenshots are required for real-device visual sign-off.** Android unit tests/lint alone do not demonstrate layout consistency.
 
@@ -166,10 +230,10 @@ For each changed screen, record a before/after screenshot and verify:
 
 ## 7. Implementation constraints / code review gates
 
-- **Allowed:** targeted presentation Composables and local layout constants within A/B/C workstreams.
+- **Allowed:** targeted Home-derived premium presentation (background, glass card surface, white rim, ruby depth, local icon/CTA treatments) in eligible A/B/C screen components and local layout constants. **Home source and UI still frozen.**
 - **Avoid:** broad find/replace; reformatting entire `Screens.kt`; rebuilding shared `Scaffold`/Theme/Typography globally; modifying navigation keys/routes or state; adding dependencies.
 - **Screen-specific first:** if a shared component could alter a protected screen, use local wrapper/arguments instead.
-- Reuse existing design roles and UI elements; avoid adding a second competing design system.
+- Reuse existing design roles and UI elements; avoid adding a second competing design system. Do not declare a screen consistent solely because its Agent/Customer equivalent matches; **Home comparison is mandatory**.
 - Preserve existing business methods, database queries, state flow subscriptions, performance, accessibility and localization.
 - Before every commit, inspect `git diff --name-only` (or GitHub compare). Explicitly reject changes in frozen paths, Home/form sections and Research.
 - Tests: `./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug`, then release verification through existing workflow; add UI-contract tests for modified components where practical.
@@ -180,7 +244,7 @@ For each changed screen, record a before/after screenshot and verify:
 ### 7.1 Source audit pointers (as of baseline)
 
 - `LedgerNav.kt` currently declares 47 routes; route names should be checked for active vs legacy use.
-- `DashboardLandingCard` is already shared between Agent and Customer Dashboard (minimum height 78dp, white surface, low elevation); **preserve it** unless device evidence shows a mismatch.
+- `DashboardLandingCard` is already shared between Agent and Customer Dashboard (minimum height 78dp, opaque white surface, 1dp elevation); preserve the **shared composable's functional contract**, but its **flat styling needs upgrading toward Home premium glass**. A01/A02 `NO CHANGE` was formally withdrawn on 2026-11-23.
 - `ScopeDropdown` uses a 68dp minimum selector and optional avatar, including stale-ID guard; do not regress.
 - `AgentListRow` and Customer List already use profile pictures; do not duplicate them.
 - `InformationCard` is shared; don't rewrite both screens for an already-matched layout.
@@ -195,7 +259,7 @@ For each changed screen, record a before/after screenshot and verify:
 | Milestone | Exit gate | Status |
 |---|---|---|
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
-| M1 — Management audit and UI changes | A01–A09 checked/fixed or explicitly NO CHANGE; accepted Form untouched; CI+device QA | IN PROGRESS — A01–A06 source pilot; CI/device review pending |
+| M1 — Home-first Management audit and UI changes | Home-derived A01/A02 premium dashboard first; then A03–A09; accepted Form untouched; CI+device QA | IN PROGRESS — Build 1865 source pilot passed CI, no device acceptance; **A01/A02 premium redesign pending** |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+device QA | NOT STARTED |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
@@ -215,7 +279,17 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
 
-**Management pilot checkpoint, 2026-11-23 (A01–A06, NOT YET DEVICE-ACCEPTED):**
+**Home-first design re-audit / corrected decision — 2026-11-23 (DOCUMENTATION UPDATE ONLY):**
+- **Authoritative user direction:** The **CURRENT approved Home Design**, with translucent glass, soft ruby shadows, blush atmosphere, white highlight borders, premium rounded geometry and tasteful feedback, becomes the **PRIMARY reference for other eligible screens**. Cross-Agent/Customer similarity is not sufficient. This corrects the former overly narrow Dashboard pilot conclusion.
+- **Code evidence revisited:** `Screens.kt` Home glass components / BottomBar / action cards; `HomeCommissionCard.kt`, `HomeGlassDepth.kt`, `HomeMicroAnimations.kt`, `CherryProfileFormUi.kt` (read-only), `DashboardScreens.kt`, `DashboardCardTypography.kt`, `ListWorkspaceScreens.kt`, Commission/Agent+Customer statement and JPEG-picker UI, `CherryBetterDataScreen.kt`, `LiveScreen.kt`. Source-based review only; **not a phone image/screenshot inspection**.
+- **A01/A02 REOPENED:** Dashboard shared `DashboardLandingCard` still has white opaque 1dp-elevation Material Card, while Home has frosted glass with edge highlight and ruby depth. **Change decision from `NO CHANGE` to `PREMIUM REDESIGN REQUIRED`; no implementation made in this plan-only revision.**
+- **A03/A04/A05/A06 NEED HOME VISUAL RE-AUDIT:** Earlier Build 1865 list/detail code fixes remain committed; their **functional/structure improvements are not rejected**, but their opaque card visual style is not yet Home-aligned. They must be revisited **after** the approved premium dashboard pass.
+- **Build 1865 state:** GitHub Actions run `45174179816` **COMPLETED SUCCESS** on `1e7d4a375193cd4b5c10289f087cefa35ccde35e`; unit tests, lint, debug APK and release APK checks/uploads all succeeded. **No user device approval / screenshot sign-off recorded.** No new APK is required for this documentation-only update.
+- **Protected scope:** Home itself and accepted Forms never change; `Historical2DTimelineScreen.kt` and all 2D Research UI/assets/logic are frozen. Also preserve Live timing, Better Data engine, domain finance, transaction rows and JPEG content.
+- **Next actionable implementation:** A01/A02 premium dashboard cards/background in a narrow pass, with a real Home reference comparison. Afterwards inspect A03–A06 premium styling without losing Build 1865 loading/scrolling/label wrapping. Then A07–A09. Each pass needs tests, Android CI and user phone visual feedback.
+- **Handoff precedence:** This 2026-11-23 Home-first correction supersedes earlier `NO CHANGE` text in historical pilot records. Do not implement further UI from an old plan interpretation.
+
+**Historical management pilot checkpoint, 2026-11-23 (A01–A06, NOT YET DEVICE-ACCEPTED; A01/A02 `NO CHANGE` CONCLUSION SUPERSEDED by Home-first decision):**
 - **A01/A02 Agent/Customer Dashboard:** reviewed `DashboardLandingCard` and `docs/ui/AgentCustomerDashboardCardsPilot.md`. Both use the same approved card component, padding, icon/chevron, 78dp minimum and opt-in bilingual typography. **NO CODE CHANGE**; preserve earlier user-approved appearance. Real-device bilingual screenshots still needed.
 - **A03 Agent List:** already uses the shared `ElevatedCard + ListItem`, a 42dp avatar, a Chevron, Search and Add action. **NO CODE CHANGE** in this first pass.
 - **A04 Customer List:** same avatar/card structure already present; updated the decorative trailing Chevron with a localized accessibility content description only; no filtering, click route or list data changes.
@@ -223,7 +297,7 @@ This section is the **source of truth for future sessions**. After a passed mile
 - **Files changed:** `feature/main/ListWorkspaceScreens.kt`, plus `app/src/test/java/com/myanmar/ledger2d/feature/main/ManagementUiConsistencyContractTest.kt` source-contract checks for dashboards and list/detail invariants.
 - **Explicitly NOT changed:** `DashboardScreens.kt`, `DashboardCardTypography.kt`, Home, any form/crop/photo persistence source, all Research/Analysis sources (including `Historical2DTimelineScreen.kt`), Live, Better Data, reports, database, domain, JPEG renderers/exporters, `LedgerNav.kt`, and global `Theme.kt`.
 - **Test state:** Source diff reviewed, CI not yet completed at this checkpoint. Do NOT mark as accepted/finished from source-only review. Android build, Burmese/English screenshots, long strings, larger font scales, phone Back and scrolling remain to be verified.
-- **Next:** run Android CI from this isolated branch; if successful, obtain phone feedback and sign off A01–A06 before continuing A07 Quick Entry, A08 Settings, A09 Add Customer from Home.
+- **Historical next step (NOW SUPERSEDED):** The original request was to run CI and sign off A01–A06. **Actual CI Build 1865 succeeded, but Home-first A01/A02 redesign is now required before any dashboard visual sign-off.**
 
 **Initial checkpoint, 2026-11-23:**
 - Base Build **1864** = SUCCESS, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`.
@@ -237,11 +311,14 @@ This section is the **source of truth for future sessions**. After a passed mile
 
 ## 10. Existing references to read before touching UI
 
-- `docs/ui/AgentCustomerDashboardCardsPilot.md`
+- `Screens.kt` Home components (`HomeScreen`, `HomeCountCard`, `HomeWeeklyResults`, `HomeBottomBar`, `HomeQuickAction`) — **read-only Home benchmark**
+- `HomeCommissionCard.kt`, `HomeGlassDepth.kt`, `HomeTypography.kt`, `HomeMicroAnimations.kt` — **read-only Home benchmark**
+- `CherryProfileFormUi.kt` — **read-only accepted premium form reference**
+- `docs/ui/AgentCustomerDashboardCardsPilot.md` (historical same-family pilot; **DOES NOT OVERRIDE Home-first rule**)
 - `docs/ui/ConsolidatedBilingualUiRollout.md`
 - `docs/ui/TypographyStandardPilot_v1.md`
 - `docs/home-premium-polish-from-build1828-20261122.md` (historical protected Home rationale)
 - `docs/2D-RESEARCH-WORKSPACE-SPEC.md` (**read-only**; do not change Research)
 - `docs/UX-IA-REDESIGN-PLAN.md` (historical proposal, **not authorization** to change routes)
 
-**User decision:** preserve the finished work, protect the special Research gift unconditionally, write the plan into the repository first so future work cannot forget the constraints, and do UI changes one safe phase at a time.
+**Latest user decision, 2026-11-23:** **Home is the single primary premium design reference** for every eligible remaining screen, not Agent/Customer parity alone. Re-audit and revise this master plan **BEFORE any new UI edit**. Preserve finished work, protect the special Research gift unconditionally, never edit `main`, keep Build 1865 as tested fallback and implement one isolated premium UI pass at a time. This supersedes older A01/A02 `NO CHANGE` design guidance.
