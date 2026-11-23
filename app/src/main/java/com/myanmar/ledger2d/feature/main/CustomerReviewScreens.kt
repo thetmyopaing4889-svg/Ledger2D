@@ -143,14 +143,16 @@ fun CustomerReviewWorkspace(
                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 item {
-                    ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent"), selectedAgentName, agents.map { it.id to it.name }, agentId) {
+                    ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent"), selectedAgentName, agents.map { it.id to it.name }, agentId,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },) {
                         agentId = it; customerId = -1L
                     }
                 }
                 item {
                     ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား"), selectedCustomerName,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name },
-                        customerId, enabled = agentId > 0L) { customerId = it }
+                        customerId, enabled = agentId > 0L,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },) { customerId = it }
                 }
                 if (mode == "report") {
                     item {
