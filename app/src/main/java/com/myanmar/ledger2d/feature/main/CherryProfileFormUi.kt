@@ -247,7 +247,7 @@ internal fun CherryProfileFormPage(
                 }
             }
             // Small FAB clearance, not an extra 104dp inside the form scroller.
-            if (!keyboardVisible) Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(64.dp)) // Reserve the floating Quick Entry touch area even with IME.
         }
     }
 }
