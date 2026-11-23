@@ -36,6 +36,8 @@ import com.myanmar.ledger2d.core.domain.StatementPeriod
 import com.myanmar.ledger2d.core.domain.StatementPeriods
 import com.myanmar.ledger2d.core.domain.StatementRange
 import com.myanmar.ledger2d.core.model.DrawSession
+import com.myanmar.ledger2d.core.profile.ProfileKind
+import com.myanmar.ledger2d.core.profile.ProfilePhotoStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -104,7 +106,7 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
     }
 
     if (source != null) {
-        CustomerSettlementJpegPreview(source!!, onBack = { source = null })
+        CustomerSettlementJpegPreview(vm, customerId, source!!, onBack = { source = null })
         return
     }
 
@@ -276,7 +278,10 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun CustomerSettlementJpegPreview(source: CustomerSettlementSource, onBack: () -> Unit) {
+private fun CustomerSettlementJpegPreview(
+    vm: LedgerViewModel, customerId: Long,
+    source: CustomerSettlementSource, onBack: () -> Unit,
+) {
     val language = LocalLanguage.current
     val context = LocalContext.current
     val sourceTypeface = remember(context) {
@@ -292,14 +297,18 @@ private fun CustomerSettlementJpegPreview(source: CustomerSettlementSource, onBa
             CustomerSettlementCalculator.build(source, basisPoints)
         }.getOrNull()
     }
-    // Never show/export a previously computed rebate while the new JPEG is rendering.
+    val photoRevision by ProfilePhotoStore.revision.collectAsStateWithLifecycle()
+    // Never show/export a previously computed rebate or portrait while rendering.
     val preparation by produceState<Pair<CustomerSettlementDocument, CustomerSettlementJpegRenderer>?>(
-        null, document, sourceTypeface,
+        null, document, sourceTypeface, photoRevision, customerId,
     ) {
         value = null
         if (document != null) {
+            val headerPhoto = withContext(Dispatchers.IO) {
+                loadJpegProfilePhoto(vm.profilePhotos, ProfileKind.CUSTOMER, customerId)
+            }
             val ready = withContext(Dispatchers.Default) {
-                CustomerSettlementJpegRenderer(document, sourceTypeface)
+                CustomerSettlementJpegRenderer(document, sourceTypeface, headerPhoto)
             }
             value = document to ready
         }
