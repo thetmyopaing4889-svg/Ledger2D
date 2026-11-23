@@ -33,6 +33,8 @@ import com.myanmar.ledger2d.core.domain.StatementPeriod
 import com.myanmar.ledger2d.core.domain.StatementPeriods
 import com.myanmar.ledger2d.core.domain.StatementRange
 import com.myanmar.ledger2d.core.model.DrawSession
+import com.myanmar.ledger2d.core.profile.ProfileKind
+import com.myanmar.ledger2d.core.profile.ProfilePhotoStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -244,10 +246,16 @@ private fun AgentSettlementJpegPreview(
     val language = LocalLanguage.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // The same portrait snapshot is rendered in preview and every exported page.
+    val photoRevision by ProfilePhotoStore.revision.collectAsStateWithLifecycle()
     // Failed page preparation must show an error instead of crashing Compose.
-    val preparation by produceState<Pair<AgentSettlementJpegRenderer?, String?>?>(null, document) {
+    val preparation by produceState<Pair<AgentSettlementJpegRenderer?, String?>?>(null, document, photoRevision) {
+        value = null
+        val headerPhoto = withContext(Dispatchers.IO) {
+            loadJpegProfilePhoto(vm.profilePhotos, ProfileKind.AGENT, agentId)
+        }
         val prepared = withContext(Dispatchers.Default) {
-            runCatching { AgentSettlementJpegRenderer(document) }
+            runCatching { AgentSettlementJpegRenderer(document, headerPhoto) }
         }
         value = prepared.fold(
             onSuccess = { it to null },
