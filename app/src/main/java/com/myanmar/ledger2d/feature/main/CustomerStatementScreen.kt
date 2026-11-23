@@ -238,7 +238,7 @@ fun CustomerStatementScreen(
                             LinearProgressIndicator(Modifier.fillMaxWidth())
                             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းတွက်နေသည်…"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
-                            CustomerStatementContent(report!!, customers, customerId, period, range, view, { view = it }, search, { search = it }, closedDays.map { it.date }.toSet())
+                            CustomerStatementContent(vm, report!!, customers, customerId, period, range, view, { view = it }, search, { search = it }, closedDays.map { it.date }.toSet())
                         }
                     }
                 }
@@ -397,6 +397,7 @@ private fun StatementBucketList(groups: List<StatementDisplayGroup>) {
 
 @Composable
 private fun CustomerStatementContent(
+    vm: LedgerViewModel,
     report: CustomerStatement,
     customers: List<CustomerEntity>,
     selectedCustomerId: Long,
@@ -446,7 +447,7 @@ private fun CustomerStatementContent(
                     OutlinedCard(onClick = { expandedCustomer = if (expanded) 0L else customer.id }) {
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(customer.name, Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                                CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,customer.id,customer.name,Modifier.weight(1f),avatarSize=32.dp)
                                 Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                             }
                             StatementMoneyLine("ထိုးကြေး", totals.totalBet)
