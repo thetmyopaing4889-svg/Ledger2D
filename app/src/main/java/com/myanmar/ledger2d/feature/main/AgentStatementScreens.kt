@@ -94,6 +94,7 @@ fun AgentStatementWorkspace(
                         "ဒိုင်ရွေးရန်", chosenAgent,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                     ) { agentId = it }
                 }
                 item {
