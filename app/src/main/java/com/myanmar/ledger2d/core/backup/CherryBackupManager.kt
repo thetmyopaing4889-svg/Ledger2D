@@ -15,6 +15,8 @@ import java.time.Instant
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import com.myanmar.ledger2d.core.profile.CherryProfileArchive
+import com.myanmar.ledger2d.core.profile.ProfilePhotoStore
 import org.json.JSONObject
 
 internal data class CherryBackupPreview(
@@ -37,7 +39,7 @@ internal class CherryBackupManager(
     private val recovery=File(context.noBackupFilesDir,"cherry_pre_restore_recovery.zip")
 
     companion object {
-        private const val ARCHIVE_VERSION = 1
+        private const val ARCHIVE_VERSION = 2
         private const val MAX_ENCRYPTED = 512L * 1024 * 1024
         private const val MAX_PLAIN_ZIP = 768L * 1024 * 1024
         private val lock=Any()
@@ -121,6 +123,9 @@ internal class CherryBackupManager(
                     zip.putNextEntry(ZipEntry("preferences.json"))
                     prefs.write(KeepOpen(zip))
                     zip.closeEntry()
+                    zip.putNextEntry(ZipEntry("photos.zip"))
+                    CherryProfileArchive.write(context, KeepOpen(zip))
+                    zip.closeEntry()
                 }
                 file.fd.sync()
             }
@@ -138,13 +143,15 @@ internal class CherryBackupManager(
                 val entry=entries.nextElement()
                 require(!entry.isDirectory && names.add(entry.name))
             }
-            require(names==setOf("manifest.json","database.json","preferences.json"))
-            val manifest=zip.getInputStream(zip.getEntry("manifest.json")).use {
+            val manifest=zip.getInputStream(zip.getEntry("manifest.json") ?: error("Missing manifest")).use {
                 val bytes=it.readBytes()
                 require(bytes.size<16_384)
                 JSONObject(String(bytes,Charsets.UTF_8))
             }
-            require(manifest.getInt("version")==ARCHIVE_VERSION)
+            val version=manifest.getInt("version")
+            require(version in 1..ARCHIVE_VERSION)
+            val baseEntries=setOf("manifest.json","database.json","preferences.json")
+            require(names==if(version==1)baseEntries else baseEntries+"photos.zip")
             require(manifest.getString("package")=="com.myanmar.ledger2d")
             val createdAt=manifest.getString("created_at")
             Instant.parse(createdAt)
@@ -153,6 +160,9 @@ internal class CherryBackupManager(
             }
             val state=zip.getInputStream(zip.getEntry("preferences.json")).use {
                 prefs.parse(it)
+            }
+            if(version==2) zip.getInputStream(zip.getEntry("photos.zip")).use {
+                CherryProfileArchive.read(it)
             }
             return Inspection(CherryBackupPreview(createdAt,rows,state.size),state)
         }
@@ -213,30 +223,63 @@ internal class CherryBackupManager(
     }
 
     /** Database transaction + in-process preference rollback on error. */
+    /** Photo restore and ledger restore must roll back together on failure. */
     private fun applyPlainArchive(plain:File,state:Map<String,Map<String,Any>>) {
         val db=room.openHelper.writableDatabase
         val previous=prefs.snapshot()
-        var open=false
+        val photos=ProfilePhotoStore.photoDirectory(context)
+        val staging=File(context.noBackupFilesDir,"cherry_photos_restore_stage")
+        val previousPhotos=File(context.noBackupFilesDir,"cherry_photos_restore_previous")
+        check(!staging.exists() || staging.deleteRecursively())
+        ZipFile(plain).use { zip ->
+            val media=zip.getEntry("photos.zip")
+            if(media==null) check(staging.mkdirs())
+            else zip.getInputStream(media).use { CherryProfileArchive.read(it,staging) }
+        }
+        var databaseOpen=false
+        var photosMoved=false
+        var completed=false
         try {
             db.beginTransaction()
-            open=true
+            databaseOpen=true
             ZipFile(plain).use { zip ->
                 zip.getInputStream(zip.getEntry("database.json")).use {
                     CherryBackupDatabase.importInsideTransaction(db,it)
                 }
             }
             prefs.replace(state)
+            synchronized(ProfilePhotoStore.fileLock) {
+                check(!previousPhotos.exists() || previousPhotos.deleteRecursively())
+                if(photos.exists()) check(photos.renameTo(previousPhotos))
+                if(!staging.renameTo(photos)) {
+                    if(previousPhotos.exists()) check(previousPhotos.renameTo(photos))
+                    error("Could not restore profile photos")
+                }
+                photosMoved=true
+            }
             db.setTransactionSuccessful()
             db.endTransaction()
-            open=false
+            databaseOpen=false
+            completed=true
+            ProfilePhotoStore.notifyChanged()
         } catch(error:Exception) {
-            if(open)try { db.endTransaction() } catch(failure:Exception) {
+            if(databaseOpen) try { db.endTransaction() } catch(failure:Exception) {
                 error.addSuppressed(failure)
             }
             try { prefs.replace(previous) } catch(failure:Exception) {
                 error.addSuppressed(failure)
             }
+            if(photosMoved) synchronized(ProfilePhotoStore.fileLock) {
+                try {
+                    check(photos.deleteRecursively())
+                    if(previousPhotos.exists()) check(previousPhotos.renameTo(photos))
+                    ProfilePhotoStore.notifyChanged()
+                } catch(failure:Exception) { error.addSuppressed(failure) }
+            }
             throw error
+        } finally {
+            staging.deleteRecursively()
+            if(completed) previousPhotos.deleteRecursively()
         }
     }
 
