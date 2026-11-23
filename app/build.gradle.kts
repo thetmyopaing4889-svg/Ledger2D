@@ -22,6 +22,13 @@ android {
     testOptions {
         // Run real Room repository tests on Robolectric without a physical device.
         unitTests.isIncludeAndroidResources = true
+        // Robolectric downloads large Android test jars outside Gradle dependency resolution.
+        // Shared GitHub CI egress receives HTTP 429 from repo1.maven.org.
+        unitTests.all {
+            it.systemProperty("robolectric.dependency.repo.url",
+                "https://maven-central.storage-download.googleapis.com/maven2/")
+            it.systemProperty("robolectric.dependency.repo.id","googleMavenCentralMirror")
+        }
     }
     buildTypes {
         debug {
