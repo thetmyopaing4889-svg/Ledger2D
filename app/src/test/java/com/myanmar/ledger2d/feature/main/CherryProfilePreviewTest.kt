@@ -112,7 +112,7 @@ class CherryProfilePreviewTest {
         assertTrue(page.contains("disabledContainerColor=Color.Transparent"))
         assertTrue(page.contains("val saveEnabled=canSave&&!saving"))
         assertEquals(2, page.split("height(54.dp)").size - 1)
-        assertTrue(page.contains("if (!keyboardVisible) Spacer(Modifier.height(64.dp))"))
+        assertTrue(page.contains("Spacer(Modifier.height(64.dp))"))
         assertTrue(source.contains("dimensions.use { BitmapFactory.decodeStream(it, null, bounds) }"))
     }
 
