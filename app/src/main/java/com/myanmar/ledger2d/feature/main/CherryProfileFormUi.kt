@@ -311,7 +311,6 @@ internal fun CherryProfileField(
         // Only ONE outline: Material's OutlinedTextField draws it.
         // No second outer white capsule or mask/shadow to create doubled frames.
         modifier=Modifier.fillMaxWidth().heightIn(min=70.dp)
-            .clip(fieldShape)
             .background(Brush.linearGradient(listOf(
                 Color(0x88FFFFFF),Color(0x53FFFFFF),Color(0x82FFF4F8))),fieldShape),
         singleLine=label!="မှတ်ချက်",
