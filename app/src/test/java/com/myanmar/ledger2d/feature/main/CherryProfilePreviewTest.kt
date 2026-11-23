@@ -61,6 +61,25 @@ class CherryProfilePreviewTest {
         }
     }
 
+    @Test fun formHeaderAndInputsHaveNoOverlappingOrDuplicateFrames() {
+        val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
+            .readText()
+        val page=source.substringAfter("internal fun CherryProfileFormPage(")
+            .substringBefore("@Composable\ninternal fun CherryProfileField(")
+        val field=source.substringAfter("internal fun CherryProfileField(")
+        assertTrue(page.contains("Modifier.align(Alignment.BottomStart)"))
+        assertTrue(page.contains(".padding(start=141.dp,end=18.dp,top=23.dp)"))
+        assertTrue(page.contains("modifier=Modifier.fillMaxWidth().statusBarsPadding()"))
+        assertTrue(page.contains("Icon(Icons.AutoMirrored.Filled.ArrowBack"))
+        assertFalse(page.contains("Modifier.align(Alignment.TopEnd)"))
+        assertTrue(field.contains("BasicTextField("))
+        assertTrue(field.contains("if(value.isEmpty())"))
+        assertFalse(field.contains("OutlinedTextField("))
+        assertTrue(field.contains("if(focused) 1.4.dp else 1.dp"))
+        assertTrue(field.contains("singleLine=label!=\"မှတ်ချက်\""))
+        assertTrue(page.contains("QuickEntryFab(it)"))
+    }
+
     @Test fun premiumFormUsesLayeredGlassAndRaisedGlossySaveInsteadOfFlatWhite() {
         val source=File("src/main/java/com/myanmar/ledger2d/feature/main/CherryProfileFormUi.kt")
             .readText()
