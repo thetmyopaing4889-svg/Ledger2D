@@ -168,6 +168,7 @@ fun AgentDigitTotalsWorkspace(
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ")) }
             } else {
                 item {
+                    CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,selectedAgent,selectedName,Modifier.fillMaxWidth())
                     Text("${date} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${selectedName}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -210,7 +211,7 @@ fun AgentDigitTotalsWorkspace(
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                     items(activeGroups.orEmpty(), key = { it.agentId }) { group ->
-                        DigitTotalsAgentCard(group)
+                        DigitTotalsAgentCard(vm, group)
                     }
                     item {
                         DigitTotalsSummary(combined.orEmpty(), "အောက်ဆုံး ဒိုင်အားလုံးပေါင်း")
@@ -234,14 +235,14 @@ fun AgentDigitTotalsWorkspace(
 }
 
 @Composable
-private fun DigitTotalsAgentCard(group: AgentDigitGroup) {
+private fun DigitTotalsAgentCard(vm: LedgerViewModel, group: AgentDigitGroup) {
     var expanded by rememberSaveable(group.agentId) { mutableStateOf(false) }
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(color = Color.Transparent, onClick = { expanded = !expanded }) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(group.agentName, fontWeight = FontWeight.Bold)
+                        CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,group.agentId,group.agentName,Modifier.fillMaxWidth(),avatarSize=30.dp)
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဂဏန်း ${group.digits.size} ကွက် • ထိုးကြေး ${group.totalStake.digitMoney()} ကျပ်", "Digits: ${group.digits.size} • Stake: ${group.totalStake.digitMoney()} MMK"),
                             style = MaterialTheme.typography.bodySmall)
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Net ကော်မရှင် ${group.totalNetCommission.digitMoney()} ကျပ်", "Net commission: ${group.totalNetCommission.digitMoney()} MMK"),
