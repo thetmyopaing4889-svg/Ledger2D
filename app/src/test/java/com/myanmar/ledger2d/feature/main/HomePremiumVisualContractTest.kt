@@ -114,7 +114,11 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("val digit=winnerMap[date to session] ?: \"--\""))
         assertTrue(screen.contains("onSelect(date,session,digit,stats.first,stats.second)"))
         assertTrue(screen.contains("val radius=size.minDimension/2f-1.dp.toPx()"))
-        assertTrue(screen.contains("drawCircle(Color(0xB3FFFFFF),radius=radius)"))
+        assertTrue(screen.contains("val dayTint=when {"))
+        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFE1EA)"))
+        assertTrue(screen.contains("digit==\"--\" -> Color(0xFFF4F0F1)"))
+        assertTrue(screen.contains("morning -> AppColors.Blush"))
+        assertTrue(screen.contains("drawCircle(dayTint.copy(alpha=.87f),radius=radius)"))
         assertTrue(screen.contains("drawCircle(Color(0x33C2185B),radius=radius"))
     }
 
