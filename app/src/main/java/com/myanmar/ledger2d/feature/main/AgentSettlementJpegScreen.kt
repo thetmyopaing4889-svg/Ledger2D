@@ -137,6 +137,7 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     language.text("ဒိုင်ရွေးရန်", "Select agent"),
                     selectedAgent?.name ?: language.text("ဒိုင်ရွေးပါ", "Choose agent"),
                     agents.map { it.id to it.name }, agentId, enabled = !busy,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                 ) { agentId = it; error = null }
             }
             item {
