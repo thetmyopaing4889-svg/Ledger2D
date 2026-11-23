@@ -12,6 +12,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import com.myanmar.ledger2d.core.database.LedgerDatabase
 import com.myanmar.ledger2d.core.backup.CherryBackupManager
+import com.myanmar.ledger2d.core.profile.ProfilePhotoStore
 import com.myanmar.ledger2d.core.design.WorkingContextStore
 import com.myanmar.ledger2d.core.repository.*
 import com.myanmar.ledger2d.feature.live.LiveCollector
@@ -96,6 +97,7 @@ class LedgerApplication : Application() {
 }
 
 class AppContainer(val database: LedgerDatabase) {
+    val profilePhotos = ProfilePhotoStore(LedgerApplicationContextHolder.context)
     val workingContext = WorkingContextStore()
     val agents: AgentRepository = RoomAgentRepository(database)
     val customers: CustomerRepository = RoomCustomerRepository(database.customerDao())
