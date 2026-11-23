@@ -21,6 +21,7 @@ import java.util.Locale
 internal class CustomerSettlementJpegRenderer(
     val document: CustomerSettlementDocument,
     sourceTypeface: Typeface? = null,
+    private val headerPhoto: Bitmap? = null,
 ) {
     companion object {
         const val width = 1080
@@ -184,7 +185,7 @@ internal class CustomerSettlementJpegRenderer(
         var layout: StaticLayout
         do {
             val p = textPaint(size, ink, true)
-            layout = StaticLayout.Builder.obtain(label, 0, label.length, p, 986)
+            layout = StaticLayout.Builder.obtain(label, 0, label.length, p, 830)
                 .setIncludePad(false).build()
             if (layout.height <= 92 || size <= 18f) break
             size -= 1f
@@ -194,6 +195,7 @@ internal class CustomerSettlementJpegRenderer(
         if (layout.height > 92) canvas.scale(1f, 92f / layout.height)
         layout.draw(canvas)
         canvas.restore()
+        drawJpegProfileAvatar(canvas, headerPhoto)
         stroke(canvas, 44f, 333f, 1036f, 333f, rule, 2f)
         val range = document.range
         val dates = if (range.start == range.end) niceDate(range.start)
