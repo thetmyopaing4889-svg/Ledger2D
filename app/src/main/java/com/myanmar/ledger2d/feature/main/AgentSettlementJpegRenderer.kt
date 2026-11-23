@@ -16,7 +16,10 @@ import java.util.Locale
  * Mirrors CustomerSettlementJpegRenderer's 1080 x 1920 Cherry frame and money
  * summary, but draws exactly one row per customer for the ENTIRE selected range.
  */
-internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument) {
+internal class AgentSettlementJpegRenderer(
+    val document: AgentSettlementDocument,
+    private val headerPhoto: Bitmap? = null,
+) {
     companion object {
         const val width = CustomerSettlementJpegRenderer.width
         const val height = CustomerSettlementJpegRenderer.height
@@ -139,7 +142,7 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
         var layout: StaticLayout
         do {
             val style = textPaint(size, ink, true)
-            layout = StaticLayout.Builder.obtain(label, 0, label.length, style, 986)
+            layout = StaticLayout.Builder.obtain(label, 0, label.length, style, 830)
                 .setIncludePad(false).build()
             if (layout.height <= 92 || size <= 18f) break
             size -= 1f
@@ -149,6 +152,7 @@ internal class AgentSettlementJpegRenderer(val document: AgentSettlementDocument
         if (layout.height > 92) canvas.scale(1f, 92f / layout.height)
         layout.draw(canvas)
         canvas.restore()
+        drawJpegProfileAvatar(canvas, headerPhoto)
         stroke(canvas, 44f, 333f, 1036f, 333f, rule, 2f)
         val range = document.range
         val dates = if (range.start == range.end) niceDate(range.start)
