@@ -916,10 +916,32 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     var pendingRateChange by rememberSaveable(id){mutableStateOf(false)}
     var selectedPhoto by rememberSaveable(id){mutableStateOf<String?>(null)}
     var photoRemoved by rememberSaveable(id){mutableStateOf(false)}
-    var saving by rememberSaveable(id){mutableStateOf(false)}
+    var saving by remember(id){mutableStateOf(false)}
+    var picking by remember { mutableStateOf(false) }
+    val photoScope=rememberCoroutineScope()
+    val draftKey=remember(id){vm.profilePhotos.draftToken(ProfileKind.AGENT,id)}
+    LaunchedEffect(draftKey) {
+        if (!photoRemoved && (selectedPhoto == null || !vm.profilePhotos.hasDraft(selectedPhoto!!)) &&
+            vm.profilePhotos.hasDraft(draftKey)) selectedPhoto=draftKey
+        else if (selectedPhoto != null && !vm.profilePhotos.hasDraft(selectedPhoto!!)) selectedPhoto=null
+    }
+    fun cancelForm(){
+        photoScope.launch { vm.profilePhotos.discardDraft(draftKey) }
+        onBack()
+    }
     val picker=androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri->if(uri!=null){selectedPhoto=uri.toString();photoRemoved=false} }
+    ) { uri->
+        if(uri!=null) photoScope.launch {
+            picking=true
+            try {
+                selectedPhoto=vm.profilePhotos.stageGallery(uri,draftKey)
+                photoRemoved=false
+                saveError=""
+            } catch(error:Exception) {saveError=error.message?:"Gallery ပုံ မဖတ်နိုင်ပါ"}
+            finally {picking=false}
+        }
+    }
     LaunchedEffect(existing){
         existing?.let {name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}
     }
@@ -935,9 +957,9 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         (mode=="DRAW" || (selectedKey!=null && selectedKey>=activeKey)))
     val canSave=name.trim().isNotEmpty() && rate.toLongOrNull()?.let{it>0}==true && validDate
     fun applyChange(){
-        if(!canSave||saving)return
+        if(!canSave||saving||picking)return
         val photo=when {
-            selectedPhoto!=null -> ProfilePhotoChange.Replace(android.net.Uri.parse(selectedPhoto))
+            selectedPhoto!=null -> ProfilePhotoChange.ReplaceDraft(selectedPhoto!!)
             photoRemoved -> ProfilePhotoChange.Remove
             else -> ProfilePhotoChange.Keep
         }
@@ -959,11 +981,15 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     )
     CherryProfileFormPage(
         if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",
-        onBack,vm.profilePhotos,ProfileKind.AGENT,id,selectedPhoto,photoRemoved,
+        ::cancelForm,vm.profilePhotos,ProfileKind.AGENT,id,selectedPhoto,photoRemoved,
         onPick={picker.launch(androidx.activity.result.PickVisualMediaRequest(
             androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))},
-        onRemove={selectedPhoto=null;photoRemoved=true},
-        canSave=canSave,saving=saving,
+        onRemove={
+            selectedPhoto=null
+            photoRemoved=true
+            photoScope.launch {vm.profilePhotos.discardDraft(draftKey)}
+        },
+        canSave=canSave&&!picking,saving=saving,
         onSave={if(rateIsChanging)pendingRateChange=true else applyChange()},
     ) {
         CherryProfileField(name,{name=it},"အမည်",Icons.Default.Person,true)
@@ -1000,10 +1026,34 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
     var error by rememberSaveable(id){mutableStateOf("")}
     var selectedPhoto by rememberSaveable(id){mutableStateOf<String?>(null)}
     var photoRemoved by rememberSaveable(id){mutableStateOf(false)}
-    var saving by rememberSaveable(id){mutableStateOf(false)}
+    var saving by remember(id){mutableStateOf(false)}
+    var picking by remember { mutableStateOf(false) }
+    val photoScope=rememberCoroutineScope()
+    val draftKey=remember(id,agentId){
+        vm.profilePhotos.draftToken(ProfileKind.CUSTOMER,id,agentId)
+    }
+    LaunchedEffect(draftKey) {
+        if (!photoRemoved && (selectedPhoto == null || !vm.profilePhotos.hasDraft(selectedPhoto!!)) &&
+            vm.profilePhotos.hasDraft(draftKey)) selectedPhoto=draftKey
+        else if (selectedPhoto != null && !vm.profilePhotos.hasDraft(selectedPhoto!!)) selectedPhoto=null
+    }
+    fun cancelForm(){
+        photoScope.launch { vm.profilePhotos.discardDraft(draftKey) }
+        onBack()
+    }
     val picker=androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri->if(uri!=null){selectedPhoto=uri.toString();photoRemoved=false} }
+    ) { uri->
+        if(uri!=null) photoScope.launch {
+            picking=true
+            try {
+                selectedPhoto=vm.profilePhotos.stageGallery(uri,draftKey)
+                photoRemoved=false
+                error=""
+            } catch(failure:Exception) {error=failure.message?:"Gallery ပုံ မဖတ်နိုင်ပါ"}
+            finally {picking=false}
+        }
+    }
     LaunchedEffect(existing){
         existing?.let { name=it.name; address=it.address; phone=it.phone; remark=it.remark }
     }
@@ -1012,9 +1062,9 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         rate<=java.math.BigDecimal(100) && rate.movePointRight(2).stripTrailingZeros().scale()<=0
     val canSave=name.trim().isNotEmpty() && (id>0L||validCommission)
     fun applyChange(){
-        if(!canSave||saving)return
+        if(!canSave||saving||picking)return
         val photo=when {
-            selectedPhoto!=null -> ProfilePhotoChange.Replace(android.net.Uri.parse(selectedPhoto))
+            selectedPhoto!=null -> ProfilePhotoChange.ReplaceDraft(selectedPhoto!!)
             photoRemoved -> ProfilePhotoChange.Remove
             else -> ProfilePhotoChange.Keep
         }
@@ -1025,11 +1075,15 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
     }
     CherryProfileFormPage(
         if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",
-        onBack,vm.profilePhotos,ProfileKind.CUSTOMER,id,selectedPhoto,photoRemoved,
+        ::cancelForm,vm.profilePhotos,ProfileKind.CUSTOMER,id,selectedPhoto,photoRemoved,
         onPick={picker.launch(androidx.activity.result.PickVisualMediaRequest(
             androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))},
-        onRemove={selectedPhoto=null;photoRemoved=true},
-        canSave=canSave,saving=saving,onSave={applyChange()},
+        onRemove={
+            selectedPhoto=null
+            photoRemoved=true
+            photoScope.launch {vm.profilePhotos.discardDraft(draftKey)}
+        },
+        canSave=canSave&&!picking,saving=saving,onSave={applyChange()},
     ) {
         CherryProfileField(name,{name=it},"အမည်",Icons.Default.Person,true)
         CherryProfileField(address,{address=it},"လိပ်စာ",Icons.Default.Place)
