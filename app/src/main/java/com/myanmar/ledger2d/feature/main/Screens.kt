@@ -936,12 +936,14 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     var photoRemoved by rememberSaveable(id){mutableStateOf(false)}
     var saving by remember(id){mutableStateOf(false)}
     var picking by remember { mutableStateOf(false) }
+    var cropOpen by rememberSaveable(id) { mutableStateOf(false) }
     val photoScope=rememberCoroutineScope()
     val draftKey=remember(id){vm.profilePhotos.draftToken(ProfileKind.AGENT,id)}
     LaunchedEffect(draftKey) {
         if (!photoRemoved && (selectedPhoto == null || !vm.profilePhotos.hasDraft(selectedPhoto!!)) &&
             vm.profilePhotos.hasDraft(draftKey)) selectedPhoto=draftKey
         else if (selectedPhoto != null && !vm.profilePhotos.hasDraft(selectedPhoto!!)) selectedPhoto=null
+        if (vm.profilePhotos.hasStaged(draftKey)) cropOpen=true
     }
     fun cancelForm(){
         // Navigation disposes the composable scope; delete before leaving.
@@ -954,12 +956,34 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         if(uri!=null) photoScope.launch {
             picking=true
             try {
-                selectedPhoto=vm.profilePhotos.stageGallery(uri,draftKey)
-                photoRemoved=false
+                vm.profilePhotos.stageGallery(uri,draftKey)
+                cropOpen=true
                 saveError=""
             } catch(error:Exception) {saveError=error.message?:"Gallery ပုံ မဖတ်နိုင်ပါ"}
             finally {picking=false}
         }
+    }
+    if(cropOpen) {
+        CherryProfileCropDialog(
+            stagedPhoto=vm.profilePhotos.stagedFile(draftKey),
+            onCancel={
+                vm.profilePhotos.discardStaged(draftKey)
+                cropOpen=false
+            },
+            onConfirm={zoom,panX,panY ->
+                if(!picking) photoScope.launch {
+                    picking=true
+                    try {
+                        selectedPhoto=vm.profilePhotos.cropStaged(draftKey,zoom,panX,panY)
+                        photoRemoved=false
+                        cropOpen=false
+                        saveError=""
+                    } catch(failure:Exception) {
+                        saveError=failure.message?:"ပုံဖြတ်၍ မရပါ"
+                    } finally { picking=false }
+                }
+            },
+        )
     }
     LaunchedEffect(existing){
         existing?.let {name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}
@@ -1047,6 +1071,7 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
     var photoRemoved by rememberSaveable(id){mutableStateOf(false)}
     var saving by remember(id){mutableStateOf(false)}
     var picking by remember { mutableStateOf(false) }
+    var cropOpen by rememberSaveable(id) { mutableStateOf(false) }
     val photoScope=rememberCoroutineScope()
     val draftKey=remember(id,agentId){
         vm.profilePhotos.draftToken(ProfileKind.CUSTOMER,id,agentId)
@@ -1055,6 +1080,7 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         if (!photoRemoved && (selectedPhoto == null || !vm.profilePhotos.hasDraft(selectedPhoto!!)) &&
             vm.profilePhotos.hasDraft(draftKey)) selectedPhoto=draftKey
         else if (selectedPhoto != null && !vm.profilePhotos.hasDraft(selectedPhoto!!)) selectedPhoto=null
+        if (vm.profilePhotos.hasStaged(draftKey)) cropOpen=true
     }
     fun cancelForm(){
         // Navigation disposes the composable scope; delete before leaving.
@@ -1067,12 +1093,34 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         if(uri!=null) photoScope.launch {
             picking=true
             try {
-                selectedPhoto=vm.profilePhotos.stageGallery(uri,draftKey)
-                photoRemoved=false
+                vm.profilePhotos.stageGallery(uri,draftKey)
+                cropOpen=true
                 error=""
             } catch(failure:Exception) {error=failure.message?:"Gallery ပုံ မဖတ်နိုင်ပါ"}
             finally {picking=false}
         }
+    }
+    if(cropOpen) {
+        CherryProfileCropDialog(
+            stagedPhoto=vm.profilePhotos.stagedFile(draftKey),
+            onCancel={
+                vm.profilePhotos.discardStaged(draftKey)
+                cropOpen=false
+            },
+            onConfirm={zoom,panX,panY ->
+                if(!picking) photoScope.launch {
+                    picking=true
+                    try {
+                        selectedPhoto=vm.profilePhotos.cropStaged(draftKey,zoom,panX,panY)
+                        photoRemoved=false
+                        cropOpen=false
+                        error=""
+                    } catch(failure:Exception) {
+                        error=failure.message?:"ပုံဖြတ်၍ မရပါ"
+                    } finally { picking=false }
+                }
+            },
+        )
     }
     LaunchedEffect(existing){
         existing?.let { name=it.name; address=it.address; phone=it.phone; remark=it.remark }
