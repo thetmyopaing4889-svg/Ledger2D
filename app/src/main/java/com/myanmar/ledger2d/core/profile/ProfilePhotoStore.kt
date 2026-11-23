@@ -74,6 +74,7 @@ class ProfilePhotoStore(private val context: Context) {
             try {
                 requireNotNull(photo.temp).copyTo(partial, overwrite = true)
                 synchronized(fileLock) { atomicMove(partial, output) }
+                notifyChanged()
             } finally { partial.delete() }
             token
         } finally { photo.cleanup() }
