@@ -7,7 +7,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,19 +33,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.myanmar.ledger2d.R
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.profile.ProfileKind
 import com.myanmar.ledger2d.core.profile.ProfilePhotoStore
@@ -138,7 +131,9 @@ internal fun CherryProfileAvatar(
     }
 }
 
-/** Only the two profile forms use this header. Shared AppScaffold remains untouched. */
+/** Profile forms share the same centered title and left Back arrow as other inner screens.
+ * Only HomeScreen uses the large illustrated Cherry header.
+ */
 @Composable
 internal fun CherryProfileFormPage(
     title: String, onBack: () -> Unit,
@@ -148,102 +143,40 @@ internal fun CherryProfileFormPage(
     canSave: Boolean, saving: Boolean = false, onSave: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val quickEntry = LocalQuickEntryAction.current
-    // Android system Back performs the same draft cleanup as the visible Cancel button.
+    // System Back, top-bar Back, and Cancel share the caller's cleanup action.
     BackHandler(onBack = onBack)
-    Scaffold(
-        containerColor = Color(0xFFFCEEF3),
-        floatingActionButton = { quickEntry?.let { QuickEntryFab(it) } },
-        topBar = {
-            Box(Modifier.fillMaxWidth().height(274.dp)) {
-                Image(painter = androidx.compose.ui.res.painterResource(R.drawable.cherry_header_art),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(213.dp)
-                        .clip(RoundedCornerShape(bottomStart=54.dp, bottomEnd=54.dp)),
-                    contentScale = ContentScale.Crop)
-                Box(Modifier.fillMaxWidth().height(213.dp)
-                    .clip(RoundedCornerShape(bottomStart=54.dp,bottomEnd=54.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0x44000000),Color.Transparent))))
-                // Title belongs entirely inside the crimson hero, ABOVE the avatar.
-                // Cherry illustration lives on the left, so bound the title on the right.
-                Text(
-                    LocalLanguage.current.translate(title),
-                    modifier=Modifier.fillMaxWidth().statusBarsPadding()
-                        .padding(start=141.dp,end=18.dp,top=23.dp),
-                    color=Color.White,
-                    style=MaterialTheme.typography.titleLarge.copy(
-                        fontSize=20.sp,lineHeight=28.sp),
-                    fontWeight=FontWeight.Black,
-                    textAlign=TextAlign.End,
-                    maxLines=2,
-                    overflow=TextOverflow.Ellipsis,
-                )
-                // The arrow sits in the blush strip BELOW the cherry artwork:
-                // no white circular button, no fruit obstruction or title collision.
-                IconButton(
-                    onClick=onBack,
-                    modifier=Modifier.align(Alignment.BottomStart)
-                        .padding(start=12.dp,bottom=17.dp).size(40.dp),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription="နောက်သို့",tint=cherryWine,
-                        modifier=Modifier.size(27.dp))
-                }
-                CherryProfileAvatar(photos,kind,id,Modifier.align(Alignment.BottomCenter).size(136.dp),
-                    pickedUri,removed,onPick,onRemove)
-            }
-        },
-    ) { padding ->
+    AppScaffold(title=title, onBack=onBack) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding)
                 .background(Brush.verticalGradient(listOf(gentleBlush, Color(0xFFFCEEF3))))
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal=17.dp,vertical=12.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(horizontal=17.dp,vertical=18.dp),
+            horizontalAlignment=Alignment.CenterHorizontally,
+            verticalArrangement=Arrangement.spacedBy(18.dp),
         ) {
-            // An actual layered, translucent frosted pane: a softly lit rose
-            // backdrop shows THROUGH the glass instead of a flat white Card.
-            val paneShape=RoundedCornerShape(28.dp)
+            // The avatar is in the scrollable content, never overlapping the header.
+            CherryProfileAvatar(
+                photos, kind, id, Modifier.size(126.dp),
+                pickedUri, removed, onPick, onRemove,
+            )
+            val paneShape=RoundedCornerShape(26.dp)
             Box(
                 Modifier.fillMaxWidth()
-                    .homeRubyShadow(radius=28.dp,blur=20.dp,offsetY=8.dp,
-                        tint=Color(0x43880E4F))
+                    .homeRubyShadow(radius=26.dp,blur=16.dp,offsetY=7.dp,
+                        tint=Color(0x32880E4F))
                     .clip(paneShape)
-                    .background(Brush.linearGradient(listOf(
-                        Color(0xFFE6A8C4),Color(0xFFF3D4DF),Color(0xFFDFA2BD))))
-                    .border(1.5.dp,Color.White,paneShape),
+                    .background(Brush.verticalGradient(listOf(
+                        Color(0xFFFEF8FB),Color(0xFFF4DFE9))))
+                    .border(1.dp,Color(0xF5FFFFFF),paneShape),
             ) {
-                Canvas(Modifier.matchParentSize()) {
-                    drawCircle(
-                        Brush.radialGradient(
-                            listOf(Color(0xC5ED6D9F),Color.Transparent),
-                            center=Offset(size.width*.16f,size.height*.23f),
-                            radius=size.width*.66f),
-                        radius=size.width*.66f,center=Offset(size.width*.16f,size.height*.23f))
-                    drawCircle(
-                        Brush.radialGradient(
-                            listOf(Color(0x8DF4B57C),Color.Transparent),
-                            center=Offset(size.width*.72f,size.height*.46f),
-                            radius=size.width*.51f),
-                        radius=size.width*.51f,center=Offset(size.width*.72f,size.height*.46f))
-                    drawCircle(
-                        Brush.radialGradient(
-                            listOf(Color(0xA7A965A0),Color.Transparent),
-                            center=Offset(size.width*.86f,size.height*.83f),
-                            radius=size.width*.60f),
-                        radius=size.width*.60f,center=Offset(size.width*.86f,size.height*.83f))
-                }
-                Box(Modifier.matchParentSize().background(
-                    Brush.verticalGradient(listOf(
-                        Color(0xC6FFFFFF),Color(0x9EFFFFFF),Color(0xB8FFFFFF)))))
+                // One soft gloss and one outer border; no layered inner frames.
                 Box(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                    .padding(horizontal=9.dp,vertical=2.dp).height(3.dp)
-                    .clip(RoundedCornerShape(50))
+                    .padding(horizontal=18.dp).height(2.dp)
                     .background(Brush.horizontalGradient(listOf(
-                        Color.Transparent,Color(0xD9FFFFFF),Color.Transparent))))
+                        Color.Transparent,Color(0xCEFFFFFF),Color.Transparent))))
                 Column(
-                    Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=20.dp),
-                    verticalArrangement=Arrangement.spacedBy(15.dp),
+                    Modifier.fillMaxWidth().padding(horizontal=15.dp,vertical=19.dp),
+                    verticalArrangement=Arrangement.spacedBy(14.dp),
                     content=content,
                 )
             }
@@ -296,7 +229,7 @@ internal fun CherryProfileFormPage(
                     }
                 }
             }
-            Spacer(Modifier.height(104.dp)) // Keeps the intentionally global + reachable.
+            Spacer(Modifier.height(104.dp)) // Keep the global Quick Entry FAB reachable.
         }
     }
 }
@@ -309,48 +242,44 @@ internal fun CherryProfileField(
     keyboard: KeyboardType = KeyboardType.Text,
 ) {
     val language=LocalLanguage.current
-    val fieldShape=RoundedCornerShape(28.dp)
+    val fieldShape=RoundedCornerShape(20.dp)
     val interaction=remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    // One glass pill owns both its fill and its SINGLE outline.
-    // Do not nest Material OutlinedTextField's decorated capsule here:
-    // that created the extra white crescent visible above every input.
+    // A single border encloses the always-visible label and editable text.
     Row(
-        modifier=Modifier.fillMaxWidth().heightIn(min=70.dp)
-            .shadow(2.dp,fieldShape,
-                ambientColor=Color(0x23880E4F),spotColor=Color(0x23880E4F))
+        modifier=Modifier.fillMaxWidth().heightIn(min=72.dp)
             .clip(fieldShape)
-            .background(Brush.linearGradient(listOf(
-                Color(0xD8FFFFFF),Color(0x9AFFFFFF),Color(0xB7FFF4F8))))
+            .background(Brush.verticalGradient(listOf(
+                Color(0xFFFDFBFC),Color(0xFFF8EDF2))))
             .border(
-                if(focused) 1.4.dp else 1.dp,
-                if(focused) cherryRed else Color(0xA6DCA3BA),
+                if(focused) 1.5.dp else 1.dp,
+                if(focused) cherryRed else Color(0xC8DDAABD),
                 fieldShape),
         verticalAlignment=Alignment.CenterVertically,
     ) {
         Icon(icon,contentDescription=null,tint=cherryWine,
-            modifier=Modifier.padding(start=18.dp).size(24.dp))
-        BasicTextField(
-            value=value,
-            onValueChange=onValue,
-            modifier=Modifier.weight(1f)
-                .padding(start=15.dp,end=17.dp,top=17.dp,bottom=17.dp),
-            singleLine=label!="မှတ်ချက်",
-            keyboardOptions=KeyboardOptions(keyboardType=keyboard),
-            interactionSource=interaction,
-            cursorBrush=SolidColor(cherryWine),
-            textStyle=MaterialTheme.typography.bodyLarge.copy(
-                color=cherryWine,fontWeight=FontWeight.Medium),
-            decorationBox={ innerTextField ->
-                Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterStart) {
-                    if(value.isEmpty()) {
-                        Text(language.translate(label)+(if(required)" *" else ""),
-                            color=Color(0xFF806B75),
-                            style=MaterialTheme.typography.bodyLarge)
-                    }
-                    innerTextField()
-                }
-            },
-        )
+            modifier=Modifier.padding(start=16.dp).size(22.dp))
+        Column(
+            Modifier.weight(1f).padding(start=13.dp,end=15.dp,top=12.dp,bottom=12.dp),
+            verticalArrangement=Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                language.translate(label)+(if(required)" *" else ""),
+                color=if(focused)cherryRed else Color(0xFF806B75),
+                style=MaterialTheme.typography.labelMedium,
+                maxLines=2,
+            )
+            BasicTextField(
+                value=value,
+                onValueChange=onValue,
+                modifier=Modifier.fillMaxWidth().heightIn(min=24.dp),
+                singleLine=label!="မှတ်ချက်",
+                keyboardOptions=KeyboardOptions(keyboardType=keyboard),
+                interactionSource=interaction,
+                cursorBrush=SolidColor(cherryWine),
+                textStyle=MaterialTheme.typography.bodyLarge.copy(
+                    color=cherryWine,fontWeight=FontWeight.Medium),
+            )
+        }
     }
 }
