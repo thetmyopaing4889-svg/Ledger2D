@@ -31,16 +31,15 @@ class AtomicProfileSaveTest {
         photos.draftFile(key).parentFile!!.mkdirs()
         photos.draftFile(key).writeBytes(first)
         try {
-            assertThrows(IllegalStateException::class.java) {
-                runBlocking {
+            val abort = runCatching {
                     saveProfileAtomically(db,photos,ProfileKind.AGENT,
                         ProfilePhotoChange.ReplaceDraft(key),
                         saveRecord={ db.agentDao().upsert(AgentEntity(
                             name="Test agent",rate=80L,createdAt=1L,updatedAt=1L)) },
                         afterPhotoApplied={ error("Simulated failure between photo write and commit") },
                     )
-                }
-            }
+            }.exceptionOrNull()
+            assertTrue(abort is IllegalStateException)
             assertTrue(db.agentDao().observeAll().first().isEmpty())
             assertTrue(photos.hasDraft(key))
             assertFalse(photos.photoDirectoryForTest().listFiles().orEmpty()
@@ -74,8 +73,7 @@ class AtomicProfileSaveTest {
         photos.draftFile(key).parentFile!!.mkdirs()
         photos.draftFile(key).writeBytes(second)
         try {
-            assertThrows(IllegalStateException::class.java) {
-                runBlocking {
+            val abort = runCatching {
                     saveProfileAtomically(db,photos,ProfileKind.AGENT,
                         ProfilePhotoChange.ReplaceDraft(key),
                         saveRecord={
@@ -84,8 +82,8 @@ class AtomicProfileSaveTest {
                         },
                         afterPhotoApplied={ error("Force rollback after replacing photo") },
                     )
-                }
-            }
+            }.exceptionOrNull()
+            assertTrue(abort is IllegalStateException)
             assertEquals("Before",db.agentDao().get(id)!!.name)
             assertArrayEquals(first,oldPhoto.readBytes())
             assertTrue(photos.hasDraft(key))
@@ -107,8 +105,7 @@ class AtomicProfileSaveTest {
         photos.draftFile(key).parentFile!!.mkdirs()
         photos.draftFile(key).writeBytes(first)
         try {
-            assertThrows(IllegalStateException::class.java) {
-                runBlocking {
+            val abort = runCatching {
                     saveProfileAtomically(db,photos,ProfileKind.CUSTOMER,
                         ProfilePhotoChange.ReplaceDraft(key),
                         saveRecord={ db.customerDao().upsert(CustomerEntity(
@@ -116,8 +113,8 @@ class AtomicProfileSaveTest {
                             createdAt=1L,updatedAt=1L)) },
                         afterPhotoApplied={ error("Simulated interruption") },
                     )
-                }
-            }
+            }.exceptionOrNull()
+            assertTrue(abort is IllegalStateException)
             assertTrue(db.customerDao().getForAgent(agentId).isEmpty())
             assertTrue(photos.hasDraft(key))
         } finally {
