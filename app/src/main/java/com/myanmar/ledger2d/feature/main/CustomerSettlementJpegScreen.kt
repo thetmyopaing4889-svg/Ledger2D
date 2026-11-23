@@ -150,6 +150,7 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     language.text("ဒိုင်ရွေးရန်", "Select agent"),
                     agents.firstOrNull { it.id == agentId }?.name ?: "—",
                     agents.map { it.id to it.name }, agentId,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                 ) { agentId = it; customerId = -1L; error = null }
             }
             item {
@@ -158,6 +159,7 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     chosenCustomer?.name ?: language.text("ထိုးသားရွေးပါ", "Choose customer"),
                     customers.map { it.id to it.name }, customerId,
                     enabled = agentId > 0L,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
                 ) { customerId = it; error = null }
             }
             item {
