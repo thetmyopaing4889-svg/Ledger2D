@@ -13,8 +13,8 @@ internal suspend fun saveProfileAtomically(
     photos: ProfilePhotoStore,
     kind: ProfileKind,
     photoChange: ProfilePhotoChange,
-    saveRecord: suspend () -> Long,
     afterPhotoApplied: () -> Unit = {},
+    saveRecord: suspend () -> Long,
 ): Long {
     val prepared = photos.prepare(photoChange)
     var applied: ProfilePhotoStore.AppliedChange? = null
