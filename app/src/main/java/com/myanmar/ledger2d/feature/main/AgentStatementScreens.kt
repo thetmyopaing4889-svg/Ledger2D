@@ -532,7 +532,7 @@ fun AgentStatementResults(
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Surface(onClick = { openedAgent = if (open) -1L else id }, color = Color.Transparent) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(agentNames[id] ?: "Agent #$id", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                                        CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,id,agentNames[id] ?: "Agent #$id",Modifier.weight(1f),avatarSize=32.dp)
                                         Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                                     }
                                 }
