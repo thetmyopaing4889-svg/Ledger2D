@@ -128,7 +128,7 @@ class ProfilePhotoStore(private val context: Context) {
             val bitmap = BitmapFactory.decodeFile(source.absolutePath)
                 ?: error("Crop လုပ်မည့်ပုံ မဖတ်နိုင်ပါ")
             val cropped = try {
-                squareCrop(bitmap, zoom, panX, panY)
+                CropMath.squareCrop(bitmap, zoom, panX, panY)
             } finally { bitmap.recycle() }
             val destination = draftFile(token)
             val intermediate = File(destination.parentFile,
