@@ -412,6 +412,9 @@ fun CustomerFeatureWorkspaceScreen(
 fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, String>>, value: Long, modifier: Modifier = Modifier, enabled: Boolean = true, compact: Boolean = true,
     avatar: (@Composable (Long) -> Unit)? = null, onSelect: (Long) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    val leadingPhoto: (@Composable () -> Unit)? = if (avatar != null && value > 0L) {
+        { avatar(value) }
+    } else null
     ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = !expanded }, modifier = modifier) {
         if (compact) {
             // Shared EN/MM selector: same field geometry for all screens.
@@ -435,11 +438,11 @@ fun ScopeDropdown(label: String, selected: String, options: List<Pair<Long, Stri
                         )
                     )
                 },
-                leadingIcon = avatar?.takeIf { value > 0L }?.let { photo -> { photo(value) } },
+                leadingIcon = leadingPhoto,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) }
             )
         } else {
-        OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) }, leadingIcon = avatar?.takeIf { value > 0L }?.let { photo -> { photo(value) } }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
+        OutlinedTextField(selected, {}, Modifier.fillMaxWidth().menuAnchor(), enabled = enabled, readOnly = true, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) }, leadingIcon = leadingPhoto, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) })
         }
         ExposedDropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
             options.forEach { (id, title) ->
