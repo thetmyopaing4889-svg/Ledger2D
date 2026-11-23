@@ -28,7 +28,7 @@ class CherryProfileIntegrationContractTest {
         assertFalse(forms.contains("CameraPermission"))
         assertTrue(forms.contains("LocalQuickEntryAction.current"))
         assertTrue(forms.contains("QuickEntryFab(it)"))
-        assertTrue(forms.contains("onRemove="))
+        assertTrue(forms.contains("onRemove: (() -> Unit)? = null"))
     }
 
     @Test fun saveValidationIsExplicitAndBusinessRatesDoNotChange() {
