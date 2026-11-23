@@ -3,6 +3,7 @@ package com.myanmar.ledger2d.feature.main
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -77,8 +78,9 @@ internal fun CherryProfileAvatar(
         value = withContext(Dispatchers.IO) {
             runCatching {
                 if (removed) null else decodeThumbnail(
-                    context, pickedUri?.let(Uri::parse),
-                    if (pickedUri == null && id > 0L) photos.photoFile(kind, id) else null,
+                    context, null,
+                    if (pickedUri != null) photos.draftFile(pickedUri)
+                    else if (id > 0L) photos.photoFile(kind, id) else null,
                 )
             }.getOrNull()
         }
@@ -134,6 +136,8 @@ internal fun CherryProfileFormPage(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val quickEntry = LocalQuickEntryAction.current
+    // Android system Back performs the same draft cleanup as the visible Cancel button.
+    BackHandler(onBack = onBack)
     Scaffold(
         containerColor = Color(0xFFFCEEF3),
         floatingActionButton = { quickEntry?.let { QuickEntryFab(it) } },
