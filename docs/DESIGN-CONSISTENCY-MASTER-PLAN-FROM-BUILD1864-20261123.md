@@ -194,7 +194,7 @@ For each changed screen, record a before/after screenshot and verify:
 
 | Milestone | Exit gate | Status |
 |---|---|---|
-| M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | IN PROGRESS |
+| M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
 | M1 — Management audit and UI changes | A01–A09 checked/fixed or explicitly NO CHANGE; accepted Form untouched; CI+device QA | NOT STARTED |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+device QA | NOT STARTED |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
@@ -218,6 +218,7 @@ This section is the **source of truth for future sessions**. After a passed mile
 **Initial checkpoint, 2026-11-23:**
 - Base Build **1864** = SUCCESS, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`.
 - Plan created before any styling changes, on `feature/design-consistency-from-build1864-20261123`.
+- Plan-only commit `2cfb6cadfea66ce0ecd67e2cc3bdfbba0d94ac06` verified against Build 1864: **one added docs Markdown file; zero UI/code changes**.
 - Last completed user-visible task = profile photo integration/coverage (Build 1864).
 - No design consistency UI tasks have been implemented or accepted yet.
 - **Next action:** verify this plan-only commit, then tackle **A01/A02 Agent/Customer Dashboard** first, preserving accepted shared landing-card design. Continue A03/A04 lists and A05/A06 information cards only after checks. Update this log after each accepted APK.
