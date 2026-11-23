@@ -79,12 +79,14 @@ class CherryProfileIntegrationContractTest {
     }
 
     @Test fun weekColorsAndHomeGraphicsRemainIntact() {
-        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFD4E0)"))
-        assertTrue(screen.contains("morning && digit==\"--\" -> Color(0xFFF9DEE8)"))
-        assertTrue(screen.contains("!morning && digit==\"--\" -> Color(0xFFEBDCED)"))
-        assertTrue(screen.contains("morning -> Color(0xFFF6BFD3)"))
-        assertTrue(screen.contains("else -> Color(0xFFE3CDE7)"))
-        assertTrue(screen.contains("drawCircle(Color(0x66C2185B),radius=radius"))
+        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFE1EA)"))
+        assertTrue(screen.contains("isPending -> Color(0xFFF3F0F1)"))
+        assertTrue(screen.contains("morning -> Color(0xFFFFF0F5)"))
+        assertTrue(screen.contains("else -> Color.White"))
+        assertTrue(screen.contains("val isTodayPending = date==today && isPending"))
+        assertTrue(screen.contains("if(isTodayPending) Color(0xFFEA93B0)"))
+        assertTrue(screen.contains("Color(0xFFFFF3F7)"))
+        assertTrue(screen.contains("else if(isPending) Color(0x2FC2185B)"))
         assertTrue(screen.contains("R.drawable.cherry_header_art"))
         assertTrue(screen.contains("R.drawable.btn_cherry_orb"))
         assertTrue(screen.contains("R.drawable.bg_live_wave"))
