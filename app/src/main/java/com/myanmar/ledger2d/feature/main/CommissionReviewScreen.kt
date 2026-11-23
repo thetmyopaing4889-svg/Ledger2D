@@ -128,7 +128,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                 item {
                     ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), selectedName,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
-                        agentId) { agentId = it }
+                        agentId, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,photoId,Modifier.size(32.dp)) }) { agentId = it }
                 }
                 item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
@@ -153,7 +153,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                 }
             }
         } else if (range != null) {
-            CommissionReviewResults(filtered, agentId, selectedName, range, draw,
+            CommissionReviewResults(vm, filtered, agentId, selectedName, range, draw,
                 { resultPage = false }, Modifier.fillMaxSize().padding(padding))
         }
     }
@@ -161,6 +161,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun CommissionReviewResults(
+    vm: LedgerViewModel,
     rows: List<CommissionLedgerLine>,
     agentId: Long,
     selectedName: String,
@@ -176,7 +177,7 @@ private fun CommissionReviewResults(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(selectedName, fontWeight = FontWeight.Bold)
+                    CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,selectedName,Modifier.fillMaxWidth())
                     Text(range.start.reviewDate() + " – " + range.end.reviewDate() + " • " +
                         (draw?.reviewLabel() ?: "နှစ်ကြိမ်လုံး"),
                         style = MaterialTheme.typography.labelSmall,
@@ -215,7 +216,7 @@ private fun CommissionReviewResults(
             }
             if (agentId == -1L && view == "agents") {
                 items(groups, key = { it.first }) { (_, lines) ->
-                    CommissionAgentGroup(lines)
+                    CommissionAgentGroup(vm, lines)
                 }
             } else {
                 val dates = rows.groupBy { it.date }.toList().sortedByDescending { it.first }
@@ -246,7 +247,7 @@ private fun CommissionMoneyRow(label: String, amount: Long, bold: Boolean = fals
 }
 
 @Composable
-private fun CommissionAgentGroup(lines: List<CommissionLedgerLine>) {
+private fun CommissionAgentGroup(vm: LedgerViewModel, lines: List<CommissionLedgerLine>) {
     val first = lines.firstOrNull() ?: return
     var open by rememberSaveable(first.agentId) { mutableStateOf(false) }
     OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
@@ -254,7 +255,7 @@ private fun CommissionAgentGroup(lines: List<CommissionLedgerLine>) {
             Surface(onClick = { open = !open }) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(first.agentName, fontWeight = FontWeight.Bold)
+                        CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,first.agentId,first.agentName,Modifier.fillMaxWidth(),avatarSize=34.dp)
                         Text(CommissionLedgerCalculator.total(lines).commissionMoney(),
                             style = MaterialTheme.typography.bodyMedium)
                     }
