@@ -115,7 +115,7 @@ class HomePremiumVisualContractTest {
         assertTrue(screen.contains("onSelect(date,session,digit,stats.first,stats.second)"))
         assertTrue(screen.contains("val radius=size.minDimension/2f-1.dp.toPx()"))
         assertTrue(screen.contains("val dayTint=when {"))
-        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFE1EA)"))
+        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFD4E0)"))
         assertTrue(screen.contains("morning && digit==\"--\" -> Color(0xFFF9DEE8)"))
         assertTrue(screen.contains("!morning && digit==\"--\" -> Color(0xFFEBDCED)"))
         assertTrue(screen.contains("morning -> Color(0xFFF6BFD3)"))

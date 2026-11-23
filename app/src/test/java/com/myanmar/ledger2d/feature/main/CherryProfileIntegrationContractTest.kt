@@ -42,7 +42,7 @@ class CherryProfileIntegrationContractTest {
         assertTrue(vm.contains("saveWithRateSchedule(entity,effectiveDate,effectiveSession,forceSessionReprice)"))
         assertTrue(vm.contains("commissionRateBasisPoints=old?.commissionRateBasisPoints?:openingRate!!"))
         assertFalse(screen.contains("ကော်မရှင်ကို 0% သတ်မှတ်လိုပါက 0 ဟု ကိုယ်တိုင်ထည့်ပါ"))
-        assertTrue(forms.contains("enabled=canSave&&!saving"))
+        assertTrue(forms.contains("onClick=onSave,enabled=saveEnabled"))
     }
 
     @Test fun galleryPhotoIsBoundToRecordAndShownInAllProfileSurfaces() {
@@ -79,7 +79,7 @@ class CherryProfileIntegrationContractTest {
     }
 
     @Test fun weekColorsAndHomeGraphicsRemainIntact() {
-        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFE1EA)"))
+        assertTrue(screen.contains("date in closedSet -> Color(0xFFFFD4E0)"))
         assertTrue(screen.contains("morning && digit==\"--\" -> Color(0xFFF9DEE8)"))
         assertTrue(screen.contains("!morning && digit==\"--\" -> Color(0xFFEBDCED)"))
         assertTrue(screen.contains("morning -> Color(0xFFF6BFD3)"))
