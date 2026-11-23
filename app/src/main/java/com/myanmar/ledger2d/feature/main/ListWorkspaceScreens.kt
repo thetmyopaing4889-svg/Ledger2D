@@ -1,6 +1,11 @@
 package com.myanmar.ledger2d.feature.main
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -19,12 +28,47 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
 import com.myanmar.ledger2d.core.profile.ProfileKind
+import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
+
+// Follow the Home-first design standard, but keep effects static and lightweight in
+// long scrolling lists: one translucent glass pane, a white rim and a small ruby shadow.
+private val managementBlushBackground = Brush.verticalGradient(
+    listOf(Color(0xFFF6DCE5), Color(0xFFF9E3EB), Color(0xFFFCEEF3))
+)
+private val managementListShape = RoundedCornerShape(20.dp)
+private val managementProfileShape = RoundedCornerShape(24.dp)
+
+private fun Modifier.managementGlassPane(
+    shape: RoundedCornerShape,
+    shadowDepth: androidx.compose.ui.unit.Dp = 3.dp,
+): Modifier = this
+    .shadow(
+        elevation = shadowDepth, shape = shape,
+        ambientColor = Color(0x26880E4F), spotColor = Color(0x35880E4F),
+    )
+    .clip(shape)
+    .background(Color(0xEBFFFFFF))
+    .border(1.5.dp, Color.White.copy(alpha = 0.95f), shape)
+
+@Composable
+private fun ManagementListGlassCard(
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        Modifier.fillMaxWidth()
+            .managementGlassPane(managementListShape)
+            .clickable(onClick = onClick),
+    ) {
+        content()
+    }
+}
 
 /**
  * Search the existing agent records only; never merges the same customer name
@@ -51,7 +95,7 @@ fun AgentListWorkspaceScreen(
 
     AppScaffold(l.translate("Agent List"), onBack) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).background(managementBlushBackground),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -66,6 +110,11 @@ fun AgentListWorkspaceScreen(
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အမည် / ဖုန်း / လိပ်စာ ရှာရန်")) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xEBFFFFFF),
+                            unfocusedContainerColor = Color(0xEBFFFFFF),
+                            focusedBorderColor = AppColors.PrimaryDeep,
+                        ),
                         trailingIcon = {
                             if (search.isNotEmpty()) IconButton(onClick = { search = "" }) {
                                 Icon(Icons.Default.Clear, contentDescription = "ရှာဖွေမှုရှင်းရန်")
@@ -93,7 +142,15 @@ fun AgentListWorkspaceScreen(
                 }
             }
             item {
-                OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = onAdd,
+                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.dp, AppColors.PrimaryDeep),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color(0xEBFFFFFF),
+                        contentColor = AppColors.PrimaryDeep,
+                    ),
+                ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(l.translate("ဒိုင်အသစ်ထည့်ရန်"))
@@ -107,7 +164,7 @@ fun AgentListWorkspaceScreen(
 private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> Unit) {
     val customers by vm.customers(agent.id)
         .collectAsStateWithLifecycle(initialValue = emptyList())
-    ElevatedCard(onClick = onInfo, modifier = Modifier.fillMaxWidth()) {
+    ManagementListGlassCard(onClick = onInfo) {
         ListItem(
             headlineContent = { Text(agent.name, fontWeight = FontWeight.Bold) },
             supportingContent = {
@@ -122,8 +179,9 @@ private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> 
                 CherryProfileAvatar(vm.profilePhotos,ProfileKind.AGENT,agent.id,Modifier.size(42.dp))
             },
             trailingContent = {
-                Icon(Icons.Default.ChevronRight, contentDescription = "ဒိုင်အချက်အလက်ကြည့်ရန်")
+                Icon(Icons.Default.ChevronRight, contentDescription = "ဒိုင်အချက်အလက်ကြည့်ရန်", tint = AppColors.PrimaryDeep)
             },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
     }
 }
@@ -152,7 +210,7 @@ fun CustomerListWorkspaceScreen(
     val agentName = agents.firstOrNull { it.id == selectedAgent }?.name ?: "ဒိုင်ရွေးရန်"
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer List"), onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).background(managementBlushBackground), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text(l.translate("Agent ကိုအရင်ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },) { selectedAgent = it } }
@@ -161,11 +219,31 @@ fun CustomerListWorkspaceScreen(
                 item { Text("$agentName ${l.translate("အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
                 else items(customers, key = { it.id }) { customer ->
-                    ElevatedCard(onClick = { onInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) {
-                        ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(customer.phone) }, leadingContent = { CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)) }, trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = l.translate("ထိုးသားအချက်အလက်ကြည့်ရန်")) })
+                    ManagementListGlassCard(onClick = { onInfo(customer.id) }) {
+                        ListItem(
+                            headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) },
+                            supportingContent = { Text(customer.phone) },
+                            leadingContent = { CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)) },
+                            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = l.translate("ထိုးသားအချက်အလက်ကြည့်ရန်"), tint = AppColors.PrimaryDeep) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
                     }
                 }
-                item { OutlinedButton(onClick = { onAdd(selectedAgent) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(l.translate("ထိုးသားအသစ်ထည့်ရန်")) } }
+                item {
+                    OutlinedButton(
+                        onClick = { onAdd(selectedAgent) },
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, AppColors.PrimaryDeep),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xEBFFFFFF),
+                            contentColor = AppColors.PrimaryDeep,
+                        ),
+                    ) {
+                        Icon(Icons.Default.Add, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(l.translate("ထိုးသားအသစ်ထည့်ရန်"))
+                    }
+                }
             }
         }
     }
@@ -296,14 +374,14 @@ private fun InformationCard(
     avatar: (@Composable () -> Unit)? = null,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
-    val base = Modifier.fillMaxSize().padding(padding)
+    val base = Modifier.fillMaxSize().padding(padding).background(managementBlushBackground)
     val contentModifier = if (scrollContent) base.verticalScroll(rememberScrollState()).padding(16.dp)
         else base.padding(16.dp)
     Column(contentModifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large) {
+        Box(Modifier.fillMaxWidth().managementGlassPane(managementProfileShape, shadowDepth = 5.dp)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 avatar?.invoke()
-                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
                 fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
                     Row(
                         Modifier.fillMaxWidth(),
