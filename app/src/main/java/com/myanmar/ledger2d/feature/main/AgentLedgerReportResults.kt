@@ -509,6 +509,7 @@ private fun AgentTotalRow(label: String, draws: List<AgentStatementDraw>, view: 
 
 @Composable
 private fun AgentReportTable(
+    vm: LedgerViewModel,
     page: CustomerReportPage, period: StatementPeriod, session: DrawSession?,
     draws: List<AgentStatementDraw>,
     winners: Map<Pair<LocalDate, DrawSession>, String>, closed: Set<LocalDate>,
@@ -563,9 +564,8 @@ private fun AgentReportTable(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1.25f)) {
-                                Text(name, style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold, color = AgentLedgerColors.Dark,
-                                    maxLines = 2)
+                                CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,id,name,Modifier.fillMaxWidth(),avatarSize=28.dp,
+                                    textStyle=MaterialTheme.typography.labelMedium)
                                 Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                     null, modifier = Modifier.size(15.dp),
                                     tint = AgentLedgerColors.Wine)
@@ -719,6 +719,7 @@ fun AgentLedgerReportResults(
             }
             item {
                 AgentReportTable(
+                    vm = vm,
                     page = page, period = period, session = session, draws = statement.draws,
                     winners = winnerMap, closed = closed, view = tableView,
                     grouped = agentId == -1L && groupView == "agents",
