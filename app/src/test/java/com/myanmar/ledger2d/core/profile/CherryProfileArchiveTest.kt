@@ -19,7 +19,7 @@ class CherryProfileArchiveTest {
     private val jpeg = byteArrayOf(0xFF.toByte(),0xD8.toByte(),0xFF.toByte(),0x20,0x21,0x22)
 
     @Test fun photosRoundTripAreAttachedToOriginalAgentAndCustomerIds() {
-        val context=RuntimeEnvironment.getApplication<Application>()
+        val context=RuntimeEnvironment.getApplication() as Application
         val dir=ProfilePhotoStore.photoDirectory(context)
         dir.deleteRecursively()
         check(dir.mkdirs())
