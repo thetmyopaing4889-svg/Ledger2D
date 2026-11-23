@@ -26,8 +26,11 @@ class CherryProfileIntegrationContractTest {
         assertTrue(screen.contains("PickVisualMedia.ImageOnly"))
         assertFalse(forms.contains("TakePicture"))
         assertFalse(forms.contains("CameraPermission"))
-        assertTrue(forms.contains("LocalQuickEntryAction.current"))
-        assertTrue(forms.contains("QuickEntryFab(it)"))
+        // Profile forms now share the common inner-screen scaffold.
+        // Quick Entry is provided by OperationalScaffold, not duplicated in forms.
+        assertTrue(forms.contains("AppScaffold(title=title, onBack=onBack)"))
+        assertTrue(screen.contains("val globalQuickEntry = LocalQuickEntryAction.current"))
+        assertTrue(screen.contains("QuickEntryFab(globalQuickEntry)"))
         assertTrue(forms.contains("onRemove: (() -> Unit)? = null"))
         assertTrue(forms.contains("photos.draftFile(pickedUri)"))
         assertTrue(forms.contains("BackHandler(onBack = onBack)"))
