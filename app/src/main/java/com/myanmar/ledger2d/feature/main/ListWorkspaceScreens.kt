@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.core.database.AgentEntity
 import com.myanmar.ledger2d.core.database.CustomerEntity
+import com.myanmar.ledger2d.core.profile.ProfileKind
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.DrawSchedule
 import com.myanmar.ledger2d.core.model.DrawIdentity
@@ -117,8 +118,7 @@ private fun AgentListRow(vm: LedgerViewModel, agent: AgentEntity, onInfo: () -> 
                 }
             },
             leadingContent = {
-                Icon(Icons.Default.Store, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary)
+                CherryProfileAvatar(vm.profilePhotos,ProfileKind.AGENT,agent.id,Modifier.size(42.dp))
             },
             trailingContent = {
                 Icon(Icons.Default.ChevronRight, contentDescription = "ဒိုင်အချက်အလက်ကြည့်ရန်")
@@ -160,7 +160,7 @@ fun CustomerListWorkspaceScreen(
                 if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
                 else items(customers, key = { it.id }) { customer ->
                     ElevatedCard(onClick = { onInfo(customer.id) }, modifier = Modifier.fillMaxWidth()) {
-                        ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(customer.phone) }, leadingContent = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
+                        ListItem(headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) }, supportingContent = { Text(customer.phone) }, leadingContent = { CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)) }, trailingContent = { Icon(Icons.Default.ChevronRight, null) })
                     }
                 }
                 item { OutlinedButton(onClick = { onAdd(selectedAgent) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(l.translate("ထိုးသားအသစ်ထည့်ရန်")) } }
@@ -224,6 +224,11 @@ fun AgentInformationScreen(
                 "Remark" to profile.remark,
             ),
             scrollContent = true,
+            avatar = {
+                Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
+                    CherryProfileAvatar(vm.profilePhotos,ProfileKind.AGENT,id,Modifier.size(104.dp))
+                }
+            },
         ) {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အောက်ရှိထိုးသား ${customers.size} ယောက်", "Customers under agent: ${customers.size}"),
@@ -261,7 +266,13 @@ fun CustomerInformationScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit,
     val profile = customer ?: return
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer Information"), onBack, action = { IconButton({ onEdit(profile.agentId, id) }) { Icon(Icons.Default.Edit, l.translate("ပြင်ရန်")) } }) { padding ->
-        InformationCard(padding, profile.name, listOf("Phone" to profile.phone, "Address" to profile.address, "Remark" to profile.remark))
+        InformationCard(padding, profile.name,
+            listOf("Phone" to profile.phone, "Address" to profile.address, "Remark" to profile.remark),
+            avatar = {
+                Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
+                    CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,id,Modifier.size(104.dp))
+                }
+            })
     }
 }
 
@@ -270,6 +281,7 @@ private fun InformationCard(
     padding: PaddingValues, title: String,
     fields: List<Pair<String, String>>,
     scrollContent: Boolean = false,
+    avatar: (@Composable () -> Unit)? = null,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     val base = Modifier.fillMaxSize().padding(padding)
@@ -278,6 +290,7 @@ private fun InformationCard(
     Column(contentModifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                avatar?.invoke()
                 Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontWeight = FontWeight.SemiBold) }
