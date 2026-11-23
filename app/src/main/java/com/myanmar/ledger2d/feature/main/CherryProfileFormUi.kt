@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,13 +30,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myanmar.ledger2d.R
 import com.myanmar.ledger2d.core.design.LocalLanguage
@@ -114,13 +119,15 @@ internal fun CherryProfileAvatar(
                     tint=Color.White,modifier=Modifier.size(22.dp))
             }
             if (onRemove != null && (bitmap != null || pickedUri != null)) {
-                IconButton(
-                    modifier=Modifier.align(Alignment.TopEnd).size(31.dp)
-                        .clip(CircleShape).background(Color(0xE6FFFFFF)),
-                    onClick=onRemove,
+                Box(
+                    Modifier.align(Alignment.TopEnd).size(29.dp)
+                        .clip(CircleShape).background(Color(0xEAFFFFFF))
+                        .border(1.dp, Color(0xE0FFFFFF), CircleShape)
+                        .clickable(onClick=onRemove),
+                    contentAlignment=Alignment.Center,
                 ) {
                     Icon(Icons.Default.Close, contentDescription="Profile ပုံဖယ်ရှားရန်",
-                        tint=cherryWine,modifier=Modifier.size(17.dp))
+                        tint=cherryWine,modifier=Modifier.size(16.dp))
                 }
             }
         }
@@ -154,21 +161,38 @@ internal fun CherryProfileFormPage(
                     .clip(RoundedCornerShape(bottomStart=54.dp,bottomEnd=54.dp))
                     .background(Brush.verticalGradient(listOf(Color(0x44000000),Color.Transparent))))
                 Row(
-                    Modifier.fillMaxWidth().statusBarsPadding().padding(top=18.dp,start=18.dp,end=16.dp),
+                    Modifier.fillMaxWidth().statusBarsPadding()
+                        .padding(top=18.dp,start=16.dp,end=19.dp),
                     verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(12.dp),
+                    horizontalArrangement=Arrangement.spacedBy(11.dp),
                 ) {
                     IconButton(
                         onClick=onBack,
-                        modifier=Modifier.size(52.dp).clip(CircleShape)
-                            .background(Color(0xBBFFFFFF))
-                            .border(1.dp,Color.White,CircleShape),
+                        modifier=Modifier.size(50.dp)
+                            .shadow(6.dp,CircleShape,
+                                ambientColor=Color(0x66880E4F),spotColor=Color(0x66880E4F))
+                            .clip(CircleShape)
+                            .background(Brush.verticalGradient(listOf(
+                                Color(0xE8FFFFFF),Color(0x92FFEAF2))))
+                            .border(1.5.dp,Color.White,CircleShape),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription="နောက်သို့",tint=cherryWine,modifier=Modifier.size(29.dp))
+                            contentDescription="နောက်သို့",tint=cherryWine,
+                            modifier=Modifier.size(27.dp))
                     }
-                    Text(LocalLanguage.current.translate(title),color=Color.White,
-                        style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Black)
+                    // The title gets its own bounded right-aligned area instead of
+                    // spilling back over the back button and cherry artwork.
+                    Text(
+                        LocalLanguage.current.translate(title),
+                        modifier=Modifier.weight(1f).padding(start=24.dp),
+                        color=Color.White,
+                        style=MaterialTheme.typography.titleLarge.copy(
+                            fontSize=21.sp,lineHeight=29.sp),
+                        fontWeight=FontWeight.Black,
+                        textAlign=TextAlign.End,
+                        maxLines=2,
+                        overflow=TextOverflow.Ellipsis,
+                    )
                 }
                 CherryProfileAvatar(photos,kind,id,Modifier.align(Alignment.BottomCenter).size(136.dp),
                     pickedUri,removed,onPick,onRemove)
@@ -182,16 +206,52 @@ internal fun CherryProfileFormPage(
                 .padding(horizontal=17.dp,vertical=12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Column(Modifier.fillMaxWidth()
-                .shadow(14.dp,RoundedCornerShape(28.dp),
-                    ambientColor=Color(0x2E880E4F),spotColor=Color(0x2E880E4F))
-                .clip(RoundedCornerShape(28.dp))
-                .background(Color(0xE8FFFFFF))
-                .border(1.5.dp,Color.White,RoundedCornerShape(28.dp))
-                .padding(horizontal=16.dp,vertical=20.dp),
-                verticalArrangement=Arrangement.spacedBy(15.dp),
-                content=content,
-            )
+            // An actual layered, translucent frosted pane: a softly lit rose
+            // backdrop shows THROUGH the glass instead of a flat white Card.
+            val paneShape=RoundedCornerShape(28.dp)
+            Box(
+                Modifier.fillMaxWidth()
+                    .homeRubyShadow(radius=28.dp,blur=20.dp,offsetY=8.dp,
+                        tint=Color(0x43880E4F))
+                    .clip(paneShape)
+                    .background(Brush.linearGradient(listOf(
+                        Color(0xFFE6A8C4),Color(0xFFF3D4DF),Color(0xFFDFA2BD))))
+                    .border(1.5.dp,Color.White,paneShape),
+            ) {
+                Canvas(Modifier.matchParentSize()) {
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(Color(0xC5ED6D9F),Color.Transparent),
+                            center=Offset(size.width*.16f,size.height*.23f),
+                            radius=size.width*.66f),
+                        radius=size.width*.66f,center=Offset(size.width*.16f,size.height*.23f))
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(Color(0x8DF4B57C),Color.Transparent),
+                            center=Offset(size.width*.72f,size.height*.46f),
+                            radius=size.width*.51f),
+                        radius=size.width*.51f,center=Offset(size.width*.72f,size.height*.46f))
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(Color(0xA7A965A0),Color.Transparent),
+                            center=Offset(size.width*.86f,size.height*.83f),
+                            radius=size.width*.60f),
+                        radius=size.width*.60f,center=Offset(size.width*.86f,size.height*.83f))
+                }
+                Box(Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(
+                        Color(0xC6FFFFFF),Color(0x9EFFFFFF),Color(0xB8FFFFFF)))))
+                Box(Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .padding(horizontal=9.dp,vertical=2.dp).height(3.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Brush.horizontalGradient(listOf(
+                        Color.Transparent,Color(0xD9FFFFFF),Color.Transparent))))
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=20.dp),
+                    verticalArrangement=Arrangement.spacedBy(15.dp),
+                    content=content,
+                )
+            }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick=onBack,
@@ -202,18 +262,43 @@ internal fun CherryProfileFormPage(
                     Text(LocalLanguage.current.text("မလုပ်တော့ပါ","Cancel"),color=cherryWine,
                         fontWeight=FontWeight.Bold)
                 }
-                Button(
-                    onClick=onSave, enabled=canSave&&!saving,
-                    modifier=Modifier.weight(1f).height(54.dp)
-                        .shadow(if(canSave&&!saving) 7.dp else 0.dp,RoundedCornerShape(28.dp),
-                            ambientColor=Color(0x55880E4F),spotColor=Color(0x55880E4F)),
-                    shape=RoundedCornerShape(28.dp),
-                    colors=ButtonDefaults.buttonColors(containerColor=cherryRed),
+                val saveEnabled=canSave&&!saving
+                val saveShape=RoundedCornerShape(29.dp)
+                Box(
+                    Modifier.weight(1f).height(58.dp)
+                        .homeRubyShadow(radius=29.dp,blur=13.dp,offsetY=6.dp,
+                            tint=if(saveEnabled)Color(0x72880E4F)else Color(0x12880E4F))
+                        .clip(saveShape)
+                        .background(Brush.verticalGradient(
+                            if(saveEnabled)listOf(
+                                Color(0xFFFF5E93),Color(0xFFBD064B),Color(0xFF78072E))
+                            else listOf(
+                                Color(0xFFE2D7DC),Color(0xFFD4C8CE),Color(0xFFCDC1C7))))
+                        .border(1.2.dp,Color(0xE6FFFFFF),saveShape),
                 ) {
-                    if(saving) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,
-                        color=Color.White)
-                    else Text(LocalLanguage.current.text("သိမ်းမည်","Save"),
-                        fontWeight=FontWeight.Bold)
+                    // A real specular highlight creates the raised lacquered pill.
+                    Box(Modifier.fillMaxWidth().fillMaxHeight(.43f)
+                        .padding(horizontal=10.dp,vertical=4.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Brush.verticalGradient(listOf(
+                            Color(0xB9FFFFFF),Color(0x26FFFFFF),Color.Transparent))))
+                    Button(
+                        onClick=onSave,enabled=saveEnabled,
+                        modifier=Modifier.fillMaxSize(),
+                        shape=saveShape,
+                        colors=ButtonDefaults.buttonColors(
+                            containerColor=Color.Transparent,
+                            disabledContainerColor=Color.Transparent,
+                            contentColor=Color.White,
+                            disabledContentColor=Color(0xFF857782)),
+                        elevation=null,
+                    ) {
+                        if(saving) CircularProgressIndicator(Modifier.size(18.dp),
+                            strokeWidth=2.dp,color=Color.White)
+                        else Text(LocalLanguage.current.text("သိမ်းမည်","Save"),
+                            style=MaterialTheme.typography.titleMedium,
+                            fontWeight=FontWeight.Black)
+                    }
                 }
             }
             Spacer(Modifier.height(104.dp)) // Keeps the intentionally global + reachable.
@@ -229,18 +314,25 @@ internal fun CherryProfileField(
     keyboard: KeyboardType = KeyboardType.Text,
 ) {
     val language=LocalLanguage.current
+    val fieldShape=RoundedCornerShape(28.dp)
     OutlinedTextField(
         value=value,onValueChange=onValue,
-        modifier=Modifier.fillMaxWidth().heightIn(min=70.dp),
+        modifier=Modifier.fillMaxWidth().heightIn(min=70.dp)
+            .shadow(2.dp,fieldShape,
+                ambientColor=Color(0x21880E4F),spotColor=Color(0x21880E4F))
+            .clip(fieldShape)
+            .background(Brush.linearGradient(listOf(
+                Color(0xDFFFFFFF),Color(0x9EFFFFFF),Color(0xB7FFE9F1))),fieldShape)
+            .border(1.dp,Color(0xE6FFFFFF),fieldShape),
         singleLine=label!="မှတ်ချက်",
         label={Text(language.translate(label)+(if(required)" *" else ""))},
         leadingIcon={Icon(icon,contentDescription=null,tint=cherryWine)},
         keyboardOptions=KeyboardOptions(keyboardType=keyboard),
-        shape=RoundedCornerShape(28.dp),
+        shape=fieldShape,
         colors=OutlinedTextFieldDefaults.colors(
-            focusedBorderColor=cherryRed,unfocusedBorderColor=Color(0xFFF2B6CA),
-            focusedContainerColor=Color(0xDFFFF8FA),
-            unfocusedContainerColor=Color(0xDFFFF8FA),
+            focusedBorderColor=cherryRed,unfocusedBorderColor=Color(0xCBE29EBC),
+            focusedContainerColor=Color.Transparent,
+            unfocusedContainerColor=Color.Transparent,
             focusedLabelColor=cherryWine,unfocusedLabelColor=Color(0xFF7E6270),
             focusedTextColor=cherryWine,unfocusedTextColor=cherryWine,
         )
