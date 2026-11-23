@@ -914,6 +914,12 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     var effectiveDateText by rememberSaveable(id){mutableStateOf(active.date.toString())}
     var effectiveSession by rememberSaveable(id){mutableStateOf(active.session)}
     var pendingRateChange by rememberSaveable(id){mutableStateOf(false)}
+    var selectedPhoto by rememberSaveable(id){mutableStateOf<String?>(null)}
+    var photoRemoved by rememberSaveable(id){mutableStateOf(false)}
+    var saving by rememberSaveable(id){mutableStateOf(false)}
+    val picker=androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri->if(uri!=null){selectedPhoto=uri.toString();photoRemoved=false} }
     LaunchedEffect(existing){
         existing?.let {name=it.name;address=it.address;phone=it.phone;rate=it.rate.toString();remark=it.remark}
     }
@@ -927,9 +933,19 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
     val validDate=!rateIsChanging || (selectedDate!=null &&
         com.myanmar.ledger2d.core.domain.DrawSchedule.isWeekday(selectedDate) &&
         (mode=="DRAW" || (selectedKey!=null && selectedKey>=activeKey)))
+    val canSave=name.trim().isNotEmpty() && rate.toLongOrNull()?.let{it>0}==true && validDate
     fun applyChange(){
-        if(selectedDate!=null) vm.saveAgent(id,name,address,phone,rate,remark,
-            selectedDate,effectiveSession,mode=="DRAW",onBack){saveError=it}
+        if(!canSave||saving)return
+        val photo=when {
+            selectedPhoto!=null -> ProfilePhotoChange.Replace(android.net.Uri.parse(selectedPhoto))
+            photoRemoved -> ProfilePhotoChange.Remove
+            else -> ProfilePhotoChange.Keep
+        }
+        saving=true
+        vm.saveAgentWithPhoto(id,name,address,phone,rate,remark,
+            selectedDate?:active.date,effectiveSession,mode=="DRAW",photo,
+            onDone={saving=false;onBack()},
+            onError={saving=false;saveError=it})
     }
     if(pendingRateChange) AlertDialog(
         onDismissRequest={pendingRateChange=false},
@@ -941,11 +957,19 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
         confirmButton={TextButton({pendingRateChange=false;applyChange()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြောင်းမည်"))}},
         dismissButton={TextButton({pendingRateChange=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်တော့ပါ"))}}
     )
-    AppScaffold(if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",onBack){p->FormColumn(p){
-        Input(name,{name=it},"အမည်",true)
-        Input(address,{address=it},"လိပ်စာ")
-        Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone)
-        Input(rate,{rate=it.filter(Char::isDigit)},"နှုန်းထား",true,KeyboardType.Number)
+    CherryProfileFormPage(
+        if(id==0L)"ဒိုင်အသစ်ထည့်ရန်" else "ဒိုင်အချက်အလက်ပြင်ရန်",
+        onBack,vm.profilePhotos,ProfileKind.AGENT,id,selectedPhoto,photoRemoved,
+        onPick={picker.launch(androidx.activity.result.PickVisualMediaRequest(
+            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))},
+        onRemove={selectedPhoto=null;photoRemoved=true},
+        canSave=canSave,saving=saving,
+        onSave={if(rateIsChanging)pendingRateChange=true else applyChange()},
+    ) {
+        CherryProfileField(name,{name=it},"အမည်",Icons.Default.Person,true)
+        CherryProfileField(address,{address=it},"လိပ်စာ",Icons.Default.Place)
+        CherryProfileField(phone,{phone=it},"ဖုန်း",Icons.Default.Phone,keyboard=KeyboardType.Phone)
+        CherryProfileField(rate,{rate=it.filter(Char::isDigit)},"နှုန်းထား",Icons.Default.Numbers,true,KeyboardType.Number)
         if(id>0L && activeRate!=null && activeRate!=existing?.rate)
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လက်ရှိသက်ရောက်နေသောအဆ: ${activeRate} ဆ • သတ်မှတ်ထားသောအဆ: ${existing?.rate} ဆ", "Effective rate: ${activeRate}x • Configured rate: ${existing?.rate}x"),
                 color=MaterialTheme.colorScheme.secondary)
@@ -956,18 +980,14 @@ fun AgentFormScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
             }
         }
         if(rateIsChanging) {
-            Text(if(mode=="DRAW") com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသော Session တစ်ခုတည်းကို ပြန်တွက်မည်။ တခြား Session မပြောင်းပါ။")
-                else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသော Session ကစပြီး နောက်ထပ်နှုန်းမပြောင်းမချင်း သက်ရောက်မည်။ ကြိုသွင်းထားသောစာရင်းများကိုလည်း ပြန်တွက်မည်။"))
             DateInput(effectiveDateText,{effectiveDateText=it},"အဆစတင်မည့်ရက်")
             Row { DrawSession.entries.forEach{draw->
                 FilterChip(effectiveSession==draw,{effectiveSession=draw},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))})
             } }
         }
-        Input(remark,{remark=it},"မှတ်ချက်")
+        CherryProfileField(remark,{remark=it},"မှတ်ချက်",Icons.Default.Description)
         if(saveError.isNotBlank())Text(saveError,color=MaterialTheme.colorScheme.error)
-        FormActions(onBack,{if(rateIsChanging)pendingRateChange=true else applyChange()},
-            name.isNotBlank()&&rate.toLongOrNull()?.let{it>0}==true&&validDate)
-    }}
+    }
 }
 @Composable
 fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
@@ -978,33 +998,47 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
     var remark by rememberSaveable(id){mutableStateOf("")}
     var commission by rememberSaveable(id){mutableStateOf("")}
     var error by rememberSaveable(id){mutableStateOf("")}
+    var selectedPhoto by rememberSaveable(id){mutableStateOf<String?>(null)}
+    var photoRemoved by rememberSaveable(id){mutableStateOf(false)}
+    var saving by rememberSaveable(id){mutableStateOf(false)}
+    val picker=androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri->if(uri!=null){selectedPhoto=uri.toString();photoRemoved=false} }
     LaunchedEffect(existing){
         existing?.let { name=it.name; address=it.address; phone=it.phone; remark=it.remark }
     }
     val rate=commission.trim().toBigDecimalOrNull()
     val validCommission=rate!=null && rate>=java.math.BigDecimal.ZERO &&
         rate<=java.math.BigDecimal(100) && rate.movePointRight(2).stripTrailingZeros().scale()<=0
-    AppScaffold(if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",onBack){p->
-        FormColumn(p){
-            Input(name,{name=it},"အမည်",true)
-            Input(address,{address=it},"လိပ်စာ")
-            Input(phone,{phone=it},"ဖုန်း",keyboard=KeyboardType.Phone)
-            if(id==0L){
-                Input(commission,{ commission=it.filter{ch->ch.isDigit()||ch=='.'}; error="" },
-                    "ကော်မရှင် (%)",true,KeyboardType.Decimal)
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်ကို 0% သတ်မှတ်လိုပါက 0 ဟု ကိုယ်တိုင်ထည့်ပါ။ မဖြည့်ဘဲ 0% အလိုအလျောက်မသတ်မှတ်ပါ။"),
-                    style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            }else{
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှိပြီးသား ကော်မရှင်ကို ပြောင်းလိုပါက Customer Dashboard → ကော်မရှင်တွင် Session ရွေးပြီး ပြင်ပါ။"),
-                    style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Input(remark,{remark=it},"မှတ်ချက်")
-            if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-            FormActions(onBack,{
-                vm.saveCustomer(id,agentId,name,address,phone,remark,commission,
-                    {error="";onBack()},{error=it})
-            },name.isNotBlank()&&(id>0L||validCommission))
+    val canSave=name.trim().isNotEmpty() && (id>0L||validCommission)
+    fun applyChange(){
+        if(!canSave||saving)return
+        val photo=when {
+            selectedPhoto!=null -> ProfilePhotoChange.Replace(android.net.Uri.parse(selectedPhoto))
+            photoRemoved -> ProfilePhotoChange.Remove
+            else -> ProfilePhotoChange.Keep
         }
+        saving=true
+        vm.saveCustomerWithPhoto(id,agentId,name,address,phone,remark,commission,photo,
+            onDone={saving=false;error="";onBack()},
+            onError={saving=false;error=it})
+    }
+    CherryProfileFormPage(
+        if(id==0L)"ထိုးသားအသစ်ထည့်ရန်" else "ထိုးသားအချက်အလက်ပြင်ရန်",
+        onBack,vm.profilePhotos,ProfileKind.CUSTOMER,id,selectedPhoto,photoRemoved,
+        onPick={picker.launch(androidx.activity.result.PickVisualMediaRequest(
+            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))},
+        onRemove={selectedPhoto=null;photoRemoved=true},
+        canSave=canSave,saving=saving,onSave={applyChange()},
+    ) {
+        CherryProfileField(name,{name=it},"အမည်",Icons.Default.Person,true)
+        CherryProfileField(address,{address=it},"လိပ်စာ",Icons.Default.Place)
+        CherryProfileField(phone,{phone=it},"ဖုန်း",Icons.Default.Phone,keyboard=KeyboardType.Phone)
+        if(id==0L) CherryProfileField(
+            commission,{commission=it.filter{ch->ch.isDigit()||ch=='.'};error=""},
+            "ကော်မရှင် (%)",Icons.Default.Percent,true,KeyboardType.Decimal)
+        CherryProfileField(remark,{remark=it},"မှတ်ချက်",Icons.Default.Description)
+        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
     }
 }
 @Composable private fun FormColumn(p: PaddingValues, content: @Composable ColumnScope.() -> Unit) =
