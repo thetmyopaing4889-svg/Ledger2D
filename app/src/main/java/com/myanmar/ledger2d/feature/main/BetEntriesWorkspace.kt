@@ -192,7 +192,7 @@ fun CustomerBetEntriesWorkspace(
             }
         }
         if (customerId == -1L) {
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး • ") + entries.size + " Entries",
+            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးသားအားလုံး • ${entries.size} စာရင်း", "All customers • ${entries.size} entries"),
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 SegmentedButton(
@@ -223,7 +223,7 @@ fun CustomerBetEntriesWorkspace(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(names[id] ?: "Customer #" + id, fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary)
-                            Text(groupTotal.entries.toString() + " Entries",
+                            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${groupTotal.entries} စာရင်း", "${groupTotal.entries} entries"),
                                 style = MaterialTheme.typography.labelSmall)
                         }
                         customerEntries.forEachIndexed { index, record ->
@@ -231,7 +231,7 @@ fun CustomerBetEntriesWorkspace(
                                 onDetails = { expanded = record }, onActions = { actions = record })
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
-                        TotalsBar("ဒီ Customer စုစုပေါင်း", groupTotal)
+                        TotalsBar(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ဒီထိုးသား စုစုပေါင်း", "Customer total"), groupTotal)
                     }
                 }
             }
@@ -247,7 +247,7 @@ fun CustomerBetEntriesWorkspace(
                     onToggleSelection = { toggleVoucherId(record.entry.id) },
                 )
             }
-            TotalsBar("စုစုပေါင်း", betEntriesTotal(entries))
+            TotalsBar(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စုစုပေါင်း", "Total"), betEntriesTotal(entries))
         }
         if (voucherMode && customerId > 0L && entries.isNotEmpty()) {
             val voucherTotal = betEntriesTotal(entries.filter { it.entry.id in selectedVoucherIds })
@@ -285,8 +285,10 @@ private fun BetEntriesRow(
             onLongClick = { if (!selectionMode) onActions() },
         ),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        color = androidx.compose.ui.graphics.Color(0xEBFFFFFF),
+        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color.White),
+        tonalElevation = 0.dp,
+        shadowElevation = 2.dp,
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
@@ -323,15 +325,16 @@ private fun BetEntriesRow(
 private fun TotalsBar(label: String, total: BetEntriesTotal) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = AppColors.Champagne,
+        color = androidx.compose.ui.graphics.Color(0xFFFFE9F1),
         shape = MaterialTheme.shapes.medium,
+        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color.White),
     ) {
         Row(Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontWeight = FontWeight.Bold)
-                Text(total.entries.toString() + " Entries • " + total.digits + com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" ကွက်", " digits"),
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("${total.entries} စာရင်း • ${total.digits} ကွက်", "${total.entries} entries • ${total.digits} digits"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

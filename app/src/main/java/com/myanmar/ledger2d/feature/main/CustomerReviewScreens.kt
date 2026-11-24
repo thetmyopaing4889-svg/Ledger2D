@@ -241,6 +241,7 @@ fun CustomerReviewWorkspace(
                     vm, agentId, customerId, period, range, draw,
                     subtitle, onReselect = { resultPage = false },
                     modifier = Modifier.fillMaxSize().padding(padding),
+                    agentName = selectedAgentName,
                 )
             } else {
                 CustomerRiskReviewResults(

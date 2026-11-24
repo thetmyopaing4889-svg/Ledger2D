@@ -827,7 +827,8 @@ private fun PageCaption(page:CustomerReportPage,period:StatementPeriod) {
 @Composable
 fun CustomerLedgerReportResults(
     vm:LedgerViewModel,agentId:Long,customerId:Long,period:StatementPeriod,range:StatementRange,
-    session:DrawSession?,subtitle:String,onReselect:()->Unit,modifier:Modifier=Modifier
+    session:DrawSession?,subtitle:String,onReselect:()->Unit,modifier:Modifier=Modifier,
+    agentName: String
 ) {
     val lang=LocalLanguage.current
     val revision by vm.revision.collectAsStateWithLifecycle()
@@ -869,44 +870,19 @@ fun CustomerLedgerReportResults(
         value=statement?.let { vm.customerStatementNames(it.customers.keys) }.orEmpty()
     }
     val pageDraws=statement?.let { CustomerReportFrame.drawsOnPage(page,it.draws) }.orEmpty()
-    val selectionText=selectionLabel(period,range)+" · "+
-        (session?.let {
-            if(it==DrawSession.MORNING)lang.text("မနက်အကြိမ်","Morning")
-            else lang.text("ညနေအကြိမ်","Evening")
-        }?:lang.text("နှစ်ကြိမ်လုံး","Both draws"))
+    val scopeDate = selectionLabel(period,range)
 
     LazyColumn(modifier.cherryFinancialBackground(),contentPadding=PaddingValues(horizontal=12.dp,vertical=12.dp),
         verticalArrangement=Arrangement.spacedBy(9.dp)) {
         item {
-            Surface(color=Color(0xEBFFFFFF),shape=RoundedCornerShape(22.dp),
-                shadowElevation=4.dp,tonalElevation=0.dp,
-                border=BorderStroke(1.5.dp,Color.White)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal=11.dp,vertical=10.dp),
-                    verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(9.dp)) {
-                    if (customerId > 0L) {
-                        CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,
-                            customerId, Modifier.size(42.dp))
-                    } else {
-                    Surface(color=ReportPalette.SoftPink,shape=RoundedCornerShape(32.dp)) {
-                        Box(Modifier.size(38.dp),contentAlignment=Alignment.Center) {
-                            Icon(Icons.Default.Person,null,tint=ReportPalette.Wine,modifier=Modifier.size(22.dp))
-                        }
-                    }
-                    }
-                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                        Text(subtitle,style=LedgerTypographyStandard.style(LedgerTextRole.APP_HEADER,lang.code)
-                            .copy(color=ReportPalette.Ink,fontWeight=FontWeight.Bold),maxLines=2)
-                        Text(selectionText,style=MaterialTheme.typography.labelSmall,
-                            color=ReportPalette.Muted,maxLines=3)
-                    }
-                    TextButton(onClick=onReselect,contentPadding=PaddingValues(horizontal=4.dp,vertical=4.dp)) {
-                        Text(lang.text("ပြန်ရွေးရန်","Change"),
-                            style=MaterialTheme.typography.labelMedium,
-                            color=ReportPalette.Wine)
-                    }
-                }
-            }
+            PremiumCompactScope(
+                vm = vm,
+                agent = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, agentId, agentName),
+                customer = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, customerId, subtitle),
+                dateText = scopeDate,
+                sessionLabel = compactScopeSessionLabel(session),
+                onReselect = onReselect,
+            )
         }
 
         if(statement==null) {

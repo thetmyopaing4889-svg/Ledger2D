@@ -139,3 +139,14 @@ private fun ScopeDateAction(dateText: String, sessionLabel: String, onReselect: 
         }
     }
 }
+
+/** Localized short labels; null means both draws, not an unspecified session. */
+@Composable
+internal fun compactScopeSessionLabel(session: com.myanmar.ledger2d.core.model.DrawSession?): String {
+    val lang = LocalLanguage.current
+    return when (session) {
+        com.myanmar.ledger2d.core.model.DrawSession.MORNING -> lang.text("မနက်", "AM")
+        com.myanmar.ledger2d.core.model.DrawSession.EVENING -> lang.text("ညနေ", "PM")
+        null -> lang.text("နှစ်ကြိမ်လုံး", "Both draws")
+    }
+}

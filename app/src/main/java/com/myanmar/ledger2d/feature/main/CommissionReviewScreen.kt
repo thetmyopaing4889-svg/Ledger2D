@@ -177,18 +177,14 @@ private fun CommissionReviewResults(
     LazyColumn(modifier.cherryFinancialBackground(), contentPadding = PaddingValues(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            CherryFinancialPanel {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,selectedName,Modifier.fillMaxWidth())
-                    Text(range.start.reviewDate() + " – " + range.end.reviewDate() + " • " +
-                        (draw?.reviewLabel() ?: "နှစ်ကြိမ်လုံး"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = onReselect) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ရွေးရန်")) }
-            }
-            }
+            PremiumCompactScope(
+                vm = vm,
+                agent = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, agentId, selectedName),
+                customer = null,
+                dateText = range.start.reviewDate() + (if (range.start == range.end) "" else " – " + range.end.reviewDate()),
+                sessionLabel = compactScopeSessionLabel(draw),
+                onReselect = onReselect,
+            )
         }
         item {
             CherryFinancialPanel {

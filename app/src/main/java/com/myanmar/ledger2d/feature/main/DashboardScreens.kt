@@ -273,7 +273,8 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
     val visible = if (selected == -1L) summaries else summaries.filter { it.id == selected }
     var resultPage by rememberSaveable(feature) { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = resultPage) { resultPage = false }
-    val scopeLabel = agents.firstOrNull { it.id == selected }?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent")
+    val scopeLabel = if (selected == -1L) language.text("ဒိုင်အားလုံး", "All agents")
+        else agents.firstOrNull { it.id == selected }?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent")
     val pageScroll = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(resultPage) { pageScroll.scrollToItem(0) }
     AppScaffold(agentActions.firstOrNull { it.key == feature }?.title ?: "Agent feature", { if (resultPage) resultPage = false else onBack() }) { padding ->
@@ -301,16 +302,14 @@ fun AgentFeatureWorkspaceScreen(vm: LedgerViewModel, feature: String, onBack: ()
             }
             } else {
                 item {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        if (selected > 0L) {
-                            CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,
-                                selected, Modifier.size(40.dp))
-                            Spacer(Modifier.width(7.dp))
-                        }
-                        Text("$scopeLabel • $dateText • ${language.translate(session.label)}", Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
-                    }
+                    PremiumCompactScope(
+                        vm = vm,
+                        agent = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, selected, scopeLabel),
+                        customer = null,
+                        dateText = dateText,
+                        sessionLabel = compactScopeSessionLabel(session),
+                        onReselect = { resultPage = false },
+                    )
                 }
             if (selected == 0L) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent တစ်ယောက် သို့မဟုတ် ဒိုင်အားလုံးကို ရွေးပါ")) }
             else if (selected == -1L && feature in setOf("closed", "limit")) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်းနှင့် ကန့်သတ်ပမာဏအတွက် Agent တစ်ယောက်ကို ရွေးပါ")) }
@@ -414,16 +413,14 @@ fun CustomerFeatureWorkspaceScreen(
             }
             } else {
                 item {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        if (customerId > 0L) {
-                            CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,
-                                customerId, Modifier.size(40.dp))
-                            Spacer(Modifier.width(7.dp))
-                        }
-                        Text("$scopeAgent • $scopeCustomer • $dateText • ${language.translate(session.label)}",
-                            modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
-                    }
+                    PremiumCompactScope(
+                        vm = vm,
+                        agent = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, agentId, scopeAgent),
+                        customer = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, customerId, scopeCustomer),
+                        dateText = dateText,
+                        sessionLabel = compactScopeSessionLabel(session),
+                        onReselect = { resultPage = false },
+                    )
                 }
             if (agentId == 0L || customerId == 0L) item { UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent နှင့် Customer ကို ရွေးပါ")) }
             else when (feature) {

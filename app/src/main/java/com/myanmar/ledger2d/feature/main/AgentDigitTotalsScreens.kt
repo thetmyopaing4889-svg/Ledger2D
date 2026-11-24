@@ -156,7 +156,14 @@ fun AgentDigitTotalsWorkspace(
             }
             } else {
                 item {
-                    TextButton(onClick = { resultPage = false }) { Text(language.text("ပြန်ရွေးရန်", "Reselect")) }
+                    PremiumCompactScope(
+                        vm = vm,
+                        agent = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, selectedAgent, selectedName),
+                        customer = null,
+                        dateText = date?.reviewDate() ?: dateText,
+                        sessionLabel = compactScopeSessionLabel(session),
+                        onReselect = { resultPage = false },
+                    )
                 }
             if (date == null) {
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"), color = MaterialTheme.colorScheme.error) }
@@ -167,14 +174,6 @@ fun AgentDigitTotalsWorkspace(
             } else if (selectedAgent > 0 && agents.none { it.id == selectedAgent }) {
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ")) }
             } else {
-                item {
-                    CherryFinancialPanel {
-                        CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,selectedAgent,selectedName,Modifier.fillMaxWidth())
-                        Text("${date} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${selectedName}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
                 item {
                     DigitTotalsSummary(
                         combined.orEmpty(),

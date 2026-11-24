@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1935 P2 CI SUCCESS (Build 1934 also passed). P3 management visual refinement source committed; CI and combined phone QA pending. P4–P6 pending. No main merge.  
+**Status:** Build 1936 P3 CI SUCCESS. P4a approved compact scope applied to remaining reselect result headers, active history decor source committed; CI pending. P4b remaining entry/financial result layout corrections and P5–P6 pending. Combined phone QA deferred. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -107,6 +107,14 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Add Customer picker restores original heading/selector/action hierarchy without wrapper. Settings retains its three original groups, baseline 14dp/10dp padding/spacing and zero extra padding on language list; unchanged default selection, history update, encrypted backup and language actions.
 - Agent/Customer dashboard original card geometry, typography, feature order and callbacks retained; strengthen static ruby highlight/icon depth. Agent/Customer list and profile glass gains subtle highlight, shared selector/search and action colors. Translate mixed Agent/Customer labels in customer list consistently; hide blank phone line. Profile name centered beneath already-centered photo (alignment refinement only), retain all nonblank field values, weighted wrapping, loading/scroll and original footer. No invented fields.
 - No Home, protected Profile Form, Research, navigation, Bubble, calculation, storage or export changes. P3 CI/device review pending; not a claim of phone visual acceptance. P4 will integrate approved compact scope on remaining result screens and restore remaining entry/financial result frame geometry.
+
+### P4a — approved compact result scopes and active history (2026-11-24)
+
+- Build 1936 verified CI SUCCESS, commit 0a08cdab9c3ff78688f7dd260eb4cc272581f88c, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45411142685, matching debug 14930615335/release 14929876262. P3 source/CI complete, combined phone QA still pending.
+- Reuse the approved PremiumCompactScope on agent/customer ledger reports, Agent Digit Totals, Commission Review and active Agent/Customer feature result routes (including history, digits, bulk commission, closed/limit). One actual agent or customer identity per slot, all-scope group glyph for aggregate, exact selected date/period and AM/PM/both draw label. Customer report passes selected agent name from existing state; no new query. Agent totals replaces standalone reselect and duplicate identity/date block with one scope. Preserve existing reselect callbacks and invalid/loading branches.
+- Agent/customer report body, numeric tables, pagination, drilldowns, commission filtered totals, selection state and workspace dispatch remain unchanged. Active BetEntriesWorkspace original row geometry, raw source text, selection, edit/delete, voucher and totals preserved; decorate existing surfaces with white rim/cherry totals and localize mixed entry counts. No extra per-row layout wrapper.
+- Risk result already approved component, unchanged. No Home, protected forms, Research, engine, DB, navigation or renderer changes. Updated source contracts; two new scope/history guards. CI and combined real-phone QA pending, notably long date ranges/labels and aggregate scope.
+- P4b still required: original compact layout for betting/standalone history, commission/limit, closed/limit workspaces, digit result groups, Today Ledger and winning/closed day result decoration. Do not claim entire P4 complete.
 
 ### Updated execution sequence
 
