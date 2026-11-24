@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** HOME-FIRST PHASE A01/A02 APPROVED ON USER DEVICE (Build 1871); A03–A06 PASSED CI Build 1874 (device QA DEFERRED by user); A07–A09 SELECTION UI COMMITTED, CI PENDING; COMBINED FINAL DEVICE REVIEW AGREED.  
+**Status:** A01/A02 user-approved Build 1871; A03–A06 passed Build 1874, phone QA deferred; A07–A09 passed Build 1881, phone QA deferred; B01–B03 Home-first Financial UI pilot committed, CI and combined phone acceptance pending. Protected Home/Form/Research unchanged.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -259,8 +259,8 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | Milestone | Exit gate | Status |
 |---|---|---|
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
-| M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | IN PROGRESS — A01/A02 user-approved Build 1871; A03–A06 CI-passed Build 1874, device QA deferred; A07–A09 pending CI and combined device QA |
-| M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+device QA | NOT STARTED |
+| M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | SOURCE/CI DONE — A01/A02 user-approved Build 1871; A03–A06 passed Build 1874; A07–A09 passed Build 1881; combined device QA deferred |
+| M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+combined device QA | IN PROGRESS — B01–B03 small chrome pilot committed; CI pending; B04–B11 not started |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
 | M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | NOT STARTED |
@@ -278,6 +278,17 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**Financial Home-first B01–B03 pilot — 2026-11-24 (CI AND DEVICE QA PENDING):**
+- **Accepted CI baseline:** Build **1881**, commit `447af3d16be8f41717644f70d104edd985754903`; GitHub Actions `45316563623` completed **SUCCESS**, debug and release APK uploaded. Build 1881 adds only an updated plan over working Build 1880. The user requested continuing work and reviewing all changed screens together later. **A03–A09 have no user phone visual acceptance yet.**
+- **New isolated chrome:** `CherryFinancialChrome.kt`, commit `267aa2a79f7883b4a07ce604e123586e3817442f`: a Home-blush background and 22dp glass panel with translucent white surface, white rim and static low-cost ruby shadow; apply only to outer selectors / **agent group** cards, never every transaction, digit or amount.
+- **B03 Today Ledger:** `OperationalScreens.kt`, commit `3cc8775b3cb3ab5cd636a86b92829cf9cde8fb54`: glass Date/Session filter pane; glass per-agent outer group; customer rows remain transparent within the same group, no new person portraits in individual transaction lines. Agent name can wrap alongside amount. **No change** to `vm.agentTotals`, `vm.customerEntries`, `flatMap{it.lines}.sumOf{it.amount}`, session filters, totals or bottom navigation.
+- **B01 Betting Add/Edit:** targeted **only** `BettingScreen` function in `Screens.kt`, commit `a1dd29c84f7523d22ebd6cc1b79a6787260ff6b6`. Add Home-blush background and keyboard inset to existing screen container, glass Agent/Customer identity strip and combined Date/Session panel, subtle cherry-styled pinned confirm bar. **Preserve** selection IDs, exact parse/preview, backdated checks, edit/confirm calls, validation, input formatting, all result/error UI.
+- **B02 Bet History:** targeted **only** `BetHistoryScreen` function in `Screens.kt` (same commit): Home-blush background and glass Customer identity + Date/Session panels. **Neutral per-transaction ElevatedCard remains unchanged**, as do submission ordering, edit/delete, voucher selection, totals, printable preview logic, and history detail dialog.
+- **Regression guard:** `FinancialChromeContractTest.kt`, commit `eeea93c9c43750bef2f1e5a61a95bccbee83ee08`, source-contract tests for preserved routes/calculations and **no per-row blur**. Source checks do not prove real-device visual quality.
+- **Out of scope / frozen:** Home and all approved A01–A09 except the explicitly located Betting/History function segments in shared `Screens.kt`; forms including `CherryProfileFormUi.kt`; Research including `Historical2DTimelineScreen.kt`; all Better Data/SET/Live; Room/domain/formulas; exports and JPEG renderers; global `Theme.kt`/navigation. Verify function-range source identity and git changed-path list before claiming the scope is clean.
+- **Quality gate:** Android CI has started, **not yet verified** at this checkpoint. If the latest Build fails, fix only proven errors and log them. Keep money amount text, 00–99 grid and transaction rows untouched. Combined phone QA will include keyboard-visible Confirm, long names/amounts, both Myanmar/English, period/session chip selection, stale Agent/Customer checks, scrolling, empty ledgers and voucher routes.
+- **Next:** verify B01–B03 CI before proceeding to **B04 Agent Digit Totals / B05 Customer 00–99**. Later financial report and commission UI remains a separate narrow pass, no calculation refactor.
 
 **Combined-acceptance decision and A07–A09 selection pilot — 2026-11-24:**
 - **User decision:** after the successful **Build 1874** A03–A06 List/Information pass, the user explicitly said **continue and review all screens together later** ("ဆက်လုပ်မယ်ကွာ နောက်မှ ပေါင်းပြီးစစ်မယ်"). This changes **only the phone visual sign-off cadence**, NOT the requirement to run CI/tests and preserve working Build baselines after each code pass. **Do not mark A03–A09 visually accepted until that combined review.**
