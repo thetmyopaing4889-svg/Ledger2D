@@ -267,8 +267,8 @@ private fun StatementTotalCard(t: StatementTotals, title: String, customerCount:
     val present = distinctDraws?.first ?: t.drawsWithBets
     val completed = distinctDraws?.second ?: t.completedDraws
     val waiting = present - completed
-    ElevatedCard {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    CherryFinancialPanel {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (customerCount != null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("စာရင်းရှိသော ထိုးသား ${customerCount} ယောက်", "Customers with entries: ${customerCount}"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             StatementMoneyLine("စုစုပေါင်းထိုးကြေး", t.totalBet, true)
