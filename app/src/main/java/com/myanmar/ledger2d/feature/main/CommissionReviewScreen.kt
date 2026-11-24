@@ -180,7 +180,7 @@ private fun CommissionReviewResults(
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             CherryFinancialPanel {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,selectedName,Modifier.fillMaxWidth())
                     Text(range.start.reviewDate() + " – " + range.end.reviewDate() + " • " +
@@ -265,7 +265,7 @@ private fun CommissionAgentGroup(vm: LedgerViewModel, lines: List<CommissionLedg
         border = BorderStroke(1.dp, Color.White),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Surface(onClick = { open = !open }) {
+            Surface(onClick = { open = !open }, color = Color.Transparent) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,first.agentId,first.agentName,Modifier.fillMaxWidth(),avatarSize=34.dp)
