@@ -76,6 +76,8 @@ internal fun CustomerDigitViewsWorkspace(
     }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Home-inspired surface applies to the SUMMARY, not to the 00–99 digit cells.
+        CherryFinancialPanel {
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("00–99 အကွက်စာရင်း"),
             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ထိုးကြေးစုစုပေါင်း ${totalStake.mmk()}", "Total stake: ${totalStake.mmk()}"),
@@ -96,7 +98,10 @@ internal fun CustomerDigitViewsWorkspace(
                 view = DigitViewFilter.ALL
             }
         }
+        }
 
+        // Filtering and search are grouped; sorting stays the same and scrolls horizontally.
+        CherryFinancialPanel {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             DigitViewTab("အားလုံး", view == DigitViewFilter.ALL, Modifier.weight(1f)) {
                 view = DigitViewFilter.ALL
@@ -151,6 +156,7 @@ internal fun CustomerDigitViewsWorkspace(
             }
         }
 
+        }
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ပြသနေသောအကွက် ${rows.size} ကွက်", "Showing ${rows.size} digits"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
