@@ -37,7 +37,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 private val cherryYangon = ZoneId.of("Asia/Yangon")
-private val cherryBackground = Color(0xFFFFF8FA)
+private val cherryBackground = Color(0xFFFCEEF3)
 
 @Composable
 fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
@@ -172,11 +172,11 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             color=MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
-                navigationIcon={IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null)}},
+                navigationIcon={IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,tr("နောက်သို့","Back"),tint=AppColors.PrimaryDeep)}},
                 actions={IconButton(onClick={showHistory=true}) {
                     Icon(Icons.Default.History,tr("မှတ်တမ်း","History"),tint=AppColors.PrimaryDeep)
                 }},
-                colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.White),
+                colors=TopAppBarDefaults.topAppBarColors(containerColor=Color(0xFFFFF3F7)),
             )
         },
         bottomBar={
@@ -185,21 +185,21 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                     selectedIconColor=AppColors.PrimaryDeep,
                     selectedTextColor=AppColors.PrimaryDeep,
                     indicatorColor=Color.White,
-                    unselectedIconColor=Color(0xFF777077),
-                    unselectedTextColor=Color(0xFF777077)
+                    unselectedIconColor=Color(0xFF62545B),
+                    unselectedTextColor=Color(0xFF62545B)
                 )
                 NavigationBarItem(tab==CherryTab.CURRENT,{tab=CherryTab.CURRENT},
                     icon={Icon(Icons.Default.Bolt,null)},
-                    label={Text(tr("လက်ရှိမူ","Current"),maxLines=1)},colors=colors)
+                    label={Text(tr("လက်ရှိမူ","Current"),maxLines=2,textAlign=TextAlign.Center)},colors=colors)
                 NavigationBarItem(tab==CherryTab.BORN,{tab=CherryTab.BORN},
                     icon={Icon(Icons.Default.LocalFireDepartment,null)},
-                    label={Text(tr("မွေးမူ","Born"),maxLines=1)},colors=colors)
+                    label={Text(tr("မွေးမူ","Born"),maxLines=2,textAlign=TextAlign.Center)},colors=colors)
                 NavigationBarItem(tab==CherryTab.MATH,{tab=CherryTab.MATH},
                     icon={Icon(Icons.Default.Calculate,null)},
-                    label={Text(tr("သင်္ချာနည်း","Math"),maxLines=1)},colors=colors)
+                    label={Text(tr("သင်္ချာနည်း","Math"),maxLines=2,textAlign=TextAlign.Center)},colors=colors)
                 NavigationBarItem(tab==CherryTab.SUMMARY,{tab=CherryTab.SUMMARY},
                     icon={Icon(Icons.Default.EmojiEvents,null)},
-                    label={Text(tr("အောင်ချက်","Success"),maxLines=1)},colors=colors)
+                    label={Text(tr("အောင်ချက်","Success"),maxLines=2,textAlign=TextAlign.Center)},colors=colors)
             }
         }
     ){padding->

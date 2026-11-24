@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,6 +71,7 @@ import com.myanmar.ledger2d.core.domain.DeviceCalendar
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.feature.main.OperationalScaffold
+import com.myanmar.ledger2d.feature.main.cherryFinancialBackground
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -281,7 +283,7 @@ private fun LiveContent(
         else -> hero
     }
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxSize().cherryFinancialBackground().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (closedDay) {
@@ -328,9 +330,8 @@ private fun ClosedDayNotice(text: String) {
             Icon(Icons.Default.CalendarMonth, contentDescription = null)
             Text(
                 text = text,
+                modifier = Modifier.weight(1f),
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -338,18 +339,27 @@ private fun ClosedDayNotice(text: String) {
 
 @Composable
 private fun LiveBottomBar(selected: String, onSelect: (String) -> Unit) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+    NavigationBar(containerColor = Color(0xFFFFEBF0), tonalElevation = 0.dp) {
+        val colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = AppColors.PrimaryDeep,
+            selectedTextColor = AppColors.PrimaryDeep,
+            indicatorColor = Color.White,
+            unselectedIconColor = Color(0xFF62545B),
+            unselectedTextColor = Color(0xFF62545B),
+        )
         NavigationBarItem(
             selected = selected == "live",
             onClick = { onSelect("live") },
             icon = { Icon(Icons.Default.CheckCircle, null) },
-            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Live")) },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Live"), maxLines = 2) },
+            colors = colors,
         )
         NavigationBarItem(
             selected = selected == "calendar",
             onClick = { onSelect("calendar") },
             icon = { Icon(Icons.Default.CalendarMonth, null) },
-            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Calendar")) },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Calendar"), maxLines = 2) },
+            colors = colors,
         )
     }
 }
@@ -374,7 +384,7 @@ private fun LiveCalendar(
     val lastFriday = month.atEndOfMonth().with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY))
 
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxSize().cherryFinancialBackground().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Card(
@@ -511,7 +521,7 @@ private fun LiveCalendarDetail(
 ) {
     val dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", java.util.Locale.ENGLISH))
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxSize().cherryFinancialBackground().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -837,12 +847,12 @@ private fun LiveRefRow(time: String, modern: String, internet: String) {
 private fun LiveUnavailableState(loading: Boolean, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     val l = LocalLanguage.current
     if (loading) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = modifier.fillMaxSize().cherryFinancialBackground(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = AppColors.PrimaryDeep)
         }
         return
     }
-    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    Column(modifier = modifier.fillMaxSize().cherryFinancialBackground(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Surface(Modifier.size(64.dp), shape = CircleShape, color = AppColors.Blush, border = BorderStroke(1.dp, AppColors.Stone)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.CloudOff, null, tint = AppColors.PrimaryDeep, modifier = Modifier.size(28.dp))

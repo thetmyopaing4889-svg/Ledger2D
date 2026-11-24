@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B11 CI success through Build 1915; C01 Build 1919 and C02 Build 1922 CI SUCCESS with both APKs verified. C03 Customer settlement and C04 Gallery feedback combined UI/tests committed; CI/APK and combined phone QA pending. Home/Form/Research, JPEG renderers and domain/persistence unchanged.  
+**Status:** M1 A01–A09 and M2 B01–B11 source/CI complete; M3 C01–C04 source/CI complete through Build 1923 (both APK artifacts verified). M4 Live/Better Data localized chrome and source contracts committed in one batch; CI/APK and combined phone QA pending. M5 final regression not started. Home/Form/Research, Rules Library, JPEG renderers, Live timing and Better Data engine unchanged.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -261,8 +261,8 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
 | M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | SOURCE/CI DONE — A01/A02 user-approved Build 1871; A03–A06 passed Build 1874; A07–A09 passed Build 1881; combined device QA deferred |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; monetary source formulas unchanged; CI+combined device QA | SOURCE/CI DONE — B01–B08 CI success through Build 1903; B09 Build 1907; B10 Build 1910; B11 Build 1915 CI SUCCESS; combined phone QA pending |
-| M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | IN PROGRESS — C01 Build 1919 and C02 Build 1922 CI SUCCESS; C03+C04 combined UI/tests committed; CI and combined phone QA pending |
-| M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
+| M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | SOURCE/CI DONE — C01 Build 1919, C02 Build 1922, C03+C04 Build 1923 CI SUCCESS; combined phone QA pending |
+| M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | SOURCE DONE — localized Live/Better Data chrome and tests committed; CI/device QA pending |
 | M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | NOT STARTED |
 
 **Stop and seek explicit scope change** if the only possible fix touches Research, the shared Research/Analysis parent, Home/Form approved regions, global font/theme, domain calculations or renderers. Never silently expand scope.
@@ -278,6 +278,14 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**M3 verified CI and M4 Specialized UI batch — 2026-11-24 (M4 CI/device QA pending):**
+- Build **1923**, commit `30734009d4b107720e6420330d7d1b930035f4d8`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45356064601, verified SUCCESS: tests, lint, debug/release APK and both uploads passed; debug artifact `14903052518`, release artifact `14902203051`, unexpired at check. M1–M3 source/CI complete (24 scoped items).
+- M4 reviewed active routes: `LedgerNav.kt` live -> `LiveScreen`, betterData -> `BetterDataScreen` -> `CherryBetterDataScreen`. Both specialized layouts intentional. Live red result hero and semantic result/number cards are retained, no duplicate glass on data cells; only surrounding blush gradient, stronger cherry navigation colors and wrapping closed-day notice/tab labels. Live collector lifecycle, SET display projection, calendar selection and hero functions compared unchanged.
+- Better Data already uses cherry accents, dedicated next-draw subtitle, history and four-tab navigation. Minimal chrome-only adjustments: Home blush canvas, pale blush top bar, cherry Back icon with localized accessibility label, darker inactive tabs and two-line centered labels. Entire content body and pre-Scaffold state/engine/snapshot code verified identical to Build 1923.
+- Historical2DTimelineScreen, Research, Rules Library, Home, Forms, Welcome, LedgerNav, global theme, engine, data sources and financial/JPEG paths unchanged. Specialized UI is not a copy of Home's unique hero/dock. No global styles or new animations.
+- `SpecializedHomeChromeContractTest.kt`: two source contracts protect Live lifecycle and navigation plus Better Data four tabs and engine/snapshot wiring. One combined commit/build, CI not yet verified.
+- Next: verify M4 CI/APK then M5 final baseline-to-head path and protected-region regression audit. Combined phone QA remains required, including Live vs Calendar, result/closed-day status, all Better Data tabs at narrow width and large font, back/history, trigger-only formula search and no new startup delay. Do not merge main.
 
 **C02 verified CI and combined C03/C04 export UI batch — 2026-11-24 (combined CI/device QA pending):**
 - Build **1922**, commit `1975074335f9fca0d7689cc2d86d2e94f3fbb6e5`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45353364198, verified SUCCESS: unit tests, lint, debug/release APK and both uploads passed. Debug artifact `14900639997`, release artifact `14900714542`, both unexpired at check.
