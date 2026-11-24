@@ -117,32 +117,33 @@ fun AgentDigitTotalsWorkspace(
 
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စုစုပေါင်း"), { if (resultPage) resultPage = false else onBack() }, includeQuickEntryFab = false) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             state = pageScroll,
             contentPadding = PaddingValues(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (!resultPage) {
             item {
-                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်နှင့် အကြိမ်ရွေးရန်"), fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium)
-                ScopeDropdown(
-                    "ဒိုင်ရွေးရန်", selectedName,
-                    listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
-                    selectedAgent,
+                CherryFinancialPanel {
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်နှင့် အကြိမ်ရွေးရန်"),
+                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    ScopeDropdown(
+                        "ဒိုင်ရွေးရန်", selectedName,
+                        listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
+                        selectedAgent,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                ) { selectedAgent = it }
-                Spacer(Modifier.height(8.dp))
-                DateInput(dateText, {
-                    dateText = it
-                    language.setDate(it)
-                }, "ရက်စွဲ")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    DrawSession.entries.forEach { draw ->
-                        FilterChip(session == draw, {
-                            session = draw
-                            language.setSession(draw)
-                        }, label = { Text(draw.label) })
+                    ) { selectedAgent = it }
+                    DateInput(dateText, {
+                        dateText = it
+                        language.setDate(it)
+                    }, "ရက်စွဲ")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        DrawSession.entries.forEach { draw ->
+                            FilterChip(session == draw, {
+                                session = draw
+                                language.setSession(draw)
+                            }, label = { Text(draw.label) })
+                        }
                     }
                 }
             }
@@ -168,10 +169,12 @@ fun AgentDigitTotalsWorkspace(
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးချယ်မှုကို ပြန်စစ်ပါ")) }
             } else {
                 item {
-                    CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,selectedAgent,selectedName,Modifier.fillMaxWidth())
-                    Text("${date} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${selectedName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    CherryFinancialPanel {
+                        CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,selectedAgent,selectedName,Modifier.fillMaxWidth())
+                        Text("${date} • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} • ${selectedName}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 item {
                     DigitTotalsSummary(
@@ -262,13 +265,11 @@ private fun DigitTotalsAgentCard(vm: LedgerViewModel, group: AgentDigitGroup) {
 private fun DigitTotalsSummary(rows: List<AgentDigitLine>, title: String) {
     val stake = rows.fold(0L) { sum, row -> Math.addExact(sum, row.stake) }
     val commission = rows.fold(0L) { sum, row -> Math.addExact(sum, row.netCommission) }
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            DigitTotalsSummaryLine("စုစုပေါင်းထိုးကြေး", "${stake.digitMoney()} ကျပ်")
-            DigitTotalsSummaryLine("Net ကော်မရှင်", "${commission.digitMoney()} ကျပ်")
-            DigitTotalsSummaryLine("ရှိသောဂဏန်း", "${rows.size} ကွက်")
-        }
+    CherryFinancialPanel {
+        Text(title, fontWeight = FontWeight.Bold)
+        DigitTotalsSummaryLine("စုစုပေါင်းထိုးကြေး", "${stake.digitMoney()} ကျပ်")
+        DigitTotalsSummaryLine("Net ကော်မရှင်", "${commission.digitMoney()} ကျပ်")
+        DigitTotalsSummaryLine("ရှိသောဂဏန်း", "${rows.size} ကွက်")
     }
 }
 
