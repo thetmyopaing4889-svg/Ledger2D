@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B08 Financial CI success through Build 1903. B09 UI/tests corrected and CI SUCCESS Build 1907 (after a legacy avatar test failure in 1904–1906). B10 Agent Closed/Limit Home glass UI and tests committed, CI and combined device QA pending. B11 not started. Home/Form/Research and domain/persistence unchanged.  
+**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B08 Financial CI success through Build 1903. B09 CI SUCCESS Build 1907; B10 CI SUCCESS Build 1910 with both APK artifacts verified. B11 risk selection and result UI and source tests committed; latest CI/APK and combined device QA pending. Home/Form/Research and domain/persistence unchanged.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -260,7 +260,7 @@ For each changed screen, record a **current Home reference screenshot** and the 
 |---|---|---|
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
 | M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | SOURCE/CI DONE — A01/A02 user-approved Build 1871; A03–A06 passed Build 1874; A07–A09 passed Build 1881; combined device QA deferred |
-| M2 — Financial controls/report UI | B01–B11 checked/fixed; monetary source formulas unchanged; CI+combined device QA | IN PROGRESS — B01–B08 CI success through Build 1903; B09 CI SUCCESS Build 1907; B10 UI/tests committed awaiting CI; B11 not started |
+| M2 — Financial controls/report UI | B01–B11 checked/fixed; monetary source formulas unchanged; CI+combined device QA | IN PROGRESS — B01–B08 CI success through Build 1903; B09 CI SUCCESS Build 1907; B10 CI SUCCESS Build 1910; B11 UI and source tests committed, awaiting CI |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
 | M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | NOT STARTED |
@@ -278,6 +278,13 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**B10 verified CI and B11 Risk Analysis Home-first pass — 2026-11-24 (B11 CI/device QA pending):**
+- B10 Build **1910**, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45345427834, baseline commit `ac96bda929beab8d32035dfc5445040eedb889da`, independently verified SUCCESS: unit tests, lint, debug APK, release APK verification and both uploads passed. Debug artifact `14897908339` and release artifact `14898018197` were not expired when checked.
+- B11 selection commit `07a05290b5a9ee75c11ea63829afe1408db423c5`: risk-only Home blush background and five outer glass groups in shared `CustomerReviewScreens.kt`; report mode retains original visible selection content and result routing. Agent/customer avatars, selected scope/date/draw and enabled/back actions preserved.
+- B11 result commit `b544e0018a3f3609673b9cd6002b7820c8255523`: `CustomerRiskReviewResults.kt` uses three outer Home glass groups (identity, summary, tab selector), wrap-capable tab chips, full-width identity and adaptive stacked money cards for narrow width, large font or long amounts. Profit/loss semantic colors retained, neutral per-digit tables unchanged. Risk calculation/load state and planner calls verified byte-identical.
+- B11 test commit `8ac8f5e117e5478bdacad064a5f96d4e6c84c7db`: three source contracts for selection/report separation, scope/calculation/action wiring and adaptive money layout. CI has not yet been verified. Source contracts do not substitute for device QA.
+- Next gate: verify latest B11 CI conclusion and both APK artifacts, repair minimal failures if any, then proceed to C01–C04 export/preview audit. Combined phone QA still pending: long names, large font, MM/EN, narrow screen, full numeric values, selection navigation, neutral table readability and saved-rate results. No main merge or changes to protected Home/Form/Research, Better Data, domain/DB, or export in B11.
 
 **B09 regression fix and B10 Agent Closed/Limit Home Glass pilot — 2026-11-24 (CI and combined phone QA pending):**
 - **B09 build recheck outcome:** Builds 1904–1906 **FAILED** during `app:testDebugUnitTest`, not Kotlin compile. Build **1906**, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45339679313 log: `CherryProfileCoverageTest.customerAndAgentOperationalHeadersNeverUseTransactionRows` failed at old `CherryProfileCoverageTest.kt:36`. The test matched the prior exact string `c?.name` and whitespace in `CommissionScreen`; B09 renamed its local UI binding to `customer?.name` while preserving the actual Customer ID and Profile. No Money/DB error reported.
