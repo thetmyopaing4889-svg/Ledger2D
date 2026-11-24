@@ -49,6 +49,7 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
                                 Modifier.weight(1f),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
+                                color = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep,
                             )
                             Text(
                                 totals.sumOf { it.amount }.mmk(),

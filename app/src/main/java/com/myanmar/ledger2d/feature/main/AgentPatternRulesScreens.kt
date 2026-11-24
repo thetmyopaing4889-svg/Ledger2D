@@ -131,7 +131,6 @@ fun AgentClosedPatternWorkspace(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CherryFinancialPanel {
             CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,agentName,Modifier.fillMaxWidth())
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$agentName • $date • ${session.label} အတွက်သာ", "$agentName • $date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} only"),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -139,14 +138,12 @@ fun AgentClosedPatternWorkspace(
                 "လက်ခံပြီးသားစာရင်းကိုလည်း မဖျက်ပါ။",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            CherryFinancialPanel {
             RulePatternPicker(format, {format=it}, source, {source=it}, selection)
             if (candidates.isNotEmpty()) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အသစ်ပိတ်မယ့် ${newlyClosed.size} ကွက် • ပိတ်ပြီးသား ${alreadyClosed.size} ကွက်", "New closures: ${newlyClosed.size} • Already closed: ${alreadyClosed.size}"),
                     style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick={pendingAction="close"},enabled=!busy && newlyClosed.isNotEmpty()) {
+                    PremiumSelectionButton(onClick={pendingAction="close"},enabled=!busy && newlyClosed.isNotEmpty()) {
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အုပ်စုလိုက်ပိတ်မည်"))
                     }
                     OutlinedButton(onClick={pendingAction="open"},enabled=!busy && alreadyClosed.isNotEmpty()) {
@@ -157,8 +154,6 @@ fun AgentClosedPatternWorkspace(
             if (notice.isNotEmpty()) Text(notice,
                 color=MaterialTheme.colorScheme.primary,
                 style=MaterialTheme.typography.bodySmall)
-            }
-            CherryFinancialPanel {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လက်ရှိပိတ်ထားသောဂဏန်း (${current.size} ကွက်)", "Currently closed digits (${current.size})"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -176,7 +171,6 @@ fun AgentClosedPatternWorkspace(
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းတစ်ကွက်ကို နှိပ်ပြီးလည်း ပြန်ဖွင့်နိုင်သည်"),
                     style=MaterialTheme.typography.labelSmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             }
         }
     }
@@ -241,24 +235,20 @@ fun AgentLimitPatternWorkspace(
                 dismissButton={TextButton(onClick={pendingOne=null}) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) }})
         }
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            CherryFinancialPanel {
             CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,agentName,Modifier.fillMaxWidth())
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$agentName • $date • ${session.label} အတွက်သာ", "$agentName • $date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} only"),
                 style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
-            }
-            CherryFinancialPanel {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံးအတွက် Limit"),style=MaterialTheme.typography.titleMedium,
                 fontWeight=FontWeight.Bold)
             OutlinedTextField(allText,{ allText=it.filter(Char::isDigit) },
                 modifier=Modifier.fillMaxWidth(),singleLine=true,
+                shape = premiumSelectorShape, colors = premiumSelectorColors(),
                 keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
                 label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံးအတွက် Limit (အလွတ် = ဖယ်ရှား)"))})
-            Button(
+            PremiumSelectionButton(
                 enabled=allText.isBlank() || (allText.toLongOrNull()?.let { it>0L }==true),
                 onClick={vm.updateAgentAllLimit(agentId,date,session,allText) {notice="အကွက်အားလုံး Limit သိမ်းပြီး"}},
             ) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံး Limit သိမ်းမည်")) }
-            }
-            CherryFinancialPanel {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးချယ်ထားသောဂဏန်းများအတွက် အထူး Limit"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -267,6 +257,7 @@ fun AgentLimitPatternWorkspace(
                 OutlinedTextField(
                     amountText,{amountText=it.filter(Char::isDigit)},
                     modifier=Modifier.fillMaxWidth(),singleLine=true,
+                shape = premiumSelectorShape, colors = premiumSelectorColors(),
                     label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("တစ်ကွက်လျှင် Limit ပမာဏ (ကျပ်)"))},
                     keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
                 )
@@ -274,7 +265,7 @@ fun AgentLimitPatternWorkspace(
                     com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" • အသစ် ${digits.size-alreadyCustom} • အစားထိုး ${replacements} • မပြောင်း ${unchanged}", " • New ${digits.size-alreadyCustom} • Replaced ${replacements} • Unchanged ${unchanged}"),
                     style=MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Button(onClick={action="set"},
+                    PremiumSelectionButton(onClick={action="set"},
                         enabled=!busy && amount!=null && needsUpdate>0) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Limit အုပ်စုလိုက်သိမ်းမည်")) }
                     OutlinedButton(onClick={action="remove"},
                         enabled=!busy && removable.isNotEmpty()) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတာ ဖယ်ရှားမည်")) }
@@ -286,8 +277,6 @@ fun AgentLimitPatternWorkspace(
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(notice.isNotEmpty()) Text(notice,
                 style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary)
-            }
-            CherryFinancialPanel {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("သတ်မှတ်ထားသော အထူး Limit (${specials.size} ကွက်)", "Configured special limits (${specials.size})"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -305,7 +294,6 @@ fun AgentLimitPatternWorkspace(
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူး Limit တစ်ကွက်ကို နှိပ်ပြီး ဖယ်ရှားနိုင်သည်"),
                     style=MaterialTheme.typography.labelSmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             }
         }
     }

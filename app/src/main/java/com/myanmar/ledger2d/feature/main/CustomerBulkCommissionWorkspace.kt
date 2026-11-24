@@ -88,15 +88,15 @@ fun CustomerBulkCommissionWorkspace(
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer တစ်ယောက်ချင်း လက်ရှိနှုန်းတွေ မတူနိုင်ပါ။ ဒီနေရာမှာ နှုန်းအသစ်ကိုသာ ရိုက်ထည့်ပါ။"),
             style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            FilterChip(mode=="FORWARD",{mode="FORWARD";error="";success="";percent=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပုံမှန်နှုန်း ပြောင်းရန်"))})
-            FilterChip(mode=="DRAW",{mode="DRAW";error="";success="";percent=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session သီးသန့်"))})
+            PremiumSelectionChip(mode=="FORWARD",{mode="FORWARD";error="";success="";percent=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပုံမှန်နှုန်း ပြောင်းရန်"))})
+            PremiumSelectionChip(mode=="DRAW",{mode="DRAW";error="";success="";percent=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session သီးသန့်"))})
         }
         if(mode=="FORWARD") {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှုန်းအသစ် စတင်သက်ရောက်မည့် Session"),style=MaterialTheme.typography.labelMedium)
-            DateInput(startDate,{startDate=it;success=""},"စတင်မည့်ရက်")
+            PremiumDateInput(startDate,{startDate=it;success=""},"စတင်မည့်ရက်")
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 DrawSession.entries.forEach { draw->
-                    FilterChip(startSession==draw,{startSession=draw;success=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))})
+                    PremiumSelectionChip(startSession==draw,{startSession=draw;success=""},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))})
                 }
             }
         } else Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("ရွေးထားသော ","Selected ")+date+" • "+com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)+com.myanmar.ledger2d.core.design.LocalLanguage.current.text(" အတွက်သာ ပြန်တွက်မည်။"," only will be recalculated."),
@@ -104,12 +104,12 @@ fun CustomerBulkCommissionWorkspace(
         OutlinedTextField(percent,{
             percent=it.filter { ch->ch.isDigit() || ch=='.' }.take(6)
             success="";error=""
-        },Modifier.fillMaxWidth(),label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံးအတွက် ကော်မရှင် %"))},singleLine=true)
+        },Modifier.fillMaxWidth(),label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံးအတွက် ကော်မရှင် %"))},singleLine=true, shape = premiumSelectorShape, colors = premiumSelectorColors())
         if(customers.isEmpty()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Agent မှာ Customer မရှိသေးပါ"),
             color=MaterialTheme.colorScheme.error)
         if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
         if(success.isNotBlank()) Text(success,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
-        Button(onClick={pending=true},enabled=canSubmit,modifier=Modifier.fillMaxWidth()) {
+        PremiumSelectionButton(onClick={pending=true},enabled=canSubmit,modifier=Modifier.fillMaxWidth()) {
             Text(if(processing) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သိမ်းဆည်းနေသည်…") else if(mode=="DRAW") com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး ဒီ Session ပြန်တွက်မည်") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံးအတွက် သိမ်းမည်"))
         }
     }

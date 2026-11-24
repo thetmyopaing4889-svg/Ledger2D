@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1936 last verified CI SUCCESS. Build 1937 P4a failed Kotlin compile at legacy CustomerStatementResults caller (missing agentName). P4b1 compatibility fix and betting/history/digit layout source committed; cumulative CI pending. P4b2 remaining result workspaces and P5–P6 pending. No main merge.  
+**Status:** Build 1938 P4a/P4b1 CI SUCCESS. P4b2 remaining result chrome committed; cumulative CI and phone QA pending. P5–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -123,6 +123,12 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Customer digits: restore baseline summary/tab/search/sort hierarchy without added panels; use premium field and sort-chip decoration. Grid and detail body byte-identical, including winner/closed/special-limit semantic colors.
 - Standalone history: remove remaining extra identity wrapper; retain existing photo, date/session and all edit/delete/voucher/total functionality.
 - Existing layout source contracts updated and compatibility wiring guarded. No Home/Profile Form/Research/engine/storage/navigation changes. Remaining P4b2 commission/limit, agent pattern workspaces, Today Ledger and winning/closed-day result decoration still pending. CI and combined phone QA pending.
+
+### P4b2 — remaining results (2026-11-24)
+
+- Build 1938 verified CI SUCCESS: https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45422433155; debug 14936267357/release 14936022387 match b4594ca4733628337db9996d4b17867268628dab.
+- Standalone commission/limit remove excess enclosing panels and restore original limit spacing/divider, retain IME and original shared Input so protected profile forms remain identical. Agent closed/limit restore baseline layout and original confirmation/state prefix, with premium primary actions and limit fields. Bulk commission retains both modes and validation, using premium existing controls. Today Ledger original single group retained; heading accent only. Winner/closed-day existing cards/actions decorated, original grid and semantic data preserved.
+- P4 planned source pass complete, CI and device visual QA pending. No Home, protected profile forms, Research, engine, database, navigation or export changes. P5 next after CI.
 
 ### Updated execution sequence
 

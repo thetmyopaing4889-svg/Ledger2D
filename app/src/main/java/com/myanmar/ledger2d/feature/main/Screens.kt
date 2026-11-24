@@ -1496,32 +1496,28 @@ fun CommissionScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         Column(
             Modifier.fillMaxSize().padding(padding).cherryFinancialBackground()
                 .imePadding().verticalScroll(rememberScrollState())
-                .padding(AppDimens.screen),
+                .padding(AppDimens.screen).padding(bottom = LedgerControlDimensions.fabSafeBottom),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            CherryFinancialPanel {
-                CherryProfileIdentity(
-                    vm, ProfileKind.CUSTOMER, id,
-                    customer?.name ?: "ထိုးသား", Modifier.fillMaxWidth(),
-                )
-                Text(
-                    language.translate("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Input(
-                    value, { value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) },
-                    "ရာခိုင်နှုန်း", true, KeyboardType.Decimal,
-                )
-            }
+            CherryProfileIdentity(
+                vm, ProfileKind.CUSTOMER, id,
+                customer?.name ?: "ထိုးသား", Modifier.fillMaxWidth(),
+            )
+            Text(
+                language.translate("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Input(
+                value, { value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) },
+                "ရာခိုင်နှုန်း", true, KeyboardType.Decimal,
+            )
             // Keep the existing percentage explanation and monetary validation semantics.
-            CherryFinancialPanel {
-                Text(
-                    language.translate("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။"),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+            Text(
+                language.translate("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။"),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
             FormActions(
                 onBack,
                 { vm.updateCommission(id, value) { value = ""; onBack() } },
@@ -1566,15 +1562,13 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().imePadding(),
             contentPadding = PaddingValues(AppDimens.screen),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                CherryFinancialPanel {
-                    CherryProfileIdentity(
-                        vm, ProfileKind.CUSTOMER, id,
-                        limitCustomer?.name ?: "ထိုးသား", Modifier.fillMaxWidth(),
-                    )
-                }
+                CherryProfileIdentity(
+                    vm, ProfileKind.CUSTOMER, id,
+                    limitCustomer?.name ?: "ထိုးသား", Modifier.fillMaxWidth(),
+                )
             }
             item {
                 PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
@@ -1592,34 +1586,31 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 }
             }
             item {
-                CherryFinancialPanel {
-                    Text(
-                        language.translate("ဒီ Session အတွက် အားလုံးကန့်သတ်ချက်"),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = AppColors.PrimaryDeep,
-                    )
-                    Input(allText, { allText = it }, "မထည့်ပါက ကန့်သတ်ချက်မရှိပါ", keyboard = KeyboardType.Number)
-                    Button(
-                        { vm.updateAllLimit(id, date, session, allText) {} },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(language.translate("သိမ်းမည်")) }
-                }
+                Text(
+                    language.translate("ဒီ Session အတွက် အားလုံးကန့်သတ်ချက်"),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = AppColors.PrimaryDeep,
+                )
+                Input(allText, { allText = it }, "မထည့်ပါက ကန့်သတ်ချက်မရှိပါ", keyboard = KeyboardType.Number)
+                PremiumSelectionButton(
+                    { vm.updateAllLimit(id, date, session, allText) {} },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(language.translate("သိမ်းမည်")) }
             }
             item {
-                CherryFinancialPanel {
-                    Text(
-                        language.translate("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်"),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = AppColors.PrimaryDeep,
-                    )
-                    Input(digit, { digit = it.take(2) }, "ဂဏန်း", keyboard = KeyboardType.Number)
-                    Input(amount, { amount = it }, "ပမာဏ", keyboard = KeyboardType.Number)
-                    Button(
-                        { vm.addSpecialLimit(id, date, session, digit, amount); digit = ""; amount = "" },
-                        enabled = BetParser.validDigit(digit) && amount.toLongOrNull()?.let { it > 0 } == true,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(language.translate("သိမ်းမည်")) }
-                }
+                HorizontalDivider()
+                Text(
+                    language.translate("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်"),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = AppColors.PrimaryDeep,
+                )
+                Input(digit, { digit = it.take(2) }, "ဂဏန်း", keyboard = KeyboardType.Number)
+                Input(amount, { amount = it }, "ပမာဏ", keyboard = KeyboardType.Number)
+                PremiumSelectionButton(
+                    { vm.addSpecialLimit(id, date, session, digit, amount); digit = ""; amount = "" },
+                    enabled = BetParser.validDigit(digit) && amount.toLongOrNull()?.let { it > 0 } == true,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(language.translate("သိမ်းမည်")) }
             }
             items(specials) { limit ->
                 Row(
@@ -1699,7 +1690,7 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             }
             if (mode == "input" && showForm && resultView.isBlank()) {
                 item {
-                    ElevatedCard {
+                    ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = Color(0xEBFFFFFF))) {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                             Text(if (existing == null) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းအသစ်") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းပြင်ရန်"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             PremiumDateInput(date, { date = it; language.setDate(it) }, "ရက်စွဲ")
@@ -1716,7 +1707,7 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                             if (notice.isNotBlank()) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(notice), color = MaterialTheme.colorScheme.primary)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 OutlinedButton({ digit = "" }, Modifier.weight(1f)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရှင်းမည်")) }
-                                Button(
+                                PremiumSelectionButton(
                                     onClick = {
                                         runCatching { LocalDate.parse(date) }.getOrNull()?.let { parsedDate ->
                                             if (existing == null) vm.saveWinner(parsedDate, session, digit, { digit = ""; notice = "သိမ်းပြီးပါပြီ" }) { notice = it }
@@ -1752,7 +1743,7 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             } else if (mode == "view") {
                 displayWinners.groupBy { it.date }.toSortedMap(compareByDescending { it }).forEach { (day, dayWinners) ->
                     item {
-                        ElevatedCard {
+                        ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = Color(0xEBFFFFFF))) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(day.displayDate(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 DrawSession.entries.forEach { draw ->
@@ -1782,7 +1773,7 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     }
 }
 @Composable private fun ResultViewCard(title: String, description: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ElevatedCard(onClick = onClick, modifier = modifier.border(1.dp, AppColors.Stone, MaterialTheme.shapes.medium), colors = CardDefaults.elevatedCardColors(containerColor = Color.White), shape = MaterialTheme.shapes.medium) {
+    ElevatedCard(onClick = onClick, modifier = modifier.border(1.5.dp, Color.White, premiumSelectorShape), colors = CardDefaults.elevatedCardColors(containerColor = Color(0xEBFFFFFF)), shape = premiumSelectorShape, elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(icon, null, tint = AppColors.Primary, modifier = Modifier.size(22.dp))
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
@@ -2000,9 +1991,9 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော ပိတ်ရက်များတွင် စာရင်းအသစ် လက်မခံပါ"), style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
             PremiumDateInput(dateText, { dateText = it }, "ရက်စွဲ")
-            Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်သတ်မှတ်မည်")) }
+            PremiumSelectionButton(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth()) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်သတ်မှတ်မည်")) }
             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.error)
-            if(days.isEmpty()) EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက် မရှိသေးပါ"), "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=MaterialTheme.shapes.medium) { ListItem(headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းအသစ် လက်မခံပါ"))}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }) } } }
+            if(days.isEmpty()) EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက် မရှိသေးပါ"), "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=premiumSelectorShape, colors=CardDefaults.elevatedCardColors(containerColor=Color(0xEBFFFFFF))) { ListItem(colors=ListItemDefaults.colors(containerColor=Color.Transparent), headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းအသစ် လက်မခံပါ"))}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }) } } }
         }
     }
 }

@@ -29,7 +29,8 @@ class AgentClosedLimitHomeChromeContractTest {
     }
 
     @Test fun closedDigitsKeepPreviewScopesAndConfirmations() {
-        assertEquals(3, closed.split("CherryFinancialPanel {").size - 1)
+        assertFalse(closed.contains("CherryFinancialPanel {"))
+        assertTrue(closed.contains("PremiumSelectionButton("))
         assertTrue(closed.contains("key(agentId, date, session)"))
         assertTrue(closed.contains("vm.closedNumbers(agentId,date,session)"))
         assertTrue(closed.contains("ClosedDigitSelector.select(format,source)"))
@@ -44,7 +45,8 @@ class AgentClosedLimitHomeChromeContractTest {
     }
 
     @Test fun agentLimitMathAndSaveRemoveRoutesRemainUntouched() {
-        assertEquals(4, limit.split("CherryFinancialPanel {").size - 1)
+        assertFalse(limit.contains("CherryFinancialPanel {"))
+        assertTrue(limit.contains("PremiumSelectionButton("))
         assertTrue(limit.contains("key(agentId,date,session)"))
         assertTrue(limit.contains("vm.agentAllLimit(agentId,date,session)"))
         assertTrue(limit.contains("vm.agentSpecialLimits(agentId,date,session)"))

@@ -27,7 +27,7 @@ class CustomerCommissionLimitHomeChromeContractTest {
     @Test fun customerCommissionStylingPreservesOriginalBasisPointValidationAndSave() {
         assertTrue(commission.contains(".cherryFinancialBackground()"))
         assertTrue(commission.contains(".imePadding().verticalScroll(rememberScrollState())"))
-        assertEquals(2, commission.split("CherryFinancialPanel {").size - 1)
+        assertFalse(commission.contains("CherryFinancialPanel {"))
         assertTrue(commission.contains("vm.customer(id).collectAsState(initial = null)"))
         assertTrue(commission.contains("commissionRateBasisPoints / 100.0"))
         assertTrue(commission.contains("ch.isDigit() || ch == '.'"))
@@ -39,7 +39,9 @@ class CustomerCommissionLimitHomeChromeContractTest {
 
     @Test fun customerLimitStillUsesOriginalAgentScopeDrawAndSpecialLimitData() {
         assertTrue(limit.contains(".cherryFinancialBackground().imePadding()"))
-        assertEquals(3, limit.split("CherryFinancialPanel {").size - 1)
+        assertFalse(limit.contains("CherryFinancialPanel {"))
+        assertTrue(limit.contains("PremiumSelectionButton("))
+        assertTrue(limit.contains("HorizontalDivider()"))
         assertTrue(limit.contains("PremiumSelectionChip("))
         assertTrue(limit.contains("vm.customer(id).collectAsStateWithLifecycle(initialValue = null)"))
         assertTrue(limit.contains("vm.allLimit(id, date, session)"))
