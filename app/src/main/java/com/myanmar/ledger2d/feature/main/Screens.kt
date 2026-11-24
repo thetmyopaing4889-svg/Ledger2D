@@ -1520,28 +1520,161 @@ fun ClosedNumberScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
         }
     }
 }
-@Composable fun CommissionScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){val c by vm.customer(id).collectAsState(initial=null);var value by rememberSaveable{mutableStateOf("")};LaunchedEffect(c){c?.let{value=(it.commissionRateBasisPoints/100.0).toString().removeSuffix(".0")}};AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကော်မရှင်နှုန်းထား"),onBack){p->FormColumn(p){CherryProfileIdentity(vm,ProfileKind.CUSTOMER,id,c?.name ?: "ထိုးသား",Modifier.fillMaxWidth());Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ"),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);Input(value,{value=it.filter{ch->ch.isDigit()||ch=='.'}.take(6)},"ရာခိုင်နှုန်း",true,KeyboardType.Decimal);Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.medium){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။"),Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.bodySmall)};FormActions(onBack,{vm.updateCommission(id,value){value="";onBack()}},value.toBigDecimalOrNull()?.let{it>=java.math.BigDecimal.ZERO&&it<=java.math.BigDecimal(100)}==true)}}}
-@Composable fun LimitScreen(vm:LedgerViewModel,id:Long,onBack:()->Unit){
-    val language=LocalLanguage.current
-    var dateText by rememberSaveable{mutableStateOf(language.selectedDate)}
-    var session by rememberSaveable{mutableStateOf(language.selectedSession)}
-    val date=runCatching{LocalDate.parse(dateText)}.getOrElse{LocalDate.now()}
-    val limitCustomer by vm.customer(id).collectAsStateWithLifecycle(initialValue=null)
-    val all by vm.allLimit(id,date,session).collectAsStateWithLifecycle(initialValue=null)
-    val specials by vm.specialLimits(id,date,session).collectAsStateWithLifecycle(initialValue=emptyList())
-    var allText by rememberSaveable{mutableStateOf("")}
-    var digit by rememberSaveable{mutableStateOf("")}
-    var amount by rememberSaveable{mutableStateOf("")}
-    var pendingSpecial by remember{mutableStateOf<SpecialLimitEntity?>(null)}
-    LaunchedEffect(all,date,session){allText=all?.amount?.toString()?:""}
-    pendingSpecial?.let{value->AlertDialog(onDismissRequest={pendingSpecial=null},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အထူးကန့်သတ်ချက်ဖျက်မည်လား"))},text={Text(value.digit+" အတွက် "+value.amount.mmk()+" ကန့်သတ်ချက်ကို ဖျက်မည်လား?")},confirmButton={TextButton({vm.removeSpecialLimit(value);pendingSpecial=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖျက်မည်"))}},dismissButton={TextButton({pendingSpecial=null}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}})}
-    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကန့်သတ်ပမာဏ"),onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        item { CherryProfileIdentity(vm,ProfileKind.CUSTOMER,id,limitCustomer?.name ?: "ထိုးသား",Modifier.fillMaxWidth()) }
-        item{DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ");Row{DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;language.setSession(draw)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))})}}}
-        item{Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီ Session အတွက် အားလုံးကန့်သတ်ချက်"),style=MaterialTheme.typography.titleLarge);Input(allText,{allText=it},"မထည့်ပါက ကန့်သတ်ချက်မရှိပါ",keyboard=KeyboardType.Number);Button({vm.updateAllLimit(id,date,session,allText){}}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သိမ်းမည်"))}}
-        item{HorizontalDivider();Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်"),style=MaterialTheme.typography.titleLarge);Input(digit,{digit=it.take(2)},"ဂဏန်း",keyboard=KeyboardType.Number);Input(amount,{amount=it},"ပမာဏ",keyboard=KeyboardType.Number);Button({vm.addSpecialLimit(id,date,session,digit,amount);digit="";amount=""},enabled=BetParser.validDigit(digit)&&amount.toLongOrNull()?.let{it>0}==true){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သိမ်းမည်"))}}
-        items(specials){limit->Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.shapes.small).padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(limit.digit+"  →  "+limit.amount.mmk());TextButton({pendingSpecial=limit}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်"))}}}
-    }}
+@Composable
+fun CommissionScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
+    val language = LocalLanguage.current
+    val customer by vm.customer(id).collectAsState(initial = null)
+    var value by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(customer) {
+        customer?.let {
+            value = (it.commissionRateBasisPoints / 100.0).toString().removeSuffix(".0")
+        }
+    }
+    AppScaffold(language.translate("ကော်မရှင်နှုန်းထား"), onBack) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).cherryFinancialBackground()
+                .imePadding().verticalScroll(rememberScrollState())
+                .padding(AppDimens.screen),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            CherryFinancialPanel {
+                CherryProfileIdentity(
+                    vm, ProfileKind.CUSTOMER, id,
+                    customer?.name ?: "ထိုးသား", Modifier.fillMaxWidth(),
+                )
+                Text(
+                    language.translate("ဒီထိုးသားအတွက် ကော်မရှင်ရာခိုင်နှုန်းကို သတ်မှတ်ပါ"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Input(
+                    value, { value = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) },
+                    "ရာခိုင်နှုန်း", true, KeyboardType.Decimal,
+                )
+            }
+            // Keep the existing percentage explanation and monetary validation semantics.
+            CherryFinancialPanel {
+                Text(
+                    language.translate("ဥပမာ 15 ဆိုလျှင် 15% ဖြစ်ပါသည်။ ငွေတွက်ချက်မှုကို တိကျသော basis-point စနစ်ဖြင့် ပြုလုပ်ပါသည်။"),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            FormActions(
+                onBack,
+                { vm.updateCommission(id, value) { value = ""; onBack() } },
+                value.toBigDecimalOrNull()?.let {
+                    it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal(100)
+                } == true,
+            )
+        }
+    }
+}
+
+@Composable
+fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
+    val language = LocalLanguage.current
+    var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }
+    var session by rememberSaveable { mutableStateOf(language.selectedSession) }
+    val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
+    val limitCustomer by vm.customer(id).collectAsStateWithLifecycle(initialValue = null)
+    val all by vm.allLimit(id, date, session).collectAsStateWithLifecycle(initialValue = null)
+    val specials by vm.specialLimits(id, date, session).collectAsStateWithLifecycle(initialValue = emptyList())
+    var allText by rememberSaveable { mutableStateOf("") }
+    var digit by rememberSaveable { mutableStateOf("") }
+    var amount by rememberSaveable { mutableStateOf("") }
+    var pendingSpecial by remember { mutableStateOf<SpecialLimitEntity?>(null) }
+    LaunchedEffect(all, date, session) { allText = all?.amount?.toString() ?: "" }
+    pendingSpecial?.let { value ->
+        AlertDialog(
+            onDismissRequest = { pendingSpecial = null },
+            title = { Text(language.translate("အထူးကန့်သတ်ချက်ဖျက်မည်လား")) },
+            text = { Text(value.digit + " အတွက် " + value.amount.mmk() + " ကန့်သတ်ချက်ကို ဖျက်မည်လား?") },
+            confirmButton = {
+                TextButton({ vm.removeSpecialLimit(value); pendingSpecial = null }) {
+                    Text(language.translate("ဖျက်မည်"))
+                }
+            },
+            dismissButton = {
+                TextButton({ pendingSpecial = null }) { Text(language.translate("မလုပ်ပါ")) }
+            },
+        )
+    }
+    AppScaffold(language.translate("ကန့်သတ်ပမာဏ"), onBack) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().imePadding(),
+            contentPadding = PaddingValues(AppDimens.screen),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                CherryFinancialPanel {
+                    CherryProfileIdentity(
+                        vm, ProfileKind.CUSTOMER, id,
+                        limitCustomer?.name ?: "ထိုးသား", Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            item {
+                CherryFinancialPanel {
+                    DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        DrawSession.entries.forEach { draw ->
+                            FilterChip(
+                                session == draw,
+                                { session = draw; language.setSession(draw) },
+                                label = { Text(language.translate(draw.label)) },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                CherryFinancialPanel {
+                    Text(
+                        language.translate("ဒီ Session အတွက် အားလုံးကန့်သတ်ချက်"),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = AppColors.PrimaryDeep,
+                    )
+                    Input(allText, { allText = it }, "မထည့်ပါက ကန့်သတ်ချက်မရှိပါ", keyboard = KeyboardType.Number)
+                    Button(
+                        { vm.updateAllLimit(id, date, session, allText) {} },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(language.translate("သိမ်းမည်")) }
+                }
+            }
+            item {
+                CherryFinancialPanel {
+                    Text(
+                        language.translate("ရွေးချယ်ထားသောဂဏန်းအတွက် ကန့်သတ်ချက်"),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = AppColors.PrimaryDeep,
+                    )
+                    Input(digit, { digit = it.take(2) }, "ဂဏန်း", keyboard = KeyboardType.Number)
+                    Input(amount, { amount = it }, "ပမာဏ", keyboard = KeyboardType.Number)
+                    Button(
+                        { vm.addSpecialLimit(id, date, session, digit, amount); digit = ""; amount = "" },
+                        enabled = BetParser.validDigit(digit) && amount.toLongOrNull()?.let { it > 0 } == true,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(language.translate("သိမ်းမည်")) }
+                }
+            }
+            items(specials) { limit ->
+                Row(
+                    Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.small)
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(limit.digit + "  →  " + limit.amount.mmk(), Modifier.weight(1f))
+                    TextButton({ pendingSpecial = limit }) { Text(language.translate("ဖယ်ရှားမည်")) }
+                }
+            }
+        }
+    }
 }
 @Composable fun WinningHubScreen(onInput: () -> Unit, onView: () -> Unit, onBack: () -> Unit) {
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်စဉ်"), onBack) { padding ->
