@@ -29,11 +29,12 @@ class PremiumCompactScopeContractTest {
         val s = source("CustomerRiskReviewResults.kt").substringAfter("LazyColumn(modifier.cherryFinancialBackground()")
         val header = s.indexOf("PremiumCompactScope(")
         val summary = s.indexOf("RiskValue(\"စုစုပေါင်းထိုးကြေး\"")
-        val tabs = s.indexOf("listOf(\"current\" to \"လက်ရှိ\"")
+        val tabs = s.indexOf("PremiumRiskTabs(")
         val result = s.indexOf("when (tab)")
         assertTrue(header >= 0 && header < summary && summary < tabs && tabs < result)
         assertFalse(s.substring(0, result).contains("FlowRow("))
-        assertTrue(s.substring(tabs, result).contains("Modifier.weight(1f)"))
+        assertTrue(s.substring(tabs, result).contains("selected = tab, onSelect = { tab = it }"))
+        assertTrue(source("PremiumRiskControls.kt").contains("modifier = Modifier.weight(1f)"))
         assertTrue(s.contains("RiskMoneyRange(base.bestProfit, base.worstLoss)"))
     }
 }

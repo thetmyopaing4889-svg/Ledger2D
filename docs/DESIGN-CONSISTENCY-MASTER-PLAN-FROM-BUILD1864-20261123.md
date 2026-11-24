@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1929 P1 CI SUCCESS; device Back confirmation pending. Layout regression audit recorded; focused Premium Compact Scope + risk result structure restoration source committed, CI/device QA pending. P2 remaining selection flows, P3–P6 pending. No main merge.  
+**Status:** Build 1931 CI SUCCESS and phone screenshot confirms compact scope/two-column money layout. User approved premium segmented tabs and one-row four-option control refinement. Focused controls source committed; new CI/device QA pending. P2 remaining flows and P3–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -71,6 +71,10 @@ Single low-height Cherry glass capsule, target about 80–90dp at normal device/
 - Caller passes separate selected agent/customer names from existing selection state, no new data queries or route changes. Selection page itself remains untouched for P2, except passing names to result.
 - Updated B11 and photo coverage source contracts to assert actual scope IDs and original row arrangement rather than obsolete decoration. Two new compact-scope contracts. No Home/Form/Research, Bubble, report ledger, export or engine change.
 - CI and actual phone screenshots still required; verify normal-width side-by-side cards, three tabs, name wrapping/aggregate, date/session and reselect, font scale, first-view density. No visual acceptance inferred from source tests.
+
+### Risk controls refinement — 2026-11-24
+
+Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45380705841. Phone screenshot shows separate portraits, compact header and side-by-side money boxes. User explicitly approved the new design mockup for three equal glass segmented tabs and four icon-over-label option cards in a single row (low loss, balance, keep more, custom). Selected ruby gradient, unselected translucent glass, consistent typography and 48dp minimum touch target. Custom retains the full accessible description and existing budget fields below only when selected. Existing planner can return additional middle plan or deduplicate plans, so render every actual plan in original order plus budget; a fifth control or accessibility width/font scale may reflow. No planner changes, no fabricated/hidden options. Only two UI blocks replaced; other result layout and state byte-identical. Two source contracts added and existing layout assertions updated. Scope and other screens unchanged. CI/phone confirmation of new controls pending.
 
 ### Updated execution sequence
 

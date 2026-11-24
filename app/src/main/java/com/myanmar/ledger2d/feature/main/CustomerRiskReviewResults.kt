@@ -272,13 +272,15 @@ fun CustomerRiskReviewResults(
                     }
                 }
                 item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        listOf("current" to "လက်ရှိ", "balance" to "50/50 မျှခြေ", "guarantee" to "အမြတ်သေချာ").forEach { (id,title) ->
-                            FilterChip(tab == id, onClick = { tab = id },
-                                label = { Text(title, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center) },
-                                modifier = Modifier.weight(1f))
-                        }
-                    }
+                    val lang = com.myanmar.ledger2d.core.design.LocalLanguage.current
+                    PremiumRiskTabs(
+                        options = listOf(
+                            RiskControlOption("current", lang.text("လက်ရှိ", "Current")),
+                            RiskControlOption("balance", lang.text("50/50 မျှခြေ", "50/50 balance")),
+                            RiskControlOption("guarantee", lang.text("အမြတ်သေချာ", "Guaranteed profit")),
+                        ),
+                        selected = tab, onSelect = { tab = it },
+                    )
                 }
                 when (tab) {
                     "current" -> {
@@ -333,16 +335,11 @@ fun CustomerRiskReviewResults(
                         } else {
                             item {
                                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        decision.plans.forEach { p ->
-                                            FilterChip(chosen == p.id, onClick = { chosen = p.id }, label = {
-                                                Text(p.title, style = MaterialTheme.typography.labelSmall)
-                                            })
-                                        }
-                                    }
-                                    FilterChip(chosen == "budget", onClick = { chosen = "budget" },
-                                        label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်အရှုံးကန့်သတ်")) })
+                                    PremiumRiskOptions(
+                                        options = decision.plans.map { p -> riskPlanControlOption(p.id, p.title) } +
+                                            riskPlanControlOption("budget", "စိတ်ကြိုက်အရှုံးကန့်သတ်"),
+                                        selected = chosen, onSelect = { chosen = it },
+                                    )
                                     if (chosen == "budget") {
                                         OutlinedTextField(
                                             budgetText, onValueChange = {
