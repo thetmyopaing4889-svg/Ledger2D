@@ -131,6 +131,7 @@ fun AgentClosedPatternWorkspace(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CherryFinancialPanel {
             CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,agentName,Modifier.fillMaxWidth())
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$agentName • $date • ${session.label} အတွက်သာ", "$agentName • $date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} only"),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -138,6 +139,8 @@ fun AgentClosedPatternWorkspace(
                 "လက်ခံပြီးသားစာရင်းကိုလည်း မဖျက်ပါ။",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            CherryFinancialPanel {
             RulePatternPicker(format, {format=it}, source, {source=it}, selection)
             if (candidates.isNotEmpty()) {
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("အသစ်ပိတ်မယ့် ${newlyClosed.size} ကွက် • ပိတ်ပြီးသား ${alreadyClosed.size} ကွက်", "New closures: ${newlyClosed.size} • Already closed: ${alreadyClosed.size}"),
@@ -154,6 +157,8 @@ fun AgentClosedPatternWorkspace(
             if (notice.isNotEmpty()) Text(notice,
                 color=MaterialTheme.colorScheme.primary,
                 style=MaterialTheme.typography.bodySmall)
+            }
+            CherryFinancialPanel {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("လက်ရှိပိတ်ထားသောဂဏန်း (${current.size} ကွက်)", "Currently closed digits (${current.size})"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -171,6 +176,7 @@ fun AgentClosedPatternWorkspace(
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းတစ်ကွက်ကို နှိပ်ပြီးလည်း ပြန်ဖွင့်နိုင်သည်"),
                     style=MaterialTheme.typography.labelSmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             }
         }
     }
@@ -235,9 +241,12 @@ fun AgentLimitPatternWorkspace(
                 dismissButton={TextButton(onClick={pendingOne=null}) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ")) }})
         }
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            CherryFinancialPanel {
             CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,agentName,Modifier.fillMaxWidth())
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("$agentName • $date • ${session.label} အတွက်သာ", "$agentName • $date • ${com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(session.label)} only"),
                 style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
+            }
+            CherryFinancialPanel {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံးအတွက် Limit"),style=MaterialTheme.typography.titleMedium,
                 fontWeight=FontWeight.Bold)
             OutlinedTextField(allText,{ allText=it.filter(Char::isDigit) },
@@ -248,6 +257,8 @@ fun AgentLimitPatternWorkspace(
                 enabled=allText.isBlank() || (allText.toLongOrNull()?.let { it>0L }==true),
                 onClick={vm.updateAgentAllLimit(agentId,date,session,allText) {notice="အကွက်အားလုံး Limit သိမ်းပြီး"}},
             ) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်အားလုံး Limit သိမ်းမည်")) }
+            }
+            CherryFinancialPanel {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးချယ်ထားသောဂဏန်းများအတွက် အထူး Limit"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -275,6 +286,8 @@ fun AgentLimitPatternWorkspace(
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(notice.isNotEmpty()) Text(notice,
                 style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary)
+            }
+            CherryFinancialPanel {
             HorizontalDivider()
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("သတ်မှတ်ထားသော အထူး Limit (${specials.size} ကွက်)", "Configured special limits (${specials.size})"),
                 style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
@@ -293,6 +306,7 @@ fun AgentLimitPatternWorkspace(
                     style=MaterialTheme.typography.labelSmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            }
         }
     }
 }
@@ -304,16 +318,20 @@ fun ClosedPatternStandaloneScreen(vm: LedgerViewModel, agentId: Long, onBack: ()
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date=runCatching{LocalDate.parse(dateText)}.getOrNull()
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ဂဏန်း"),onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding),
+        LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             contentPadding=PaddingValues(14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item { DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ") }
-            item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                DrawSession.entries.forEach { draw ->
-                    FilterChip(session==draw,{session=draw;language.setSession(draw)},
-                        label={Text(draw.label)})
+            item {
+                CherryFinancialPanel {
+                    DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        DrawSession.entries.forEach { draw ->
+                            FilterChip(session==draw,{session=draw;language.setSession(draw)},
+                                label={Text(draw.label)})
+                        }
+                    }
                 }
-            } }
+            }
             item {
                 if(date==null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"),color=MaterialTheme.colorScheme.error)
                 else AgentClosedPatternWorkspace(vm,agentId,date,session)
@@ -329,16 +347,20 @@ fun LimitPatternStandaloneScreen(vm: LedgerViewModel,agentId:Long,onBack:()->Uni
     var session by rememberSaveable { mutableStateOf(language.selectedSession) }
     val date=runCatching{LocalDate.parse(dateText)}.getOrNull()
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အလိုက် ကန့်သတ်ပမာဏ"),onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding),
+        LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             contentPadding=PaddingValues(14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item { DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ") }
-            item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                DrawSession.entries.forEach { draw ->
-                    FilterChip(session==draw,{session=draw;language.setSession(draw)},
-                        label={Text(draw.label)})
+            item {
+                CherryFinancialPanel {
+                    DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        DrawSession.entries.forEach { draw ->
+                            FilterChip(session==draw,{session=draw;language.setSession(draw)},
+                                label={Text(draw.label)})
+                        }
+                    }
                 }
-            } }
+            }
             item {
                 if(date==null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"),color=MaterialTheme.colorScheme.error)
                 else AgentLimitPatternWorkspace(vm,agentId,date,session)
