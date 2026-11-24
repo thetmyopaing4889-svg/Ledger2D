@@ -54,6 +54,7 @@ private fun Modifier.managementGlassPane(
     )
     .clip(shape)
     .background(Color(0xEBFFFFFF))
+    .background(Brush.verticalGradient(listOf(Color(0x66FFFFFF), Color.Transparent, Color(0x14D81B60))))
     .border(1.5.dp, Color.White.copy(alpha = 0.95f), shape)
 
 @Composable
@@ -110,11 +111,8 @@ fun AgentListWorkspaceScreen(
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အမည် / ဖုန်း / လိပ်စာ ရှာရန်")) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xEBFFFFFF),
-                            unfocusedContainerColor = Color(0xEBFFFFFF),
-                            focusedBorderColor = AppColors.PrimaryDeep,
-                        ),
+                        shape = premiumSelectorShape,
+                        colors = premiumSelectorColors(),
                         trailingIcon = {
                             if (search.isNotEmpty()) IconButton(onClick = { search = "" }) {
                                 Icon(Icons.Default.Clear, contentDescription = "ရှာဖွေမှုရှင်းရန်")
@@ -145,6 +143,7 @@ fun AgentListWorkspaceScreen(
                 OutlinedButton(
                     onClick = onAdd,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = premiumSelectorShape,
                     border = BorderStroke(1.dp, AppColors.PrimaryDeep),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color(0xEBFFFFFF),
@@ -211,18 +210,18 @@ fun CustomerListWorkspaceScreen(
     val l = LocalLanguage.current
     AppScaffold(l.translate("Customer List"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).background(managementBlushBackground), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(l.translate("Agent ကိုအရင်ရွေးပါ"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            item { ScopeDropdown(l.translate("Agent ရွေးရန်"), agentName, agents.map { it.id to "${it.name} • ${it.rate} Rate" }, selectedAgent,
+            item { Text(l.text("ဒိုင်ကိုအရင်ရွေးပါ", "Select an agent first"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { PremiumScopeDropdown(l.text("ဒိုင်ရွေးရန်", "Select agent"), agentName, agents.map { it.id to "${it.name} • " + l.text("${it.rate} ဆ", "${it.rate}x") }, selectedAgent,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },) { selectedAgent = it } }
-            if (selectedAgent == 0L) item { UnavailableState(l.translate("Customer List ကြည့်ရန် Agent တစ်ယောက်ကို ရွေးပါ")) }
+            if (selectedAgent == 0L) item { UnavailableState(l.text("ထိုးသားစာရင်းကြည့်ရန် ဒိုင်တစ်ယောက်ကို ရွေးပါ", "Select an agent to view customers")) }
             else {
-                item { Text("$agentName ${l.translate("အောက်ရှိ Customer များ")}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                if (customers.isEmpty()) item { EmptyState(l.translate("Customer မရှိသေးပါ"), l.translate("ဒီ Agent အောက်မှာ Customer ထည့်ပါ")) }
+                item { Text(l.text("$agentName အောက်ရှိ ထိုးသားများ", "Customers under $agentName"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                if (customers.isEmpty()) item { EmptyState(l.text("ထိုးသားမရှိသေးပါ", "No customers yet"), l.text("ဒီဒိုင်အောက်မှာ ထိုးသားထည့်ပါ", "Add a customer under this agent")) }
                 else items(customers, key = { it.id }) { customer ->
                     ManagementListGlassCard(onClick = { onInfo(customer.id) }) {
                         ListItem(
                             headlineContent = { Text(customer.name, fontWeight = FontWeight.Bold) },
-                            supportingContent = { Text(customer.phone) },
+                            supportingContent = if (customer.phone.isNotBlank()) { { Text(customer.phone) } } else null,
                             leadingContent = { CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customer.id,Modifier.size(42.dp)) },
                             trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = l.translate("ထိုးသားအချက်အလက်ကြည့်ရန်"), tint = AppColors.PrimaryDeep) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -233,7 +232,8 @@ fun CustomerListWorkspaceScreen(
                     OutlinedButton(
                         onClick = { onAdd(selectedAgent) },
                         modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, AppColors.PrimaryDeep),
+                        shape = premiumSelectorShape,
+                    border = BorderStroke(1.dp, AppColors.PrimaryDeep),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = Color(0xEBFFFFFF),
                             contentColor = AppColors.PrimaryDeep,
@@ -326,12 +326,14 @@ fun AgentInformationScreen(
                     color = MaterialTheme.colorScheme.secondary,
                     style = MaterialTheme.typography.labelSmall)
             }
-            Button(onClick = { onReport(id) }, modifier = Modifier.fillMaxWidth()) {
+            PremiumSelectionButton(onClick = { onReport(id) }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.ReceiptLong, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်းကြည့်ရန်"))
             }
-            OutlinedButton(onClick = { onCustomers(id) }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { onCustomers(id) }, modifier = Modifier.fillMaxWidth(), shape = premiumSelectorShape,
+                border = BorderStroke(1.dp, AppColors.PrimaryDeep),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.PrimaryDeep)) {
                 Icon(Icons.Default.People, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီဒိုင်အောက်ရှိ ထိုးသားများ"))
@@ -381,7 +383,9 @@ private fun InformationCard(
         Box(Modifier.fillMaxWidth().managementGlassPane(managementProfileShape, shadowDepth = 5.dp)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 avatar?.invoke()
-                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
+                Text(title, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep,
+                    textAlign = if (avatar != null) TextAlign.Center else TextAlign.Start)
                 fields.filter { it.second.isNotBlank() }.forEach { (label, value) ->
                     Row(
                         Modifier.fillMaxWidth(),
@@ -389,7 +393,7 @@ private fun InformationCard(
                         verticalAlignment = Alignment.Top,
                     ) {
                         Text(
-                            label,
+                            LocalLanguage.current.translate(label),
                             modifier = Modifier.weight(0.38f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

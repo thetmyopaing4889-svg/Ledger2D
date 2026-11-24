@@ -41,6 +41,8 @@ private val managementSummaryShape = RoundedCornerShape(16.dp)
 @Composable
 internal fun CherryManagementSelectionPane(
     modifier: Modifier = Modifier,
+    contentPadding: Dp = 14.dp,
+    itemSpacing: Dp = 10.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -52,8 +54,8 @@ internal fun CherryManagementSelectionPane(
             .clip(managementSelectionShape)
             .background(Color(0xEBFFFFFF))
             .border(BorderStroke(1.5.dp, Color.White.copy(alpha = 0.95f)), managementSelectionShape)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(contentPadding),
+        verticalArrangement = Arrangement.spacedBy(itemSpacing),
         content = content,
     )
 }
@@ -67,11 +69,11 @@ internal fun CherryManagementSelectionSummary(
     Row(
         modifier = modifier.fillMaxWidth()
             .clip(managementSummaryShape)
-            .background(Color(0xBFFFF0F6))
+            .background(Brush.verticalGradient(listOf(Color(0xF2FFFFFF), Color(0xBFFFF0F6))))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.9f)), managementSummaryShape)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         content = content,
     )
 }

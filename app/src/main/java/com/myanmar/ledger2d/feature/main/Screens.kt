@@ -884,51 +884,48 @@ fun transactionDisplayText(format: String, raw: String): String {
         ) {
             Column(
                 Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
-                    .padding(AppDimens.screen),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(horizontal = AppDimens.screen).padding(top = AppDimens.screen, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                CherryManagementSelectionPane {
-                    Text(
-                        l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    SelectionField(
-                        l.translate("ဒိုင်ရွေးပါ"),
-                        agents.firstOrNull { it.id == agentId }?.name ?: l.translate("ဒိုင်မရွေးရသေးပါ"),
-                        agents.map { it.id to "${it.name} • ${it.rate} ဆ" },
-                        agentId, true,
-                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                    ) { agentId = it }
-                    SelectionField(
-                        l.translate("ထိုးသားရွေးပါ"),
-                        if (agentId == 0L) l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ")
-                            else customers.firstOrNull { it.id == customerId }?.name ?: l.translate("ထိုးသားရွေးပါ"),
-                        customers.map { it.id to it.name },
-                        customerId, agentId > 0,
-                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
-                    ) { customerId = it }
-                    if (agentId > 0 && customerId > 0) {
-                        CherryManagementSelectionSummary {
-                            CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, agentId, Modifier.size(34.dp))
-                            CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, customerId, Modifier.size(34.dp))
-                            Text(
-                                "${agents.firstOrNull { it.id == agentId }?.name} • ${customers.firstOrNull { it.id == customerId }?.name} • ${l.selectedSession.label}",
-                                Modifier.weight(1f),
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.PrimaryDeep,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                Text(
+                    l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SelectionField(
+                    l.translate("ဒိုင်ရွေးပါ"),
+                    agents.firstOrNull { it.id == agentId }?.name ?: l.translate("ဒိုင်မရွေးရသေးပါ"),
+                    agents.map { it.id to "${it.name} • ${it.rate} ဆ" },
+                    agentId, true,
+                    avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                ) { agentId = it }
+                SelectionField(
+                    l.translate("ထိုးသားရွေးပါ"),
+                    if (agentId == 0L) l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ")
+                        else customers.firstOrNull { it.id == customerId }?.name ?: l.translate("ထိုးသားရွေးပါ"),
+                    customers.map { it.id to it.name },
+                    customerId, agentId > 0,
+                    avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
+                ) { customerId = it }
+                if (agentId > 0 && customerId > 0) {
+                    CherryManagementSelectionSummary {
+                        CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, agentId, Modifier.size(34.dp))
+                        CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, customerId, Modifier.size(34.dp))
+                        Text(
+                            "${agents.firstOrNull { it.id == agentId }?.name} • ${customers.firstOrNull { it.id == customerId }?.name} • ${l.selectedSession.label}",
+                            Modifier.weight(1f),
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.PrimaryDeep,
+                            textAlign = TextAlign.Start,
+                        )
                     }
                 }
             }
-            CherryManagementPrimaryButton(
+            PremiumSelectionButton(
                 onClick = { onBet(agentId, customerId) },
                 enabled = agentId > 0 && customerId > 0,
                 modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = AppDimens.screen, vertical = 12.dp)
+                    .padding(horizontal = AppDimens.screen).padding(bottom = AppDimens.screen)
                     .height(56.dp),
             ) {
                 Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"), style = MaterialTheme.typography.titleMedium)
@@ -945,7 +942,7 @@ fun transactionDisplayText(format: String, raw: String): String {
     avatar: (@Composable (Long) -> Unit)? = null,
     onSelect: (Long) -> Unit,
 ) {
-    ScopeDropdown(label, selected, options, value, Modifier.fillMaxWidth(), enabled = enabled, compact = true, avatar = avatar, onSelect = onSelect)
+    PremiumScopeDropdown(label, selected, options, value, Modifier.fillMaxWidth(), enabled = enabled, compact = true, avatar = avatar, onSelect = onSelect)
 }
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle()
@@ -2170,14 +2167,14 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 style = helperTypography, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             CherryManagementSelectionPane {
-                ScopeDropdown(
+                PremiumScopeDropdown(
                     language.text("Agent ရွေးရန်", "Select agent"),
                     defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent"),
                     agents.map { it.id to it.name }, language.defaultAgentId,
                     Modifier.fillMaxWidth(), compact = true,
                     avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                 ) { language.setDefaultAgent(it) }
-                ScopeDropdown(
+                PremiumScopeDropdown(
                     language.text("Customer ရွေးရန်", "Select customer"),
                     defaultCustomer?.name ?: if (language.defaultAgentId > 0)
                         language.text("Customer ရွေးရန်", "Select customer")
@@ -2195,7 +2192,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
             )
             CherryManagementSelectionPane {
                 val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
-                CherryManagementPrimaryButton(
+                PremiumSelectionButton(
                     onClick = vm::updateHistory,
                     enabled = historyUpdate !is HistoryUpdateState.Working,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
@@ -2228,7 +2225,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 language.text("ဘာသာစကား", "Language"),
                 style = sectionTypography, color = AppColors.PrimaryDeep,
             )
-            CherryManagementSelectionPane {
+            CherryManagementSelectionPane(contentPadding = 0.dp, itemSpacing = 0.dp) {
                 ListItem(
                     headlineContent = { Text(language.translate("မြန်မာ")) },
                     leadingContent = { RadioButton(language.code == "my", { language.set("my") }) },

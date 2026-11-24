@@ -120,7 +120,7 @@ private fun DashboardLandingCard(
         Box(
             Modifier.matchParentSize().background(
                 Brush.verticalGradient(
-                    listOf(Color(0x66FFFFFF), Color(0x00FFFFFF), Color(0x12D81B60))
+                    listOf(Color(0x88FFFFFF), Color(0x00FFFFFF), Color(0x24D81B60))
                 )
             )
         )
@@ -132,13 +132,14 @@ private fun DashboardLandingCard(
         ) {
             Box(
                 modifier = Modifier.size(42.dp)
+                    .shadow(3.dp, dashboardIconShape, ambientColor = Color(0x22880E4F), spotColor = Color(0x44880E4F))
                     .clip(dashboardIconShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFFFFF7FA), Color(0xFFFFDDE9))
+                            listOf(Color(0xFFFFF7FA), Color(0xFFF9C8DB), Color(0xFFEBA4BF))
                         )
                     )
-                    .border(1.dp, Color.White, dashboardIconShape),
+                    .border(1.5.dp, Color.White, dashboardIconShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(action.icon, null, tint = AppColors.PrimaryDeep,
@@ -743,29 +744,27 @@ fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate:
                 .padding(16.dp).padding(bottom = LedgerControlDimensions.fabSafeBottom),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            CherryManagementSelectionPane {
-                Text(
-                    language.translate("Customer ကို ဘယ် Agent အောက်မှာထည့်မလဲ"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.PrimaryDeep,
-                )
-                ScopeDropdown(
-                    language.translate("Agent ရွေးရန်"),
-                    agents.firstOrNull { it.id == selected }?.name ?: language.translate("ဒိုင်ရွေးရန်"),
-                    agents.map { it.id to it.name },
-                    selected,
-                    avatar = { photoId ->
-                        CherryProfileAvatar(
-                            vm.profilePhotos,
-                            com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,
-                            photoId,
-                            Modifier.size(32.dp),
-                        )
-                    },
-                ) { selected = it }
-            }
-            CherryManagementPrimaryButton(
+            Text(
+                language.translate("Customer ကို ဘယ် Agent အောက်မှာထည့်မလဲ"),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDeep,
+            )
+            PremiumScopeDropdown(
+                language.translate("Agent ရွေးရန်"),
+                agents.firstOrNull { it.id == selected }?.name ?: language.translate("ဒိုင်ရွေးရန်"),
+                agents.map { it.id to it.name },
+                selected,
+                avatar = { photoId ->
+                    CherryProfileAvatar(
+                        vm.profilePhotos,
+                        com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,
+                        photoId,
+                        Modifier.size(32.dp),
+                    )
+                },
+            ) { selected = it }
+            PremiumSelectionButton(
                 onClick = { onCreate(selected) },
                 enabled = selected > 0L,
                 modifier = Modifier.fillMaxWidth().height(54.dp),

@@ -72,6 +72,7 @@ class ManagementUiConsistencyContractTest {
         assertTrue(card.contains("Modifier.weight(0.62f)"))
         assertTrue(card.contains("textAlign = TextAlign.End"))
         assertTrue(card.contains("fields.filter { it.second.isNotBlank() }"))
+        assertTrue(card.contains("textAlign = if (avatar != null) TextAlign.Center else TextAlign.Start"))
     }
 
     @Test fun listsPreserveProfilePhotosAndClickableNavigation() {
@@ -112,7 +113,7 @@ class ManagementUiConsistencyContractTest {
         val customerList = list.substringAfter("fun CustomerListWorkspaceScreen(")
             .substringBefore("internal fun nextAgentListDraw(")
         assertTrue(customerList.contains("rememberSaveable(initialAgentId)"))
-        assertTrue(customerList.contains("ScopeDropdown("))
+        assertTrue(customerList.contains("PremiumScopeDropdown("))
         assertTrue(customerList.contains("onAdd(selectedAgent)"))
         assertTrue(list.contains("filterAgentsForList(agents, search)"))
         assertTrue(list.contains("if (profile == null)"))

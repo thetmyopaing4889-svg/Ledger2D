@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1933 P2a CI SUCCESS. Build 1934 P2b1 tests/lint/debug passed, release verification in progress at checkpoint. P2b2 remaining direct date/session selection source committed; P2 source scope complete, cumulative CI and combined phone QA pending. P3–P6 pending. No main merge.  
+**Status:** Build 1935 P2 CI SUCCESS (Build 1934 also passed). P3 management visual refinement source committed; CI and combined phone QA pending. P4–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -99,6 +99,14 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Opt-in premium date/session controls for standalone digit list, customer limit, winning input/view, scoped winning, legacy report, closed day, bet history and Today Ledger. Existing winner segmented row kept; colors aligned to cherry. Removed added outer date/session wrappers in customer limit, standalone history and Today Ledger only, retaining identity and other result panels for P4.
 - Preserved date/session callbacks, weekend handling, winner add/edit/delete, limit validation/save, voucher/edit/delete, totals and result content. Today Ledger body after selector byte-identical. Home, profile forms, Settings, Quick Entry and Research untouched. Existing source contract counts updated for removed wrappers; two additional tests for selector wiring/busy guards. P2 source coverage complete for planned selection families; management selectors assigned to P3 and entry/result panels to P4, preview toolbar and specialized screens P5.
 - Combined device QA remains pending at user request, including period horizontal scrolling and field readability, large-font behavior, MM/EN and actual first-view layout. Do not claim visual approval.
+
+### P3 — management design refinement (2026-11-24)
+
+- Verified Build 1935 (f180d30a4142e9336b9d2c6565dc5fc51263a79f), run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45405927146, all CI steps passed, debug 14926017149/release 14925997151 unexpired and matching head. Build 1934 also passed. P2 source/CI complete; combined device QA pending.
+- Correct earlier audit wording: Build 1864 Quick Entry already used weighted Spacer to keep Continue at the bottom. Keep bottom placement with keyboard-safe scroll and restore original 16dp content spacing. Remove newly added outer selection pane, keep original selected-person summary/real photos and route, allow full name wrapping, align controls with P2.
+- Add Customer picker restores original heading/selector/action hierarchy without wrapper. Settings retains its three original groups, baseline 14dp/10dp padding/spacing and zero extra padding on language list; unchanged default selection, history update, encrypted backup and language actions.
+- Agent/Customer dashboard original card geometry, typography, feature order and callbacks retained; strengthen static ruby highlight/icon depth. Agent/Customer list and profile glass gains subtle highlight, shared selector/search and action colors. Translate mixed Agent/Customer labels in customer list consistently; hide blank phone line. Profile name centered beneath already-centered photo (alignment refinement only), retain all nonblank field values, weighted wrapping, loading/scroll and original footer. No invented fields.
+- No Home, protected Profile Form, Research, navigation, Bubble, calculation, storage or export changes. P3 CI/device review pending; not a claim of phone visual acceptance. P4 will integrate approved compact scope on remaining result screens and restore remaining entry/financial result frame geometry.
 
 ### Updated execution sequence
 
