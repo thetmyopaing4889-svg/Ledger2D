@@ -13,7 +13,10 @@ class SettlementAndGalleryHomeChromeContractTest {
     @Test fun customerSelectorAndRebateRetainOriginalMoneyInputs() {
         val s = source("CustomerSettlementJpegScreen.kt")
         val selector = s.substringBefore("private fun CustomerSettlementJpegPreview(")
-        assertEquals(4, selector.split("CherryFinancialPanel {").size - 1)
+        assertFalse(selector.contains("CherryFinancialPanel {"))
+        assertTrue(selector.contains("PremiumScopeDropdown("))
+        assertTrue(selector.contains("PremiumSelectionChip("))
+        assertTrue(selector.contains("enabled = agentId > 0L && !busy"))
         assertTrue(selector.contains("agentId = it; customerId = -1L; error = null"))
         assertTrue(selector.contains("enabled = !busy && chosenCustomer != null && range != null"))
         assertTrue(selector.contains("StatementRange(customStart, customEnd)"))

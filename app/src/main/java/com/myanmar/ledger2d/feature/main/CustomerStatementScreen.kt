@@ -53,6 +53,7 @@ private fun StatementDateField(value: String, onChange: (String) -> Unit, label:
         modifier = modifier.fillMaxWidth(), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(label)) },
         trailingIcon = { TextButton(onClick = { open = true }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေး")) } },
         singleLine = true,
+        shape = premiumSelectorShape, colors = premiumSelectorColors(),
     )
     if (open) {
         val utc = java.time.ZoneOffset.UTC
@@ -161,15 +162,15 @@ fun CustomerStatementScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                CherryFinancialPanel {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား စာရင်းရှင်းတမ်း"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    ScopeDropdown(
+                    PremiumScopeDropdown(
                         com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
                         agents.firstOrNull { it.id == agentId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
                         agents.map { it.id to it.name }, agentId,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                     ) { agentId = it; customerId = -1L; view = "summary"; search = "" }
-                    ScopeDropdown(
+                    PremiumScopeDropdown(
                         com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား ရွေးရန်"),
                         if (customerId == -1L) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး") else customers.firstOrNull { it.id == customerId }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား ရွေးရန်"),
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer အားလုံး")) + customers.map { it.id to it.name },
@@ -180,12 +181,12 @@ fun CustomerStatementScreen(
                 }
             }
             item {
-                CherryFinancialPanel {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedCard(shape = premiumSelectorShape, colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color(0xEBFFFFFF)), border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color.White)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်ရှုမည့်ကာလ"), fontWeight = FontWeight.Bold)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             StatementPeriod.entries.forEach { option ->
-                                FilterChip(period == option, { period = option }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(option.nameMm())) })
+                                PremiumSelectionChip(period == option, { period = option }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(option.nameMm())) })
                             }
                         }
                         if (period == StatementPeriod.CUSTOM) {
@@ -217,7 +218,7 @@ fun CustomerStatementScreen(
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်မည့်အကြိမ်"), style = MaterialTheme.typography.labelMedium)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်")).forEach { (id, label) ->
-                                FilterChip(selectedDraw == id, { selectedDraw = id }, label = { Text(label) })
+                                PremiumSelectionChip(selectedDraw == id, { selectedDraw = id }, label = { Text(label) })
                             }
                         }
                     }

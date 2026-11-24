@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1932 premium risk controls CI SUCCESS (device QA deferred for combined pass at user request). P2a active Agent/Customer selection workspaces, report/analysis, digit totals and commission review compact-control source committed; CI pending. P2b export selectors and remaining standalone/alternate selection flows pending; P3–P6 pending. No main merge.  
+**Status:** Build 1933 P2a CI SUCCESS. P2b1 JPEG selectors, standalone agent closed/limit, legacy statement and aggregate scope source committed; CI pending. P2b2 remaining direct date/session controls pending; P3–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -84,6 +84,14 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Agent/Customer scope and active feature-workspace selection blocks opt in; old Champagne wrapper replaced with a compact non-card column. Existing selections, dates, session and actions retained. Result scope and ledger bodies remain for P4. No extra nested wrappers per field.
 - Added 2 source contracts and revised obsolete wrapper assertions. Device confirmation pending, including long names, MM/EN, disabled, narrow screens and first-view density. Horizontal scroll behavior on existing period rows retained rather than silently relocating options.
 - P2a only: JPEG selectors, standalone/alternate selection and remaining entry/settings/limit/winning selection flows still require scoped P2b review; do not claim P2 completed.
+
+### P2b1 — JPEG and alternate selectors (2026-11-24)
+
+- Build 1933 P2a verified successful, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45400593902, debug 14923492854 and release 14924226669 match commit 937a3a79108fd1ad6f0b924d1fc147f9e321c80d. Four P2a selection blocks normalized to original control names match Build 1864 exactly; result tails unchanged.
+- Agent/Customer JPEG selectors restore original item hierarchy without per-field outer panels. Shared opt-in fields/chips and primary action style. Preserve current busy guards, original preset/date/range/callbacks; preview source tails byte-identical. Existing scroll behavior retained.
+- Standalone agent closed/limit date/session groups restore baseline hierarchy; legacy customer statement retains original selector grouping and period card geometry. Aggregate scope date/session controls opt in without moving actions.
+- Existing preview, renderer, financial calculations, Home, Profile Form, Research and navigation unchanged. Updated source contracts preserve business guards. CI and combined phone QA pending.
+- P2b2 direct date/session selectors (history, Today Ledger, limit, winning, report, closed days, digit list) still pending. Quick Entry/Add Customer/List/Profile/Settings to P3; entry/result body to P4; preview toolbar and specialized Live/Better Data to P5.
 
 ### Updated execution sequence
 

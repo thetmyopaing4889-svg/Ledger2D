@@ -63,10 +63,11 @@ class AgentClosedLimitHomeChromeContractTest {
     @Test fun bothStandaloneScreensRetainDateSessionRoutingAndErrors() {
         for (section in listOf(closedStandalone, limitStandalone)) {
             assertTrue(section.contains(".cherryFinancialBackground()"))
-            assertEquals(1, section.split("CherryFinancialPanel {").size - 1)
+            assertFalse(section.contains("CherryFinancialPanel {"))
+            assertTrue(section.contains("PremiumSelectionChip("))
             assertTrue(section.contains("dateText=it;language.setDate(it)"))
             assertTrue(section.contains("session=draw;language.setSession(draw)"))
-            assertTrue(section.contains("DateInput(dateText"))
+            assertTrue(section.contains("PremiumDateInput(dateText"))
             assertTrue(section.contains("if(date==null) Text("))
             assertTrue(section.contains("MaterialTheme.colorScheme.error"))
         }

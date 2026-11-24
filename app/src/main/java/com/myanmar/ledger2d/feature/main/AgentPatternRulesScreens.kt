@@ -321,17 +321,13 @@ fun ClosedPatternStandaloneScreen(vm: LedgerViewModel, agentId: Long, onBack: ()
         LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             contentPadding=PaddingValues(14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item {
-                CherryFinancialPanel {
-                    DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        DrawSession.entries.forEach { draw ->
-                            FilterChip(session==draw,{session=draw;language.setSession(draw)},
-                                label={Text(draw.label)})
-                        }
-                    }
+            item { PremiumDateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ") }
+            item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                DrawSession.entries.forEach { draw ->
+                    PremiumSelectionChip(session==draw,{session=draw;language.setSession(draw)},
+                        label={Text(draw.label)})
                 }
-            }
+            } }
             item {
                 if(date==null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"),color=MaterialTheme.colorScheme.error)
                 else AgentClosedPatternWorkspace(vm,agentId,date,session)
@@ -350,17 +346,13 @@ fun LimitPatternStandaloneScreen(vm: LedgerViewModel,agentId:Long,onBack:()->Uni
         LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             contentPadding=PaddingValues(14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item {
-                CherryFinancialPanel {
-                    DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        DrawSession.entries.forEach { draw ->
-                            FilterChip(session==draw,{session=draw;language.setSession(draw)},
-                                label={Text(draw.label)})
-                        }
-                    }
+            item { PremiumDateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ") }
+            item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                DrawSession.entries.forEach { draw ->
+                    PremiumSelectionChip(session==draw,{session=draw;language.setSession(draw)},
+                        label={Text(draw.label)})
                 }
-            }
+            } }
             item {
                 if(date==null) Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်စွဲ မှန်ကန်စွာရွေးပါ"),color=MaterialTheme.colorScheme.error)
                 else AgentLimitPatternWorkspace(vm,agentId,date,session)

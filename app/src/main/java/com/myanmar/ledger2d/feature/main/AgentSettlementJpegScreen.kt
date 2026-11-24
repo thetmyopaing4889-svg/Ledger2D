@@ -52,6 +52,7 @@ private fun AgentJpegDatePicker(label: String, date: String, enabled: Boolean = 
         label = { Text(label) }, singleLine = true,
         trailingIcon = { TextButton(enabled = enabled, onClick = { open = true }) { Text("ရွေး") } },
         modifier = Modifier.fillMaxWidth(),
+        shape = premiumSelectorShape, colors = premiumSelectorColors(),
     )
     if (open) {
         val initial = runCatching {
@@ -133,77 +134,74 @@ fun AgentSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             item {
-                CherryFinancialPanel {
-                    ScopeDropdown(
-                        language.text("ဒိုင်ရွေးရန်", "Select agent"),
-                        selectedAgent?.name ?: language.text("ဒိုင်ရွေးပါ", "Choose agent"),
-                        agents.map { it.id to it.name }, agentId, enabled = !busy,
-                            avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                    ) { agentId = it; error = null }
-                }
+                PremiumScopeDropdown(
+                    language.text("ဒိုင်ရွေးရန်", "Select agent"),
+                    selectedAgent?.name ?: language.text("ဒိုင်ရွေးပါ", "Choose agent"),
+                    agents.map { it.id to it.name }, agentId, enabled = !busy,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                ) { agentId = it; error = null }
             }
             item {
-                CherryFinancialPanel {
-                    Text(language.text("စာရင်းရှင်းမည့်ကာလ", "Statement period"),
-                        fontWeight = FontWeight.Bold)
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        listOf(
-                            AgentJpegPreset.DRAW to language.text("တစ်ကြိမ်စာ", "One draw"),
-                            AgentJpegPreset.DAY to language.text("တစ်ရက်စာ", "One day"),
-                            AgentJpegPreset.WEEK to language.text("တစ်ပတ်စာ", "One week"),
-                            AgentJpegPreset.MONTH to language.text("တစ်လစာ", "One month"),
-                            AgentJpegPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
-                        ).forEach { (option, label) ->
-                            FilterChip(preset == option, onClick = { preset = option; error = null },
-                                enabled = !busy, label = { Text(label) })
-                        }
+                Text(language.text("စာရင်းရှင်းမည့်ကာလ", "Statement period"),
+                    fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    listOf(
+                        AgentJpegPreset.DRAW to language.text("တစ်ကြိမ်စာ", "One draw"),
+                        AgentJpegPreset.DAY to language.text("တစ်ရက်စာ", "One day"),
+                        AgentJpegPreset.WEEK to language.text("တစ်ပတ်စာ", "One week"),
+                        AgentJpegPreset.MONTH to language.text("တစ်လစာ", "One month"),
+                        AgentJpegPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
+                    ).forEach { (option, label) ->
+                        PremiumSelectionChip(preset == option, onClick = { preset = option; error = null },
+                            enabled = !busy, label = { Text(label) })
                     }
                 }
             }
-            item {
-                CherryFinancialPanel {
-                    if (preset == AgentJpegPreset.CUSTOM) {
-                        AgentJpegDatePicker(language.text("စရက်", "Start date"), fromDate, enabled = !busy) {
-                            fromDate = it; error = null
-                        }
-                        AgentJpegDatePicker(language.text("ဆုံးရက်", "End date"), toDate, enabled = !busy) {
-                            toDate = it; error = null
-                        }
-                    } else {
-                        AgentJpegDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor, enabled = !busy) {
-                            anchor = it; error = null
-                        }
-                    }
-                    if (preset == AgentJpegPreset.DRAW) {
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            DrawSession.entries.forEach { session ->
-                                FilterChip(selected = draw == session.name,
-                                    onClick = { draw = session.name }, enabled = !busy,
-                                    label = { Text(language.text(
-                                        if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
-                                        if (session == DrawSession.MORNING) "Morning" else "Evening",
-                                    )) })
-                            }
+            if (preset == AgentJpegPreset.CUSTOM) {
+                item { AgentJpegDatePicker(language.text("စရက်", "Start date"), fromDate, enabled = !busy) {
+                    fromDate = it; error = null
+                } }
+                item { AgentJpegDatePicker(language.text("ဆုံးရက်", "End date"), toDate, enabled = !busy) {
+                    toDate = it; error = null
+                } }
+            } else {
+                item { AgentJpegDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor, enabled = !busy) {
+                    anchor = it; error = null
+                } }
+            }
+            if (preset == AgentJpegPreset.DRAW) {
+                item {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DrawSession.entries.forEach { session ->
+                            PremiumSelectionChip(selected = draw == session.name,
+                                onClick = { draw = session.name }, enabled = !busy,
+                                label = { Text(language.text(
+                                    if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
+                                    if (session == DrawSession.MORNING) "Morning" else "Evening",
+                                )) })
                         }
                     }
-                    Text(
-                        when {
-                            range == null -> language.text("ရက်စွဲကာလကို ပြန်စစ်ပါ", "Check date range")
-                            range.start == range.end -> range.start.toString()
-                            else -> "${range.start} မှ ${range.end} အထိ"
-                        },
-                        color = if (range == null) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
+            }
+            item {
+                Text(
+                    when {
+                        range == null -> language.text("ရက်စွဲကာလကို ပြန်စစ်ပါ", "Check date range")
+                        range.start == range.end -> range.start.toString()
+                        else -> "${range.start} မှ ${range.end} အထိ"
+                    },
+                    color = if (range == null) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
             item {
                 Button(
                     enabled = !busy && selectedAgent != null && range != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                    shape = premiumSelectorShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep, contentColor = androidx.compose.ui.graphics.Color.White),
                     onClick = {
                         val chosen = selectedAgent ?: return@Button
                         val dates = range ?: return@Button

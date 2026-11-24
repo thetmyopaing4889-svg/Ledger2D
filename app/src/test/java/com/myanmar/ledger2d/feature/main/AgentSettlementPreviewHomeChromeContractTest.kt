@@ -12,7 +12,9 @@ class AgentSettlementPreviewHomeChromeContractTest {
 
     @Test fun selectorRetainsAllPeriodsAndOriginalGenerationInputs() {
         val s = source.substringBefore("private fun AgentSettlementJpegPreview(")
-        assertEquals(3, s.split("CherryFinancialPanel {").size - 1)
+        assertFalse(s.contains("CherryFinancialPanel {"))
+        assertTrue(s.contains("PremiumScopeDropdown("))
+        assertTrue(s.contains("PremiumSelectionChip("))
         assertTrue(s.contains(".cherryFinancialBackground()"))
         for (preset in listOf("DRAW", "DAY", "WEEK", "MONTH", "CUSTOM")) {
             assertTrue(s.contains("AgentJpegPreset." + preset))

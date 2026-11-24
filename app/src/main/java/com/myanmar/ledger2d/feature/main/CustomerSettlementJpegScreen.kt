@@ -56,6 +56,7 @@ private fun SettlementDatePicker(label: String, text: String, enabled: Boolean =
         label = { Text(label) }, singleLine = true,
         trailingIcon = { TextButton(enabled = enabled, onClick = { open = true }) { Text("ရွေး") } },
         modifier = Modifier.fillMaxWidth(),
+        shape = premiumSelectorShape, colors = premiumSelectorColors(),
     )
     if (open) {
         val initial = runCatching {
@@ -146,84 +147,78 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             item {
-                CherryFinancialPanel {
-                    ScopeDropdown(
-                        language.text("ဒိုင်ရွေးရန်", "Select agent"),
-                        agents.firstOrNull { it.id == agentId }?.name ?: "—",
-                        agents.map { it.id to it.name }, agentId, enabled = !busy,
-                            avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                    ) { agentId = it; customerId = -1L; error = null }
-                }
+                PremiumScopeDropdown(
+                    language.text("ဒိုင်ရွေးရန်", "Select agent"),
+                    agents.firstOrNull { it.id == agentId }?.name ?: "—",
+                    agents.map { it.id to it.name }, agentId, enabled = !busy,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                ) { agentId = it; customerId = -1L; error = null }
             }
             item {
-                CherryFinancialPanel {
-                    ScopeDropdown(
-                        language.text("ထိုးသားရွေးရန်", "Select customer"),
-                        chosenCustomer?.name ?: language.text("ထိုးသားရွေးပါ", "Choose customer"),
-                        customers.map { it.id to it.name }, customerId,
-                        enabled = agentId > 0L && !busy,
-                            avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
-                    ) { customerId = it; error = null }
-                }
+                PremiumScopeDropdown(
+                    language.text("ထိုးသားရွေးရန်", "Select customer"),
+                    chosenCustomer?.name ?: language.text("ထိုးသားရွေးပါ", "Choose customer"),
+                    customers.map { it.id to it.name }, customerId,
+                    enabled = agentId > 0L && !busy,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
+                ) { customerId = it; error = null }
             }
             item {
-                CherryFinancialPanel {
-                    Text(language.text("စာရင်းရှင်းမည့်ကာလ", "Statement period"),
-                        fontWeight = FontWeight.Bold)
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        listOf(
-                            SettlementPreset.DRAW to language.text("တစ်ကြိမ်စာ", "One draw"),
-                            SettlementPreset.DAY to language.text("တစ်ရက်စာ", "One day"),
-                            SettlementPreset.WEEK to language.text("တစ်ပတ်စာ", "One week"),
-                            SettlementPreset.MONTH to language.text("တစ်လစာ", "One month"),
-                            SettlementPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
-                        ).forEach { (option, label) ->
-                            FilterChip(preset == option, onClick = { preset = option; error = null }, enabled = !busy,
-                                label = { Text(label) })
+                Text(language.text("စာရင်းရှင်းမည့်ကာလ", "Statement period"),
+                    fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    listOf(
+                        SettlementPreset.DRAW to language.text("တစ်ကြိမ်စာ", "One draw"),
+                        SettlementPreset.DAY to language.text("တစ်ရက်စာ", "One day"),
+                        SettlementPreset.WEEK to language.text("တစ်ပတ်စာ", "One week"),
+                        SettlementPreset.MONTH to language.text("တစ်လစာ", "One month"),
+                        SettlementPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
+                    ).forEach { (option, label) ->
+                        PremiumSelectionChip(preset == option, onClick = { preset = option; error = null }, enabled = !busy,
+                            label = { Text(label) })
+                    }
+                }
+            }
+            if (preset == SettlementPreset.CUSTOM) {
+                item { SettlementDatePicker(language.text("စရက်", "Start date"), fromDate, enabled = !busy) {
+                    fromDate = it; error = null
+                } }
+                item { SettlementDatePicker(language.text("ဆုံးရက်", "End date"), toDate, enabled = !busy) {
+                    toDate = it; error = null
+                } }
+            } else {
+                item {
+                    SettlementDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor, enabled = !busy) {
+                        anchor = it; error = null
+                    }
+                }
+            }
+            if (preset == SettlementPreset.DRAW) {
+                item {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DrawSession.entries.forEach { session ->
+                            PremiumSelectionChip(
+                                selected = draw == session.name,
+                                onClick = { draw = session.name }, enabled = !busy,
+                                label = { Text(language.text(
+                                    if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
+                                    if (session == DrawSession.MORNING) "Morning" else "Evening",
+                                )) },
+                            )
                         }
                     }
                 }
             }
             item {
-                CherryFinancialPanel {
-                    if (preset == SettlementPreset.CUSTOM) {
-                        SettlementDatePicker(language.text("စရက်", "Start date"), fromDate, enabled = !busy) {
-                            fromDate = it; error = null
-                        }
-                        SettlementDatePicker(language.text("ဆုံးရက်", "End date"), toDate, enabled = !busy) {
-                            toDate = it; error = null
-                        }
-                    } else {
-                        SettlementDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor, enabled = !busy) {
-                            anchor = it; error = null
-                        }
-                    }
-                    if (preset == SettlementPreset.DRAW) {
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            DrawSession.entries.forEach { session ->
-                                FilterChip(
-                                    selected = draw == session.name,
-                                    onClick = { draw = session.name },
-                                    enabled = !busy,
-                                    label = { Text(language.text(
-                                        if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
-                                        if (session == DrawSession.MORNING) "Morning" else "Evening",
-                                    )) },
-                                )
-                            }
-                        }
-                    }
-                    if (range != null) {
-                        Text(
-                            if (range.start == range.end) range.start.toString()
-                            else "${range.start} မှ ${range.end} အထိ",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else Text(language.text("ရက်စွဲကာလကို ပြန်စစ်ပါ", "Check the date range"),
-                        color = MaterialTheme.colorScheme.error)
-                }
+                if (range != null) {
+                    Text(
+                        if (range.start == range.end) range.start.toString()
+                        else "${range.start} မှ ${range.end} အထိ",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else Text(language.text("ရက်စွဲကာလကို ပြန်စစ်ပါ", "Check the date range"),
+                    color = MaterialTheme.colorScheme.error)
             }
             if (error != null) item {
                 Text(error!!, color = MaterialTheme.colorScheme.error)
@@ -232,6 +227,8 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                 Button(
                     enabled = !busy && chosenCustomer != null && range != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                    shape = premiumSelectorShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep, contentColor = androidx.compose.ui.graphics.Color.White),
                     onClick = {
                         val customer = chosenCustomer ?: return@Button
                         val requestedRange = range ?: return@Button
