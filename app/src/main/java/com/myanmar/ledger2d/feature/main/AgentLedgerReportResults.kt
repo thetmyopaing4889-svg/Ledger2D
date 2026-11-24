@@ -213,9 +213,9 @@ private fun AgentReportSummary(
     val lang = LocalLanguage.current
     val total = AgentStatementCalculator.summarize(draws)
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp), shadowElevation = 3.dp, tonalElevation = 0.dp,
-        border = BorderStroke(1.dp, AgentLedgerColors.Edge),
+        color = Color(0xEBFFFFFF),
+        shape = RoundedCornerShape(22.dp), shadowElevation = 4.dp, tonalElevation = 0.dp,
+        border = BorderStroke(1.5.dp, Color.White),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -645,11 +645,12 @@ fun AgentLedgerReportResults(
         (if (range.start == range.end) "" else " – " + range.end.reviewDate()) +
         " · " + (session?.reviewLabel() ?: lang.text("နှစ်ကြိမ်လုံး", "Both draws"))
 
-    LazyColumn(modifier, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+    LazyColumn(modifier.cherryFinancialBackground(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)) {
         item {
-            Surface(color = Color.White, shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, AgentLedgerColors.Edge)) {
+            Surface(color = Color(0xEBFFFFFF), shape = RoundedCornerShape(22.dp),
+                shadowElevation = 4.dp, tonalElevation = 0.dp,
+                border = BorderStroke(1.5.dp, Color.White)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(9.dp)) {
