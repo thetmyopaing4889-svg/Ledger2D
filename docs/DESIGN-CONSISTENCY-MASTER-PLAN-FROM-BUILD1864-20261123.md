@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** REOPENED after Build 1927 phone QA. P1 shared shell and Bubble navigation lifecycle source repair committed; CI/APK and device transition/visual confirmation pending. P2–P6 pending. Protected Home/Welcome/Profile Form/Research and logic unchanged. No main merge.  
+**Status:** Build 1929 P1 CI SUCCESS, both APKs verified; visual/Back confirmation pending. Layout regression audit against Build 1864 completed at source-diff level; new user-approved layout-preservation and Premium Compact Scope contract supersedes structural restyling assumptions. P2–P6 implementation pending. Documentation-only checkpoint; no main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -13,6 +13,64 @@
 > **NON-NEGOTIABLE:** Cherry 2D ရဲ့ ပြီးထားပြီးသားအပိုင်းတွေကို မဖျက်၊ မပျက်စေဘဲ UI လိုအပ်ချက်ရှိတဲ့နေရာတွေကိုသာ အဆင့်လိုက်ပြင်ရမယ်။ 2D Analysis → **Research Workspace** ဟာ အသုံးပြုသူအတွက် အထူးလက်ဆောင်ဖြစ်ပြီး **လုံးဝမထိရ**။ `main` မှာ မပြင်ရ။
 >
 > **Read this document BEFORE every new implementation session, branch switch, or continuation.** Update the checkpoint log here after each verified pass. Do not infer approval from CI alone.
+
+---
+
+## 2026-11-24 — Layout-preservation correction and regression audit (mandatory before P2)
+
+**User direction:** Upgrade the existing UI, do not redesign its frame structure or relocate content/actions without consent. Premium means compact, decorative, purposeful and Home-quality, not more nested cards or larger empty space. Preserve the original first-view information hierarchy. The user specifically identified the Risk Analysis result layout regression and approved the hand-drawn two-portrait compact scope concept as a deliberate exception.
+
+**References:** Original layout baseline Build 1864 (`f48c8ae8a45d584c8d416196a9cd4404916626ff`); latest verified implementation Build 1929 (`75f1baee85d28b998ca2737c5ab57ad84aa82c7c`), https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45376655161. All CI gates passed; debug artifact 14913045436 and release artifact 14911932245 match head and are not expired at audit. P1 Back fix still needs real-device confirmation. The two new device screenshots illustrate existing risk/history layout problems; their exact installed build is not independently established.
+
+### Layout regression inventory
+
+Compared cumulative Git diff from Build 1864 to P1 Build 1929 (70 commits, 41 changed paths, including 23 production Kotlin paths: 20 modified, 3 new). Reviewed changed production UI hunks and active route context from previous 47-route audit. This is source evidence, not a claim of all device states tested. The original layout is reference only: do not globally revert the branch or undo later valid safety fixes.
+
+| Source / screen family | Observed structural delta or gap | Disposition |
+|---|---|---|
+| CustomerRiskReviewResults | B11 commit b544e0018a3f3609673b9cd6002b7820c8255523, Build 1915: compact horizontal scope changed to vertical panel with reselect at bottom; best/loss pair stacks below 380dp or high font scale/long amount; three equal-weight tabs replaced by FlowRow inside new panel; summary padding increased | **Confirmed visual regression.** Restore normal-width side-by-side best/loss and original three-tab hierarchy, no outer tab card; use approved compact scope; preserve all risk values, tab actions, drilldowns and semantic colors. Only genuinely necessary accessibility fallback, not blanket 380dp threshold. |
+| CustomerReviewScreens | Risk-only five outer selection panels introduced; report selection deliberately left flat; original controls/order retained | Remove redundant per-field frames; decorate original control groups and maintain report/analysis scope/date/period/session behavior. |
+| DashboardScreens | Landing card shell and icon decoration changed, original row/order retained; Add Customer heading and agent selector grouped; original agent/customer scope and active workspace selectors still use old flat layout / champagne SelectionCard | Retain useful card decoration without rearrangement; review all active and alternate selectors, including history/result. No new grouping that increases first-view height. |
+| Screens: QuickEntryScreen | Continue action moved from content flow to bottom-pinned area; selection pane + selected-person summary added; scroll/IME handling added | Restore baseline placement and concise selection hierarchy unless user separately approves pinned action. Preserve valid keyboard handling and selection callbacks. |
+| Screens: BettingScreen | Original identity row and date/session controls wrapped in two new padded panels; IME handling added | Keep original form arrangement and input space, apply decoration without adding unnecessary header height; preserve parser, amounts and keyboard/save behavior. |
+| Screens: CommissionScreen / LimitScreen | Commission sections replaced by glass panels; limit has four extra groups and scrolling controls | Compare original control order, grouping, action placement; restore compactness; retain functional validation and scroll/accessibility. |
+| Screens: BetHistoryScreen | Standalone date/session and identity wrapped in two new panels; active CustomerBetEntriesWorkspace path differs and remains old | Apply approved shared scope to eligible result pages, keep transaction order and actions. Do not confuse standalone history with active dashboard route. |
+| Screens: SettingsScreen | Existing sections restyled, extra section padding and changed action appearance | Preserve original settings order/control placement; assess first-view spacing and valid accessibility. |
+| ListWorkspaceScreens | Cards/avatars/add button decoration; InformationCard changed to weighted fields, loading/scroll support, more padding; original photo centered/name left remains visually uneven | Preserve stable identity, loading/scroll and field widths; compact profile hierarchy; no speculative relocation beyond agreed scope. |
+| OperationalScreens / TodayLedger | Selection grouped; agent summary rows given weights and new glass group | Preserve order, amount alignment and compactness; do not change totals. |
+| AgentDigitTotalsScreens | Selection fields grouped; selected scope wrapped; agent summary replaced with glass panel | Preserve selector and original digit-grid/filter layout; compact scope for result where applicable. |
+| AgentStatementScreens | Heading and selector group wrappers; previously separate period/date/session items consolidated | Compare baseline spacing and exact order, eliminate excessive wrapping; retain date and report behavior. |
+| AgentPatternRulesScreens | Multiple new panels across closed/limit result controls and standalone selectors | Restore original hierarchy and avoid per-control oversized panels. Maintain status/error colors and rules. |
+| CommissionReviewScreen | Existing period/date and agent/session groups consolidated; result scope and summary wrapped | Keep original order, compact scope where applicable, preserve existing agent groups and amount data. |
+| CustomerDigitViewsScreen | Two extra outer panels | Preserve original digit grid/sort/filter arrangement, minimize extra space. |
+| CustomerStatementScreen | Selector/summary groups replaced; outer glass wrappers | Review actual reachability and original grouping; no redundant nesting. |
+| AgentLedgerReportResults / CustomerLedgerReportResults | Only summary/scope surface colors/radius/rim/shadow and background changed; same row/padding/ledger order | Decoration-only candidate to retain; don't redesign existing 3+1 summary or ledger table. Integrate approved scope only where appropriate after checking range/aggregate. |
+| AgentSettlementJpegScreen / CustomerSettlementJpegScreen | Selector groups added; preview previous/counter/next original single row replaced by separate counter + equal outlined-button row; rebate controls wrapped; extra toolbar height | Restore baseline single-row paging layout and compact selection, retain valid permissionPending/export guards, localization, renderer freshness checks and busy disables. User did not ask to relocate paging controls. |
+| VoucherPreviewPlaceholderScreen | Same paging row -> counter plus button row; new glass toolbar | Restore original compact paging placement while retaining safe export/permission handling. |
+| LiveScreen / CherryBetterDataScreen | Background, navigation colors/wrapping and back accent changes; no content order changes; pre-existing calendar title defect | Retain appropriate decorative improvements; fix Calendar title only; keep existing tabs and engines. |
+| LedgerNav / shared scaffold / QuickEntryBubble | User-approved cherry art and upper-right default, drag persistence; P1 stable provider/root and shared header/canvas | Retain explicit Bubble exception and P1 safety fix; no other navigation redesign. |
+| CherryFinancialChrome / CherryManagementSelectionUi | New wrappers with default 16dp padding and 10–12dp spacing create density risk when nested | Separate decorative surface from layout geometry; expose compact parameters or preserve original geometry. Never blanket-wrap each outlined input or row. |
+
+Existing unchanged active paths (including CustomerBetEntriesWorkspace, CustomerBulkCommissionWorkspace, winning/closed-day/format bodies) still require visual upgrade review, not rollback. Home/Welcome/Form source and Research/timeline/Rules protected; no permission to alter protected content or shared timeline. Keep known calculation/DB/export-rendering/Live/Better Data behavior unchanged.
+
+### Mandatory structure-preserving design contract
+
+- Preserve baseline row/column arrangement, control order, relative position, selection/result separation, action location, visible information and first-view intent. Decoration must follow the frame; do not add size/padding or regroup just to introduce glass.
+- Premium style via single translucent surface, blush highlight, restrained ruby depth, light rim, cherry icon decoration, typography and precise alignment. No nested per-field card wrappers, expensive scrolling blur, unnecessary labels or blank space.
+- Normal phone width must retain original compact arrangement. Preserve readable long names/amounts, MM/EN, touch targets and large font; only documented necessary adaptive fallback. No clipping, numeric ellipsis or reduced accessibility.
+- Changes to layout/position require explicit user approval. Authorized exceptions: Floating Cherry Bubble position/art/drag safety, P1 shared shell/lifecycle, and Premium Compact Scope specified below. Preserve legitimate safety, data correctness, loading and permission improvements; do not mechanically revert old source.
+
+### Approved Premium Compact Scope component (user sketch)
+
+Single low-height Cherry glass capsule, target about 80–90dp at normal device/font scale (not fixed height). Left-to-right: **Agent photo circle with name underneath → decorative graduated cherry chevrons → Customer photo circle with name underneath → right-hand date + AM/PM pill above compact decorated reselect action**. Distinct real portraits loaded with the correct profile kind/ID, white rim, soft ruby depth; no generic text-only joined subtitle. One surface with subtle rim/highlight, no nested large cards. Keep main results immediately below. Avoid shrinking names/amounts to force fit; adaptive wrapping for actual large font/narrow width, preserve accessibility and full date/range meaning. Agent-only, all-customer/all-agent, multi-day/range and both-draw cases must accurately show scope without invented individual photo or session; design these variants consistently and review before claiming complete. Reselect uses existing callback. Do not use this component on unrelated screens without a selection scope. User sketch was reviewed in chat; no image asset is needed in app.
+
+### Updated execution sequence
+
+1. P1 source/CI verified (Build 1929); device Back verification remains open.
+2. This source regression audit + document checkpoint, before implementation. No production code changes.
+3. Implement compact scope component with explicit variants and baseline risk layout restoration as focused first batch; update old source tests that enforce unwanted wrappers/380dp fallback, preserving real behavior guards. Confirm source and CI, then device proof.
+4. P2 selection flows: preserve original control placement/order; remove excess nesting and align decoration across actual active routes. P3 management then P4 results (including remaining scope consumers). P5 export/specialized with original page controls. P6 cumulative comparison and device QA. Continue in grouped scoped batches, never declare visual approval from tests.
+5. For every implementation, record baseline vs new structural diff and intended visual change. Any unapproved structural difference is a regression gate. Actual screenshots at same scale (MM/EN and large font) validate first-view density. No main merge.
 
 ---
 
