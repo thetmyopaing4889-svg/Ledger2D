@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.myanmar.ledger2d.feature.main
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,9 +78,10 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
         includeQuickEntryFab = false,
     ) { padding ->
         if (!resultPage) {
-            LazyColumn(Modifier.fillMaxSize().padding(padding),
+            LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
                 contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
+                    CherryFinancialPanel {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -95,8 +98,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                         FilterChip(allTime, onClick = { allTime = true },
                             label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစမှ ယနေ့အထိ")) })
                     }
-                }
-                if (!allTime) item {
+                    if (!allTime) {
                     if (period == StatementPeriod.CUSTOM) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ReviewDatePicker(fromText, "စရက်", Modifier.weight(1f)) { fromText = it }
@@ -119,18 +121,19 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                         }
                         ReviewDatePicker(dateText, "ရက်စွဲ") { dateText = it }
                     }
-                }
-                if (allTime) item {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("App ထဲမှာ သိမ်းထားသော ပထမဆုံးစာရင်းမှ ယနေ့အထိ"),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (allTime) {
+                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("App ထဲမှာ သိမ်းထားသော ပထမဆုံးစာရင်းမှ ယနေ့အထိ"),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    }
                 }
                 item {
+                    CherryFinancialPanel {
                     ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), selectedName,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,photoId,Modifier.size(32.dp)) }) { agentId = it }
-                }
-                item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -139,6 +142,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                                 FilterChip(sessionChoice == key, onClick = { sessionChoice = key },
                                     label = { Text(name) })
                             }
+                    }
                     }
                 }
                 if (!valid) item {
@@ -172,9 +176,10 @@ private fun CommissionReviewResults(
 ) {
     var view by rememberSaveable { mutableStateOf("agents") }
     val groups = rows.groupBy { it.agentId }.toList().sortedBy { it.second.first().agentName }
-    LazyColumn(modifier, contentPadding = PaddingValues(14.dp),
+    LazyColumn(modifier.cherryFinancialBackground(), contentPadding = PaddingValues(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
+            CherryFinancialPanel {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,agentId,selectedName,Modifier.fillMaxWidth())
@@ -185,10 +190,11 @@ private fun CommissionReviewResults(
                 }
                 TextButton(onClick = onReselect) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ရွေးရန်")) }
             }
+            }
         }
         item {
-            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            CherryFinancialPanel {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားသောကာလ ကော်မရှင်စုစုပေါင်း"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -250,7 +256,14 @@ private fun CommissionMoneyRow(label: String, amount: Long, bold: Boolean = fals
 private fun CommissionAgentGroup(vm: LedgerViewModel, lines: List<CommissionLedgerLine>) {
     val first = lines.firstOrNull() ?: return
     var open by rememberSaveable(first.agentId) { mutableStateOf(false) }
-    OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xEBFFFFFF),
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = 3.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(1.dp, Color.White),
+    ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(onClick = { open = !open }) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
