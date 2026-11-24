@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** HOME-FIRST PHASE A01/A02 APPROVED ON USER DEVICE (Build 1871); A03–A06 PREMIUM LIST/INFORMATION STYLING COMMITTED, CI AND USER DEVICE ACCEPTANCE PENDING. A07–A09 NOT STARTED.  
+**Status:** HOME-FIRST PHASE A01/A02 APPROVED ON USER DEVICE (Build 1871); A03–A06 PASSED CI Build 1874 (device QA DEFERRED by user); A07–A09 SELECTION UI COMMITTED, CI PENDING; COMBINED FINAL DEVICE REVIEW AGREED.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -259,7 +259,7 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | Milestone | Exit gate | Status |
 |---|---|---|
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
-| M1 — Home-first Management audit and UI changes | Home-derived A01/A02 premium dashboard first; then A03–A09; accepted Form untouched; CI+device QA | IN PROGRESS — A01/A02 user-approved Build 1871; A03–A06 UI/test committed, validation pending |
+| M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | IN PROGRESS — A01/A02 user-approved Build 1871; A03–A06 CI-passed Build 1874, device QA deferred; A07–A09 pending CI and combined device QA |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; numeric totals identical to baseline; CI+device QA | NOT STARTED |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | NOT STARTED |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
@@ -279,7 +279,19 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
 
-**Management Home-first List/Information implementation checkpoint — 2026-11-23 (A03–A06, CI/device pending):**
+**Combined-acceptance decision and A07–A09 selection pilot — 2026-11-24:**
+- **User decision:** after the successful **Build 1874** A03–A06 List/Information pass, the user explicitly said **continue and review all screens together later** ("ဆက်လုပ်မယ်ကွာ နောက်မှ ပေါင်းပြီးစစ်မယ်"). This changes **only the phone visual sign-off cadence**, NOT the requirement to run CI/tests and preserve working Build baselines after each code pass. **Do not mark A03–A09 visually accepted until that combined review.**
+- **Latest verified baseline before new code:** Build **1874**, commit `da985f45e9ed259aa779eb6aab47f9705de8d860`, GitHub Actions `45192745336` SUCCESS (unit tests, lint, debug and release APK artifacts). A01/A02 Dashboard remain accepted from Build 1871.
+- **A07 Quick Entry implementation:** `Screens.kt` **ONLY `QuickEntryScreen` function**: same remembered agent/customer defaults and validation, same scoped customers, same `SelectionField`/ScopeDropdown and both profile photos, unchanged `onBet(agentId, customerId)` route and disabled guard. New single glass selection pane, blush background, selected-person summary, cherry primary 56dp action pinned outside an independently scrollable selection column, and keyboard insets. Home's actual Quick Entry orb and hero code frozen.
+- **A08 Settings implementation:** `Screens.kt` **ONLY `SettingsScreen` function**: Home-blush backdrop, glass grouped Default Agent/Customer selectors, History update feedback group, and localized Language radio group. All `language.setDefaultAgent/Customer`, `vm::updateHistory`, Working/Success/Error status, `language.set("my"/"en")` calls unchanged. `CherryBackupSettings()` is **used as-is**; the encrypted backup/restore implementation and dialogs are untouched. Keep 96dp FAB clearance.
+- **A09 Add Customer picker implementation:** `DashboardScreens.kt` **ONLY `AddCustomerFromHomeScreen` function**: one Home-derived glass agent selector pane, cherry 54dp continue action; preserve default-agent restoration, real person photo, `onCreate(selected)` and `selected > 0L` guard. Approved customer form itself not changed.
+- **New isolated styling:** `CherryManagementSelectionUi.kt` contains low-cost `cherryManagementScreenBackground`, `CherryManagementSelectionPane`, `CherryManagementSelectionSummary`, `CherryManagementPrimaryButton` **only for Management screens**; no global Material Theme, Home shadow helper, heavy blur or continuous motion changes.
+- **Tests:** `ManagementSelectionUiContractTest.kt` guards A07–A09 action/state contracts, glass treatment and lightweight rendering. `CherryProfileCoverageTest.kt` source-match checks made whitespace insensitive after Kotlin formatting; **the two avatars per selector and selected Customer summary requirement remain enforced**.
+- **Safety review scope:** changes restricted to these exact operational functions (not Home/Form sections in `Screens.kt`), new isolated helper, two test files and this plan. `Research` / `Historical2DTimelineScreen.kt`, Home, Forms, approved Dashboard landing cards, A03–A06 List/Info, Live, Better Data, domain, database, exporter, JPEG renderers, and navigation remain unchanged.
+- **CI + phone gate:** GitHub Actions for A07–A09 is pending at this checkpoint. Even with CI success, phone verification will be **combined later**, per user: Home → Agent/Customer Dashboard → List → Information → Quick Entry → Settings → Add Customer; compare MM/EN, long names, 68dp selectors, scrolling, opened keyboard, touch buttons, photo selection, state/route, history update, backup actions, Form handoff and no Research changes.
+- **Next work:** inspect and fix only CI-reported compile/test issues; once CI success, record exact new build/artifacts, then proceed to next Home-first workstream without claiming phone acceptance, preserving Build 1874 as a fallback. Final combined review remains an explicit user acceptance gate.
+
+**Management Home-first List/Information implementation checkpoint — 2026-11-23 (A03–A06, CI SUCCESS Build 1874; DEVICE QA DEFERRED for combined review):**
 - **Starting accepted build:** Build **1871** `52b8e287c1adda4784d7267f9165254d02b91ea3`; GitHub Actions `45187181133` SUCCESS (unit tests, lint, debug and release APK artifacts), and **user explicitly accepted the A01/A02 Dashboard design** in chat ("အဆင်ပြေတယ် ဆက်လုပ်မယ်"). Dashboard UI is now protected from incidental changes.
 - **A03/A04 code commit:** `f622c8798dc7726ba3e3ce06e97b470bac4de38b` updates ONLY `ListWorkspaceScreens.kt` for Home-blush backgrounds on Agent and Customer lists, a lightweight glass list pane (20dp rounded, #EBFFFFFF translucent, white 1.5dp rim, 3dp ruby shadow), transparent underlying `ListItem`, ruby chevron, 42dp existing avatar, soft white agent search field and cherry-outlined Add buttons. Preserve original Agent name/phone/address search, customer scope/selected-agent fallback, item order, callbacks and disabled/empty states.
 - **A05/A06 in same code commit:** Both Agent and Customer Information still share `InformationCard`, now with a 24dp translucent profile pane, light 5dp ruby shadow, and Home-blush page background; 104dp avatar, title accent, scroll, load-state, 0.38/0.62 weighted label/value layout and Agent footer rate/date reporting preserved. Earlier Build 1865 fixes are deliberately retained.
