@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** M1 A01–A09 and M2 B01–B11 source/CI complete; M3 C01–C04 source/CI complete through Build 1923 (both APK artifacts verified). M4 Live/Better Data localized chrome and source contracts committed in one batch; CI/APK and combined phone QA pending. M5 final regression not started. Home/Form/Research, Rules Library, JPEG renderers, Live timing and Better Data engine unchanged.  
+**Status:** M1–M4 source and CI complete through Build 1924 (both APKs verified). M5 final baseline-to-head static regression audit complete: 37 changed files, 214 protected blob paths identical, all protected Home/Form/shared scaffold functions identical in Screens.kt. Combined device QA and user acceptance remain pending. Build 1924 is the verified APK candidate; this checkpoint changes documentation only. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -45,7 +45,7 @@
 1. Preserve Build 1864 as recovery baseline. Never work directly on `main` or amend the baseline branch.
 2. **First commit only this plan** on the dedicated working branch. No styling/UI implementation is included in the documentation commit.
 3. Before changing any UI file, inspect the active route, its call sites and the accepted shared component contracts.
-4. Each small UI pass: scoped changes → code review / tests → Android CI debug+lint+unit tests+release APK → phone screenshot comparison → acceptance or local revert.
+4. User-approved batching: group related low-risk UI changes into a single scoped commit and CI run after individual source review; preserve the same test gates. Android CI debug+lint+unit tests+release APK → combined phone screenshot comparison → acceptance or local revert. Keep business logic changes separate and do not batch across protected boundaries.
 5. Do not declare a screen approved from green CI alone. Screenshot/device confirmation is distinct from successful compilation.
 6. If a screen is already consistent, record **NO CHANGE** and move on.
 7. After every pass, append the build/run/commit, files changed, screenshot checklist, regressions and user acceptance to Section 9.
@@ -262,8 +262,8 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | SOURCE/CI DONE — A01/A02 user-approved Build 1871; A03–A06 passed Build 1874; A07–A09 passed Build 1881; combined device QA deferred |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; monetary source formulas unchanged; CI+combined device QA | SOURCE/CI DONE — B01–B08 CI success through Build 1903; B09 Build 1907; B10 Build 1910; B11 Build 1915 CI SUCCESS; combined phone QA pending |
 | M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | SOURCE/CI DONE — C01 Build 1919, C02 Build 1922, C03+C04 Build 1923 CI SUCCESS; combined phone QA pending |
-| M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | SOURCE DONE — localized Live/Better Data chrome and tests committed; CI/device QA pending |
-| M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | NOT STARTED |
+| M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | SOURCE/CI DONE — Build 1924 SUCCESS, both APK artifacts verified; combined phone QA pending |
+| M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | STATIC AUDIT DONE — Build 1924 CI SUCCESS; real-device regression and user acceptance pending |
 
 **Stop and seek explicit scope change** if the only possible fix touches Research, the shared Research/Analysis parent, Home/Form approved regions, global font/theme, domain calculations or renderers. Never silently expand scope.
 
@@ -278,6 +278,16 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**M4 verified CI and M5 final static regression audit — 2026-11-24 (device QA pending):**
+- Build **1924**, commit `36900b614bafe4dc8f5b82056b610ec19ae859b2`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45358556073. Verified completed SUCCESS: unit tests/lint/debug APK, formula-discovery audit workflow step, release verification, debug/release uploads. Debug artifact `14904241963`, release artifact `14903513846`, both unexpired at check and match this commit. This is the tested APK candidate.
+- Baseline Build 1864 `f48c8ae8a45d584c8d416196a9cd4404916626ff` -> Build 1924 comparison: 65 commits ahead, 0 behind; complete non-truncated Git tree manifests, 409 -> 425 blobs; 37 changed paths (16 additions, 21 modifications, 0 deletions). 21 production Kotlin paths, 14 test Kotlin paths (13 new contract files containing 50 @Test declarations, one existing profile coverage test updated), one workflow path and one plan path. Workflow change only appends the dedicated working branch to push triggers; no test/build commands changed.
+- Protected blob audit: 214 baseline paths matched by core, main assets/res, Home/Welcome/Form, Research/Rules/Timeline, navigation, JPEG renderer/exporter/calculator, Live coordinator and Better Data engine/entrypoint protection criteria; all 214 identical Git blob hashes. No changes outside feature UI/test/docs and the branch trigger. No asset or resource changes, no deleted paths, no migration.
+- Mixed file `Screens.kt`: exact top-level function-span comparison baseline -> head found changes only in QuickEntryScreen, BettingScreen, CommissionScreen, LimitScreen, BetHistoryScreen, SettingsScreen. HomeScreen and all Home helpers (Weekly, Live hero, footer, quick actions/dock), AgentFormScreen, CustomerFormScreen, FormColumn/FormActions, AppScaffold/OperationalScaffold identical. No new top-level functions in this file. Navigation routes unchanged.
+- Reviewed cumulative patch hunks across all changed feature UI paths, including monetary callback/validation wiring, report calculations and scope identity, original export calls and freshness guard, Live lifecycle and SET projection, Better Data four tabs and state/engine/snapshot body. C04 permission/loading guards and C03 busy-state guards are intentional presentation safety changes. Existing profile test edits adapt to whitespace and renamed local customer variable, retain real identity assertions; no test deletion. No new confirmed blocking source regression in this static audit. Not proof of runtime correctness, identical exported JPEG bytes or visual acceptance.
+- Batch workflow result: C03+C04 Build 1923 and M4 Build 1924 each used one commit/build. No app code changes are required solely to record M5. This documentation-only checkpoint must not be confused with a new APK validation.
+- **Combined phone QA before acceptance:** Install Build 1924 on actual device (back up real data first); use safe test data for any financial writes. Check Home/Weekly and add/edit agent/customer crop/save/back against accepted reference; A01–A09 dashboard/list/info/quick entry/settings, MM and EN, long names, switch agent/customer (no stale photo/id), small screen and enlarged font, scroll/keyboard/FAB. B01–B11 verify identical totals/rates, dates/sessions, report/drilldown, closed/limit, risk, entry edit/history and saved amounts against same fixture. C01–C04 check JPEG page order, photos, totals/pixels for same fixture, customer rebate, real Gallery success/failure, permission and duplicate taps. M4 verify Live and Calendar, closed-day/status and result handover, Better Data four tabs/history, trigger-only formula search, startup/navigation responsiveness; open Research/Rules only to confirm unaffected. Record screenshots and regressions by screen; device QA cannot be substituted by CI.
+- **Exit condition:** M5 static audit complete; Build 1924 CI candidate ready for combined device QA. Final acceptance and any needed narrowly scoped fixes remain outstanding. Do not merge main; no user approval inferred from CI.
 
 **M3 verified CI and M4 Specialized UI batch — 2026-11-24 (M4 CI/device QA pending):**
 - Build **1923**, commit `30734009d4b107720e6420330d7d1b930035f4d8`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45356064601, verified SUCCESS: tests, lint, debug/release APK and both uploads passed; debug artifact `14903052518`, release artifact `14902203051`, unexpired at check. M1–M3 source/CI complete (24 scoped items).
