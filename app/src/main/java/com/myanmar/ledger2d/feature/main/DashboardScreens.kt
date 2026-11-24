@@ -730,12 +730,47 @@ fun AddCustomerFromHomeScreen(vm: LedgerViewModel, onBack: () -> Unit, onCreate:
     val agents by vm.agents.collectAsStateWithLifecycle()
     val language = LocalLanguage.current
     var selected by rememberSaveable { mutableStateOf(language.defaultAgentId) }
-    LaunchedEffect(agents, language.defaultAgentId) { if (agents.none { it.id == selected }) selected = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L }
-    AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသားအသစ်ထည့်ရန်"), onBack) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = LedgerControlDimensions.fabSafeBottom), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer ကို ဘယ် Agent အောက်မှာထည့်မလဲ"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"), agents.firstOrNull { it.id == selected }?.name ?: com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), agents.map { it.id to it.name }, selected, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }) { selected = it }
-            Button(onClick = { onCreate(selected) }, enabled = selected > 0, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Customer form သို့သွားရန်")) }
+    LaunchedEffect(agents, language.defaultAgentId) {
+        if (agents.none { it.id == selected }) {
+            selected = agents.firstOrNull { it.id == language.defaultAgentId }?.id ?: 0L
+        }
+    }
+    AppScaffold(language.translate("ထိုးသားအသစ်ထည့်ရန်"), onBack) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).cherryManagementScreenBackground()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp).padding(bottom = LedgerControlDimensions.fabSafeBottom),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            CherryManagementSelectionPane {
+                Text(
+                    language.translate("Customer ကို ဘယ် Agent အောက်မှာထည့်မလဲ"),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDeep,
+                )
+                ScopeDropdown(
+                    language.translate("Agent ရွေးရန်"),
+                    agents.firstOrNull { it.id == selected }?.name ?: language.translate("ဒိုင်ရွေးရန်"),
+                    agents.map { it.id to it.name },
+                    selected,
+                    avatar = { photoId ->
+                        CherryProfileAvatar(
+                            vm.profilePhotos,
+                            com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,
+                            photoId,
+                            Modifier.size(32.dp),
+                        )
+                    },
+                ) { selected = it }
+            }
+            CherryManagementPrimaryButton(
+                onClick = { onCreate(selected) },
+                enabled = selected > 0L,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+            ) {
+                Text(language.translate("Customer form သို့သွားရန်"))
+            }
         }
     }
 }
