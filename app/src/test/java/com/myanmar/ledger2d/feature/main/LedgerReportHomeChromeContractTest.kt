@@ -67,6 +67,18 @@ class LedgerReportHomeChromeContractTest {
         assertFalse(summary.contains("CherryFinancialPanel {"))
     }
 
+    @Test fun customerLegacyStatementTotalsKeepFinancialLabelsAndLogic() {
+        val src = source("CustomerStatementScreen.kt")
+        val totals = src.substringAfter("private fun StatementTotalCard(")
+            .substringBefore("private fun StatementDrawCard(")
+        assertTrue(totals.contains("CherryFinancialPanel {"))
+        assertTrue(totals.contains("StatementMoneyLine(\"စုစုပေါင်းထိုးကြေး\", t.totalBet, true)"))
+        assertTrue(totals.contains("StatementMoneyLine(\"ရလဒ်ထွက်ပြီးသော အကြိမ်များ၏ ထိုးကြေး\", t.completedBet)"))
+        assertTrue(totals.contains("StatementMoneyLine(\"စုစုပေါင်း\", t.customerWinLoss, strong = true, positiveGood = true)"))
+        assertTrue(totals.contains("if (!t.isComplete)"))
+        assertTrue(totals.contains("color = MaterialTheme.colorScheme.error"))
+    }
+
     @Test fun customerResultsKeepOriginalTotalsAndNumericTables() {
         val src = source("CustomerLedgerReportResults.kt")
         val summary = src.substringAfter("private fun StatementSummary(")
