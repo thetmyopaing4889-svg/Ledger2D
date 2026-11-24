@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** M1–M5 source/CI and baseline static audit complete through Build 1924. User-approved follow-up: global Quick Entry bubble redesign on existing eligible scaffolds only; code/test batch committed, CI/APK and combined phone QA pending. Home-specific orb/Research/Rules/Form content and core logic unchanged; no main merge.  
+**Status:** M1–M5 source/CI and baseline static audit complete through Build 1924. User-approved Quick Entry bubble follow-up Build 1926 compiled; 1,017/1,018 tests passed, including all four new bubble tests. One pre-existing form integration source assertion expected the old FAB call. Updated that assertion to protect the new shared overlay wiring and retained all form/gallery guards; rerun CI/APK and combined phone QA pending. No production code changes in this repair; no main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -278,6 +278,11 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**Build 1926 CI repair — 2026-11-24 (rerun pending):**
+- Build 1926, commit `af01b71f8ae7b73132caebb1aa7827a6d8bbb849`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45364586599: Kotlin compilation succeeded; 1,018 tests ran, one failed at CherryProfileIntegrationContractTest.kt:33. All four new bubble contracts passed. Release/APK uploads skipped due to unit-test failure.
+- Failure was the old source assertion `QuickEntryFab(globalQuickEntry)`, superseded by the shared overlay call. Update only the integration test to verify the eligibility gate and new overlay invocation, and explicitly retain bubble eligibility on both profile forms. Existing gallery/save/backup checks remain intact.
+- No app source, resource, Home/Form/Research or navigation changes in this repair. Verify all tests/lint/debug/release APK before device QA.
 
 **User-approved floating Quick Entry bubble follow-up — 2026-11-24 (CI/device QA pending):**
 - Continue from verified Build 1924 plus documentation-only M5 checkpoint `c79b7daf62fb7651489bb1d6485a280a6b1570e6`. User explicitly authorized a scoped change to the existing shared OperationalScaffold Quick Entry host, not a redesign of protected Home/Form content.

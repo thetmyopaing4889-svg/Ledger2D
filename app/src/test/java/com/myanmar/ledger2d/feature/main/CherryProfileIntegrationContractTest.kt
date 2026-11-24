@@ -30,7 +30,13 @@ class CherryProfileIntegrationContractTest {
         // Quick Entry is provided by OperationalScaffold, not duplicated in forms.
         assertTrue(forms.contains("AppScaffold(title=title, onBack=onBack)"))
         assertTrue(screen.contains("val globalQuickEntry = LocalQuickEntryAction.current"))
-        assertTrue(screen.contains("QuickEntryFab(globalQuickEntry)"))
+        // Keep the same integration guard after moving the global FAB to an overlay.
+        val scaffold = screen.substringAfter("@Composable fun OperationalScaffold(")
+            .substringBefore("@Composable private fun DarkStatusBarsEffect")
+        assertTrue(scaffold.contains("val quickEntry = globalQuickEntry.takeIf { includeQuickEntryFab }"))
+        assertTrue(scaffold.contains("QuickEntryFab(quickEntry, Modifier.matchParentSize())"))
+        assertFalse(forms.contains("includeQuickEntryFab=false"))
+        assertFalse(forms.contains("includeQuickEntryFab = false"))
         assertTrue(forms.contains("onRemove: (() -> Unit)? = null"))
         assertTrue(forms.contains("photos.draftFile(pickedUri)"))
         assertTrue(forms.contains("BackHandler(onBack = onBack)"))
