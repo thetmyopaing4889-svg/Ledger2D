@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B11 CI success through Build 1915. C01 voucher selection/preview CI SUCCESS Build 1919, both APK artifacts verified. C02 Agent settlement picker/preview UI and tests committed; CI/APK and combined phone QA pending. C03–C04 not started. Home/Form/Research, JPEG renderers and domain/persistence unchanged.  
+**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B11 CI success through Build 1915; C01 Build 1919 and C02 Build 1922 CI SUCCESS with both APKs verified. C03 Customer settlement and C04 Gallery feedback combined UI/tests committed; CI/APK and combined phone QA pending. Home/Form/Research, JPEG renderers and domain/persistence unchanged.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -261,7 +261,7 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
 | M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | SOURCE/CI DONE — A01/A02 user-approved Build 1871; A03–A06 passed Build 1874; A07–A09 passed Build 1881; combined device QA deferred |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; monetary source formulas unchanged; CI+combined device QA | SOURCE/CI DONE — B01–B08 CI success through Build 1903; B09 Build 1907; B10 Build 1910; B11 Build 1915 CI SUCCESS; combined phone QA pending |
-| M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | IN PROGRESS — C01 CI SUCCESS Build 1919; C02 UI/tests committed, CI pending; C03–C04 not started |
+| M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | IN PROGRESS — C01 Build 1919 and C02 Build 1922 CI SUCCESS; C03+C04 combined UI/tests committed; CI and combined phone QA pending |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
 | M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | NOT STARTED |
 
@@ -278,6 +278,13 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**C02 verified CI and combined C03/C04 export UI batch — 2026-11-24 (combined CI/device QA pending):**
+- Build **1922**, commit `1975074335f9fca0d7689cc2d86d2e94f3fbb6e5`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45353364198, verified SUCCESS: unit tests, lint, debug/release APK and both uploads passed. Debug artifact `14900639997`, release artifact `14900714542`, both unexpired at check.
+- C03: Customer settlement mirrors C02: four selector panels (agent, customer, period, date/session/range); Home blush background, preview rebate panel and page/action toolbar; flexible button heights and scrollable session chips. Selection inputs disabled during generation to avoid changing scope while loading. Rebate inputs disabled during export/permission request. Original range, generation callback, rebate calculation and bitmap preview lifecycle checked byte-identical before C04.
+- C04: Voucher, Agent and Customer preview use consistent localized Gallery dialog titles/OK, existing success/failure messages, explicit permission-pending guard and saving/permission progress text. Original exporter calls, agent stale-document verification, permission requirement and renderer outputs preserved. If a settlement renderer is unavailable after permission, show retry feedback rather than silent no-op.
+- Combined source test `SettlementAndGalleryHomeChromeContractTest.kt`: three contracts covering customer selector/rebate/preview, all Gallery feedback guards and original exporter/freshness checks. Existing renderer/pagination/money tests retained. C03/C04 committed atomically in one branch update for one CI run, no main merge.
+- Next gate: verify combined CI and both APKs, fix any failure minimally; then M4 specialized UI review. Combined device QA pending: actual Gallery success/failure/permission/duplicate taps, MM/EN and large font, small screens, rebate validation and correct exported page totals/pixels. Protected Home/Form/Research, Better Data, renderer/exporter and domain/DB not modified.
 
 **C01 verified CI and C02 Agent settlement Home-first pass — 2026-11-24 (C02 CI/device QA pending):**
 - Build **1919**, commit `e4ef7ebbef9e12202af3726e4b9a58b8244df8ef`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45350881246, independently verified SUCCESS: tests, lint, release verification and both APK uploads passed. Debug artifact `14900970956`, release artifact `14900312535`, both unexpired at check.

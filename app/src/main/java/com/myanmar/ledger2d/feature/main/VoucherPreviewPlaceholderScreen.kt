@@ -118,7 +118,9 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { renderer.pageCount })
     var exporting by remember { mutableStateOf(false) }
+    var permissionPending by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    BackHandler(enabled = permissionPending) {}
     BackHandler(enabled = exporting) { /* Avoid cancelling a Gallery export in progress. */ }
 
     val exportNow: () -> Unit = {
@@ -145,7 +147,10 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
     val legacyPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) exportNow()
+        permissionPending = false
+        if (granted) {
+            exportNow()
+        }
         else message = language.text(
             "Android 8/9 တွင် Gallery သိမ်းရန် Storage ခွင့်ပြုချက် လိုအပ်ပါသည်။",
             "Storage permission is required to save images on Android 8/9.",
@@ -155,7 +160,7 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
     message?.let { text ->
         AlertDialog(
             onDismissRequest = { message = null },
-            title = { Text(language.text("JPEG Export", "JPEG Export")) },
+            title = { Text(language.text("JPEG ပုံ သိမ်းဆည်းမှု", "JPEG export")) },
             text = { Text(text) },
             confirmButton = {
                 TextButton(onClick = { message = null }) {
@@ -167,7 +172,7 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
 
     AppScaffold(
         title = language.text("ဘောင်ချာအကြိုကြည့်ရန်", "Voucher preview"),
-        onBack = { if (!exporting) onBack() },
+        onBack = { if (!exporting && !permissionPending) onBack() },
         includeQuickEntryFab = false,
     ) { padding ->
         Column(
@@ -226,22 +231,27 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
                     ) { Text(language.text("နောက်", "Next")) }
                 }
                 Button(
-                    enabled = !exporting,
+                    enabled = !exporting && !permissionPending,
                     onClick = {
+                        if (exporting || permissionPending) return@Button
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
                             ContextCompat.checkSelfPermission(
                                 context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
                             ) != PackageManager.PERMISSION_GRANTED
-                        ) legacyPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        else exportNow()
+                        ) {
+                            permissionPending = true
+                            legacyPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        } else exportNow()
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                 ) {
-                    if (exporting) CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                    ) else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
+                    if (exporting || permissionPending) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
+                                else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
+                        }
+                    } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
                 }
             }
         }

@@ -49,12 +49,12 @@ import java.time.ZoneOffset
 private enum class SettlementPreset { DRAW, DAY, WEEK, MONTH, CUSTOM }
 
 @Composable
-private fun SettlementDatePicker(label: String, text: String, onDate: (String) -> Unit) {
+private fun SettlementDatePicker(label: String, text: String, enabled: Boolean = true, onDate: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     OutlinedTextField(
-        value = text, onValueChange = {}, readOnly = true,
+        value = text, onValueChange = {}, readOnly = true, enabled = enabled,
         label = { Text(label) }, singleLine = true,
-        trailingIcon = { TextButton(onClick = { open = true }) { Text("ရွေး") } },
+        trailingIcon = { TextButton(enabled = enabled, onClick = { open = true }) { Text("ရွေး") } },
         modifier = Modifier.fillMaxWidth(),
     )
     if (open) {
@@ -65,7 +65,7 @@ private fun SettlementDatePicker(label: String, text: String, onDate: (String) -
         DatePickerDialog(
             onDismissRequest = { open = false },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = enabled, onClick = {
                     state.selectedDateMillis?.let { millis ->
                         onDate(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString())
                     }
@@ -136,7 +136,7 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
         includeQuickEntryFab = false,
     ) { padding ->
         androidx.compose.foundation.lazy.LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -146,78 +146,84 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             item {
-                ScopeDropdown(
-                    language.text("ဒိုင်ရွေးရန်", "Select agent"),
-                    agents.firstOrNull { it.id == agentId }?.name ?: "—",
-                    agents.map { it.id to it.name }, agentId,
-                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                ) { agentId = it; customerId = -1L; error = null }
-            }
-            item {
-                ScopeDropdown(
-                    language.text("ထိုးသားရွေးရန်", "Select customer"),
-                    chosenCustomer?.name ?: language.text("ထိုးသားရွေးပါ", "Choose customer"),
-                    customers.map { it.id to it.name }, customerId,
-                    enabled = agentId > 0L,
-                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
-                ) { customerId = it; error = null }
-            }
-            item {
-                Text(language.text("စာရင်းရှင်းမည့်ကာလ", "Statement period"),
-                    fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    listOf(
-                        SettlementPreset.DRAW to language.text("တစ်ကြိမ်စာ", "One draw"),
-                        SettlementPreset.DAY to language.text("တစ်ရက်စာ", "One day"),
-                        SettlementPreset.WEEK to language.text("တစ်ပတ်စာ", "One week"),
-                        SettlementPreset.MONTH to language.text("တစ်လစာ", "One month"),
-                        SettlementPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
-                    ).forEach { (option, label) ->
-                        FilterChip(preset == option, onClick = { preset = option; error = null },
-                            label = { Text(label) })
-                    }
+                CherryFinancialPanel {
+                    ScopeDropdown(
+                        language.text("ဒိုင်ရွေးရန်", "Select agent"),
+                        agents.firstOrNull { it.id == agentId }?.name ?: "—",
+                        agents.map { it.id to it.name }, agentId, enabled = !busy,
+                            avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                    ) { agentId = it; customerId = -1L; error = null }
                 }
             }
-            if (preset == SettlementPreset.CUSTOM) {
-                item { SettlementDatePicker(language.text("စရက်", "Start date"), fromDate) {
-                    fromDate = it; error = null
-                } }
-                item { SettlementDatePicker(language.text("ဆုံးရက်", "End date"), toDate) {
-                    toDate = it; error = null
-                } }
-            } else {
-                item {
-                    SettlementDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor) {
-                        anchor = it; error = null
-                    }
+            item {
+                CherryFinancialPanel {
+                    ScopeDropdown(
+                        language.text("ထိုးသားရွေးရန်", "Select customer"),
+                        chosenCustomer?.name ?: language.text("ထိုးသားရွေးပါ", "Choose customer"),
+                        customers.map { it.id to it.name }, customerId,
+                        enabled = agentId > 0L && !busy,
+                            avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
+                    ) { customerId = it; error = null }
                 }
             }
-            if (preset == SettlementPreset.DRAW) {
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        DrawSession.entries.forEach { session ->
-                            FilterChip(
-                                selected = draw == session.name,
-                                onClick = { draw = session.name },
-                                label = { Text(language.text(
-                                    if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
-                                    if (session == DrawSession.MORNING) "Morning" else "Evening",
-                                )) },
-                            )
+            item {
+                CherryFinancialPanel {
+                    Text(language.text("စာရင်းရှင်းမည့်ကာလ", "Statement period"),
+                        fontWeight = FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        listOf(
+                            SettlementPreset.DRAW to language.text("တစ်ကြိမ်စာ", "One draw"),
+                            SettlementPreset.DAY to language.text("တစ်ရက်စာ", "One day"),
+                            SettlementPreset.WEEK to language.text("တစ်ပတ်စာ", "One week"),
+                            SettlementPreset.MONTH to language.text("တစ်လစာ", "One month"),
+                            SettlementPreset.CUSTOM to language.text("စိတ်ကြိုက်", "Custom"),
+                        ).forEach { (option, label) ->
+                            FilterChip(preset == option, onClick = { preset = option; error = null }, enabled = !busy,
+                                label = { Text(label) })
                         }
                     }
                 }
             }
             item {
-                if (range != null) {
-                    Text(
-                        if (range.start == range.end) range.start.toString()
-                        else "${range.start} မှ ${range.end} အထိ",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else Text(language.text("ရက်စွဲကာလကို ပြန်စစ်ပါ", "Check the date range"),
-                    color = MaterialTheme.colorScheme.error)
+                CherryFinancialPanel {
+                    if (preset == SettlementPreset.CUSTOM) {
+                        SettlementDatePicker(language.text("စရက်", "Start date"), fromDate, enabled = !busy) {
+                            fromDate = it; error = null
+                        }
+                        SettlementDatePicker(language.text("ဆုံးရက်", "End date"), toDate, enabled = !busy) {
+                            toDate = it; error = null
+                        }
+                    } else {
+                        SettlementDatePicker(language.text("ရက်စွဲရွေးရန်", "Select date"), anchor, enabled = !busy) {
+                            anchor = it; error = null
+                        }
+                    }
+                    if (preset == SettlementPreset.DRAW) {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            DrawSession.entries.forEach { session ->
+                                FilterChip(
+                                    selected = draw == session.name,
+                                    onClick = { draw = session.name },
+                                    enabled = !busy,
+                                    label = { Text(language.text(
+                                        if (session == DrawSession.MORNING) "မနက်အကြိမ်" else "ညနေအကြိမ်",
+                                        if (session == DrawSession.MORNING) "Morning" else "Evening",
+                                    )) },
+                                )
+                            }
+                        }
+                    }
+                    if (range != null) {
+                        Text(
+                            if (range.start == range.end) range.start.toString()
+                            else "${range.start} မှ ${range.end} အထိ",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else Text(language.text("ရက်စွဲကာလကို ပြန်စစ်ပါ", "Check the date range"),
+                        color = MaterialTheme.colorScheme.error)
+                }
             }
             if (error != null) item {
                 Text(error!!, color = MaterialTheme.colorScheme.error)
@@ -225,7 +231,7 @@ fun CustomerSettlementJpegScreen(vm: LedgerViewModel, onBack: () -> Unit) {
             item {
                 Button(
                     enabled = !busy && chosenCustomer != null && range != null,
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                     onClick = {
                         val customer = chosenCustomer ?: return@Button
                         val requestedRange = range ?: return@Button
@@ -318,6 +324,7 @@ private fun CustomerSettlementJpegPreview(
     val renderer = preparation?.takeIf { it.first === document }?.second
     val pager = rememberPagerState(pageCount = { renderer?.pageCount ?: 1 })
     var exporting by remember { mutableStateOf(false) }
+    var permissionPending by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
     val exportNow: () -> Unit = {
@@ -345,48 +352,55 @@ private fun CustomerSettlementJpegPreview(
     val permission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) exportNow()
-        else message = language.text("Gallery သိမ်းရန် Storage permission လိုအပ်ပါသည်။",
-            "Storage permission is required.")
+        permissionPending = false
+        if (granted) {
+            if (renderer != null && !invalidPercent) exportNow()
+            else message = language.text("JPEG အဆင်သင့်မဖြစ်သေးပါ။ ပြန်စမ်းကြည့်ပါ။", "JPEG is not ready. Please try again.")
+        }
+        else message = language.text("Android 8/9 တွင် Gallery သိမ်းရန် Storage ခွင့်ပြုချက် လိုအပ်ပါသည်။",
+            "Storage permission is required to save images on Android 8/9.")
     }
 
+    BackHandler(enabled = permissionPending) {}
     BackHandler(enabled = exporting) {}
     message?.let { content ->
         AlertDialog(
             onDismissRequest = { message = null },
-            title = { Text("JPEG Export") }, text = { Text(content) },
-            confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
+            title = { Text(language.text("JPEG ပုံ သိမ်းဆည်းမှု", "JPEG export")) }, text = { Text(content) },
+            confirmButton = { TextButton(onClick = { message = null }) { Text(language.text("အဆင်ပြေ", "OK")) } },
         )
     }
     AppScaffold(
         title = language.text("ငွေစာရင်းရှင်းတမ်း အကြိုကြည့်ရန်", "Statement preview"),
-        onBack = { if (!exporting) onBack() },
+        onBack = { if (!exporting && !permissionPending) onBack() },
         includeQuickEntryFab = false,
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = commissionEnabled, onCheckedChange = {
-                    commissionEnabled = it
-                })
-                Text(language.text("Customer ကို ကော်မရှင်ပြန်ပေးမည်",
-                    "Pay customer a commission rebate"), fontWeight = FontWeight.Bold)
-            }
-            if (commissionEnabled) {
-                OutlinedTextField(
-                    percentText, onValueChange = { percentText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(language.text("ကော်မရှင် (%)", "Commission (%)")) },
-                    singleLine = true, isError = invalidPercent,
-                )
-                if (invalidPercent) Text(
-                    language.text("0 မှ 100% အတွင်း၊ ဒသမ ၂ နေရာအထိ ထည့်ပါ။",
-                        "Enter 0–100%, up to two decimal places."),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+            CherryFinancialPanel {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = commissionEnabled, enabled = !exporting && !permissionPending, onCheckedChange = {
+                        commissionEnabled = it
+                    })
+                    Text(language.text("Customer ကို ကော်မရှင်ပြန်ပေးမည်",
+                        "Pay customer a commission rebate"), fontWeight = FontWeight.Bold)
+                }
+                if (commissionEnabled) {
+                    OutlinedTextField(
+                        percentText, onValueChange = { percentText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(language.text("ကော်မရှင် (%)", "Commission (%)")) },
+                        singleLine = true, isError = invalidPercent, enabled = !exporting && !permissionPending,
+                    )
+                    if (invalidPercent) Text(
+                        language.text("0 မှ 100% အတွင်း၊ ဒသမ ၂ နေရာအထိ ထည့်ပါ။",
+                            "Enter 0–100%, up to two decimal places."),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
             if (renderer != null && !invalidPercent) {
                 HorizontalPager(
@@ -418,35 +432,52 @@ private fun CustomerSettlementJpegPreview(
                     else CircularProgressIndicator()
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                TextButton(
-                    enabled = !exporting && pager.currentPage > 0,
-                    onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } },
-                ) { Text(language.text("ရှေ့", "Previous")) }
-                Text("${pager.currentPage + 1} / ${renderer?.pageCount ?: 1}")
-                TextButton(
-                    enabled = !exporting && renderer != null &&
-                        pager.currentPage < renderer!!.pageCount - 1,
-                    onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
-                ) { Text(language.text("နောက်", "Next")) }
-            }
-            Button(
-                enabled = !exporting && renderer != null && !invalidPercent,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                onClick = {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                        ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    else exportNow()
-                },
-            ) {
-                if (exporting) CircularProgressIndicator(
-                    Modifier.size(21.dp), color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                ) else Text("Export JPEG — Gallery")
+            CherryFinancialPanel {
+                Text(
+                    language.text(
+                        "စာမျက်နှာ ${pager.currentPage + 1} / ${renderer?.pageCount ?: 1}",
+                        "Page ${pager.currentPage + 1} / ${renderer?.pageCount ?: 1}",
+                    ),
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        enabled = !exporting && pager.currentPage > 0,
+                        onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(language.text("ရှေ့", "Previous")) }
+                    OutlinedButton(
+                        enabled = !exporting && renderer != null &&
+                            pager.currentPage < renderer!!.pageCount - 1,
+                        onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(language.text("နောက်", "Next")) }
+                }
+                Button(
+                    enabled = !exporting && renderer != null && !invalidPercent && !permissionPending,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                    onClick = {
+                        if (exporting || permissionPending) return@Button
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                            ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            permissionPending = true
+                            permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        } else exportNow()
+                    },
+                ) {
+                    if (exporting || permissionPending) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
+                                else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
+                        }
+                    } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
+                }
             }
         }
     }

@@ -271,6 +271,7 @@ private fun AgentSettlementJpegPreview(
     val renderer = preparation?.first
     val pager = rememberPagerState(pageCount = { renderer?.pageCount ?: 1 })
     var exporting by remember { mutableStateOf(false) }
+    var permissionPending by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
     val exportNow: () -> Unit = {
@@ -311,22 +312,27 @@ private fun AgentSettlementJpegPreview(
     val permission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) exportNow()
-        else message = language.text("Gallery သိမ်းရန် Storage permission လိုအပ်ပါသည်။",
-            "Storage permission is required.")
+        permissionPending = false
+        if (granted) {
+            if (renderer != null) exportNow()
+            else message = language.text("JPEG အဆင်သင့်မဖြစ်သေးပါ။ ပြန်စမ်းကြည့်ပါ။", "JPEG is not ready. Please try again.")
+        }
+        else message = language.text("Android 8/9 တွင် Gallery သိမ်းရန် Storage ခွင့်ပြုချက် လိုအပ်ပါသည်။",
+            "Storage permission is required to save images on Android 8/9.")
     }
+    BackHandler(enabled = permissionPending) {}
     BackHandler(enabled = exporting) {}
     message?.let { content ->
         AlertDialog(
             onDismissRequest = { message = null },
-            title = { Text("JPEG Export") },
+            title = { Text(language.text("JPEG ပုံ သိမ်းဆည်းမှု", "JPEG export")) },
             text = { Text(content) },
-            confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
+            confirmButton = { TextButton(onClick = { message = null }) { Text(language.text("အဆင်ပြေ", "OK")) } },
         )
     }
     AppScaffold(
         title = language.text("ဒိုင်စာရင်းရှင်းတမ်း အကြိုကြည့်ရန်", "Agent statement preview"),
-        onBack = { if (!exporting) onBack() }, includeQuickEntryFab = false,
+        onBack = { if (!exporting && !permissionPending) onBack() }, includeQuickEntryFab = false,
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -385,20 +391,26 @@ private fun AgentSettlementJpegPreview(
                     ) { Text(language.text("နောက်", "Next")) }
                 }
                 Button(
-                    enabled = !exporting && renderer != null,
+                    enabled = !exporting && renderer != null && !permissionPending,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                     onClick = {
+                        if (exporting || permissionPending) return@Button
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
                             ContextCompat.checkSelfPermission(context,
                                 Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-                        ) permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        else exportNow()
+                        ) {
+                            permissionPending = true
+                            permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        } else exportNow()
                     },
                 ) {
-                    if (exporting) CircularProgressIndicator(
-                        Modifier.size(21.dp), color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                    ) else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
+                    if (exporting || permissionPending) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
+                                else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
+                        }
+                    } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
                 }
             }
         }
