@@ -1345,34 +1345,13 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
         Column(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().imePadding()) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
-                    CherryFinancialPanel {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            CherryProfileIdentity(vm,ProfileKind.AGENT,agentId,agentProfile?.name ?: "ဒိုင်",Modifier.weight(1f),avatarSize=34.dp)
-                            CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,customerProfile?.name ?: "ထိုးသား",Modifier.weight(1f),avatarSize=34.dp)
-                        }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                        CherryProfileIdentity(vm,ProfileKind.AGENT,agentId,agentProfile?.name ?: "ဒိုင်",Modifier.weight(1f),avatarSize=34.dp)
+                        CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,customerProfile?.name ?: "ထိုးသား",Modifier.weight(1f),avatarSize=34.dp)
                     }
                 }
-                item {
-                    CherryFinancialPanel {
-                        DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးမည့်အချိန်"), style = MaterialTheme.typography.titleLarge)
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                            DrawSession.entries.forEachIndexed { i, draw ->
-                                SegmentedButton(
-                                    session == draw,
-                                    { session = draw; language.setSession(draw) },
-                                    SegmentedButtonDefaults.itemShape(i, 2),
-                                ) {
-                                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))
-                                }
-                            }
-                        }
-                    }
-                }
+                item { PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ") }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးမည့်အချိန်"), style = MaterialTheme.typography.titleLarge); SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) { DrawSession.entries.forEachIndexed { i, draw -> SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(i, 2), colors = SegmentedButtonDefaults.colors(activeContainerColor = AppColors.PrimaryDeep, activeContentColor = Color.White, inactiveContainerColor = Color(0xEBFFFFFF), inactiveContentColor = AppColors.PrimaryDeep)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) } } } }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = backdated, onCheckedChange = { backdated = it })
@@ -1383,13 +1362,13 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နောက်ကြောင်းပြန်စာရင်းကို ရွေးထားသော Session ၏ ဒိုင်အဆနဲ့ Customer ကော်မရှင်အတိုင်း အလိုအလျောက်တွက်မည်။ နှုန်းပြောင်းရန် Dashboard မှ Session ရွေးပြီး ပြင်ပါ။"),
                         style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းထည့်ရန်")) }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = MaterialTheme.shapes.medium) }
-                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမြန်ထည့်သွင်းပုံများ"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> FilterChip(format == f, { format = f }, label = { Text(f.label) }) } } }
+                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းထည့်ရန်")) }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = premiumSelectorShape, colors = premiumSelectorColors()) }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမြန်ထည့်သွင်းပုံများ"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> PremiumSelectionChip(format == f, { format = f }, label = { Text(f.label) }) } } }
                 item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။")) else PreviewCard(visiblePreview ?: BetPreview(emptyInput=true)) }
                 item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }
             }
             Surface(color = Color(0xFFFCEEF3), shadowElevation = 10.dp) {
-                Button(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format, backdated) else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = preview.canConfirm && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အတည်ပြုနေသည်…") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Confirm")) }
+                PremiumSelectionButton(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format, backdated) else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = preview.canConfirm && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အတည်ပြုနေသည်…") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Confirm")) }
             }
         }
     }
@@ -2067,9 +2046,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သွင်းထားသောစာရင်း"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
-                CherryFinancialPanel {
-                    CherryProfileIdentity(vm, ProfileKind.CUSTOMER, customerId, historyCustomer?.name ?: "ထိုးသား", Modifier.fillMaxWidth())
-                }
+                CherryProfileIdentity(vm, ProfileKind.CUSTOMER, customerId, historyCustomer?.name ?: "ထိုးသား", Modifier.fillMaxWidth())
             }
             item {
                 PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")

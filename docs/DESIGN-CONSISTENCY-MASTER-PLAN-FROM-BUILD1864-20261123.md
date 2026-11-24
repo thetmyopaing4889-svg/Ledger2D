@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1936 P3 CI SUCCESS. P4a approved compact scope applied to remaining reselect result headers, active history decor source committed; CI pending. P4b remaining entry/financial result layout corrections and P5–P6 pending. Combined phone QA deferred. No main merge.  
+**Status:** Build 1936 last verified CI SUCCESS. Build 1937 P4a failed Kotlin compile at legacy CustomerStatementResults caller (missing agentName). P4b1 compatibility fix and betting/history/digit layout source committed; cumulative CI pending. P4b2 remaining result workspaces and P5–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -115,6 +115,14 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Agent/customer report body, numeric tables, pagination, drilldowns, commission filtered totals, selection state and workspace dispatch remain unchanged. Active BetEntriesWorkspace original row geometry, raw source text, selection, edit/delete, voucher and totals preserved; decorate existing surfaces with white rim/cherry totals and localize mixed entry counts. No extra per-row layout wrapper.
 - Risk result already approved component, unchanged. No Home, protected forms, Research, engine, DB, navigation or renderer changes. Updated source contracts; two new scope/history guards. CI and combined real-phone QA pending, notably long date ranges/labels and aggregate scope.
 - P4b still required: original compact layout for betting/standalone history, commission/limit, closed/limit workspaces, digit result groups, Today Ledger and winning/closed day result decoration. Do not claim entire P4 complete.
+
+### P4b1 — compile repair and compact entry/digit layout (2026-11-24)
+
+- Build 1937 (8ba5e49f3fa988ebeaa327d89c2d7a30448eb889) failed compileDebugKotlin at CustomerStatementResults.kt:26:80, missing agentName parameter. No APK produced. Fix the existing compatibility caller with the actual selected agent's observed name (localized fallback during loading), no change to report calculations or route. Latest fully verified APK remains Build 1936 pending cumulative CI.
+- Betting: restore Build 1864 original independent identity row, date item and draw row, without the two extra 16dp panels. Keep IME padding, original input size, backdated switch, preview, parser, quick-format order, footer and submit/edit/late guards. Apply premium field/chip/segment/action decoration only.
+- Customer digits: restore baseline summary/tab/search/sort hierarchy without added panels; use premium field and sort-chip decoration. Grid and detail body byte-identical, including winner/closed/special-limit semantic colors.
+- Standalone history: remove remaining extra identity wrapper; retain existing photo, date/session and all edit/delete/voucher/total functionality.
+- Existing layout source contracts updated and compatibility wiring guarded. No Home/Profile Form/Research/engine/storage/navigation changes. Remaining P4b2 commission/limit, agent pattern workspaces, Today Ledger and winning/closed-day result decoration still pending. CI and combined phone QA pending.
 
 ### Updated execution sequence
 

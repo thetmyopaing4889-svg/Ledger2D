@@ -23,6 +23,9 @@ class PremiumResultScopesContractTest {
         }
         val review = source("CustomerReviewScreens.kt")
         assertTrue(review.contains("agentName = selectedAgentName,"))
+        val compatibility = source("CustomerStatementResults.kt")
+        assertTrue(compatibility.contains("vm.agent(agentId).collectAsStateWithLifecycle"))
+        assertTrue(compatibility.contains("agentName = agent?.name"))
         val scope = source("PremiumCompactScope.kt")
         assertTrue(scope.contains("if (person.id > 0L)"))
         assertTrue(scope.contains("Icons.Default.Group"))
