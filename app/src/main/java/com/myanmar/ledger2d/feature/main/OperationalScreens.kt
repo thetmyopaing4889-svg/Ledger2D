@@ -6,6 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,21 +24,52 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
     val date=runCatching{LocalDate.parse(dateText)}.getOrElse{LocalDate.now()}
     val agents by vm.agents.collectAsStateWithLifecycle()
     OperationalScaffold(l.translate("ယနေ့စာရင်း"),onBack,content={padding->
-        LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-            item{DateInput(dateText,{dateText=it;l.setDate(it)},"ရက်စွဲ");Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;l.setSession(draw)},label={Text(l.translate(draw.label))})}}}
+        LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+            item {
+                CherryFinancialPanel {
+                    DateInput(dateText,{dateText=it;l.setDate(it)},"ရက်စွဲ")
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        DrawSession.entries.forEach{draw->
+                            FilterChip(session==draw,{session=draw;l.setSession(draw)},label={Text(l.translate(draw.label))})
+                        }
+                    }
+                }
+            }
             if(agents.isEmpty()) item{EmptyState(l.translate("ဒိုင်မရှိသေးပါ"),l.translate("ဒိုင်ထည့်ပြီးမှ ယနေ့စာရင်းကို ကြည့်နိုင်ပါမည်"))}
             items(agents,key={it.id}){agent->
                 val customers by vm.customers(agent.id).collectAsStateWithLifecycle(initialValue=emptyList())
                 val totals by vm.agentTotals(agent.id,date,session).collectAsStateWithLifecycle(initialValue=emptyList())
-                ElevatedCard(Modifier.fillMaxWidth()){
-                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(agent.name,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(totals.sumOf{it.amount}.mmk(),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)}
+                CherryFinancialPanel {
+                    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                agent.name,
+                                Modifier.weight(1f),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                totals.sumOf { it.amount }.mmk(),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.End,
+                            )
+                        }
                         HorizontalDivider()
                         if(customers.isEmpty())Text(l.translate("ထိုးသားမရှိသေးပါ"),color=MaterialTheme.colorScheme.onSurfaceVariant)
                         else customers.forEach{customer->
                             val entries by vm.customerEntries(customer.id).collectAsStateWithLifecycle(initialValue=emptyList())
                             val amount=entries.filter{it.entry.drawDate==date&&it.entry.drawSession==session}.flatMap{it.lines}.sumOf{it.amount}
-                            if(amount>0L)ListItem(headlineContent={Text(customer.name,fontWeight=FontWeight.SemiBold)},supportingContent={Text(l.text("${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} စာရင်း", "${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} entries"))},trailingContent={Text(amount.mmk(),fontWeight=FontWeight.Bold)})
+                            if(amount>0L)ListItem(
+                                headlineContent={Text(customer.name,fontWeight=FontWeight.SemiBold)},
+                                supportingContent={Text(l.text("${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} စာရင်း", "${entries.count{it.entry.drawDate==date&&it.entry.drawSession==session}} entries"))},
+                                trailingContent={Text(amount.mmk(),fontWeight=FontWeight.Bold)},
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
                         }
                     }
                 }
