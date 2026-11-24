@@ -94,7 +94,7 @@ fun VoucherPreviewScreen(
             onBack = onBack,
             includeQuickEntryFab = false,
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().padding(16.dp), contentAlignment = Alignment.Center) {
                 if (observed == null || customer == null || (document != null && preparation == null)) {
                     CircularProgressIndicator()
                 } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -171,7 +171,7 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
         includeQuickEntryFab = false,
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             HorizontalPager(
@@ -200,41 +200,49 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
                     )
                 }
             }
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(
-                    enabled = pagerState.currentPage > 0 && !exporting,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
-                ) { Text(language.text("ရှေ့", "Previous")) }
-                Text(language.text(
-                    "စာမျက်နှာ ${pagerState.currentPage + 1} / ${renderer.pageCount}",
-                    "Page ${pagerState.currentPage + 1} / ${renderer.pageCount}",
-                ))
-                TextButton(
-                    enabled = pagerState.currentPage < renderer.pageCount - 1 && !exporting,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) } },
-                ) { Text(language.text("နောက်", "Next")) }
-            }
-            Button(
-                enabled = !exporting,
-                onClick = {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                        ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) legacyPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    else exportNow()
-                },
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-            ) {
-                if (exporting) CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                ) else Text("Export JPEG — Gallery")
+            CherryFinancialPanel {
+                Text(
+                    language.text(
+                        "စာမျက်နှာ ${pagerState.currentPage + 1} / ${renderer.pageCount}",
+                        "Page ${pagerState.currentPage + 1} / ${renderer.pageCount}",
+                    ),
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        enabled = pagerState.currentPage > 0 && !exporting,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(language.text("ရှေ့", "Previous")) }
+                    OutlinedButton(
+                        enabled = pagerState.currentPage < renderer.pageCount - 1 && !exporting,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(language.text("နောက်", "Next")) }
+                }
+                Button(
+                    enabled = !exporting,
+                    onClick = {
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                            ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) legacyPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        else exportNow()
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                ) {
+                    if (exporting) CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    ) else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
+                }
             }
         }
     }
