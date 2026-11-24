@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1938 P4a/P4b1 CI SUCCESS. P4b2 remaining result chrome committed; cumulative CI and phone QA pending. P5–P6 pending. No main merge.  
+**Status:** Build 1939 P4 CI SUCCESS. P5 JPEG preview geometry and Live Calendar title source committed; Better Data existing specialized chrome reviewed and retained. CI and final cumulative/device QA pending. P6 next. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -129,6 +129,13 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Build 1938 verified CI SUCCESS: https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45422433155; debug 14936267357/release 14936022387 match b4594ca4733628337db9996d4b17867268628dab.
 - Standalone commission/limit remove excess enclosing panels and restore original limit spacing/divider, retain IME and original shared Input so protected profile forms remain identical. Agent closed/limit restore baseline layout and original confirmation/state prefix, with premium primary actions and limit fields. Bulk commission retains both modes and validation, using premium existing controls. Today Ledger original single group retained; heading accent only. Winner/closed-day existing cards/actions decorated, original grid and semantic data preserved.
 - P4 planned source pass complete, CI and device visual QA pending. No Home, protected profile forms, Research, engine, database, navigation or export changes. P5 next after CI.
+
+### P5 — preview and specialized chrome (2026-11-24)
+
+- Build 1939 verified CI SUCCESS, commit 12e319cf1a86eb68115e6673d86730b68080d044, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45427187217, debug 14937262183/release 14937497115 unexpired and matching head.
+- Voucher, Agent and Customer JPEG previews restore the Build 1864 one-row Previous / page count / Next arrangement, separate existing Gallery button below; remove extra toolbar padding and rebate wrapper. Page counter centered with localized text, cherry action styling, original flexible export button height and disabled/loading/permission states retained. Customer rebate field keeps validation and disabled guard. No renderer, document, page-count or export callback changes.
+- Live Calendar title now correctly identifies the calendar overview as well as detail; existing Live/Calendar tabs center their labels. Lifecycle, SET/Luke/Room data flow and content unchanged. Better Data header, four tabs, background and engine wiring reviewed; already consistent with the prior specialized design, no further source changes. Research/Rules/shared Timeline frozen.
+- P5 source scope complete; CI and cumulative P6 audit plus combined device QA pending (especially narrow-screen page controls and actual Gallery output). No merge to main.
 
 ### Updated execution sequence
 

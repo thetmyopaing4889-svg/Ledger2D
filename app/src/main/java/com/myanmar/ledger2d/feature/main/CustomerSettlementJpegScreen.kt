@@ -376,28 +376,27 @@ private fun CustomerSettlementJpegPreview(
             Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CherryFinancialPanel {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = commissionEnabled, enabled = !exporting && !permissionPending, onCheckedChange = {
-                        commissionEnabled = it
-                    })
-                    Text(language.text("Customer ကို ကော်မရှင်ပြန်ပေးမည်",
-                        "Pay customer a commission rebate"), fontWeight = FontWeight.Bold)
-                }
-                if (commissionEnabled) {
-                    OutlinedTextField(
-                        percentText, onValueChange = { percentText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(language.text("ကော်မရှင် (%)", "Commission (%)")) },
-                        singleLine = true, isError = invalidPercent, enabled = !exporting && !permissionPending,
-                    )
-                    if (invalidPercent) Text(
-                        language.text("0 မှ 100% အတွင်း၊ ဒသမ ၂ နေရာအထိ ထည့်ပါ။",
-                            "Enter 0–100%, up to two decimal places."),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = commissionEnabled, enabled = !exporting && !permissionPending, onCheckedChange = {
+                    commissionEnabled = it
+                })
+                Text(language.text("Customer ကို ကော်မရှင်ပြန်ပေးမည်",
+                    "Pay customer a commission rebate"), fontWeight = FontWeight.Bold)
+            }
+            if (commissionEnabled) {
+                OutlinedTextField(
+                    percentText, onValueChange = { percentText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(language.text("ကော်မရှင် (%)", "Commission (%)")) },
+                    singleLine = true, isError = invalidPercent, enabled = !exporting && !permissionPending,
+                    shape = premiumSelectorShape, colors = premiumSelectorColors(),
+                )
+                if (invalidPercent) Text(
+                    language.text("0 မှ 100% အတွင်း၊ ဒသမ ၂ နေရာအထိ ထည့်ပါ။",
+                        "Enter 0–100%, up to two decimal places."),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
             if (renderer != null && !invalidPercent) {
                 HorizontalPager(
@@ -429,52 +428,53 @@ private fun CustomerSettlementJpegPreview(
                     else CircularProgressIndicator()
                 }
             }
-            CherryFinancialPanel {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    enabled = !exporting && pager.currentPage > 0,
+                    onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } },
+                    colors = ButtonDefaults.textButtonColors(contentColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep),
+                ) { Text(language.text("ရှေ့", "Previous")) }
                 Text(
                     language.text(
                         "စာမျက်နှာ ${pager.currentPage + 1} / ${renderer?.pageCount ?: 1}",
                         "Page ${pager.currentPage + 1} / ${renderer?.pageCount ?: 1}",
                     ),
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        enabled = !exporting && pager.currentPage > 0,
-                        onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(language.text("ရှေ့", "Previous")) }
-                    OutlinedButton(
-                        enabled = !exporting && renderer != null &&
-                            pager.currentPage < renderer!!.pageCount - 1,
-                        onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(language.text("နောက်", "Next")) }
-                }
-                Button(
-                    enabled = !exporting && renderer != null && !invalidPercent && !permissionPending,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                    onClick = {
-                        if (exporting || permissionPending) return@Button
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                            ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            permissionPending = true
-                            permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        } else exportNow()
-                    },
-                ) {
-                    if (exporting || permissionPending) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                            Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
-                                else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
-                        }
-                    } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
-                }
+                TextButton(
+                    enabled = !exporting && renderer != null &&
+                        pager.currentPage < renderer!!.pageCount - 1,
+                    onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
+                    colors = ButtonDefaults.textButtonColors(contentColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep),
+                ) { Text(language.text("နောက်", "Next")) }
+            }
+            Button(
+                shape = premiumSelectorShape,
+                colors = ButtonDefaults.buttonColors(containerColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep, contentColor = Color.White),
+                enabled = !exporting && renderer != null && !invalidPercent && !permissionPending,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                onClick = {
+                    if (exporting || permissionPending) return@Button
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                        ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        permissionPending = true
+                        permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    } else exportNow()
+                },
+            ) {
+                if (exporting || permissionPending) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                        Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
+                            else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
+                    }
+                } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
             }
         }
     }

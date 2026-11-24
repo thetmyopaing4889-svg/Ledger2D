@@ -29,7 +29,8 @@ class AgentSettlementPreviewHomeChromeContractTest {
 
     @Test fun previewPreservesNeutralBitmapAndPagination() {
         val s = source.substringAfter("private fun AgentSettlementJpegPreview(")
-        assertEquals(1, s.split("CherryFinancialPanel {").size - 1)
+        assertFalse(s.contains("CherryFinancialPanel {"))
+        assertTrue(s.contains("horizontalArrangement = Arrangement.SpaceBetween"))
         assertTrue(s.contains(".cherryFinancialBackground()"))
         assertTrue(s.contains("AgentSettlementJpegRenderer(document, headerPhoto)"))
         assertTrue(s.contains("rememberPagerState(pageCount = { renderer?.pageCount ?: 1 })"))

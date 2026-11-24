@@ -14,7 +14,8 @@ class VoucherPreviewHomeChromeContractTest {
     @Test fun previewKeepsBitmapFitAndPageLifecycle() {
         val s = source("VoucherPreviewPlaceholderScreen.kt")
         assertTrue(s.contains(".cherryFinancialBackground()"))
-        assertEquals(1, s.split("CherryFinancialPanel {").size - 1)
+        assertFalse(s.contains("CherryFinancialPanel {"))
+        assertTrue(s.contains("horizontalArrangement = Arrangement.SpaceBetween"))
         assertTrue(s.contains("rememberPagerState(pageCount = { renderer.pageCount })"))
         assertTrue(s.contains("renderer.render(index)"))
         assertTrue(s.contains("contentScale = ContentScale.Fit"))

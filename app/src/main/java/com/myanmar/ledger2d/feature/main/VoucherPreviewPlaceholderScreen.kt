@@ -205,54 +205,55 @@ private fun VoucherPreviewPages(renderer: VoucherRenderer, onBack: () -> Unit) {
                     )
                 }
             }
-            CherryFinancialPanel {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    enabled = pagerState.currentPage > 0 && !exporting,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
+                    colors = ButtonDefaults.textButtonColors(contentColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep),
+                ) { Text(language.text("ရှေ့", "Previous")) }
                 Text(
                     language.text(
                         "စာမျက်နှာ ${pagerState.currentPage + 1} / ${renderer.pageCount}",
                         "Page ${pagerState.currentPage + 1} / ${renderer.pageCount}",
                     ),
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedButton(
-                        enabled = pagerState.currentPage > 0 && !exporting,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(language.text("ရှေ့", "Previous")) }
-                    OutlinedButton(
-                        enabled = pagerState.currentPage < renderer.pageCount - 1 && !exporting,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(language.text("နောက်", "Next")) }
-                }
-                Button(
-                    enabled = !exporting && !permissionPending,
-                    onClick = {
-                        if (exporting || permissionPending) return@Button
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                            ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            permissionPending = true
-                            legacyPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        } else exportNow()
-                    },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                ) {
-                    if (exporting || permissionPending) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                            Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
-                                else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
-                        }
-                    } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
-                }
+                TextButton(
+                    enabled = pagerState.currentPage < renderer.pageCount - 1 && !exporting,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) } },
+                    colors = ButtonDefaults.textButtonColors(contentColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep),
+                ) { Text(language.text("နောက်", "Next")) }
+            }
+            Button(
+                shape = premiumSelectorShape,
+                colors = ButtonDefaults.buttonColors(containerColor = com.myanmar.ledger2d.core.design.AppColors.PrimaryDeep, contentColor = Color.White),
+                enabled = !exporting && !permissionPending,
+                onClick = {
+                    if (exporting || permissionPending) return@Button
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                        ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        permissionPending = true
+                        legacyPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    } else exportNow()
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+            ) {
+                if (exporting || permissionPending) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                        Text(if (permissionPending) language.text("ခွင့်ပြုချက် စောင့်နေသည်", "Waiting for permission")
+                            else language.text("Gallery တွင် သိမ်းနေသည်", "Saving to Gallery"))
+                    }
+                } else Text(language.text("JPEG ပုံ Gallery တွင် သိမ်းမည်", "Export JPEG — Gallery"))
             }
         }
     }

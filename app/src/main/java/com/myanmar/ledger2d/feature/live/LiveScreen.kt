@@ -192,7 +192,7 @@ fun LiveScreen(
     val earliestDate = calendarResults.minOfOrNull { it.date } ?: today
 
     OperationalScaffold(
-        title = if (selectedTab == "calendar" && selectedDate != null) "2D Calendar" else "2D LIVE",
+        title = if (selectedTab == "calendar") "2D Calendar" else "2D LIVE",
         onBack = onBack,
         bottomBar = {
             LiveBottomBar(selectedTab) {
@@ -351,14 +351,14 @@ private fun LiveBottomBar(selected: String, onSelect: (String) -> Unit) {
             selected = selected == "live",
             onClick = { onSelect("live") },
             icon = { Icon(Icons.Default.CheckCircle, null) },
-            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Live"), maxLines = 2) },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Live"), maxLines = 2, textAlign = TextAlign.Center) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == "calendar",
             onClick = { onSelect("calendar") },
             icon = { Icon(Icons.Default.CalendarMonth, null) },
-            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Calendar"), maxLines = 2) },
+            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Calendar"), maxLines = 2, textAlign = TextAlign.Center) },
             colors = colors,
         )
     }

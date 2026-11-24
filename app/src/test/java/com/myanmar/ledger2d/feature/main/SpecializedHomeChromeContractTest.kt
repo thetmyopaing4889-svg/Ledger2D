@@ -16,6 +16,7 @@ class SpecializedHomeChromeContractTest {
         assertTrue(s.contains("NavigationBar(containerColor = Color(0xFFFFEBF0), tonalElevation = 0.dp)"))
         assertTrue(s.contains("selected = selected == \"live\""))
         assertTrue(s.contains("selected = selected == \"calendar\""))
+        assertTrue(s.contains("title = if (selectedTab == \"calendar\") \"2D Calendar\" else \"2D LIVE\""))
         assertTrue(s.contains("if (it == \"live\") selectedDateText = \"\""))
         assertTrue(s.contains("LaunchedEffect(Unit) { collector.fetchCycle() }"))
         assertTrue(s.contains("SetMorningUiCoordinator.enterLiveScreen(appContext)"))
