@@ -882,14 +882,76 @@ fun transactionDisplayText(format: String, raw: String): String {
     }
 }
 @Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
-    val l=LocalLanguage.current; val agents by vm.agents.collectAsStateWithLifecycle(); var agentId by rememberSaveable{mutableStateOf(l.defaultAgentId)}; var customerId by rememberSaveable{mutableStateOf(l.defaultCustomerId)}; val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue=emptyList())
+    val l = LocalLanguage.current
+    val agents by vm.agents.collectAsStateWithLifecycle()
+    var agentId by rememberSaveable { mutableStateOf(l.defaultAgentId) }
+    var customerId by rememberSaveable { mutableStateOf(l.defaultCustomerId) }
+    val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
     LaunchedEffect(agents, l.defaultAgentId) {
         if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == l.defaultAgentId }?.id ?: 0L
     }
     LaunchedEffect(customers, agentId, l.defaultCustomerId) {
         if (customers.none { it.id == customerId }) customerId = if (agentId == l.defaultAgentId) customers.firstOrNull { it.id == l.defaultCustomerId }?.id ?: 0L else 0L
     }
-    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"),onBack,includeQuickEntryFab=false){p->Column(Modifier.fillMaxSize().padding(p).padding(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(16.dp)){Text(l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant);SelectionField(l.translate("ဒိုင်ရွေးပါ"),agents.firstOrNull{it.id==agentId}?.name?:l.translate("ဒိုင်မရွေးရသေးပါ"),agents.map{it.id to "${it.name} • ${it.rate} ဆ"},agentId,true, avatar={ photoId -> CherryProfileAvatar(vm.profilePhotos,ProfileKind.AGENT,photoId,Modifier.size(32.dp)) }){agentId=it};SelectionField(l.translate("ထိုးသားရွေးပါ"),if(agentId==0L)l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ") else customers.firstOrNull{it.id==customerId}?.name?:l.translate("ထိုးသားရွေးပါ"),customers.map{it.id to it.name},customerId,agentId>0, avatar={ photoId -> CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,photoId,Modifier.size(32.dp)) }){customerId=it};if(agentId>0&&customerId>0)Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.medium){Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){CherryProfileAvatar(vm.profilePhotos,ProfileKind.AGENT,agentId,Modifier.size(34.dp));CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customerId,Modifier.size(34.dp));Text("${agents.firstOrNull{it.id==agentId}?.name} • ${customers.firstOrNull{it.id==customerId}?.name} • ${l.selectedSession.label}",Modifier.weight(1f),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onPrimaryContainer,maxLines=2)}};Spacer(Modifier.weight(1f));Button(onClick={onBet(agentId,customerId)},enabled=agentId>0&&customerId>0,modifier=Modifier.fillMaxWidth().height(56.dp),shape=MaterialTheme.shapes.medium){Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"),style=MaterialTheme.typography.titleMedium);Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.ArrowForward,null)}}}
+    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"), onBack, includeQuickEntryFab = false) { p ->
+        Column(
+            Modifier.fillMaxSize().padding(p).cherryManagementScreenBackground().imePadding()
+        ) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+                    .padding(AppDimens.screen),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                CherryManagementSelectionPane {
+                    Text(
+                        l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SelectionField(
+                        l.translate("ဒိုင်ရွေးပါ"),
+                        agents.firstOrNull { it.id == agentId }?.name ?: l.translate("ဒိုင်မရွေးရသေးပါ"),
+                        agents.map { it.id to "${it.name} • ${it.rate} ဆ" },
+                        agentId, true,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                    ) { agentId = it }
+                    SelectionField(
+                        l.translate("ထိုးသားရွေးပါ"),
+                        if (agentId == 0L) l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ")
+                            else customers.firstOrNull { it.id == customerId }?.name ?: l.translate("ထိုးသားရွေးပါ"),
+                        customers.map { it.id to it.name },
+                        customerId, agentId > 0,
+                        avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
+                    ) { customerId = it }
+                    if (agentId > 0 && customerId > 0) {
+                        CherryManagementSelectionSummary {
+                            CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, agentId, Modifier.size(34.dp))
+                            CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, customerId, Modifier.size(34.dp))
+                            Text(
+                                "${agents.firstOrNull { it.id == agentId }?.name} • ${customers.firstOrNull { it.id == customerId }?.name} • ${l.selectedSession.label}",
+                                Modifier.weight(1f),
+                                fontWeight = FontWeight.Bold,
+                                color = AppColors.PrimaryDeep,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+            CherryManagementPrimaryButton(
+                onClick = { onBet(agentId, customerId) },
+                enabled = agentId > 0 && customerId > 0,
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = AppDimens.screen, vertical = 12.dp)
+                    .height(56.dp),
+            ) {
+                Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"), style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+            }
+        }
+    }
 }
 /** Quick Entry uses the same selector as Settings, Agent and Customer workspaces. */
 @Composable private fun SelectionField(
