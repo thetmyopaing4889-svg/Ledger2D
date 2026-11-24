@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1933 P2a CI SUCCESS. P2b1 JPEG selectors, standalone agent closed/limit, legacy statement and aggregate scope source committed; CI pending. P2b2 remaining direct date/session controls pending; P3–P6 pending. No main merge.  
+**Status:** Build 1933 P2a CI SUCCESS. Build 1934 P2b1 tests/lint/debug passed, release verification in progress at checkpoint. P2b2 remaining direct date/session selection source committed; P2 source scope complete, cumulative CI and combined phone QA pending. P3–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -92,6 +92,13 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Standalone agent closed/limit date/session groups restore baseline hierarchy; legacy customer statement retains original selector grouping and period card geometry. Aggregate scope date/session controls opt in without moving actions.
 - Existing preview, renderer, financial calculations, Home, Profile Form, Research and navigation unchanged. Updated source contracts preserve business guards. CI and combined phone QA pending.
 - P2b2 direct date/session selectors (history, Today Ledger, limit, winning, report, closed days, digit list) still pending. Quick Entry/Add Customer/List/Profile/Settings to P3; entry/result body to P4; preview toolbar and specialized Live/Better Data to P5.
+
+### P2b2 — direct date/session controls (2026-11-24)
+
+- Build 1934 P2b1 run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45404311088: unit tests, lint and debug APK passed at checkpoint; release step still running. User explicitly requested continuation, so this cumulative batch uses its latest source commit 813e2a3cc230a8e661e75cde144bc486cad5b6be rather than claiming release verification.
+- Opt-in premium date/session controls for standalone digit list, customer limit, winning input/view, scoped winning, legacy report, closed day, bet history and Today Ledger. Existing winner segmented row kept; colors aligned to cherry. Removed added outer date/session wrappers in customer limit, standalone history and Today Ledger only, retaining identity and other result panels for P4.
+- Preserved date/session callbacks, weekend handling, winner add/edit/delete, limit validation/save, voucher/edit/delete, totals and result content. Today Ledger body after selector byte-identical. Home, profile forms, Settings, Quick Entry and Research untouched. Existing source contract counts updated for removed wrappers; two additional tests for selector wiring/busy guards. P2 source coverage complete for planned selection families; management selectors assigned to P3 and entry/result panels to P4, preview toolbar and specialized screens P5.
+- Combined device QA remains pending at user request, including period horizontal scrolling and field readability, large-font behavior, MM/EN and actual first-view layout. Do not claim visual approval.
 
 ### Updated execution sequence
 

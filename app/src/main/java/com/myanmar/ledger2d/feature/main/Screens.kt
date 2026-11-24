@@ -1459,7 +1459,7 @@ private fun previewError(message:String):String = when{
 }
 
 @Composable fun DigitListScreen(vm:LedgerViewModel,agentId:Long,customerId:Long,onBack:()->Unit){val language=LocalLanguage.current;val digitCustomer by vm.customer(customerId).collectAsStateWithLifecycle(initialValue=null);var dateText by rememberSaveable { mutableStateOf(language.selectedDate) }; var session by rememberSaveable { mutableStateOf(language.selectedSession) }
-    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }; val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }; val totals by vm.customerTotals(customerId,selectedDate,session).collectAsState(initial=emptyList());val all by vm.allLimit(customerId,selectedDate,session).collectAsState(initial=null);val special by vm.specialLimits(customerId,selectedDate,session).collectAsState(initial=emptyList());val closed by vm.closedNumbers(agentId,selectedDate,session).collectAsState(initial=emptyList());val amounts=totals.associate{it.digit to it.amount};val specialMap=special.associate{it.digit to it.amount};val closedSet=closed.map{it.digit}.toSet();AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စာရင်း"),onBack){p->LazyVerticalGrid(GridCells.Fixed(5),Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(8.dp),horizontalArrangement=Arrangement.spacedBy(5.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){item(span={GridItemSpan(5)}){CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,digitCustomer?.name ?: "ထိုးသား",Modifier.fillMaxWidth())};item(span={GridItemSpan(5)}){Column{DateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ");Row{DrawSession.entries.forEach{draw->FilterChip(session==draw,{session=draw;language.setSession(draw)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))},modifier=Modifier.padding(end=8.dp))}}}};item(span={GridItemSpan(5)}){Text("ကန့်သတ်ချက်: ${all?.amount?:"မရှိ"}",Modifier.padding(10.dp),style=MaterialTheme.typography.titleLarge)};items((0..99).toList()){n->val digit=n.toString().padStart(2,'0');val isClosed=digit in closedSet;val isSpecial=digit in specialMap;Surface(color=when{isClosed->MaterialTheme.colorScheme.errorContainer;isSpecial->MaterialTheme.colorScheme.secondaryContainer;else->MaterialTheme.colorScheme.surfaceVariant},shape=MaterialTheme.shapes.small){Column(Modifier.aspectRatio(.84f).padding(6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(digit,fontWeight=FontWeight.Black);Text((amounts[digit]?:0L).mmk(),style=MaterialTheme.typography.labelSmall);if(isClosed)Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error) else if(isSpecial)Text("အထူး ${specialMap[digit]!!.mmk()}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.secondary)}}}}}}
+    LaunchedEffect(language.selectedDate, language.selectedSession) { dateText = language.selectedDate; session = language.selectedSession }; val selectedDate = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }; val totals by vm.customerTotals(customerId,selectedDate,session).collectAsState(initial=emptyList());val all by vm.allLimit(customerId,selectedDate,session).collectAsState(initial=null);val special by vm.specialLimits(customerId,selectedDate,session).collectAsState(initial=emptyList());val closed by vm.closedNumbers(agentId,selectedDate,session).collectAsState(initial=emptyList());val amounts=totals.associate{it.digit to it.amount};val specialMap=special.associate{it.digit to it.amount};val closedSet=closed.map{it.digit}.toSet();AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကွက်စာရင်း"),onBack){p->LazyVerticalGrid(GridCells.Fixed(5),Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(8.dp),horizontalArrangement=Arrangement.spacedBy(5.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){item(span={GridItemSpan(5)}){CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,digitCustomer?.name ?: "ထိုးသား",Modifier.fillMaxWidth())};item(span={GridItemSpan(5)}){Column{PremiumDateInput(dateText,{dateText=it;language.setDate(it)},"ရက်စွဲ");Row{DrawSession.entries.forEach{draw->PremiumSelectionChip(session==draw,{session=draw;language.setSession(draw)},label={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label))},modifier=Modifier.padding(end=8.dp))}}}};item(span={GridItemSpan(5)}){Text("ကန့်သတ်ချက်: ${all?.amount?:"မရှိ"}",Modifier.padding(10.dp),style=MaterialTheme.typography.titleLarge)};items((0..99).toList()){n->val digit=n.toString().padStart(2,'0');val isClosed=digit in closedSet;val isSpecial=digit in specialMap;Surface(color=when{isClosed->MaterialTheme.colorScheme.errorContainer;isSpecial->MaterialTheme.colorScheme.secondaryContainer;else->MaterialTheme.colorScheme.surfaceVariant},shape=MaterialTheme.shapes.small){Column(Modifier.aspectRatio(.84f).padding(6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(digit,fontWeight=FontWeight.Black);Text((amounts[digit]?:0L).mmk(),style=MaterialTheme.typography.labelSmall);if(isClosed)Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.error) else if(isSpecial)Text("အထူး ${specialMap[digit]!!.mmk()}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.secondary)}}}}}}
 @Composable
 fun TotalListScreen(vm: LedgerViewModel, agentId: Long, onBack: () -> Unit) {
     // Legacy route now uses the same digit calculation and layout as Agent Dashboard.
@@ -1601,19 +1601,17 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 }
             }
             item {
-                CherryFinancialPanel {
-                    DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        DrawSession.entries.forEach { draw ->
-                            FilterChip(
-                                session == draw,
-                                { session = draw; language.setSession(draw) },
-                                label = { Text(language.translate(draw.label)) },
-                            )
-                        }
+                PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DrawSession.entries.forEach { draw ->
+                        PremiumSelectionChip(
+                            session == draw,
+                            { session = draw; language.setSession(draw) },
+                            label = { Text(language.translate(draw.label)) },
+                        )
                     }
                 }
             }
@@ -1721,17 +1719,17 @@ fun LimitScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 }
             }
             if (mode == "view") item {
-                DateInput(date, { date = it; language.setDate(it) }, when (resultView) { "weekly" -> "ကြည့်မည့်အပတ်"; "monthly" -> "ကြည့်မည့်လ"; else -> "ကြည့်မည့်ရက်" })
+                PremiumDateInput(date, { date = it; language.setDate(it) }, when (resultView) { "weekly" -> "ကြည့်မည့်အပတ်"; "monthly" -> "ကြည့်မည့်လ"; else -> "ကြည့်မည့်ရက်" })
             }
             if (mode == "input" && showForm && resultView.isBlank()) {
                 item {
                     ElevatedCard {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                             Text(if (existing == null) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းအသစ်") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပေါက်ဂဏန်းပြင်ရန်"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            DateInput(date, { date = it; language.setDate(it) }, "ရက်စွဲ")
+                            PremiumDateInput(date, { date = it; language.setDate(it) }, "ရက်စွဲ")
                             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                                 DrawSession.entries.forEachIndexed { index, draw ->
-                                    SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(index, 2)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }
+                                    SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(index, 2), colors = SegmentedButtonDefaults.colors(activeContainerColor = AppColors.PrimaryDeep, activeContentColor = Color.White, inactiveContainerColor = Color(0xEBFFFFFF), inactiveContentColor = AppColors.PrimaryDeep)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }
                                 }
                             }
                             if (existing != null) {
@@ -1884,8 +1882,8 @@ fun ScopedWinningScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: ()
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထီပေါက်စဉ်"), onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-                Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }, modifier = Modifier.padding(end = 8.dp)) } }
+                PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
+                Row { DrawSession.entries.forEach { draw -> PremiumSelectionChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }, modifier = Modifier.padding(end = 8.dp)) } }
             }
             item {
                 val historicalDigit = history.firstOrNull { it.date == date }?.let { if (session == DrawSession.MORNING) it.morning2d else it.evening2d }
@@ -1927,14 +1925,14 @@ fun ReportScreen(vm: LedgerViewModel, scope: String, id: Long, onBack: () -> Uni
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 BilingualText(if (scope == "customer") "ရက်အလိုက်" else "ထိုးသားအလိုက်\nCustomer-by-customer", primaryStyle=MaterialTheme.typography.headlineSmall)
-                DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-                Row { DrawSession.entries.forEach { draw -> FilterChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }, modifier = Modifier.padding(end = 8.dp)) } }
+                PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
+                Row { DrawSession.entries.forEach { draw -> PremiumSelectionChip(session == draw, { session = draw; language.setSession(draw) }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) }, modifier = Modifier.padding(end = 8.dp)) } }
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected=!after, onClick={after=false}, label={BilingualText("ဂဏန်းမထွက်ခင်\nBefore", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
-                    FilterChip(selected=after, onClick={after=true}, label={BilingualText("ဂဏန်းထွက်ပြီးချိန်\nAfter", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
+                    PremiumSelectionChip(selected=!after, onClick={after=false}, label={BilingualText("ဂဏန်းမထွက်ခင်\nBefore", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
+                    PremiumSelectionChip(selected=after, onClick={after=true}, label={BilingualText("ဂဏန်းထွက်ပြီးချိန်\nAfter", primaryStyle=MaterialTheme.typography.labelLarge, secondaryStyle=MaterialTheme.typography.labelMedium)})
                 }
                 if (scope == "customer") {
-                    Row { FilterChip(!weekly, { weekly = false }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်အလိုက်")) }, modifier = Modifier.padding(end = 8.dp)); FilterChip(weekly, { weekly = true }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အပတ်စဉ်")) }) }
+                    Row { PremiumSelectionChip(!weekly, { weekly = false }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရက်အလိုက်")) }, modifier = Modifier.padding(end = 8.dp)); PremiumSelectionChip(weekly, { weekly = true }, label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အပတ်စဉ်")) }) }
                 }
             }
             if (scope == "customer" && weekly) {
@@ -2025,7 +2023,7 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်"), onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("သတ်မှတ်ထားသော ပိတ်ရက်များတွင် စာရင်းအသစ် လက်မခံပါ"), style=MaterialTheme.typography.bodyMedium, color=MaterialTheme.colorScheme.onSurfaceVariant)
-            DateInput(dateText, { dateText = it }, "ရက်စွဲ")
+            PremiumDateInput(dateText, { dateText = it }, "ရက်စွဲ")
             Button(onClick = { runCatching { LocalDate.parse(dateText) }.getOrNull()?.let { vm.addClosedDay(it) { notice = it } } }, modifier=Modifier.fillMaxWidth(), shape=MaterialTheme.shapes.medium) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက်သတ်မှတ်မည်")) }
             if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.error)
             if(days.isEmpty()) EmptyState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပိတ်ရက် မရှိသေးပါ"), "ရက်စွဲတစ်ခုရွေးပြီး ပိတ်ရက်သတ်မှတ်ပါ") else LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) { items(days, key = { it.id }) { day -> ElevatedCard(shape=MaterialTheme.shapes.medium) { ListItem(headlineContent = { Text(day.date.displayDate(), fontWeight=FontWeight.Bold) }, supportingContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းအသစ် လက်မခံပါ"))}, trailingContent = { TextButton(onClick = { pendingDelete = day }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဖယ်ရှားမည်")) } }) } } }
@@ -2077,13 +2075,11 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 }
             }
             item {
-                CherryFinancialPanel {
-                    DateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        DrawSession.entries.forEach { draw ->
-                            FilterChip(session == draw, { session = draw; language.setSession(draw) },
-                                label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) })
-                        }
+                PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DrawSession.entries.forEach { draw ->
+                        PremiumSelectionChip(session == draw, { session = draw; language.setSession(draw) },
+                            label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) })
                     }
                 }
             }

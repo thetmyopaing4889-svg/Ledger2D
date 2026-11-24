@@ -26,12 +26,10 @@ fun TodayLedgerScreen(vm:LedgerViewModel,onBack:()->Unit,onNavigate:(String)->Un
     OperationalScaffold(l.translate("ယနေ့စာရင်း"),onBack,content={padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             item {
-                CherryFinancialPanel {
-                    DateInput(dateText,{dateText=it;l.setDate(it)},"ရက်စွဲ")
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                        DrawSession.entries.forEach{draw->
-                            FilterChip(session==draw,{session=draw;l.setSession(draw)},label={Text(l.translate(draw.label))})
-                        }
+                PremiumDateInput(dateText,{dateText=it;l.setDate(it)},"ရက်စွဲ")
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    DrawSession.entries.forEach{draw->
+                        PremiumSelectionChip(session==draw,{session=draw;l.setSession(draw)},label={Text(l.translate(draw.label))})
                     }
                 }
             }

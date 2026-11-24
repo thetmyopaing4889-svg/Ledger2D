@@ -39,12 +39,13 @@ class CustomerCommissionLimitHomeChromeContractTest {
 
     @Test fun customerLimitStillUsesOriginalAgentScopeDrawAndSpecialLimitData() {
         assertTrue(limit.contains(".cherryFinancialBackground().imePadding()"))
-        assertEquals(4, limit.split("CherryFinancialPanel {").size - 1)
+        assertEquals(3, limit.split("CherryFinancialPanel {").size - 1)
+        assertTrue(limit.contains("PremiumSelectionChip("))
         assertTrue(limit.contains("vm.customer(id).collectAsStateWithLifecycle(initialValue = null)"))
         assertTrue(limit.contains("vm.allLimit(id, date, session)"))
         assertTrue(limit.contains("vm.specialLimits(id, date, session)"))
         assertTrue(limit.contains("LaunchedEffect(all, date, session)"))
-        assertTrue(limit.contains("DateInput(dateText, { dateText = it; language.setDate(it) }"))
+        assertTrue(limit.contains("PremiumDateInput(dateText, { dateText = it; language.setDate(it) }"))
         assertTrue(limit.contains("language.setSession(draw)"))
     }
 
