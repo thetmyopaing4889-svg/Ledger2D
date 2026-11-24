@@ -87,20 +87,17 @@ fun AgentStatementWorkspace(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်း ရွေးချယ်ရန်"),
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 item {
-                    CherryFinancialPanel {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်း ရွေးချယ်ရန်"),
-                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    ScopeDropdown(
+                    PremiumScopeDropdown(
                         "ဒိုင်ရွေးရန်", chosenAgent,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                     ) { agentId = it }
-                    }
                 }
                 item {
-                    CherryFinancialPanel {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -109,9 +106,11 @@ fun AgentStatementWorkspace(
                             StatementPeriod.MONTH to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လ"), StatementPeriod.YEAR to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်"),
                             StatementPeriod.CUSTOM to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်"),
                         ).forEach { (p, label) ->
-                            FilterChip(period == p, onClick = { period = p }, label = { Text(label) })
+                            PremiumSelectionChip(period == p, onClick = { period = p }, label = { Text(label) })
                         }
                     }
+                }
+                item {
                     if (period == StatementPeriod.CUSTOM) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ReviewDatePicker(startText, "စရက်", Modifier.weight(1f)) { startText = it }
@@ -135,21 +134,22 @@ fun AgentStatementWorkspace(
                         }
                         ReviewDatePicker(dateText, "ရက်စွဲ") { dateText = it }
                     }
+                }
+                item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"))
                             .forEach { (id, label) ->
-                                FilterChip(drawChoice == id, onClick = { drawChoice = id }, label = { Text(label) })
+                                PremiumSelectionChip(drawChoice == id, onClick = { drawChoice = id }, label = { Text(label) })
                             }
-                    }
                     }
                 }
                 if (range == null) item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတဲ့ရက်စွဲတွေကို ပြန်စစ်ပါ"), color = MaterialTheme.colorScheme.error)
                 }
                 item {
-                    Button(onClick = { results = true }, enabled = valid,
+                    PremiumSelectionButton(onClick = { results = true }, enabled = valid,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းကြည့်မည်"))
                         Spacer(Modifier.width(8.dp))

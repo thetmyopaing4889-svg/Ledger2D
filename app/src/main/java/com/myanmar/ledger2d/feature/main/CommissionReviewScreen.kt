@@ -81,7 +81,6 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
             LazyColumn(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
                 contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
-                    CherryFinancialPanel {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -91,14 +90,15 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                             StatementPeriod.MONTH to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("လ"), StatementPeriod.YEAR to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်"),
                             StatementPeriod.CUSTOM to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စိတ်ကြိုက်"),
                         ).forEach { (id, title) ->
-                            FilterChip(!allTime && period == id, onClick = {
+                            PremiumSelectionChip(!allTime && period == id, onClick = {
                                 period = id; allTime = false
                             }, label = { Text(title) })
                         }
-                        FilterChip(allTime, onClick = { allTime = true },
+                        PremiumSelectionChip(allTime, onClick = { allTime = true },
                             label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစမှ ယနေ့အထိ")) })
                     }
-                    if (!allTime) {
+                }
+                if (!allTime) item {
                     if (period == StatementPeriod.CUSTOM) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ReviewDatePicker(fromText, "စရက်", Modifier.weight(1f)) { fromText = it }
@@ -121,28 +121,26 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                         }
                         ReviewDatePicker(dateText, "ရက်စွဲ") { dateText = it }
                     }
-                    }
-                    if (allTime) {
-                        Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("App ထဲမှာ သိမ်းထားသော ပထမဆုံးစာရင်းမှ ယနေ့အထိ"),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                    }
+                }
+                if (allTime) item {
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("App ထဲမှာ သိမ်းထားသော ပထမဆုံးစာရင်းမှ ယနေ့အထိ"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall)
                 }
                 item {
-                    CherryFinancialPanel {
-                    ScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), selectedName,
+                    PremiumScopeDropdown(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်ရွေးရန်"), selectedName,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos,com.myanmar.ledger2d.core.profile.ProfileKind.AGENT,photoId,Modifier.size(32.dp)) }) { agentId = it }
+                }
+                item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("both" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နှစ်ကြိမ်လုံး"), "am" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မနက်အကြိမ်"), "pm" to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ညနေအကြိမ်"))
                             .forEach { (key, name) ->
-                                FilterChip(sessionChoice == key, onClick = { sessionChoice = key },
+                                PremiumSelectionChip(sessionChoice == key, onClick = { sessionChoice = key },
                                     label = { Text(name) })
                             }
-                    }
                     }
                 }
                 if (!valid) item {
@@ -150,7 +148,7 @@ fun CommissionReviewScreen(vm: LedgerViewModel, onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.error)
                 }
                 item {
-                    Button(onClick = { resultPage = true }, enabled = valid,
+                    PremiumSelectionButton(onClick = { resultPage = true }, enabled = valid,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းကြည့်မည်"))
                     }

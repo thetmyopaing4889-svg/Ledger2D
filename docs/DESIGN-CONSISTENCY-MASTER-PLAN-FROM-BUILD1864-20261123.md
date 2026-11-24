@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1931 CI SUCCESS and phone screenshot confirms compact scope/two-column money layout. User approved premium segmented tabs and one-row four-option control refinement. Focused controls source committed; new CI/device QA pending. P2 remaining flows and P3–P6 pending. No main merge.  
+**Status:** Build 1932 premium risk controls CI SUCCESS (device QA deferred for combined pass at user request). P2a active Agent/Customer selection workspaces, report/analysis, digit totals and commission review compact-control source committed; CI pending. P2b export selectors and remaining standalone/alternate selection flows pending; P3–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -75,6 +75,15 @@ Single low-height Cherry glass capsule, target about 80–90dp at normal device/
 ### Risk controls refinement — 2026-11-24
 
 Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45380705841. Phone screenshot shows separate portraits, compact header and side-by-side money boxes. User explicitly approved the new design mockup for three equal glass segmented tabs and four icon-over-label option cards in a single row (low loss, balance, keep more, custom). Selected ruby gradient, unselected translucent glass, consistent typography and 48dp minimum touch target. Custom retains the full accessible description and existing budget fields below only when selected. Existing planner can return additional middle plan or deduplicate plans, so render every actual plan in original order plus budget; a fifth control or accessibility width/font scale may reflow. No planner changes, no fabricated/hidden options. Only two UI blocks replaced; other result layout and state byte-identical. Two source contracts added and existing layout assertions updated. Scope and other screens unchanged. CI/phone confirmation of new controls pending.
+
+### P2a — primary selection flows (2026-11-24)
+
+- Verified Build 1932 (b739f448351f82b3b1d0ea47ac79759a277498e7), CI SUCCESS run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45395498901; matching debug 14920069302/release 14920148919 unexpired. User requested combined phone QA later.
+- Added opt-in PremiumSelectionControls: field-level translucent white/cherry border/label treatment, selection chip color/shape and cherry primary action. Existing ScopeDropdown and DateInput default styling/logic retained outside opt-in; no global theme or protected Home/Form/Research edits.
+- CustomerReview report/analysis, AgentStatement, AgentDigitTotals and CommissionReview selection blocks restored to Build 1864 ordering/grouping (original callbacks/conditions), applying field/control decoration instead of extra enclosing panels. CustomerReview both modes now share same background. Results untouched, including risk tabs/compact scope.
+- Agent/Customer scope and active feature-workspace selection blocks opt in; old Champagne wrapper replaced with a compact non-card column. Existing selections, dates, session and actions retained. Result scope and ledger bodies remain for P4. No extra nested wrappers per field.
+- Added 2 source contracts and revised obsolete wrapper assertions. Device confirmation pending, including long names, MM/EN, disabled, narrow screens and first-view density. Horizontal scroll behavior on existing period rows retained rather than silently relocating options.
+- P2a only: JPEG selectors, standalone/alternate selection and remaining entry/settings/limit/winning selection flows still require scoped P2b review; do not claim P2 completed.
 
 ### Updated execution sequence
 

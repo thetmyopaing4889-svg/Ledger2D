@@ -1253,7 +1253,8 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
         trailingIcon = { if (enabled) TextButton(onClick = { open = true }) {
             Text(language.translate("ရွေး"), style = LedgerTypographyStandard.style(LedgerTextRole.BUTTON, language.code))
         } },
-        shape = MaterialTheme.shapes.medium,
+        shape = if (LocalPremiumSelector.current) premiumSelectorShape else MaterialTheme.shapes.medium,
+        colors = if (LocalPremiumSelector.current) premiumSelectorColors() else OutlinedTextFieldDefaults.colors(),
     )
     if(open){val initial=runCatching{LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()}.getOrNull();val state=rememberDatePickerState(initialSelectedDateMillis=initial);DatePickerDialog(onDismissRequest={open=false},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{var picked=java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate();while(!DrawSchedule.isWeekday(picked)) picked=picked.plusDays(1);onValue(picked.toString())};open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးမည်"))}},dismissButton={TextButton(onClick={open=false}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်ပါ"))}}){DatePicker(state)}}
 }

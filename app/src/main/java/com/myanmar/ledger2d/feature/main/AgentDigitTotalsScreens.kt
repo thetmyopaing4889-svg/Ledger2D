@@ -124,31 +124,30 @@ fun AgentDigitTotalsWorkspace(
         ) {
             if (!resultPage) {
             item {
-                CherryFinancialPanel {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်နှင့် အကြိမ်ရွေးရန်"),
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    ScopeDropdown(
-                        "ဒိုင်ရွေးရန်", selectedName,
-                        listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
-                        selectedAgent,
+                Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်နှင့် အကြိမ်ရွေးရန်"), fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium)
+                PremiumScopeDropdown(
+                    "ဒိုင်ရွေးရန်", selectedName,
+                    listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
+                    selectedAgent,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                    ) { selectedAgent = it }
-                    DateInput(dateText, {
-                        dateText = it
-                        language.setDate(it)
-                    }, "ရက်စွဲ")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                        DrawSession.entries.forEach { draw ->
-                            FilterChip(session == draw, {
-                                session = draw
-                                language.setSession(draw)
-                            }, label = { Text(draw.label) })
-                        }
+                ) { selectedAgent = it }
+                Spacer(Modifier.height(8.dp))
+                PremiumDateInput(dateText, {
+                    dateText = it
+                    language.setDate(it)
+                }, "ရက်စွဲ")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    DrawSession.entries.forEach { draw ->
+                        PremiumSelectionChip(session == draw, {
+                            session = draw
+                            language.setSession(draw)
+                        }, label = { Text(draw.label) })
                     }
                 }
             }
             item {
-                Button(
+                PremiumSelectionButton(
                     onClick = { resultPage = true },
                     enabled = date != null && agents.isNotEmpty() &&
                         (selectedAgent == -1L || agents.any { it.id == selectedAgent }),

@@ -11,11 +11,13 @@ class RiskReviewHomeChromeContractTest {
     private fun source(name: String) =
         File("src/main/java/com/myanmar/ledger2d/feature/main/" + name).readText()
 
-    @Test fun selectionChromeAppliesOnlyToAnalysis() {
+    @Test fun reportAndAnalysisUseSameCompactSelectionChrome() {
         val s = source("CustomerReviewScreens.kt")
-        assertTrue(s.contains("if (mode == \"analysis\") CherryFinancialPanel { content() } else content()"))
-        assertTrue(s.contains(".then(if (mode == \"analysis\") Modifier.cherryFinancialBackground() else Modifier)"))
-        assertEquals(5, s.split("RiskSelectionPanel(mode) {").size - 1)
+        assertFalse(s.contains("RiskSelectionPanel"))
+        assertTrue(s.contains(".padding(padding).cherryFinancialBackground()"))
+        assertEquals(2, s.split("PremiumScopeDropdown(").size - 1)
+        assertTrue(s.contains("PremiumSelectionChip("))
+        assertTrue(s.contains("PremiumSelectionButton("))
         assertTrue(s.contains("agentId = it; customerId = -1L"))
         assertTrue(s.contains("customerId = it"))
         assertTrue(s.contains("if (drawChoice == \"pm\") DrawSession.EVENING else DrawSession.MORNING"))
