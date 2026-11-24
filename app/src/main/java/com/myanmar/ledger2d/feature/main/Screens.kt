@@ -1993,38 +1993,110 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
     }
 }
 @Composable fun SettingsScreen(vm: LedgerViewModel, onBack:()->Unit){
-    val language=LocalLanguage.current
+    val language = LocalLanguage.current
     val sectionTypography = LedgerTypographyStandard.style(LedgerTextRole.SECTION_TITLE, language.code)
     val helperTypography = LedgerTypographyStandard.style(LedgerTextRole.HELPER, language.code)
     val agents by vm.agents.collectAsStateWithLifecycle()
     val defaultAgent = agents.firstOrNull { it.id == language.defaultAgentId }
     val customers by vm.customers(language.defaultAgentId).collectAsStateWithLifecycle(initialValue = emptyList())
     val defaultCustomer = customers.firstOrNull { it.id == language.defaultCustomerId }
-    AppScaffold(language.text("ဆက်တင်များ","Settings"),onBack){p->Column(Modifier.fillMaxSize().padding(p).verticalScroll(rememberScrollState()).padding(AppDimens.screen).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-        Text(language.text("အမြဲပြမည့် ရွေးချယ်မှုများ","Default workspace selection"),style=sectionTypography)
-        Text(language.text("လုပ်ဆောင်ချက်များတွင် ရွေးထားသော ဒိုင်နှင့် ထိုးသားကို အလိုအလျောက်ပြပေးမည်။","These selections appear automatically in every dashboard feature."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedCard(shape=MaterialTheme.shapes.large, colors=CardDefaults.outlinedCardColors(containerColor=AppColors.Champagne), border=BorderStroke(1.dp,AppColors.Gold.copy(alpha=.35f))) {
-            Column(Modifier.padding(14.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                ScopeDropdown(language.text("Agent ရွေးရန်","Select agent"), defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်","Select agent"), agents.map { it.id to it.name }, language.defaultAgentId, Modifier.fillMaxWidth(), compact = true, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) }) { language.setDefaultAgent(it) }
-                ScopeDropdown(language.text("Customer ရွေးရန်","Select customer"), defaultCustomer?.name ?: if (language.defaultAgentId > 0) language.text("Customer ရွေးရန်","Select customer") else language.text("Agent အရင်ရွေးပါ","Select agent first"), if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(), language.defaultCustomerId, Modifier.fillMaxWidth(), enabled = language.defaultAgentId > 0, compact = true, avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) }) { language.setDefaultCustomer(it) }
+
+    AppScaffold(language.text("ဆက်တင်များ", "Settings"), onBack) { p ->
+        Column(
+            Modifier.fillMaxSize().padding(p).cherryManagementScreenBackground()
+                .verticalScroll(rememberScrollState())
+                .padding(AppDimens.screen).padding(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                language.text("အမြဲပြမည့် ရွေးချယ်မှုများ", "Default workspace selection"),
+                style = sectionTypography, color = AppColors.PrimaryDeep,
+            )
+            Text(
+                language.text(
+                    "လုပ်ဆောင်ချက်များတွင် ရွေးထားသော ဒိုင်နှင့် ထိုးသားကို အလိုအလျောက်ပြပေးမည်။",
+                    "These selections appear automatically in every dashboard feature.",
+                ),
+                style = helperTypography, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CherryManagementSelectionPane {
+                ScopeDropdown(
+                    language.text("Agent ရွေးရန်", "Select agent"),
+                    defaultAgent?.name ?: language.text("ဒိုင်ရွေးရန်", "Select agent"),
+                    agents.map { it.id to it.name }, language.defaultAgentId,
+                    Modifier.fillMaxWidth(), compact = true,
+                    avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                ) { language.setDefaultAgent(it) }
+                ScopeDropdown(
+                    language.text("Customer ရွေးရန်", "Select customer"),
+                    defaultCustomer?.name ?: if (language.defaultAgentId > 0)
+                        language.text("Customer ရွေးရန်", "Select customer")
+                    else language.text("Agent အရင်ရွေးပါ", "Select agent first"),
+                    if (language.defaultAgentId > 0) customers.map { it.id to it.name } else emptyList(),
+                    language.defaultCustomerId, Modifier.fillMaxWidth(),
+                    enabled = language.defaultAgentId > 0, compact = true,
+                    avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
+                ) { language.setDefaultCustomer(it) }
             }
+
+            Text(
+                language.text("အတိတ်ရလဒ်များ", "Historical results"),
+                style = sectionTypography, color = AppColors.PrimaryDeep,
+            )
+            CherryManagementSelectionPane {
+                val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
+                CherryManagementPrimaryButton(
+                    onClick = vm::updateHistory,
+                    enabled = historyUpdate !is HistoryUpdateState.Working,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                ) {
+                    Text(language.text("အတိတ်ရလဒ်များ အပ်ဒိတ်လုပ်ရန်", "Update historical results"))
+                }
+                when (val state = historyUpdate) {
+                    HistoryUpdateState.Idle -> Text(
+                        language.text("နှိပ်လိုက်လျှင် မနေ့အထိ ရလဒ်မှတ်တမ်းများကို ဖြည့်စွက်မည်။",
+                            "Tap to update history results through yesterday."),
+                        style = helperTypography, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    HistoryUpdateState.Working -> Text(
+                        language.text("ရလဒ်မှတ်တမ်းများ ဖြည့်စွက်နေပါသည်…", "Updating history results…"),
+                        style = helperTypography,
+                    )
+                    is HistoryUpdateState.Success -> Text(
+                        state.message, style = helperTypography, color = AppColors.PrimaryDeep,
+                    )
+                    is HistoryUpdateState.Error -> Text(
+                        state.message, style = helperTypography, color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            // This separate encrypted-backup workflow and its dialogs remain unchanged.
+            CherryBackupSettings()
+
+            Text(
+                language.text("ဘာသာစကား", "Language"),
+                style = sectionTypography, color = AppColors.PrimaryDeep,
+            )
+            CherryManagementSelectionPane {
+                ListItem(
+                    headlineContent = { Text(language.translate("မြန်မာ")) },
+                    leadingContent = { RadioButton(language.code == "my", { language.set("my") }) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+                ListItem(
+                    headlineContent = { Text(language.translate("English")) },
+                    leadingContent = { RadioButton(language.code == "en", { language.set("en") }) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+            Text(
+                language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။",
+                    "Language changes apply immediately across the app."),
+                style = helperTypography, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        Text(language.text("အတိတ်ရလဒ်များ","Historical results"),style=sectionTypography)
-        OutlinedCard { Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            val historyUpdate by vm.historyUpdate.collectAsStateWithLifecycle()
-            Button(onClick=vm::updateHistory,enabled=historyUpdate !is HistoryUpdateState.Working,modifier=Modifier.fillMaxWidth()){Text(language.text("အတိတ်ရလဒ်များ အပ်ဒိတ်လုပ်ရန်","Update historical results"))}
-            when(val state=historyUpdate){
-                HistoryUpdateState.Idle->Text(language.text("နှိပ်လိုက်လျှင် မနေ့အထိ ရလဒ်မှတ်တမ်းများကို ဖြည့်စွက်မည်။","Tap to update history results through yesterday."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                HistoryUpdateState.Working->Text(language.text("ရလဒ်မှတ်တမ်းများ ဖြည့်စွက်နေပါသည်…","Updating history results…"),style=helperTypography)
-                is HistoryUpdateState.Success->Text(state.message,style=helperTypography,color=AppColors.PrimaryDeep)
-                is HistoryUpdateState.Error->Text(state.message,style=helperTypography,color=MaterialTheme.colorScheme.error)
-            }
-        }}
-        CherryBackupSettings()
-        Text(language.text("ဘာသာစကား","Language"),style=sectionTypography)
-        OutlinedCard{Column{ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မြန်မာ"))},leadingContent={RadioButton(language.code=="my",{language.set("my")})});ListItem(headlineContent={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("English"))},leadingContent={RadioButton(language.code=="en",{language.set("en")})})}}
-        Text(language.text("ဘာသာစကားပြောင်းလဲမှုသည် ချက်ချင်းအကျိုးသက်ရောက်ပါမည်။","Language changes apply immediately across the app."),style=helperTypography,color=MaterialTheme.colorScheme.onSurfaceVariant)
-    }}
+    }
 }
 @Composable fun SimpleListScreen(title:String,onBack:()->Unit,subtitle:String,rows:List<String>){AppScaffold(title,onBack){p->LazyColumn(Modifier.fillMaxSize().padding(p),contentPadding=PaddingValues(AppDimens.screen),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text(subtitle,style=MaterialTheme.typography.headlineSmall)};items(rows){OutlinedCard{Text(it,Modifier.fillMaxWidth().padding(16.dp),style=MaterialTheme.typography.bodyLarge)}}}}}
 
