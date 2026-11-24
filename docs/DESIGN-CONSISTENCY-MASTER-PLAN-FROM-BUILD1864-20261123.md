@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** M1–M5 source/CI and baseline static audit complete through Build 1924. User-approved Quick Entry bubble follow-up Build 1926 compiled; 1,017/1,018 tests passed, including all four new bubble tests. One pre-existing form integration source assertion expected the old FAB call. Updated that assertion to protect the new shared overlay wiring and retained all form/gallery guards; rerun CI/APK and combined phone QA pending. No production code changes in this repair; no main merge.  
+**Status:** REOPENED after Build 1927 phone QA. M1–M5 historical source/CI audit remains recorded, but visual acceptance FAILED / incomplete. User approved renewed P1–P6 plan. Build 1927 is the successful recovery baseline. No production code changes in this plan checkpoint; no main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -13,6 +13,58 @@
 > **NON-NEGOTIABLE:** Cherry 2D ရဲ့ ပြီးထားပြီးသားအပိုင်းတွေကို မဖျက်၊ မပျက်စေဘဲ UI လိုအပ်ချက်ရှိတဲ့နေရာတွေကိုသာ အဆင့်လိုက်ပြင်ရမယ်။ 2D Analysis → **Research Workspace** ဟာ အသုံးပြုသူအတွက် အထူးလက်ဆောင်ဖြစ်ပြီး **လုံးဝမထိရ**။ `main` မှာ မပြင်ရ။
 >
 > **Read this document BEFORE every new implementation session, branch switch, or continuation.** Update the checkpoint log here after each verified pass. Do not infer approval from CI alone.
+
+---
+
+## 2026-11-24 — Revised device-QA plan (P1–P6, supersedes earlier visual completion claims)
+
+**Baseline:** Build 1927, commit `12bc22bf01b28d76fc8f4267af76476d1f7c3637`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45366314562 — verified CI SUCCESS, both APK artifacts (debug 14907347027, release 14907421794). User submitted ten actual device screenshots and reported premature floating bubble disappearance on Back. This is NOT visual approval. Continue the same isolated working branch; do not merge or edit main.
+
+### Observed device failures and source audit
+
+| Evidence | Source-level finding | Required action |
+|---|---|---|
+| Better Data and 2D Rules header/dock differ from operational pages | Better Data uses its own Scaffold/TopAppBar/NavigationBar; timeline owns separate chrome shared with protected Research | Align eligible chrome without changing tabs or engine. Freeze timeline/Research and approved Rules reader/content; document any necessary boundary approval separately. |
+| Entered transactions selection/result retain old flat styling and champagne border | Active CustomerFeatureWorkspaceScreen -> SelectionCard -> CustomerBetEntriesWorkspace differs from standalone BetHistoryScreen already restyled | Audit active picker + result + edit + voucher entry as one flow, not just standalone screen. |
+| Customer report selector flat; JPEG selector bulky | CustomerReviewWorkspace conditionally styles only analysis, export adds outer panel per outlined field | One cohesive grouped selector surface, consistent fields/filters and compact spacing. Do not change date/session/scope calculations. |
+| Customer information avatar centered but name left, list selector/add affordance mismatched | InformationCard and CustomerListWorkspaceScreen use different hierarchy and stock controls | Align profile identity and list/action hierarchy, preserve photo/id/edit and optional fields. |
+| Live/Calendar different header/title; calendar list says 2D LIVE | title only switches when calendar detail selected; bottom bar stock material | Fix title for entire calendar tab; preserve result statuses, dates, polling and handover. |
+| Bubble visible on existing eligible pages, excluded on others; disappears before page exits | Global provider observes current route; outgoing shared scaffold may recompute eligibility and conditionally replace its entire root before navigation finishes | Route/destination-local eligibility, stable shared root and lifecycle. Keep existing exclusions, position persistence, drag bounds and artwork; no delay/animation workaround. Device reproduction required. |
+
+### Source route coverage (47 declarations, not 47 unique screen states)
+
+- Home/welcome (2): reference only; no edits.
+- Live, Better Data, historical2d, historical2dLegacy (4): specialized UI; current Timeline and Research remain frozen, legacy only if reachable. Better Data shell only.
+- CommissionReview, todayLedger, quickEntry, settings (4): shared selection/summary/status, keyboard and backup UI.
+- agents, agentDashboard, agentWorkspace/{feature}, agentList, agentInfo/{id}, agentScope/{feature}, allAgentFeature/{feature} (7): dashboard and every active total/report/closed/limit variant; alias reachability recorded.
+- customerDashboard, customerList, customerListForAgent/{agentId}, customerInfo/{id}, customerWorkspace/{feature}, customerScope/{feature}, allCustomerScope/{agentId}/{feature}, addCustomerHome (8): list/info/selection/history/report/analysis/digits/bulk commission plus alternate scopes.
+- agentForm/{id}, customerForm/{agentId}/{id} (2): approved body/crop/save/header unchanged; shared bubble lifecycle only.
+- agentSettlementJpeg, customerSettlementJpeg, voucherPreview/{customerId}/{date}/{session} (3): selectors, loading, paging, export and permission feedback; renderer/pixels remain protected.
+- analysis/{id}, bet/{agentId}/{customerId}, betHistory/{customerId}, betEdit/{entryId}, digitList/{agentId}/{customerId}, total/{agentId}, closed/{agentId}, format, commission/{id}, limit/{id}, agentLimit/{id}, report/{scope}/{id} (12): check active and legacy direct destinations with actual call chains; avoid unnecessary edits to unreachable fallbacks.
+- winning, winning/input, winning/view, closedDays, winning/{scope}/{id} (5): old controls/selection/result views and date/session flow.
+- For each route record active/alias/legacy, screen/function, selection/result/empty/loading/error/edit states, shared components, changes or reason for NO CHANGE, CI and device evidence. **Never treat route enumeration as proof of visual coverage.**
+
+### Canonical Home-first operational UI contract
+
+1. One shared cherry-blush canvas (`#F6DCE5 → #F9E3EB → #FCEEF3`), consistent inner header (centered title, deep cherry accents, pale blush/white glass), consistent spacing and back affordance. Protected Home/Welcome/Profile Form/Research retain their accepted appearance; Better Data's functional subtitle and specialized reader/navigation may be documented exceptions. No global Theme rewrite.
+2. Use a single glass section per meaningful selection group; no per-field redundant nested cards. Shared avatar picker/field/date/period/session chips, alignment, disabled and error states, min touch targets, natural Burmese wrapping; show all choices via wrapping or clearly scrollable controls. Keep date and session state untouched.
+3. Shared card/action hierarchy: 22–24dp glass group, restrained ruby elevation, clear type and contrast, one primary action; secondary/destructive actions remain semantically distinct. No expensive blur on lists; do not apply the same decorative card to every row.
+4. Results: scope header and summary group visually consistent with picker, compact high-contrast ledger rows and aligned amounts; keep sort/order, edit/delete, money and exported content unchanged.
+5. Bubble: existing 48dp Home artwork, reserved header slot, safe drag/persistence; no new bubble on previously excluded screens. No premature disappearance on Back and no hidden header actions. No forced slow transitions, no new background work.
+6. Protect original Home, Form body/crop/header, Research/timeline/rules content, financial/core/DB/export pixels and Better Data/Live engines. The user has authorized narrow shared chrome and Bubble Back fix: `LedgerNav.kt` may change only provider/lifecycle scope, NOT destinations, arguments, callbacks, back-stack operations or transition duration. Protected profile form chrome must have an explicit exemption if shared chrome changes.
+
+### Implementation and acceptance gates
+
+| Phase | Scope | Acceptance |
+|---|---|---|
+| P1 — Shared shell and bubble | Canonical operational header/canvas, stable scaffold structure, destination-local bubble eligibility; preserve protected forms | Source contracts for route/eligibility, stable host, header/standalone FAB, protected Home/Form/Research; actual Back from eligible page to Home, eligible-to-eligible and excluded page, keyboard/drag/save. |
+| P2 — Selection flows | Agent/Customer workspace and scope selectors, report/analysis, digit totals/views, commission review, settlement and standalone selectors; consolidate nested surfaces and align inputs | Actual active routes plus selection/result pairs; MM/EN, narrow/large font, disabled/empty, avatar and date/session controls. |
+| P3 — Management | Agent/Customer dashboards/list/info, Quick Entry/Add Customer, Settings | Profile photo/name/optional info alignment, correct routes, long names, coherent cards/actions, no changes to accepted form mechanics. |
+| P4 — Results | BetEntriesWorkspace actual active history, financial results/totals, bulk commission, winning, closed days, closed/limit, betting/history | Preserve numeric and semantic states; fixture totals, correct ID/date/session, scroll and save/edit/delete behavior. |
+| P5 — Specialized/export | Live/Calendar, Better Data, JPEG selection/preview polish, review Analysis/Rules boundary | Preserve engines and renderers; actual screenshots for tabs/headers, pages/export/permission. Research and shared Timeline not edited without separate permission. |
+| P6 — Full regression | Re-audit all 47 route declarations and reachable internal states, protected hashes, CI, combined phone QA | User screenshot/device acceptance is mandatory; CI alone cannot close visual QA. |
+
+Batch related changes per phase with one atomic commit and CI, source review before push. Record exact diff and build artifacts; no cosmetic edits to unreachable code merely to increase coverage. Phase cannot be marked visually done until phone proof. P1–P6 not started at this documentation checkpoint.
 
 ---
 
