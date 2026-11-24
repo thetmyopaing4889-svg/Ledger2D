@@ -33,8 +33,13 @@ class CherryProfileCoverageTest {
         assertTrue(betting.contains("CherryProfileIdentity(vm,ProfileKind.AGENT,agentId"))
         assertTrue(betting.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId"))
         assertTrue(history.contains("CherryProfileIdentity(vm, ProfileKind.CUSTOMER, customerId"))
-        assertTrue(screens.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,id,c?.name"))
-        assertTrue(screens.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,id,limitCustomer?.name"))
+        // The customer photo must remain in both controls after their B09 Compose
+        // formatting changes. Ignore whitespace, but check real id/name wiring.
+        val customerControls = screens.substringAfter("fun CommissionScreen(")
+            .substringBefore("fun WinningHubScreen(")
+            .replace(Regex("\\s+"), "")
+        assertTrue(customerControls.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,id,customer?.name"))
+        assertTrue(customerControls.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,id,limitCustomer?.name"))
         assertTrue(screens.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,digitCustomer?.name"))
         assertFalse(betting.contains("CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,record.entry"))
         assertFalse(history.contains("CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,record.entry"))
