@@ -83,21 +83,24 @@ fun AgentStatementWorkspace(
     ) { padding ->
         if (!results) {
             LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
+                Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်း ရွေးချယ်ရန်"),
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 item {
+                    CherryFinancialPanel {
+                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်စာရင်းရှင်းတမ်း ရွေးချယ်ရန်"),
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     ScopeDropdown(
                         "ဒိုင်ရွေးရန်", chosenAgent,
                         listOf(-1L to com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒိုင်အားလုံး")) + agents.map { it.id to it.name },
                         agentId,
                         avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
                     ) { agentId = it }
+                    }
                 }
                 item {
+                    CherryFinancialPanel {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်ကာလ"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -109,8 +112,6 @@ fun AgentStatementWorkspace(
                             FilterChip(period == p, onClick = { period = p }, label = { Text(label) })
                         }
                     }
-                }
-                item {
                     if (period == StatementPeriod.CUSTOM) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ReviewDatePicker(startText, "စရက်", Modifier.weight(1f)) { startText = it }
@@ -134,8 +135,6 @@ fun AgentStatementWorkspace(
                         }
                         ReviewDatePicker(dateText, "ရက်စွဲ") { dateText = it }
                     }
-                }
-                item {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အကြိမ်ရွေးရန်"), fontWeight = FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -143,6 +142,7 @@ fun AgentStatementWorkspace(
                             .forEach { (id, label) ->
                                 FilterChip(drawChoice == id, onClick = { drawChoice = id }, label = { Text(label) })
                             }
+                    }
                     }
                 }
                 if (range == null) item {
