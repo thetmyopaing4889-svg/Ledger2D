@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** REOPENED after Build 1927 phone QA. M1–M5 historical source/CI audit remains recorded, but visual acceptance FAILED / incomplete. User approved renewed P1–P6 plan. Build 1927 is the successful recovery baseline. No production code changes in this plan checkpoint; no main merge.  
+**Status:** REOPENED after Build 1927 phone QA. P1 shared shell and Bubble navigation lifecycle source repair committed; CI/APK and device transition/visual confirmation pending. P2–P6 pending. Protected Home/Welcome/Profile Form/Research and logic unchanged. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -53,6 +53,14 @@
 5. Bubble: existing 48dp Home artwork, reserved header slot, safe drag/persistence; no new bubble on previously excluded screens. No premature disappearance on Back and no hidden header actions. No forced slow transitions, no new background work.
 6. Protect original Home, Form body/crop/header, Research/timeline/rules content, financial/core/DB/export pixels and Better Data/Live engines. The user has authorized narrow shared chrome and Bubble Back fix: `LedgerNav.kt` may change only provider/lifecycle scope, NOT destinations, arguments, callbacks, back-stack operations or transition duration. Protected profile form chrome must have an explicit exemption if shared chrome changes.
 
+### P1 source checkpoint — 2026-11-24 (CI/device QA pending)
+
+- Plan-only commit `8aebdd61b30002a610165370222801eaac05dfb4` recorded first; Build 1927 remains verified recovery APK.
+- Stable Quick Entry provider independent of current route; Home and Welcome explicitly override with null within their own destinations. This addresses the source-level race where an outgoing screen could lose the bubble early. Existing exclusions inside individual scaffolds retained; no destination, argument, callback, transition duration or back-stack operation changed.
+- OperationalScaffold now has a single stable Box root, static Home-derived blush canvas and pale blush header with deep cherry title/Back; overlay conditional only, not the entire screen. Profile form destinations explicitly opt out of new shared chrome and retain previous white header/canvas and bubble eligibility. Specialized self-owned Scaffolds unaffected until P5. Local body backgrounds may still override shared canvas; P2–P5 must review actual content.
+- Updated bubble source contract for stable navigation provider, preserved exclusions, original artwork/drag/prefs and reserved slot. Added test for shared shell and profile exemptions. No actual device transition test has run.
+- Source comparison confirms Screens.kt from DarkStatusBarsEffect onward byte-identical. Next: verify CI/APK, then P2 selection flows. Confirm Back on actual device; source repair is not proof that the visual bug is gone.
+
 ### Implementation and acceptance gates
 
 | Phase | Scope | Acceptance |
@@ -64,7 +72,7 @@
 | P5 — Specialized/export | Live/Calendar, Better Data, JPEG selection/preview polish, review Analysis/Rules boundary | Preserve engines and renderers; actual screenshots for tabs/headers, pages/export/permission. Research and shared Timeline not edited without separate permission. |
 | P6 — Full regression | Re-audit all 47 route declarations and reachable internal states, protected hashes, CI, combined phone QA | User screenshot/device acceptance is mandatory; CI alone cannot close visual QA. |
 
-Batch related changes per phase with one atomic commit and CI, source review before push. Record exact diff and build artifacts; no cosmetic edits to unreachable code merely to increase coverage. Phase cannot be marked visually done until phone proof. P1–P6 not started at this documentation checkpoint.
+Batch related changes per phase with one atomic commit and CI, source review before push. Record exact diff and build artifacts; no cosmetic edits to unreachable code merely to increase coverage. Phase cannot be marked visually done until phone proof. P1 source checkpoint recorded above; P2–P6 not started.
 
 ---
 

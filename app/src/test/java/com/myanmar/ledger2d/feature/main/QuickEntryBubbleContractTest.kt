@@ -39,18 +39,42 @@ class QuickEntryBubbleContractTest {
         val scaffold = s.substringAfter("@Composable fun OperationalScaffold(")
             .substringBefore("@Composable private fun DarkStatusBarsEffect")
         assertTrue(scaffold.contains("globalQuickEntry.takeIf { includeQuickEntryFab }"))
-        assertTrue(scaffold.contains("if (quickEntry == null) screen()"))
+        assertFalse(scaffold.contains("if (quickEntry == null) screen()"))
+        assertTrue(scaffold.contains("if (quickEntry != null) QuickEntryFab(quickEntry, Modifier.matchParentSize())"))
         assertTrue(scaffold.contains("action?.invoke(this)"))
         assertTrue(scaffold.contains("Spacer(Modifier.width(QuickEntryBubbleHeaderSlot))"))
         assertTrue(scaffold.contains("floatingActionButton={fab?.invoke()}"))
         assertTrue(scaffold.contains("QuickEntryFab(quickEntry, Modifier.matchParentSize())"))
         val nav = File(base + "LedgerNav.kt").readText()
-        assertTrue(nav.contains("currentRoute == \"home\" || currentRoute == \"welcome\""))
+        assertFalse(nav.contains("currentBackStackEntryAsState()"))
+        assertTrue(nav.contains("CompositionLocalProvider(LocalQuickEntryAction provides quickEntryAction)"))
+        for (route in listOf("home", "welcome")) {
+            val entry = nav.lineSequence().first { it.trimStart().startsWith("composable(\"" + route + "\")") }
+            assertTrue(entry.contains("CompositionLocalProvider(LocalQuickEntryAction provides null)"))
+        }
         assertTrue(nav.contains("nav.navigate(\"quickEntry\")"))
         val bubble = File(base + "QuickEntryBubble.kt").readText()
         assertTrue(bubble.contains("R.drawable.btn_cherry_orb"))
         assertTrue(bubble.contains("WindowInsets.safeDrawing.union(WindowInsets.ime)"))
         assertTrue(bubble.contains("onDragEnd = { persistPlacement() }"))
         assertTrue(bubble.contains("registerOnSharedPreferenceChangeListener"))
+    }
+
+    @Test fun sharedChromeKeepsStableRootAndExemptsApprovedProfileForms() {
+        val base = "src/main/java/com/myanmar/ledger2d/feature/main/"
+        val s = File(base + "Screens.kt").readText()
+        val scaffold = s.substringAfter("@Composable fun OperationalScaffold(")
+            .substringBefore("@Composable private fun DarkStatusBarsEffect")
+        assertTrue(scaffold.contains("LocalCherryOperationalChrome.current"))
+        assertTrue(scaffold.contains("if (premiumChrome) Color(0xFFFFF3F7) else Color.White"))
+        assertTrue(scaffold.contains("if (premiumChrome) Modifier.cherryFinancialBackground() else Modifier"))
+        assertTrue(scaffold.contains("if (premiumChrome) Color.Transparent else MaterialTheme.colorScheme.background"))
+        assertTrue(scaffold.indexOf("Scaffold(") < scaffold.indexOf("if (quickEntry != null) QuickEntryFab("))
+        val nav = File(base + "LedgerNav.kt").readText()
+        for (route in listOf("agentForm/{id}", "customerForm/{agentId}/{id}")) {
+            val entry = nav.lineSequence().first { it.trimStart().startsWith("composable(\"" + route + "\"") }
+            assertTrue(entry.contains("LocalCherryOperationalChrome provides false"))
+            assertFalse(entry.contains("LocalQuickEntryAction provides null"))
+        }
     }
 }

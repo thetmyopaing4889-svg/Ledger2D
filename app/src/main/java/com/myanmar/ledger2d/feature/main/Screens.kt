@@ -79,6 +79,8 @@ import java.util.Locale
 fun Long.mmk()="${NumberFormat.getIntegerInstance(Locale.US).format(this)} MMK"
 fun LocalDate.displayDate(): String = format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH))
 val LocalQuickEntryAction = compositionLocalOf<(() -> Unit)? > { null }
+// Profile form destinations retain their approved header and canvas.
+internal val LocalCherryOperationalChrome = compositionLocalOf { true }
 
 fun inputFormatDisplay(value: String): String = when (value.uppercase()) {
     "COMBINATION" -> "အခွေ"
@@ -132,16 +134,21 @@ fun transactionDisplayText(format: String, raw: String): String {
 @Composable fun OperationalScaffold(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.() -> Unit)?=null,fab:(@Composable () -> Unit)?=null,content:@Composable (PaddingValues) -> Unit,bottomBar:(@Composable () -> Unit)?=null,includeQuickEntryFab:Boolean=true,boldTitle:Boolean=false){
     val globalQuickEntry = LocalQuickEntryAction.current
     val quickEntry = globalQuickEntry.takeIf { includeQuickEntryFab }
-    val screen: @Composable () -> Unit = {
+    val premiumChrome = LocalCherryOperationalChrome.current
+    val headerColor = if (premiumChrome) Color(0xFFFFF3F7) else Color.White
+    val headerInk = if (premiumChrome) AppColors.PrimaryDeep else MaterialTheme.colorScheme.onBackground
+    // One stable screen root. Bubble visibility does not replace the scaffold.
+    Box(Modifier.fillMaxSize().then(if (premiumChrome) Modifier.cherryFinancialBackground() else Modifier)) {
         Scaffold(
-            containerColor=MaterialTheme.colorScheme.background,
+            containerColor=if (premiumChrome) Color.Transparent else MaterialTheme.colorScheme.background,
+            contentColor=MaterialTheme.colorScheme.onBackground,
             topBar={
                 CenterAlignedTopAppBar(
-                    colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Color.White, scrolledContainerColor=Color.White, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=AppColors.Ink),
+                    colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=headerColor, scrolledContainerColor=headerColor, navigationIconContentColor=AppColors.PrimaryDeep, titleContentColor=if (premiumChrome) AppColors.PrimaryDeep else AppColors.Ink),
                     title={BilingualText(title, primaryStyle=if(boldTitle)
                         MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.Bold)
                     else MaterialTheme.typography.titleLarge,
-                        color=MaterialTheme.colorScheme.onBackground)},
+                        color=headerInk)},
                     navigationIcon={if(onBack!=null){ IconButton(onClick=onBack){ Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription=LocalLanguage.current.translate("နောက်သို့")) } }},
                     actions={
                         action?.invoke(this)
@@ -153,11 +160,7 @@ fun transactionDisplayText(format: String, raw: String): String {
             bottomBar={bottomBar?.invoke()},
             content={padding->AnimatedVisibility(visible=true,enter=fadeIn(tween(AppMotion.Medium))+slideInVertically(tween(AppMotion.Medium)){it/12}){content(padding)}}
         )
-    }
-    if (quickEntry == null) screen()
-    else Box(Modifier.fillMaxSize()) {
-        screen()
-        QuickEntryFab(quickEntry, Modifier.matchParentSize())
+        if (quickEntry != null) QuickEntryFab(quickEntry, Modifier.matchParentSize())
     }
 }
 @Composable private fun DarkStatusBarsEffect(){

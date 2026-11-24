@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,7 +36,8 @@ import com.myanmar.ledger2d.core.model.DrawSession
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
+    // The outgoing destination keeps its bubble until its own composition leaves.
+    val quickEntryAction: () -> Unit = remember(nav) { { nav.navigate("quickEntry") } }
     val goTab:(String)->Unit={route->nav.navigate(route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}
     val openVoucherPreview: (Long, LocalDate, DrawSession, List<Long>) -> Unit =
         { customerId, date, session, selectedIds ->
@@ -44,7 +46,7 @@ import com.myanmar.ledger2d.core.model.DrawSession
                 nav.navigate("voucherPreview/$customerId/$date/${session.name}")
             }
         }
-    CompositionLocalProvider(LocalQuickEntryAction provides if (currentRoute == "home" || currentRoute == "welcome") null else ({ nav.navigate("quickEntry") })) {
+    CompositionLocalProvider(LocalQuickEntryAction provides quickEntryAction) {
     NavHost(
         nav,
         if (startAtWelcome || !language.onboardingComplete) "welcome" else "home",
@@ -54,9 +56,9 @@ import com.myanmar.ledger2d.core.model.DrawSession
         popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(0)) },
         popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(0)) }
     ){
-        composable("welcome"){WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}}}
+        composable("welcome"){CompositionLocalProvider(LocalQuickEntryAction provides null) { WelcomeScreen{language.completeOnboarding(); nav.navigate("home"){popUpTo("welcome"){inclusive=true}}} }}
         composable("live"){LiveScreen(container.history.observeAll(),container.liveResults.observeAll()){nav.popBackStack()}}
-        composable("home"){HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onLive={nav.navigate("live")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onCommissionDetails={nav.navigate("commissionReview")},onAnalysis={nav.navigate("historical2d")},onBetterData={nav.navigate("betterData")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}})}
+        composable("home"){CompositionLocalProvider(LocalQuickEntryAction provides null) { HomeScreen(vm,onQuickEntry={nav.navigate("quickEntry")},onAgents={nav.navigate("agentDashboard")},onWinning={nav.navigate("winning")},onLive={nav.navigate("live")},onClosedDays={nav.navigate("closedDays")},onSettings={nav.navigate("settings")},onLedger={goTab("todayLedger")},onAddAgent={nav.navigate("agentForm/0")},onAddCustomer={nav.navigate("addCustomerHome")},onAgentDashboard={nav.navigate("agentDashboard")},onCustomerDashboard={nav.navigate("customerDashboard")},onCommissionDetails={nav.navigate("commissionReview")},onAnalysis={nav.navigate("historical2d")},onBetterData={nav.navigate("betterData")},onNavigate={route->when(route){"home"->goTab("home");"agentDashboard"->nav.navigate("agentDashboard");"customerDashboard"->nav.navigate("customerDashboard");"closedDays"->nav.navigate("closedDays");"winning"->nav.navigate("winning");"settings"->nav.navigate("settings")}}) }}
         composable("commissionReview"){CommissionReviewScreen(vm){nav.popBackStack()}}
         composable("betterData"){BetterDataScreen(container) { nav.popBackStack() }}
         composable("historical2d"){Historical2DTimelineScreen(container, {nav.popBackStack()}, {nav.navigate("settings")}, {nav.navigate("historical2dLegacy")})}
@@ -92,8 +94,8 @@ import com.myanmar.ledger2d.core.model.DrawSession
         composable("customerScope/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->CustomerScopeScreen(vm,e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()}){feature,agentId,customerId->if(feature=="winning")nav.navigate("winning/view") else if(customerId==-1L)nav.navigate("allCustomerScope/$agentId/$feature") else when(feature){"history"->nav.navigate("betHistory/$customerId");"report"->nav.navigate("report/customer/$customerId");"analysis"->nav.navigate("analysis/$customerId");"digits"->nav.navigate("digitList/$agentId/$customerId");"commission"->nav.navigate("commission/$customerId")}}}
         composable("allCustomerScope/{agentId}/{feature}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("feature"){type=NavType.StringType})){e->AllCustomerScopeScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getString("feature") ?: "history",{nav.popBackStack()})}
         composable("addCustomerHome"){AddCustomerFromHomeScreen(vm,{nav.popBackStack()}){nav.navigate("customerForm/$it/0")}}
-        composable("agentForm/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AgentFormScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
-        composable("customerForm/{agentId}/{id}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("id"){type=NavType.LongType})){e->CustomerFormScreen(vm,e.arguments!!.getLong("id"),e.arguments!!.getLong("agentId")){nav.popBackStack()}}
+        composable("agentForm/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->CompositionLocalProvider(LocalCherryOperationalChrome provides false) { AgentFormScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()} }}
+        composable("customerForm/{agentId}/{id}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("id"){type=NavType.LongType})){e->CompositionLocalProvider(LocalCherryOperationalChrome provides false) { CustomerFormScreen(vm,e.arguments!!.getLong("id"),e.arguments!!.getLong("agentId")){nav.popBackStack()} }}
         composable("analysis/{id}",listOf(navArgument("id"){type=NavType.LongType})){e->AnalysisScreen(vm,e.arguments!!.getLong("id")){nav.popBackStack()}}
         composable("bet/{agentId}/{customerId}",listOf(navArgument("agentId"){type=NavType.LongType},navArgument("customerId"){type=NavType.LongType})){e->BettingScreen(vm,e.arguments!!.getLong("agentId"),e.arguments!!.getLong("customerId"),onBack={nav.popBackStack()})}
         composable("betHistory/{customerId}",listOf(navArgument("customerId"){type=NavType.LongType})){e->BetHistoryScreen(vm,e.arguments!!.getLong("customerId"),{nav.navigate("betEdit/${it.entry.id}")},{nav.popBackStack()}) { date, session, selectedIds ->
