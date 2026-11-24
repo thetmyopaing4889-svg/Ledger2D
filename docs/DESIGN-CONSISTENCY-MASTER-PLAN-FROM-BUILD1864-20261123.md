@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B08 Financial CI success through Build 1903; B09 Build 1907; B10 Build 1910; B11 Build 1915 CI SUCCESS with both APK artifacts verified. C01 voucher selection/preview UI and tests committed; C01 CI/APK and combined phone QA pending. C02–C04 not started. Home/Form/Research, JPEG renderers and domain/persistence unchanged.  
+**Status:** A01/A02 user-approved Build 1871; A03–A09 CI-passed; B01–B11 CI success through Build 1915. C01 voucher selection/preview CI SUCCESS Build 1919, both APK artifacts verified. C02 Agent settlement picker/preview UI and tests committed; CI/APK and combined phone QA pending. C03–C04 not started. Home/Form/Research, JPEG renderers and domain/persistence unchanged.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -261,7 +261,7 @@ For each changed screen, record a **current Home reference screenshot** and the 
 | M0 — Plan committed | This plan exists on isolated working branch, no UI changes in same commit | DONE — verified plan-only diff |
 | M1 — Home-first Management audit and UI changes | Home-derived A01–A09 visual design and tests; protected Form untouched; CI+combined device QA | SOURCE/CI DONE — A01/A02 user-approved Build 1871; A03–A06 passed Build 1874; A07–A09 passed Build 1881; combined device QA deferred |
 | M2 — Financial controls/report UI | B01–B11 checked/fixed; monetary source formulas unchanged; CI+combined device QA | SOURCE/CI DONE — B01–B08 CI success through Build 1903; B09 Build 1907; B10 Build 1910; B11 Build 1915 CI SUCCESS; combined phone QA pending |
-| M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | IN PROGRESS — C01 UI/tests committed; CI pending; C02–C04 not started |
+| M3 — Export/preview controls | C01–C04 checked; JPEG pixel/page and money invariants pass; CI+device QA | IN PROGRESS — C01 CI SUCCESS Build 1919; C02 UI/tests committed, CI pending; C03–C04 not started |
 | M4 — Specialized UI review | Live/Better Data differences reviewed; protected Research/Library untouched | NOT STARTED |
 | M5 — Final regression | Cross-screen MM/EN, small device, large font, photo, scroll, finance, export, no protected paths | NOT STARTED |
 
@@ -278,6 +278,13 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**C01 verified CI and C02 Agent settlement Home-first pass — 2026-11-24 (C02 CI/device QA pending):**
+- Build **1919**, commit `e4ef7ebbef9e12202af3726e4b9a58b8244df8ef`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45350881246, independently verified SUCCESS: tests, lint, release verification and both APK uploads passed. Debug artifact `14900970956`, release artifact `14900312535`, both unexpired at check.
+- C02 UI commit `5e31e44985972dc71cd2245afff77b65107a94a8`: `AgentSettlementJpegScreen.kt` applies Home blush background and three selector glass panels (agent, preset, date/session/range). Existing horizontal period chips, scrollable session chips, flexible minimum-height generate button. Preview mirrors C01 with one glass toolbar, localized page counter, equal-width navigation and localized flexible-height Gallery action.
+- Date-range calculations, agent selection state, generation callback, export callback including stale-document comparison, permissions, bitmap preview lifecycle and ContentScale.Fit preserved. Checked generation/export/bitmap blocks byte-for-byte. No renderer/exporter/layout/pagination/math changes.
+- C02 source test commit `59ef59d57c9b4f3e7ffda5deacb716701de3cac4`: three contracts for scope and period, neutral preview and pagination, duplicate/stale export guards. Existing settlement JPEG tests retained.
+- Gate: verify latest C02 CI and both APKs; then C03 Customer settlement picker/preview. Combined phone QA pending: all five presets, small screens, large MM/EN font, page swipe/navigation, correct date ranges and agent, real Gallery save and preview freshness rejection. C03–C04 not started. No main merge.
 
 **B11 verified CI and C01 Voucher preview Home-first pass — 2026-11-24 (C01 CI/device QA pending):**
 - Build **1915**, commit `a4594f6c7fcdd0b8385dd738fc106e150f871a59`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45347770993, independently verified SUCCESS: unit tests, lint, release verification and both APK uploads passed. Debug artifact `14899685558`, release artifact `14899840101`, both not expired at check. B01–B11 source/CI complete; combined phone QA remains pending.
