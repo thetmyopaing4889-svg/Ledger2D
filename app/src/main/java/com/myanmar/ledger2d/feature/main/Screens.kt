@@ -2150,11 +2150,11 @@ fun AnalysisScreen(vm: LedgerViewModel, id: Long, onBack: () -> Unit) {
                 Text(language.text(
                     "ရွေးထားသောစာရင်း ${selectedVoucherIds.size} ခု • ထိုးကြေး ${voucherTotal.amount.mmk()}",
                     "${selectedVoucherIds.size} selected • Stake ${voucherTotal.amount.mmk()}",
-                ))
+                ), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Button(
                     onClick = { onVoucherPreview(selectedDate, session, selectedVoucherIds) },
                     enabled = selectedVoucherIds.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) { Text(language.text("ဘောင်ချာအကြိုကြည့်ရန်", "Preview voucher")) }
             }
         }
