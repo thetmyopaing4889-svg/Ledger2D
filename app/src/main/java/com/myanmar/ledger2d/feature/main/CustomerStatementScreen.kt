@@ -156,12 +156,12 @@ fun CustomerStatementScreen(
 
     AppScaffold(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အစီရင်ခံစာ"), onBack) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).cherryFinancialBackground(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CherryFinancialPanel {
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးသား စာရင်းရှင်းတမ်း"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     ScopeDropdown(
                         com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Agent ရွေးရန်"),
@@ -180,8 +180,8 @@ fun CustomerStatementScreen(
                 }
             }
             item {
-                OutlinedCard {
-                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CherryFinancialPanel {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ကြည့်ရှုမည့်ကာလ"), fontWeight = FontWeight.Bold)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             StatementPeriod.entries.forEach { option ->
