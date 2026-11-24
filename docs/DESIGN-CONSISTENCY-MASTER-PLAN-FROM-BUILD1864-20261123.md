@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1939 P4 CI SUCCESS. P5 JPEG preview geometry and Live Calendar title source committed; Better Data existing specialized chrome reviewed and retained. CI and final cumulative/device QA pending. P6 next. No main merge.  
+**Status:** Build 1940 P1–P5 source/CI SUCCESS; P6 cumulative repository and source audit recorded. Combined real-device visual/functional QA is still pending; no final acceptance or main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -136,6 +136,31 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 - Voucher, Agent and Customer JPEG previews restore the Build 1864 one-row Previous / page count / Next arrangement, separate existing Gallery button below; remove extra toolbar padding and rebate wrapper. Page counter centered with localized text, cherry action styling, original flexible export button height and disabled/loading/permission states retained. Customer rebate field keeps validation and disabled guard. No renderer, document, page-count or export callback changes.
 - Live Calendar title now correctly identifies the calendar overview as well as detail; existing Live/Calendar tabs center their labels. Lifecycle, SET/Luke/Room data flow and content unchanged. Better Data header, four tabs, background and engine wiring reviewed; already consistent with the prior specialized design, no further source changes. Research/Rules/shared Timeline frozen.
 - P5 source scope complete; CI and cumulative P6 audit plus combined device QA pending (especially narrow-screen page controls and actual Gallery output). No merge to main.
+
+### P6 — cumulative verification and device acceptance gate (2026-11-24)
+
+**Verified implementation:** Build 1940, commit `9f965004962dd7cf4b1b513bb66594cc56357971`, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45432610558, job 138581730788. Completed SUCCESS: unit tests, lint, debug APK, formula-discovery historical audit step, release verification and both artifact uploads. Debug artifact 14941435064 and release artifact 14938439968 are unexpired and match this exact implementation commit. The P6 checkpoint is documentation-only and does not modify application code.
+
+**Full-tree baseline comparison** (Build 1864 vs Build 1940; both recursive Git trees complete, not truncated): 409 baseline files, 436 current files; 383 existing blobs identical, 26 modified, 27 added, zero deleted. 81 commits ahead of baseline. Of the 53 changed/added paths, 28 are production UI Kotlin (22 modified, six new), 23 are tests (two modified, 21 new), one is this plan and one is the CI branch trigger. No core, resource/asset, build configuration, renderer/exporter or Research path changed. Exact matched baseline groups: core 69, resources/assets 22, Research/rules/timeline/analysis-name group 16, renderer/exporter/pagination-name group nine, build configuration seven; these groups may overlap. Better Data/discovery name group 42 of 43 unchanged; only CherryBetterDataScreen chrome changed, pre-Scaffold state and content body identical. Live group 49 of 50 unchanged; only LiveScreen UI changed, pre-Scaffold lifecycle/state identical. No deletion, migration or main merge.
+
+**Source checks:** HomeScreen, AgentFormScreen/CustomerFormScreen region, shared Input and betting PreviewCard match baseline exactly. All 47 navigation destinations retain original order; authorized Bubble provider and protected form opt-out are the only navigation wiring changes found. Risk body retains original calculation/selection anchors; the lower plan selector intentionally differs (all actual plans plus budget, existing selected ID and budget fields). Earlier P2–P5 exact scoped comparisons and CI checks remain in this log. P5 three preview pager/bitmap blocks and export/permission preparation blocks match P4; original page controls restored with localized counter. No evidence of new calculation or storage changes in inspected source. These are source/CI checks, not proof of pixel-identical exports, device layout, actual data or speed. Do not claim all runtime paths exercised.
+
+**Combined phone QA — install verified Build 1940 after backing up existing data; use disposable test entries for writes. Compare the same dataset/date/session in both builds, not different live feeds.**
+
+| QA area | Acceptance check | Status |
+|---|---|---|
+| Home, Welcome, Weekly, profile forms | Approved look unchanged; crop, add/edit, back, save, existing portraits | Pending device |
+| Shared chrome/Bubble | Drag, persist across restart/navigation, safe keyboard/edges; return/back; hidden on protected routes | Pending device |
+| Dashboard, lists, settings, Quick Entry | Original control order and first-view density; correct photos/names; MM/EN; long names; keyboard, backup and reselect | Pending device |
+| Selectors and results | Agent/customer/all scopes, AM/PM/both draws, period/custom range; compact header, no duplicate frames, full amounts, no clipping | Pending device |
+| Entry/history/digits | Same parser, validation, totals, entry edit/delete, voucher selection, digit sorting and winner/closed/limit colors | Pending device |
+| Report/risk/commission/limits | Same fixture amounts/rates, risk tabs and every plan, custom budget, confirmation/save/remove | Pending device |
+| JPEG previews | Previous/counter/next on one row when space allows; swipe, rebate validation, permission grant/deny, duplicate-tap guard, gallery output and compare same-fixture page content | Pending device |
+| Live/Calendar | Correct titles on overview/detail, status, result handover and date history; existing lifecycle | Pending device |
+| Better Data/Research/Rules | Four tabs, 9:30 inputs, search starts only on button, cancel/exit; startup/navigation performance; protected Research/Rules unchanged | Pending device |
+| Accessibility | Narrow screen, long labels, large font, both languages; adaptive reflow and readable numbers | Pending device |
+
+**Remaining risks to verify on phone:** compact header with long multi-day ranges and both-draw badge, five risk options reflow, narrow/large-font JPEG page controls, actual export file content and storage permission, Bubble return/drag behavior, navigation/startup performance. Do not change layout or protected modules without identifying a concrete issue. A source test or green CI cannot replace this device gate. Record screenshots, expected/actual values, build and screen before targeted corrections.
 
 ### Updated execution sequence
 
