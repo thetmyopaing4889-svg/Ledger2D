@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1929 P1 CI SUCCESS, both APKs verified; visual/Back confirmation pending. Layout regression audit against Build 1864 completed at source-diff level; new user-approved layout-preservation and Premium Compact Scope contract supersedes structural restyling assumptions. P2–P6 implementation pending. Documentation-only checkpoint; no main merge.  
+**Status:** Build 1929 P1 CI SUCCESS; device Back confirmation pending. Layout regression audit recorded; focused Premium Compact Scope + risk result structure restoration source committed, CI/device QA pending. P2 remaining selection flows, P3–P6 pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -63,6 +63,14 @@ Existing unchanged active paths (including CustomerBetEntriesWorkspace, Customer
 ### Approved Premium Compact Scope component (user sketch)
 
 Single low-height Cherry glass capsule, target about 80–90dp at normal device/font scale (not fixed height). Left-to-right: **Agent photo circle with name underneath → decorative graduated cherry chevrons → Customer photo circle with name underneath → right-hand date + AM/PM pill above compact decorated reselect action**. Distinct real portraits loaded with the correct profile kind/ID, white rim, soft ruby depth; no generic text-only joined subtitle. One surface with subtle rim/highlight, no nested large cards. Keep main results immediately below. Avoid shrinking names/amounts to force fit; adaptive wrapping for actual large font/narrow width, preserve accessibility and full date/range meaning. Agent-only, all-customer/all-agent, multi-day/range and both-draw cases must accurately show scope without invented individual photo or session; design these variants consistently and review before claiming complete. Reselect uses existing callback. Do not use this component on unrelated screens without a selection scope. User sketch was reviewed in chat; no image asset is needed in app.
+
+### Compact scope / Risk result source checkpoint — 2026-11-24
+
+- Reusable PremiumCompactScope: separate agent/customer portraits with names underneath, decorative chevrons, date/session pill and compact gradient reselect button in one cherry glass capsule. Real profile IDs only; aggregate uses group glyph; nullable identities and date/session text support future variants. Adaptive layout for narrow/large-font displays, no fixed-height clipping. Only active Risk result wired in this batch; future consumers still pending.
+- Original risk hierarchy restored: 12dp summary padding, three equal-weight tabs in a single Row without an added panel, best/loss cards side by side whenever actual amount text fits at current font scale. Removed blanket 380dp threshold; measured-text fallback preserves full amount. Calculation/state block, RiskDigitTable/RiskPlanCard and entire tab content from when(tab) onward compared byte-identical.
+- Caller passes separate selected agent/customer names from existing selection state, no new data queries or route changes. Selection page itself remains untouched for P2, except passing names to result.
+- Updated B11 and photo coverage source contracts to assert actual scope IDs and original row arrangement rather than obsolete decoration. Two new compact-scope contracts. No Home/Form/Research, Bubble, report ledger, export or engine change.
+- CI and actual phone screenshots still required; verify normal-width side-by-side cards, three tabs, name wrapping/aggregate, date/session and reselect, font scale, first-view density. No visual acceptance inferred from source tests.
 
 ### Updated execution sequence
 

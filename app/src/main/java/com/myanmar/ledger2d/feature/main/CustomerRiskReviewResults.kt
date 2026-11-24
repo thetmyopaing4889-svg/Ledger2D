@@ -2,7 +2,9 @@
 
 package com.myanmar.ledger2d.feature.main
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
@@ -16,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,7 +51,8 @@ private fun RiskValue(label: String, value: String, tint: Color? = null, emphasi
 }
 @Composable
 private fun RiskMoneyBox(title: String, amount: String, tint: Color, modifier: Modifier) {
-    OutlinedCard(modifier) {
+    Surface(modifier, shape = RoundedCornerShape(18.dp), color = Color(0xEBFFFFFF),
+        border = BorderStroke(1.dp, Color.White), shadowElevation = 2.dp) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(amount, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = tint)
@@ -63,9 +67,17 @@ private fun RiskMoneyRange(best: Long, loss: Long) {
     val bestTitle = if (best < 0L) "အကောင်းဆုံးရလဒ် (အရှုံး)" else "အများဆုံးမြတ်နိုင်"
     val bestTint = if (best < 0L) MaterialTheme.colorScheme.error else Color(0xFF18794E)
     val lossTint = MaterialTheme.colorScheme.error
-    val fontScale = LocalDensity.current.fontScale
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val amountStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        if (maxWidth >= 380.dp && fontScale <= 1.15f && maxOf(bestText.length, lossText.length) <= 12) {
+        // Preserve the original two-column layout whenever the actual amounts fit.
+        // The fallback is based on measured text, not an arbitrary phone width.
+        val available = with(density) { ((maxWidth - 8.dp) / 2 - 24.dp).toPx() }
+        val amountsFit = listOf(bestText, lossText).all {
+            measurer.measure(AnnotatedString(it), style = amountStyle, softWrap = false).size.width <= available
+        }
+        if (amountsFit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RiskMoneyBox(bestTitle, bestText, bestTint, Modifier.weight(1f))
                 RiskMoneyBox("အများဆုံးရှုံးနိုင်", lossText, lossTint, Modifier.weight(1f))
@@ -172,7 +184,8 @@ fun CustomerRiskReviewResults(
     customerId: Long,
     date: LocalDate,
     session: DrawSession,
-    subtitle: String,
+    agentName: String,
+    customerName: String,
     onReselect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -217,15 +230,15 @@ fun CustomerRiskReviewResults(
     }
     LazyColumn(modifier.cherryFinancialBackground(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            CherryFinancialPanel {
-                CherryProfileIdentity(vm,com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER,customerId,subtitle,Modifier.fillMaxWidth())
-                Text("${date.reviewDate()} • ${session.reviewLabel()}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = onReselect, modifier = Modifier.align(Alignment.End)) {
-                    Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြန်ရွေးရန်"))
-                }
-            }
+            val lang = com.myanmar.ledger2d.core.design.LocalLanguage.current
+            PremiumCompactScope(
+                vm = vm,
+                agent = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.AGENT, agentId, agentName),
+                customer = CherryScopePerson(com.myanmar.ledger2d.core.profile.ProfileKind.CUSTOMER, customerId, customerName),
+                dateText = date.reviewDate(),
+                sessionLabel = if (session == DrawSession.MORNING) lang.text("မနက်", "AM") else lang.text("ညနေ", "PM"),
+                onReselect = onReselect,
+            )
         }
         val data = loaded
         if (data == null) {
@@ -238,8 +251,9 @@ fun CustomerRiskReviewResults(
                 item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ရွေးထားတဲ့အကြိမ်မှာ ထိုးစာရင်းမရှိပါ။")) }
             } else {
                 item {
-                    CherryFinancialPanel {
-                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),
+                        color = Color(0xEBFFFFFF), border = BorderStroke(1.5.dp, Color.White), shadowElevation = 4.dp) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             RiskValue("စုစုပေါင်းထိုးကြေး", "${base.totalStake.rm()} ကျပ်", emphasize = true)
                             RiskValue("ထိုးထားတဲ့ဂဏန်း", "${base.coveredDigits}/100 ကွက်")
                             RiskValue("လျော်ကြေးအဆ", "${decision.hedgeRate} ဆ")
@@ -258,11 +272,11 @@ fun CustomerRiskReviewResults(
                     }
                 }
                 item {
-                    CherryFinancialPanel {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            listOf("current" to "လက်ရှိ", "balance" to "50/50 မျှခြေ", "guarantee" to "အမြတ်သေချာ").forEach { (id,title) ->
-                                FilterChip(tab == id, onClick = { tab = id }, label = { Text(title, style = MaterialTheme.typography.labelSmall) })
-                            }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        listOf("current" to "လက်ရှိ", "balance" to "50/50 မျှခြေ", "guarantee" to "အမြတ်သေချာ").forEach { (id,title) ->
+                            FilterChip(tab == id, onClick = { tab = id },
+                                label = { Text(title, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center) },
+                                modifier = Modifier.weight(1f))
                         }
                     }
                 }

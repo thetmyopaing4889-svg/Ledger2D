@@ -260,7 +260,8 @@ fun CustomerReviewWorkspace(
             } else {
                 CustomerRiskReviewResults(
                     vm, agentId, customerId, range.start, draw ?: DrawSession.MORNING,
-                    subtitle, onReselect = { resultPage = false },
+                    agentName = selectedAgentName, customerName = selectedCustomerName,
+                    onReselect = { resultPage = false },
                     modifier = Modifier.fillMaxSize().padding(padding),
                 )
             }
