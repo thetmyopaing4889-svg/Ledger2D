@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** M1–M4 source and CI complete through Build 1924 (both APKs verified). M5 final baseline-to-head static regression audit complete: 37 changed files, 214 protected blob paths identical, all protected Home/Form/shared scaffold functions identical in Screens.kt. Combined device QA and user acceptance remain pending. Build 1924 is the verified APK candidate; this checkpoint changes documentation only. No main merge.  
+**Status:** M1–M5 source/CI and baseline static audit complete through Build 1924. User-approved follow-up: global Quick Entry bubble redesign on existing eligible scaffolds only; code/test batch committed, CI/APK and combined phone QA pending. Home-specific orb/Research/Rules/Form content and core logic unchanged; no main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -278,6 +278,14 @@ This section is the **source of truth for future sessions**. After a passed mile
 - Device screenshot findings (MM/EN, narrow width, large font) and any regressions
 - Which tasks are completed, which are intentionally NO CHANGE, what remains
 - Whether the user has accepted the build
+
+**User-approved floating Quick Entry bubble follow-up — 2026-11-24 (CI/device QA pending):**
+- Continue from verified Build 1924 plus documentation-only M5 checkpoint `c79b7daf62fb7651489bb1d6485a280a6b1570e6`. User explicitly authorized a scoped change to the existing shared OperationalScaffold Quick Entry host, not a redesign of protected Home/Form content.
+- Reuse original `R.drawable.btn_cherry_orb` in a compact 48dp circle, frosted rim and localized soft halo blur/shadow (no whole-screen blur or repeated animation). Home QuickCenterFab and original artwork untouched.
+- Overlay stays draggable throughout safe content bounds, starting in a reserved trailing header slot. Other header actions remain and screen-specific FABs remain in their original Scaffold slot. Existing eligibility gate, Quick Entry navigation and excluded screens unchanged. Header clearance prevents dragging over other header actions. Safe drawing/IME insets and normalized coordinates handle resize; only the bubble accepts pointer input.
+- Versioned position keys intentionally ignore the previous bottom-right offsets on first upgrade. Save normalized position once per completed/cancelled drag; shared preference listener syncs retained screens. No ledger data changes.
+- Four new unit/source tests: default/upgrade, clamping/header clearance, resize/keyboard, shared scaffold eligibility and original action/artwork. Existing protected screen source from DarkStatusBarsEffect onward verified byte-identical. Actual phone QA required for header alignment, long titles, small screens, keyboard, drag/tap, saved position, save/confirm and independent FABs, old Android blur fallback.
+- Next: verify combined CI and both APKs, then combined device QA as requested. No main merge.
 
 **M4 verified CI and M5 final static regression audit — 2026-11-24 (device QA pending):**
 - Build **1924**, commit `36900b614bafe4dc8f5b82056b610ec19ae859b2`, Actions https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45358556073. Verified completed SUCCESS: unit tests/lint/debug APK, formula-discovery audit workflow step, release verification, debug/release uploads. Debug artifact `14904241963`, release artifact `14903513846`, both unexpired at check and match this commit. This is the tested APK candidate.
