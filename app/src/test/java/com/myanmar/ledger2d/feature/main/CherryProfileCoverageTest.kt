@@ -17,12 +17,13 @@ class CherryProfileCoverageTest {
         val screens = file("Screens.kt")
         val quick = screens.substringAfter("fun QuickEntryScreen(").substringBefore("/** Quick Entry")
         val settings = screens.substringAfter("fun SettingsScreen(")
-        assertEquals(2, Regex("avatar=\\{ photoId").findAll(quick).count())
+        assertEquals(2, Regex("avatar\\s*=\\s*\\{\\s*photoId").findAll(quick).count())
         assertTrue(quick.contains("ProfileKind.AGENT"))
         assertTrue(quick.contains("ProfileKind.CUSTOMER"))
         assertEquals(2, Regex("avatar = \\{ photoId").findAll(settings).count())
         assertTrue(screens.contains("avatar = avatar, onSelect = onSelect"))
-        assertTrue(quick.contains("CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customerId"))
+        val compactQuick = quick.replace(Regex("\\s+"), "")
+        assertTrue(compactQuick.contains("CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customerId"))
     }
 
     @Test fun customerAndAgentOperationalHeadersNeverUseTransactionRows() {
