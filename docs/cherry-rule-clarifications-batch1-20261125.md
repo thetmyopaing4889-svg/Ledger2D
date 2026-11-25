@@ -21,3 +21,10 @@ TwoDAnalysisEngine.kt at baseline implements exact-pair repeat events from curre
 - Rules 001–003: whether previous day means previous trading day across weekends/holidays, and 001 zero-minus-one wrapping; if both head and tail match, clarify use of both. For 002/003 and 026, clarify whether candidate repeat reference set is all results already recorded in the same week or just the triggering result(s); user describes same-week exact repeat but not candidate membership. Whether one-day evidence stops upon AM hit or remains available PM is not explicitly resolved.
 - 031: removal scope (reader as well or computation only). Preserve source archive unless explicitly authorized.
 - 018/022 unresolved. This commit does not change code, build, ranking, original sources, or score archive. 
+
+## User follow-up (2026-11-25, final clarification of four questions)
+- Rules 001–003 may be active only on the following day within the same week; no Friday-to-next-Monday carryover. One-day scope includes AM and PM. Do not assume carryover across a midweek closure or whether an AM hit ends the PM signal; these edge cases have not been explicitly settled.
+- 001: subtracting one from zero wraps to nine.
+- Exact repeat references: all two-digit results already recorded in the same week, not reversed pairs; use only observations strictly before target.
+- 031: exclude from Better Data only. Preserve 2D Analysis reader and original source; do not delete the library entry.
+- Batch 1: seven principal rule specifications clarified; 018 and 022 pending; 031 intentionally excluded. No code changes in this clarification commit.
