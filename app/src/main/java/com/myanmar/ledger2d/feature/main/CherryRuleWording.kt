@@ -39,10 +39,11 @@ internal object CherryRuleWording {
             key=="new-special-khant" -> "2D Ko Khant 0 ထိပ်မူ"
             key=="s6-12-wheel" -> "12R နောက် 4789 အခွေမူ"
             key.startsWith("s4-wheel-") -> raw.replace(" → "," နောက် ")+"မူ"
-            key.startsWith("s4-born-") -> raw+"မူ"
+            key.startsWith("s4-born-") -> raw.let{if(it.endsWith("မူ"))it else it+"မူ"}
             key=="s5-fri" -> "သောကြာ ပါဝါမွေးမူ"
             key=="s5-wed" -> "ဗုဒ္ဓဟူးညနေ အပူးမွေးမူ"
             key=="s5-mon" -> "တနင်္လာမနက် ဘရိတ်မွေးမူ"
+            key.matches(Regex("s5-mon-[0-9]")) -> raw
             key=="s3-week" -> "အပတ်စဉ် စောင့်ကြည့်ဂဏန်းများ"
             key=="s3-six" -> "အပတ်စဉ် ဆတိုးအုပ်စု"
             key=="s3-ten" -> "ဆယ်ပြည့်ဂဏန်း လိုက်မူ"
@@ -60,7 +61,7 @@ internal object CherryRuleWording {
             key=="s8-71" -> "71 နောက် 2 ပတ်သီးမူ"
             key=="s8-15" -> "15 နောက် 4 ပတ်သီးမူ"
             key=="s8-88" -> "88 အပူးနောက် 3 ပတ်သီးမူ"
-            key=="s6-57"||key=="s6-06" -> raw.let{if(it.endsWith("မူ"))it else it+"မူ"}
+            key=="s6-57"||key=="s6-06"||key in setOf("s6-01-68","s6-01-46","s6-04","s6-07","s6-70") -> raw.let{if(it.endsWith("မူ"))it else it+"မူ"}
             key.startsWith("s6-") -> raw.replace(Regex("အပိုင်း\\s*\\([^)]+\\)\\s*"),"")
                 .replace("သီးသန့်မွေး","သီးသန့်မွေးဂဏန်း").trim()+"မူ"
             else -> raw.replace(Regex("အပိုင်း\\s*\\([^)]+\\)\\s*"),"")

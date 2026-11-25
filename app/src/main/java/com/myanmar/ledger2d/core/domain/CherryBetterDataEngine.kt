@@ -292,7 +292,7 @@ object CherryPairExpander {
 
 object CherryBetterDataEngine {
     private val section6 = mapOf(
-        "01" to listOf("68","46"),"04" to listOf("11"),"07" to listOf("49","29"),
+        // 01, 04, 07 are now evaluated by their approved weekly born rules.
         "09" to listOf("68"),"14" to listOf("17"),"17" to listOf("14"),
         "23" to listOf("79"),"27" to listOf("47","37"),"43" to listOf("89"),
         "49" to listOf("60"),"54" to listOf("04"),"59" to listOf("47","79"),
@@ -310,10 +310,10 @@ object CherryBetterDataEngine {
     )
     private val doubleBorn = mapOf(
         "00" to listOf("77","75","55"),
-        "11" to listOf("76","64","78","84","70","71"),
+        "11" to listOf("76","64","78","84","70","07","71","17","67"),
         "22" to listOf("07","48","64","82","34","79","72","49","42"),
         "33" to listOf("81","89","51","59"),
-        "44" to listOf("83","81","31","88","33","91","93","21","23","27","38","49"),
+        "44" to listOf("83","38","81","18","31","13","88","33","91","93","21","23","27","72","49","94"),
         "55" to listOf("17","36","37","35","07","05"),
         "66" to listOf("17","14","97","94"),
         "77" to listOf("09","02","29","22"),
@@ -484,7 +484,6 @@ object CherryBetterDataEngine {
                 rule("s6-12-wheel","12R → 4789 အခွေ",
                     CherryPairExpander.wheel("4789"))
             }
-            if(last=="70")rule("s6-70","70 R နောက် ပါဝါ",power)
             if(last=="80"||last=="08")rule("s8-80","80 R → 1264 အပူးခွေ",
                 CherryPairExpander.wheel("1264",true))
             if(last=="67"||last=="76")rule("s8-67","67 R → 8123 အပူးခွေ",
@@ -540,40 +539,16 @@ object CherryBetterDataEngine {
             if(x=="94"||x=="49")
                 birth(d,"s6-94","94R နောက် 1 ပတ်သီး",CherryPairExpander.any(1),
                     limit=5,calendarDays=true)
-            if(x[0]==x[1]) {
-                wheels[x].orEmpty().forEachIndexed{i,w->
-                    birth(d,"s4-wheel-$x-$i","${x} အပူး → ${w} ခွေ",
-                        CherryPairExpander.wheel(w))
-                }
-                birth(d,"s4-born-$x","${x} အပူးမွေးဂဏန်း",doubleBorn[x].orEmpty())
-            }
             if(x=="80"||x=="08")birth(d,"s8-80","80 R → 1264 အပူးခွေ",
                 CherryPairExpander.wheel("1264",true))
             if(x=="67"||x=="76")birth(d,"s8-67","67 R → 8123 အပူးခွေ",
                 CherryPairExpander.wheel("8123",true))
             if(x=="00")birth(d,"s8-00-bk","00 နောက် 5 ဘရိတ်",
                 listOf("05","14","23","69","78"))
-            if(d.date.dayOfWeek==DayOfWeek.FRIDAY&&x in power)
-                birth(d,"s5-fri","သောကြာပါဝါမွေး",listOf("09","13","26","47","58"))
-            if(d.date.dayOfWeek==DayOfWeek.WEDNESDAY&&
-                d.session==DrawSession.EVENING&&x[0]==x[1])
-                birth(d,"s5-wed","ဗုဒ္ဓဟူးညနေ အပူးနောက် 7 BK",CherryPairExpander.bk(7))
-            if(d.date.dayOfWeek==DayOfWeek.MONDAY&&
-                d.session==DrawSession.MORNING){
-                val bs=mondayBk[bk(x)].orEmpty()
-                birth(d,"s5-mon","တနင်္လာမနက် ဘရိတ်အလိုက်",
-                    bs.flatMap{CherryPairExpander.bk(it.digitToInt())})
-            }
         }
         val mon=target.date.minusDays((target.date.dayOfWeek.value-1).toLong())
         val thisWeek=rows.filter{it.date>=mon&&it.date<mon.plusDays(7)}
             .map{it.digit}.toSet()
-        add(born,"s3-week","s3-week","အပတ်စဉ် ၈ ကွက်",
-            "ယခုအပတ် မပေါ်သေးသော အုပ်စု",
-            weeklyEight.filterNot{it in thisWeek},null,CherryTab.BORN)
-        if(groupSix.any{it in thisWeek})add(born,"s3-six","s3-six",
-            "အပတ်စဉ် ၆ ကွက်အုပ်စု","ယခုအပတ် အုပ်စုတစ်ကွက် ပေါ်ပြီး",
-            groupSix.filterNot{it in thisWeek},null,CherryTab.BORN)
         // User-confirmed omissions, clarification batches 1–4.
         // IDs are independent of legacy evidence; no retrospective scoring.
         // Use only rows strictly before the target (filtered above).
@@ -753,8 +728,71 @@ object CherryBetterDataEngine {
                     breaks(4),origin,weekEnd)
         }
 
+        // Reviewed weekly watches, exact pairs only (no implicit R).
+        if(DrawSchedule.isWorkingDate(target.date,closed) && target.date<=weekEnd) {
+            add(born,"s3-week","s3-week","အပတ်စဉ် ၈ ကွက်",
+                "ယခုအပတ် မပေါ်သေးသော အုပ်စု",
+                weeklyEight.filterNot{it in thisWeek},null,CherryTab.BORN)
+            val seenSix=groupSix.filter{it in thisWeek}
+            // First distinct hit is the trigger; three additional distinct
+            // hits complete the watch. Repeated pairs never advance it.
+            if(seenSix.size in 1..3)
+                add(born,"s3-six","s3-six","အပတ်စဉ် ၆ ကွက်အုပ်စု",
+                    "နောက်ဆက်တွဲ ထွက်ပြီး ${seenSix.size-1}/3",
+                    groupSix.filterNot{it in thisWeek},null,CherryTab.BORN)
+        }
+        for(origin in weekRows) {
+            val x=origin.digit
+            if(x[0]==x[1]) {
+                wheels[x].orEmpty().forEachIndexed{i,w->
+                    scopedBorn("s4-wheel-$x-$i","${x} အပူး → ${w} ခွေ",
+                        CherryPairExpander.wheel(w),origin,weekEnd)
+                }
+                // The 44 subset is a separate source card but shares the
+                // parent born family. Do not add another specificity credit.
+                scopedBorn("s4-born-$x","${x} အပူးမွေးဂဏန်း",
+                    doubleBorn[x].orEmpty(),origin,weekEnd)
+                if(x=="44")scopedBorn("s4-mid44","အလယ်အပူးမူ",
+                    listOf("83","38","81","18","31","13","88","33"),
+                    origin,weekEnd,family="s4-born-44")
+            }
+            if(x=="01")scopedBorn("s6-01-68","01 နောက် 68 မွေးမူ",
+                listOf("68"),origin,weekEnd)
+            if(x=="01"||x=="10")scopedBorn("s6-01-46","01R နောက် 46 မွေးမူ",
+                listOf("46"),origin,weekEnd)
+            if(x=="04")scopedBorn("s6-04","04 နောက် 11 မွေးမူ",
+                listOf("11"),origin,weekEnd)
+            if(x=="07")scopedBorn("s6-07","07 နောက် 49/29 မွေးမူ",
+                listOf("49","29"),origin,weekEnd)
+            if(x=="70")scopedBorn("s6-70","70 နောက် ပါဝါမွေးမူ",
+                power,origin,weekEnd)
+        }
+        // Wednesday evening double: four scheduled sessions, capped by the
+        // following Wednesday. Missing observations don't extend the slots.
+        rows.takeLast(4).filter{it.date.dayOfWeek==DayOfWeek.WEDNESDAY &&
+            it.session==DrawSession.EVENING && it.digit[0]==it.digit[1]}.forEach{origin->
+            var slot=identity(origin)
+            val slots=(1..4).map{slot=nextSlot(slot);slot}
+                .filter{it.date<=origin.date.plusDays(7)}
+            if(target in slots)
+                scopedBorn("s5-wed","ဗုဒ္ဓဟူးညနေ အပူးနောက် 7 ဘရိတ်မူ",
+                    breaks(7),origin,slots.last().date,
+                    detail="4 sessions • ${slots.last().session.label}")
+        }
+        // Friday power is a named group; existing group definition includes
+        // both directions. Output list is literal. Start next Monday only.
+        rows.filter{it.date==mon.minusDays(3) && it.digit in power}.forEach{origin->
+            scopedBorn("s5-fri","သောကြာပါဝါမွေးမူ",
+                listOf("09","13","26","47","58"),origin,weekEnd,starts=mon)
+        }
         val mondayAm=dayRow(mon,DrawSession.MORNING)
         val mondayPm=dayRow(mon,DrawSession.EVENING)
+        if(mondayAm!=null) {
+            mondayBk[bk(mondayAm.digit)].orEmpty().forEach{b->
+                scopedBorn("s5-mon-$b","တနင်္လာမနက် $b ဘရိတ်မွေးမူ",
+                    breaks(b.digitToInt()),mondayAm,weekEnd)
+            }
+        }
         if(mondayAm!=null && mondayPm!=null) {
             val ones=(mondayAm.digit+mondayPm.digit).count{it=='1'}
             if(ones==2||ones==3)
@@ -857,9 +895,9 @@ object CherryBetterDataEngine {
                 .map{(p,ev)->
                     val familyCount=ev.map{it.family}.distinct().size
                     val sourceCount=ev.map{it.tab}.distinct().size
-                    val specific=ev.count{it.id.startsWith("cross-")||
+                    val specific=ev.filter{it.id.startsWith("cross-")||
                         it.id.startsWith("gold-")||it.id.startsWith("s6-")||
-                        it.id.startsWith("s4-")}
+                        it.id.startsWith("s4-")}.map{it.family}.distinct().size
                     CherryPick(p,ev,cut[p].orEmpty().distinct(),
                         familyCount*10+sourceCount*15+specific*2)
                 }.sortedWith(compareBy<CherryPick>{it.cuts.isNotEmpty()}

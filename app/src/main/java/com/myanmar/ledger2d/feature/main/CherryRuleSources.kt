@@ -180,6 +180,10 @@ internal object CherryRuleSources {
                 }
                 raw=markers.mapNotNull{bullet(3,it)}
             }
+            id=="s4-mid44"->{
+                part=4;label="မူစာအုပ် • အလယ်အပူးမူ"
+                raw=listOf("83 - 81 - 31 (R) နှင့် 88 - 33 (တစ်ခါတစ်လေ ချက်ချင်းကျတတ်ပြီး၊ တစ်ခါတစ်လေ နောက်ကျတတ်သည်)။")
+            }
             id.startsWith("s4-wheel-")||id.startsWith("s4-born-")->{
                 part=4
                 val double=Regex("""^s4-(?:wheel|born)-([0-9]{2})""")
@@ -192,17 +196,17 @@ internal object CherryRuleSources {
             }
             id.startsWith("s5-")->{
                 part=5
-                val marker=when(id){
-                    "s5-mon"->"တနင်္လာနေ့ မနက် ဘရိတ်"
-                    "s5-wed"->"ဗုဒ္ဓဟူးနေ့ ညနေထွက်ဂဏန်း"
-                    "s5-fri"->"သောကြာနေ့ (မနက် Or ညနေ)"
+                val marker=when{
+                    id=="s5-mon"||id.matches(Regex("s5-mon-[0-9]"))->"တနင်္လာနေ့ မနက် ဘရိတ်"
+                    id=="s5-wed"->"ဗုဒ္ဓဟူးနေ့ ညနေထွက်ဂဏန်း"
+                    id=="s5-fri"->"သောကြာနေ့ (မနက် Or ညနေ)"
                     else->return null
                 }
                 val lines=section(source,5)
                 val start=lines.indexOfFirst{it.startsWith("*")&&marker in it}
                 if(start<0)return null
                 label="အပိုင်း (၅) · နေ့အလိုက်မူ"
-                raw=if(id=="s5-mon")listOf(lines[start])+lines.drop(start+1)
+                raw=if(id=="s5-mon"||id.matches(Regex("s5-mon-[0-9]")))listOf(lines[start])+lines.drop(start+1)
                     .takeWhile{it.startsWith("*")}.take(10)
                     else listOf(lines[start])
             }
@@ -210,6 +214,7 @@ internal object CherryRuleSources {
                 part=6
                 val two=when(id){
                     "s6-70"->"70"
+                    "s6-01-68","s6-01-46"->"01"
                     "s6-am92"->"92"
                     else->id.substringAfter("s6-")
                 }

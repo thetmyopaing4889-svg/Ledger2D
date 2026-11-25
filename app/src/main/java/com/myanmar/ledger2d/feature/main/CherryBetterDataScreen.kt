@@ -304,9 +304,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 Text(tr("🚫 မူအရ ဖြတ်ထားသောဂဏန်းများ",
                                     "🚫 Rule-based exclusions"),
                                     fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                                val last=report.last?.digit
-                                if(last!=null && report.current.isNotEmpty()){
-                                    val dead=(last[1].digitToInt()+7)%10
+                                val dead=report.cuts.entries.firstOrNull{(_,reasons)->
+                                    reasons.any{it.startsWith("+7 ပိတ်ဖြတ်:")}
+                                }?.key?.lastOrNull()
+                                if(dead!=null){
                                     Text(tr("နောက်ပိတ် +7 ဖြတ်မူ: ${dead} ပိတ်",
                                         "+7 rule excludes endings in $dead"),
                                         style=MaterialTheme.typography.bodyMedium)

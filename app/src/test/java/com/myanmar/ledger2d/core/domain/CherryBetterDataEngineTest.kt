@@ -160,7 +160,7 @@ class CherryBetterDataEngineTest {
         assertFalse(sameDay.activeRules.any{it.id.startsWith("new-born-75@")})
     }
 
-    @Test fun newSourceTwoCalendarDaysExpireAcrossWeekendWithoutChangingOldBornRules() {
+    @Test fun newSourceTwoCalendarDaysAndReviewedWeeklyRulesExpireAcrossWeekend() {
         val source75=listOf(d("2026-11-19",DrawSession.MORNING,"75"))
         val friday=CherryBetterDataEngine.calculate(
             source75,target("2026-11-20",DrawSession.MORNING))
@@ -173,7 +173,7 @@ class CherryBetterDataEngineTest {
         val legacy=listOf(d("2026-11-20",DrawSession.EVENING,"11"))
         val nextTradingDay=CherryBetterDataEngine.calculate(
             legacy,target("2026-11-23",DrawSession.MORNING))
-        assertTrue(nextTradingDay.activeRules.any{it.id.startsWith("s4-wheel-11-")})
+        assertFalse(nextTradingDay.activeRules.any{it.id.startsWith("s4-wheel-11-")})
     }
 
     @Test fun nineteenBreakHasFiveCalendarDaysNotFiveTradingDays() {
