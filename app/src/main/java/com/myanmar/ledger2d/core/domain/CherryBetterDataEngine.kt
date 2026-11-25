@@ -450,19 +450,6 @@ object CherryBetterDataEngine {
                 rule("new-born-50","50 နောက် 3/8 ထိပ်",
                     CherryPairExpander.top(3)+CherryPairExpander.top(8),
                     "50 ထွက်ပြီး 3 ထိပ်/8 ထိပ် (37,82) ဆက်စပ်မူ။")
-            if(last in mobGroup) {
-                // The source gives TWO outcomes for the same group trigger,
-                // not a rule to bet the other four source pairs.
-                rule("new-mob-double","လူမိုက်ကြီးအပူး",
-                    (0..9).map{"$it$it"},
-                    "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး အပူးအုပ်စု လိုက်မူ။ သက်တမ်းမပေးထားသဖြင့် နောက်တစ်ပွဲအတွက်သာ ပြ။")
-                // User later confirmed the separate 1267 weekly rule uses
-                // this same group; it is evaluated in the weekly born block.
-            }
-            if(last=="80"||last=="08")rule("s8-80","80 R → 1264 အပူးခွေ",
-                CherryPairExpander.wheel("1264",true))
-            if(last=="67"||last=="76")rule("s8-67","67 R → 8123 အပူးခွေ",
-                CherryPairExpander.wheel("8123",true))
             if(last[0]=='8')rule("s2-8head","8 ထိပ် → 01234 အပူးခွေ",
                 CherryPairExpander.wheel("01234",true))
             if(last=="48"||last=="84")rule("s8-48","48 R နောက် 6 ပိတ်",CherryPairExpander.tail(6))
@@ -503,10 +490,7 @@ object CherryBetterDataEngine {
         }
         rows.takeLast(20).forEach{d->
             val x=d.digit
-            // Source page 1/3: plain "2 days" and "5 days", not working days.
-            if(x=="75"&&d.session==DrawSession.MORNING&&d.date<target.date)
-                birth(d,"new-born-75","75 နောက် 45789 အခွေ",
-                    CherryPairExpander.wheel("45789"),limit=2,calendarDays=true)
+            // Source page 3: plain five calendar days, not working days.
             if(x=="19"||x=="91")
                 birth(d,"new-bk-19r","19R နောက် 1 ဘရိတ်",
                     CherryPairExpander.bk(1),limit=5,calendarDays=true)
@@ -515,10 +499,6 @@ object CherryBetterDataEngine {
             if(x=="94"||x=="49")
                 birth(d,"s6-94","94R နောက် 1 ပတ်သီး",CherryPairExpander.any(1),
                     limit=5,calendarDays=true)
-            if(x=="80"||x=="08")birth(d,"s8-80","80 R → 1264 အပူးခွေ",
-                CherryPairExpander.wheel("1264",true))
-            if(x=="67"||x=="76")birth(d,"s8-67","67 R → 8123 အပူးခွေ",
-                CherryPairExpander.wheel("8123",true))
         }
         val mon=target.date.minusDays((target.date.dayOfWeek.value-1).toLong())
         val thisWeek=rows.filter{it.date>=mon&&it.date<mon.plusDays(7)}
@@ -857,8 +837,17 @@ object CherryBetterDataEngine {
                 withReverse(listOf("26","29","28","48","46","49")),fr,weekEnd,starts=mon)
         for(origin in weekRows) {
             val x=origin.digit
-            if(x in mobGroup)scopedBorn("new-mob-wheel","လူမိုက်အခွေမူ",
-                CherryPairExpander.wheel("1267"),origin,weekEnd)
+            // Approved 41/42/48: weekly Born only; independent criteria.
+            if(x=="80"||x=="08")scopedBorn("s8-80","80 R → 1264 အပူးခွေ",
+                CherryPairExpander.wheel("1264",true),origin,weekEnd)
+            if(x=="67"||x=="76")scopedBorn("s8-67","67 R → 8123 အပူးခွေ",
+                CherryPairExpander.wheel("8123",true),origin,weekEnd)
+            if(x in mobGroup) {
+                scopedBorn("new-mob-double","လူမိုက်ကြီးအပူးမူ",
+                    doubles,origin,weekEnd)
+                scopedBorn("new-mob-wheel","လူမိုက်အခွေမူ",
+                    CherryPairExpander.wheel("1267"),origin,weekEnd)
+            }
             if(origin.session==DrawSession.EVENING && x[1]=='7')
                 scopedBorn("new-bk-evening7","ညနေ 7 ပိတ်မူ",
                     followDigits(5,0)+breaks(3),origin,weekEnd)
@@ -898,6 +887,14 @@ object CherryBetterDataEngine {
                 }
                 else->Unit
             }
+        }
+        // 49: the two-calendar-date window starts tomorrow. Results on the
+        // origin date (including PM) are outside the eligible stop-on-hit window.
+        rows.filter{it.date>=target.date.minusDays(2)&&it.date<target.date&&
+            it.session==DrawSession.MORNING&&it.digit=="75"}.forEach{origin->
+            scopedBorn("new-born-75","75 နောက် 45789 အခွေ",
+                CherryPairExpander.wheel("45789"),origin,origin.date.plusDays(2),
+                starts=origin.date.plusDays(1),detail="နောက် 2 ရက်")
         }
         // Weekly watches begin Monday; each criterion independently retires
         // after the first observed matching result, like existing born rules.

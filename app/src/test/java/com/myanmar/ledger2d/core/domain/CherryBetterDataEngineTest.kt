@@ -63,7 +63,7 @@ class CherryBetterDataEngineTest {
         assertFalse(report.activeRules.any{it.name.contains("1264")})
     }
 
-    @Test fun bornRuleExpiresAfterFiveWorkingDays() {
+    @Test fun bornWheelExpiresAtEndOfOriginWeek() {
         val report=CherryBetterDataEngine.calculate(
             listOf(d("2026-11-02",DrawSession.EVENING,"80")),
             target("2026-11-10",DrawSession.MORNING))
@@ -107,18 +107,19 @@ class CherryBetterDataEngineTest {
     }
 
 
-    @Test fun mobTriggerNeverGuessesUnspecified1267Group() {
+    @Test fun mobTriggerUsesTwoApprovedIndependentWeeklyCriteria() {
         val history=listOf(d("2026-11-09",DrawSession.EVENING,"17"))
         val report=CherryBetterDataEngine.calculate(
             history,target("2026-11-10",DrawSession.MORNING))
-        val doublePairs=report.current.filter { p ->
-            p.evidence.any { it.id == "new-mob-double" }
+        val doublePairs=report.born.filter { p ->
+            p.evidence.any { it.id.substringBefore('@') == "new-mob-double" }
         }.map{it.pair}.toSet()
-        val wheelPairs=report.current.filter { p ->
-            p.evidence.any { it.id == "new-mob-wheel" }
+        val wheelPairs=report.born.filter { p ->
+            p.evidence.any { it.id.substringBefore('@') == "new-mob-wheel" }
         }.map{it.pair}.toSet()
         assertEquals((0..9).map{"$it$it"}.toSet(),doublePairs)
-        assertTrue(wheelPairs.isEmpty())
+        assertEquals(CherryPairExpander.wheel("1267").toSet(),wheelPairs)
+        assertTrue(report.current.none{p->p.evidence.any{it.id in setOf("new-mob-double","new-mob-wheel")}})
     }
 
     @Test fun sixBreakTriggers1649WheelButSevenBreakDoesNot() {
