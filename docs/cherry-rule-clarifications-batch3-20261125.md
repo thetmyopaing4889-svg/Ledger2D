@@ -15,3 +15,6 @@ Baseline Build 1946. Previous batch 2 requirements at 617d742716d3b75fc8fc01ce8c
 | 30 | new-day-tue | No answer supplied yet. |
 
 Preserve all excluded entries in 2D Analysis and original source. Combined with batches 1 and 2: 17 retained in principle, 12 intentionally excluded, 8 remaining (30–37); retained items still require implementation, source scope and edge-case checks. No ranking, UI, source or archive changes. No claim of improved predictive accuracy.
+
+## Rule 30 follow-up
+User confirms new-day-tue follows the same timing as new-day-mon: both Tuesday AM and PM qualify, same-week lifetime, no next-week carry. Rule 29 last-tail equality definition still pending. Combined totals: 18 retained in principle, 12 excluded, 7 remaining (31–37). No code changes.
