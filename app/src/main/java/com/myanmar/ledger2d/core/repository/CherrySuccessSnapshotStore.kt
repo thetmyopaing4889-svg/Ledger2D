@@ -33,7 +33,7 @@ internal class CherrySuccessSnapshotStore(context: Context) {
             rules.put(JSONObject().put("id", rule.id).put("name", rule.name)
                 .put("tab", rule.tab.name).put("criterion", rule.criterion.name)
                 .put("predictions", JSONArray(rule.predictions))
-                .put("origin",rule.sourceOrigin))
+                .put("origin",rule.sourceOrigin).put("detail",rule.detail))
         }
         return JSONObject().put("date", snap.target.date.toString())
             .put("session", snap.target.session.name)
@@ -56,7 +56,7 @@ internal class CherrySuccessSnapshotStore(context: Context) {
                 CherryTab.valueOf(rule.getString("tab")),
                 CherrySuccessCriterion.valueOf(rule.getString("criterion")),
                 (0 until predictions.length()).map { predictions.getString(it) },
-                rule.optString("origin", ""))
+                rule.optString("origin", ""), rule.optString("detail", ""))
         }
         return CherrySuccessSnapshot(target, item.getLong("time"), rules,
             item.optString("version","cherry-success-snapshot-v1"),

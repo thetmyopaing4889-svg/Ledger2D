@@ -19,6 +19,8 @@ internal data class CherrySuccessRule(
     val predictions: List<String>,
     /** Rule provenance from the already-completed input draw, not a score. */
     val sourceOrigin: String = "",
+    /** Optional original pre-draw calculation trace; older archives lack it. */
+    val detail: String = "",
 ) {
     init {
         require(id.isNotBlank() && name.isNotBlank() && predictions.isNotEmpty())
@@ -120,7 +122,7 @@ internal object CherrySuccessEngine {
                         tab, CherrySuccessCriterion.PAIR, pairs,
                         evidence.first().origin?.let {
                             it.date.toString() + "/" + it.session.name
-                        }.orEmpty()))
+                        }.orEmpty(), evidence.first().detail))
                 }
             }
         }

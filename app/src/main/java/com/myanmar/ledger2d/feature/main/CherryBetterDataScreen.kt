@@ -50,9 +50,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                 .bufferedReader(Charsets.UTF_8).use{it.readText()}
         }.getOrNull()
     }
-    var now by remember { mutableStateOf(LocalDateTime.now(cherryYangon)) }
+    var now by remember { mutableStateOf(LocalDateTime.now(cherryYangon).withSecond(0).withNano(0)) }
     LaunchedEffect(Unit) {
-        while(true) { delay(60_000); now=LocalDateTime.now(cherryYangon) }
+        // Cheap boundary check; the state changes only once per minute.
+        while(true) { delay(1_000); now=LocalDateTime.now(cherryYangon).withSecond(0).withNano(0) }
     }
     val hFlow=remember(container){container.history.observeAll()}
     val dFlow=remember(container){container.liveResults.observeAll()}
@@ -66,12 +67,28 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val closed by cFlow.collectAsStateWithLifecycle(initialValue=null)
     val ready=history!=null&&daily!=null&&winners!=null&&locks!=null&&closed!=null
     val closedDates=remember(closed){closed.orEmpty().map{it.date}.toSet()}
-    val target=remember(now,closedDates) {
-        var next=DrawSchedule.nextDraw(now)
-        while(!DrawSchedule.isWorkingDate(next.date,closedDates))
-            next=DrawIdentity(next.date.plusDays(1),DrawSession.MORNING)
-        next
+    val merged=remember(history,daily,winners,locks,now,closedDates) {
+        Historic2DDataSource.resolve(
+            liveDaily=daily.orEmpty(),history=history.orEmpty(),
+            today=now.toLocalDate(),now=now.toLocalTime(),
+            winners=winners.orEmpty(),manualLocks=locks.orEmpty()
+        ).draws.filterNot{it.date in closedDates}
     }
+    // The exact same confirmed result projection is used by Success.
+    val successStore = remember(context) { CherrySuccessSnapshotStore(context) }
+    var successSnapshots by remember(successStore) {
+        mutableStateOf(successStore.load())
+    }
+    val confirmedKeys=remember(merged) {
+        merged.filter { it.digit.matches(Regex("[0-9]{2}")) }
+            .map { DrawIdentity(it.date,it.session) }.toSet()
+    }
+    val target=remember(now,closedDates,confirmedKeys,successSnapshots) {
+        CherryPendingDraw.select(now,closedDates,confirmedKeys,successSnapshots.map { it.target }.toSet())
+    }
+    val captureOpen=now.isBefore(CherrySuccessEngine.cutoff(target)) && target !in confirmedKeys
+    val waitingForResult=CherryPendingDraw.isDue(target,now) && target !in confirmedKeys
+    val archived=successSnapshots.firstOrNull { it.target==target }
     // Long-running V3 scope lives at SCREEN level, not inside a LazyColumn
     // item: scrolling the Math panel offscreen must not cancel a live search.
     // Service construction does NOT start formula discovery.
@@ -85,24 +102,28 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     DisposableEffect(v3Search){
         onDispose{v3Search.cancel()}
     }
-    val merged=remember(history,daily,winners,locks,now,closedDates) {
-        Historic2DDataSource.resolve(
-            liveDaily=daily.orEmpty(),history=history.orEmpty(),
-            today=now.toLocalDate(),now=now.toLocalTime(),
-            winners=winners.orEmpty(),manualLocks=locks.orEmpty()
-        ).draws.filterNot{it.date in closedDates}
-    }
     val todayDaily=daily.orEmpty().firstOrNull{it.date==target.date}
     val fromModern=todayDaily?.modern930?.takeIf{it.matches(Regex("[0-9]{2}"))}
     val fromInternet=todayDaily?.internet930?.takeIf{it.matches(Regex("[0-9]{2}"))}
     var modernOverride by rememberSaveable(target.date.toString()){mutableStateOf("")}
     var internetOverride by rememberSaveable(target.date.toString()){mutableStateOf("")}
-    val modern=modernOverride.takeIf{it.length==2}?:fromModern
-    val internet=internetOverride.takeIf{it.length==2}?:fromInternet
-    val report=remember(ready,merged,target,modern,internet,closedDates) {
+    val savedInputs=archived?.inputEvidence.orEmpty().split(';')
+        .mapNotNull { val parts=it.split('=',limit=2); if(parts.size==2) parts[0] to parts[1] else null }.toMap()
+    fun input(key:String, override:String, fallback:String?):String? =
+        if(!captureOpen && key in savedInputs)
+            savedInputs[key]?.takeIf { it.matches(Regex("[0-9]{2}")) }
+        else override.takeIf{it.length==2}?:fallback
+    val modern=input("modern930",modernOverride,fromModern)
+    val internet=input("internet930",internetOverride,fromInternet)
+    val calculated=remember(ready,merged,target,modern,internet,closedDates) {
         if(ready) CherryBetterDataEngine.calculate(merged,target,modern,internet,closedDates)
         else null
     }
+    // While on screen, retain the last pre-cutoff report. On reopen use the
+    // same target and saved input values; the archive itself remains immutable.
+    var frozen by remember(target) { mutableStateOf<CherryReport?>(null) }
+    SideEffect { if(captureOpen && calculated!=null && frozen!=calculated) frozen=calculated }
+    val report=if(captureOpen) calculated else frozen ?: calculated
     // A V3 choice is bound to one draw, never silently reused next session.
     // Reading choices does not invoke the expensive discovery engine.
     val v3ChoicePrefs = remember(context) {
@@ -137,14 +158,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     var openedBornRule by rememberSaveable { mutableStateOf<String?>(null) }
     // Only pre-result rule projections are recorded; historical results
     // never backfill or silently revise earlier predictions.
-    val successStore = remember(context) { CherrySuccessSnapshotStore(context) }
-    var successSnapshots by remember(successStore) {
-        mutableStateOf(successStore.load())
-    }
     val mathForSnapshot = v3Choices.toMap()
     var selectedSuccessDraw by remember { mutableStateOf<DrawIdentity?>(null) }
-    LaunchedEffect(target, report, mathForSnapshot) {
-        if(report != null) {
+    LaunchedEffect(target, report, mathForSnapshot, captureOpen) {
+        if(report != null && captureOpen) {
             val capturedAt = System.currentTimeMillis()
             if(CherrySuccessEngine.beforeCutoff(target,capturedAt)) {
                 val snapshot = CherrySuccessEngine.createSnapshot(
@@ -217,6 +234,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             CherryHeading(tr("⚡ လက်ရှိအကြိမ်မူများ","⚡ Current draw rules"),
                                 tr("နောက်ဆုံးအတည်ပြုဂဏန်း: ${report.last?.digit?:"—"}",
                                     "Latest confirmed: ${report.last?.digit?:"—"}"))
+                            if(waitingForResult) Text(tr("ပေါက်ဂဏန်း စောင့်နေသည်","Awaiting confirmed result"),
+                                style=MaterialTheme.typography.labelMedium,color=AppColors.PrimaryDeep)
                         }
                         item {
                             CherryRuleFrameOverview(
@@ -234,16 +253,18 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                         fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
                                     Row(horizontalArrangement=Arrangement.spacedBy(9.dp)){
                                         OutlinedTextField(
-                                            modernOverride,
+                                            if(captureOpen) modernOverride else modern.orEmpty(),
                                             {modernOverride=it.filter{ch->ch in '0'..'9'}.take(2)},
                                             modifier=Modifier.weight(1f),singleLine=true,
-                                            label={Text("Modern")},placeholder={Text(fromModern?:"—")}
+                                            enabled=captureOpen,
+                                            label={Text("Modern")},placeholder={Text(modern?:"—")}
                                         )
                                         OutlinedTextField(
-                                            internetOverride,
+                                            if(captureOpen) internetOverride else internet.orEmpty(),
                                             {internetOverride=it.filter{ch->ch in '0'..'9'}.take(2)},
                                             modifier=Modifier.weight(1f),singleLine=true,
-                                            label={Text("Internet")},placeholder={Text(fromInternet?:"—")}
+                                            enabled=captureOpen,
+                                            label={Text("Internet")},placeholder={Text(internet?:"—")}
                                         )
                                     }
                                     if(!report.has930){
@@ -252,7 +273,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                             color=MaterialTheme.colorScheme.onSurfaceVariant,
                                             style=MaterialTheme.typography.bodySmall)
                                     }
-                                    if(modernOverride.isNotEmpty()||internetOverride.isNotEmpty()){
+                                    if(captureOpen && (modernOverride.isNotEmpty()||internetOverride.isNotEmpty())){
                                         TextButton(onClick={modernOverride="";internetOverride=""}){
                                             Text(tr("မူလဒေတာပြန်သုံးရန်","Use saved data"))}
                                     }
@@ -312,6 +333,8 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             CherryHeading(tr("🔥 အသက်ဝင်နေသော မွေးမူများ",
                                 "🔥 Active born rules"),
                                 tr("မွေးမူများ၏ ဘုံတူညီမှု","Shared results across born rules"))
+                            if(waitingForResult) Text(tr("ပေါက်ဂဏန်း စောင့်နေသည်","Awaiting confirmed result"),
+                                style=MaterialTheme.typography.labelMedium,color=AppColors.PrimaryDeep)
                         }
                         item {
                             CherryRuleFrameOverview(
@@ -421,6 +444,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 onLatest={selectedSuccessDraw=null},
                                 onHistory={showHistory=true},
                                 en=en,
+                                sourceText=originalSource,
                             )
                         }
                     }
@@ -457,12 +481,12 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 color=AppColors.PrimaryDeep,
                                 fontWeight=FontWeight.Bold)
                         }
-                        Text(tr("ဒီဂဏန်းကို မူ ${p.familyCount} ခုက ထောက်ခံထားပါတယ်။",
-                            "Supported by ${p.familyCount} rules."),
+                        val instanceCount=p.evidence.map{it.id}.distinct().size
+                        Text(tr("ဒီအတွဲကို မူခွဲ ${instanceCount} ခုက ထောက်ခံထားပါတယ်။",
+                            "Supported by ${instanceCount} rule instances."),
                             style=MaterialTheme.typography.bodyMedium)
-                        Text(tr("ကိုက်ညီတဲ့မူတွေ ပိုများတဲ့ဂဏန်းကို ဦးစားပေးထားပြီး " +
-                                "ရှောင်ရန်မူနဲ့ ငြိတဲ့အတွဲတွေကို ချန်ထားပါတယ်။",
-                            "More matching rules rank higher; cut-rule conflicts are excluded."),
+                        Text(tr("မူအုပ်စုအလိုက် အဆင့်သတ်မှတ်ပြီး ရှောင်ရန်မူငြိတဲ့အတွဲတွေကို ချန်ထားပါတယ်။",
+                            "Ranking uses rule families; cut-rule conflicts are excluded."),
                             style=MaterialTheme.typography.bodySmall,
                             color=MaterialTheme.colorScheme.onSurfaceVariant)
                         HorizontalDivider(color=AppColors.Blush)
@@ -486,10 +510,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                     Icon(Icons.Default.MenuBook,null,Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
                                     Text(if(ref.label.startsWith("ဓာတ်ပုံအကျဉ်းချုပ်"))
-                                        tr("ရင်းမြစ် • ${ref.label} · ကြည့်ရန်",
+                                        tr("ရင်းမြစ် ကြည့်ရန်",
                                             "Source summary • Read")
-                                    else tr("မူရင်း • ${ref.label} · ကြည့်ရန်",
-                                        "Original • ${ref.label} · Read"),
+                                    else tr("မူရင်းမူ ကြည့်ရန်",
+                                        "Original • Read"),
                                         style=MaterialTheme.typography.labelSmall)
                                 }
                             }

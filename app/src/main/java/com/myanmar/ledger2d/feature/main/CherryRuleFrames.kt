@@ -79,8 +79,8 @@ internal fun CherryRuleFrameOverview(
                                     color=if(rank==1)Color.White else AppColors.PrimaryDeep)
                                 Text(pick.pair,fontWeight=FontWeight.Black,fontSize=25.sp,
                                     color=if(rank==1)Color.White else AppColors.PrimaryDeep)
-                                Text(if(en)"${pick.familyCount} rules"
-                                     else "${pick.familyCount} မူ",
+                                Text(if(en)"${pick.evidence.map{it.id}.distinct().size} instances"
+                                     else "${pick.evidence.map{it.id}.distinct().size} မူခွဲ",
                                     style=MaterialTheme.typography.labelSmall,
                                     color=if(rank==1)Color.White else AppColors.PrimaryDeep)
                             }
@@ -89,6 +89,9 @@ internal fun CherryRuleFrameOverview(
                     repeat(3-row.size){Spacer(Modifier.weight(1f))}
                 }
             }
+            Text(if(en)"${eligible.size} eligible • $conflicted excluded"
+                else "အကျုံးဝင် ${eligible.size} တွဲ • ရှောင်ရန် $conflicted တွဲ",
+                style=MaterialTheme.typography.labelMedium,color=AppColors.PrimaryDeep)
             TextButton(onClick=onToggle,modifier=Modifier.fillMaxWidth()){
                 Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
                 Spacer(Modifier.width(5.dp))
@@ -96,7 +99,7 @@ internal fun CherryRuleFrameOverview(
                     if(en)"Hide all generated pairs" else "ဂဏန်းအားလုံး ပိတ်ရန်"
                 }else{
                     if(en)"View details — all ${all.size} pairs"
-                    else "အသေးစိတ်ကြည့်ရန် — ${all.size} တွဲအားလုံး"
+                    else "တွက်ထွက်သမျှ ${all.size} တွဲ ကြည့်ရန်"
                 },fontWeight=FontWeight.SemiBold)
             }
             if(expanded){
@@ -136,8 +139,8 @@ private fun CherryRulePairGrid(
                         Text(pick.pair,fontWeight=FontWeight.Bold,fontSize=17.sp,
                             color=if(conflict)Color(0xFF96616C) else AppColors.PrimaryDeep)
                         Text(if(conflict){if(en)"cut" else "ဖြတ်"}
-                             else {if(en)"${pick.familyCount} rules"
-                                   else "${pick.familyCount} မူ"},
+                             else {if(en)"${pick.evidence.map{it.id}.distinct().size} instances"
+                                   else "${pick.evidence.map{it.id}.distinct().size} မူခွဲ"},
                             maxLines=1,style=MaterialTheme.typography.labelSmall,
                             color=if(conflict)Color(0xFF96616C)
                                 else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -173,8 +176,9 @@ internal fun CherryRuleFrameCard(
                         verticalArrangement=Arrangement.spacedBy(4.dp)){
                         Text(CherryRuleWording.title(rule.id,rule.name),color=AppColors.PrimaryDeep,
                             fontWeight=FontWeight.Bold,style=MaterialTheme.typography.bodyMedium)
-                        Text(if(en)"${rule.pairs.size} pairs"
-                             else "${rule.pairs.size} တွဲ ထုတ်ပေးထားသည်",
+                        val accepted=all.count { it.pair in rule.pairs && it.cuts.isEmpty() }
+                        Text(if(en)"${rule.pairs.size} generated • $accepted eligible"
+                             else "တွက်ထွက် ${rule.pairs.size} တွဲ • အကျုံးဝင် $accepted တွဲ",
                             style=MaterialTheme.typography.bodySmall,
                             color=MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -196,8 +200,8 @@ internal fun CherryRuleFrameCard(
                             style=MaterialTheme.typography.bodySmall)
                     }
                     bornEvent?.let { event ->
-                        Text(if(en)"Active until ${event.expires} (working days)"
-                            else "မူသက်တမ်းကုန်ရက်: ${event.expires} (အလုပ်ဖွင့်ရက်အလိုက်)",
+                        Text(if(en)"Active until ${event.expires}"
+                            else "မူသက်တမ်းကုန်ရက်: ${event.expires}",
                             style=MaterialTheme.typography.bodySmall,
                             color=AppColors.PrimaryDeep)
                     }
@@ -223,8 +227,8 @@ internal fun CherryRuleFrameCard(
                                 null,modifier=Modifier.size(15.dp))
                             Spacer(Modifier.width(5.dp))
                             Text(
-                                if(en)"Original • ${reference.label} · Read"
-                                else "မူရင်း • ${reference.label} · ကြည့်ရန်",
+                                if(en)"Read source"
+                                else "မူရင်းမူ ကြည့်ရန်",
                                 style=MaterialTheme.typography.labelSmall,
                             )
                         }

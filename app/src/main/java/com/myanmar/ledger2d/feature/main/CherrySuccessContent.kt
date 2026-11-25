@@ -54,6 +54,7 @@ internal fun CherrySuccessContent(
     onLatest: () -> Unit,
     onHistory: () -> Unit,
     en: Boolean,
+    sourceText: String? = null,
 ) {
     val confirmed = confirmedHistory
         .filter { it.digit.matches(Regex("[0-9]{2}")) }
@@ -72,6 +73,8 @@ internal fun CherrySuccessContent(
     var expandedTab by rememberSaveable { mutableStateOf<String?>(null) }
     var period by rememberSaveable { mutableIntStateOf(10) }
     var openedRule by remember { mutableStateOf<CherrySuccessRank?>(null) }
+    var openedCheck by remember(showing) { mutableStateOf<CherrySuccessCheck?>(null) }
+    var showMisses by remember(showing,expandedTab) { mutableStateOf(false) }
     val recentDraws = confirmed.take(period).mapNotNull {
         byCompleted[DrawIdentity(it.date,it.session)]
     }
@@ -168,31 +171,17 @@ internal fun CherrySuccessContent(
                                     else "ဒီကဏ္ဍအတွက် မူမှတ်တမ်း မရှိပါ။",
                                     style=MaterialTheme.typography.bodySmall)
                             }
-                            checks.forEach { check ->
-                                Row(Modifier.fillMaxWidth(),
-                                    verticalAlignment=Alignment.CenterVertically,
-                                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                                    Icon(if(check.correct) Icons.Default.CheckCircle else
-                                        Icons.Default.Cancel,null,
-                                        tint=if(check.correct) Color(0xFF16854E)
-                                            else Color(0xFFC13D56),modifier=Modifier.size(18.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(check.rule.name,
-                                            fontWeight=FontWeight.Medium,
-                                            style=MaterialTheme.typography.bodySmall)
-                                        Text(if(check.rule.criterion==CherrySuccessCriterion.PAIR)
-                                            check.rule.predictions.take(8).joinToString(" / ") +
-                                            (if(check.rule.predictions.size>8)
-                                                " (+${check.rule.predictions.size-8})" else "")
-                                            else check.rule.predictions.joinToString(" / "),
-                                            style=MaterialTheme.typography.labelSmall,
-                                            color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                        if(check.rule.sourceOrigin.isNotEmpty()) {
-                                            Text(check.rule.sourceOrigin,
-                                                style=MaterialTheme.typography.labelSmall,
-                                                color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                    }
+                            val hits=checks.filter { it.correct }
+                            val misses=checks.filterNot { it.correct }
+                            hits.forEach { check -> SuccessRuleRow(check,en) { openedCheck=check } }
+                            if(misses.isNotEmpty()) {
+                                TextButton(onClick={showMisses=!showMisses},modifier=Modifier.fillMaxWidth()) {
+                                    Text(if(en) "Missed rules — ${misses.size}"
+                                        else "လွဲခဲ့သောမူများ — ${misses.size} မူခွဲ")
+                                    Icon(if(showMisses) Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
+                                }
+                                if(showMisses) misses.forEach { check ->
+                                    SuccessRuleRow(check,en) { openedCheck=check }
                                 }
                             }
                         }
@@ -252,7 +241,7 @@ internal fun CherrySuccessContent(
                         Text("${index+1}",fontWeight=FontWeight.Bold,
                             color=AppColors.PrimaryDeep)
                         Column(Modifier.weight(1f)) {
-                            Text(rank.name,style=MaterialTheme.typography.bodySmall,
+                            Text(successRankTitle(rank),style=MaterialTheme.typography.bodySmall,
                                 fontWeight=FontWeight.SemiBold)
                             Text(successTabName(rank.tab,en)+" • "+
                                 (if(en) "${rank.currentStreak} consecutive qualifying hits"
@@ -275,13 +264,63 @@ internal fun CherrySuccessContent(
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+    openedCheck?.let { check ->
+        val rule=check.rule
+        val previous=stored?.inputEvidence.orEmpty().substringAfter("previous=","")
+            .substringBefore(';').substringAfterLast(':').takeIf{it.matches(Regex("[0-9]{2}"))}
+        val detail=rule.detail.ifBlank {
+            if(rule.tab==CherryTab.CURRENT && previous!=null) "နောက်ဆုံးထွက် $previous" else ""
+        }
+        val source=if(rule.criterion==CherrySuccessCriterion.PAIR &&
+            (rule.detail.isNotBlank() || rule.id.startsWith("s2-")))
+            CherryRuleSources.lookup(sourceText,rule.id,detail) else null
+        var showSource by remember(rule.id) { mutableStateOf(false) }
+        AlertDialog(onDismissRequest={openedCheck=null},
+            title={Text(successRuleTitle(rule),color=AppColors.PrimaryDeep)},
+            text={
+                Column(Modifier.heightIn(max=420.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement=Arrangement.spacedBy(9.dp)) {
+                    Text(check.result+" — "+if(check.correct) (if(en)"Correct" else "မှန်")
+                        else (if(en)"Miss" else "လွဲ"),fontWeight=FontWeight.Bold,
+                        color=if(check.correct) Color(0xFF16854E) else Color(0xFFC13D56))
+                    if(rule.criterion==CherrySuccessCriterion.PAIR) {
+                        if(rule.detail.isNotBlank() || (rule.id.startsWith("s2-") && previous!=null)) {
+                            Text(CherryRuleWording.why(rule.id,rule.name,detail))
+                            if(rule.id.startsWith("s2-"))
+                                Text(CherryRuleWording.how(rule.id,rule.name,rule.predictions))
+                        }
+                        Text(if(en) "Recorded eligible pairs — ${rule.predictions.size}"
+                            else "ကြိုတင်မှတ်ထားသော အကျုံးဝင်အတွဲ — ${rule.predictions.size} တွဲ",
+                            fontWeight=FontWeight.SemiBold)
+                        rule.predictions.chunked(5).forEach { pairs ->
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+                                pairs.forEach { pair ->
+                                    Surface(modifier=Modifier.weight(1f),shape=RoundedCornerShape(8.dp),
+                                        color=if(pair==check.result) Color(0xFFE1F4E8) else cherrySuccessPale) {
+                                        Text(pair,modifier=Modifier.padding(7.dp),fontWeight=FontWeight.Bold,
+                                            color=if(pair==check.result) Color(0xFF16854E) else AppColors.PrimaryDeep)
+                                    }
+                                }
+                                repeat(5-pairs.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                        if(source!=null) {
+                            TextButton(onClick={showSource=!showSource}) {
+                                Text(if(en) "Read source" else "မူရင်းမူ ကြည့်ရန်")
+                            }
+                            if(showSource) Text(source.quote,style=MaterialTheme.typography.bodySmall)
+                        }
+                    } else Text(rule.predictions.joinToString(" / "))
+                }
+            },confirmButton={TextButton(onClick={openedCheck=null}) { Text(if(en)"Close" else "ပိတ်") }})
+    }
     openedRule?.let { rank ->
         val proof = recentDraws.flatMap { draw ->
             draw.checks.filter { rank.id==it.rule.tab.name+":"+it.rule.id }
                 .map { draw.snapshot.target to it }
         }
         AlertDialog(onDismissRequest={openedRule=null},
-            title={Text(rank.name,color=AppColors.PrimaryDeep)},
+            title={Text(successRankTitle(rank),color=AppColors.PrimaryDeep)},
             text={
                 Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -300,6 +339,29 @@ internal fun CherrySuccessContent(
             confirmButton={TextButton(onClick={openedRule=null}) {
                 Text(if(en) "Close" else "ပိတ်")
             }})
+    }
+}
+
+private fun successRuleTitle(rule: CherrySuccessRule): String =
+    if(rule.criterion==CherrySuccessCriterion.PAIR) CherryRuleWording.title(rule.id,rule.name)
+    else rule.name
+
+private fun successRankTitle(rank: CherrySuccessRank): String =
+    if(rank.criterion==CherrySuccessCriterion.PAIR)
+        CherryRuleWording.title(rank.id.substringAfter(':'),rank.name) else rank.name
+
+@Composable
+private fun SuccessRuleRow(check: CherrySuccessCheck,en:Boolean,onClick:()->Unit) {
+    Surface(onClick=onClick,color=Color.Transparent,shape=RoundedCornerShape(8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(vertical=6.dp),
+            verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Icon(if(check.correct) Icons.Default.CheckCircle else Icons.Default.Cancel,null,
+                tint=if(check.correct) Color(0xFF16854E) else Color(0xFFC13D56),modifier=Modifier.size(18.dp))
+            Text(successRuleTitle(check.rule),modifier=Modifier.weight(1f),
+                fontWeight=FontWeight.Medium,style=MaterialTheme.typography.bodySmall)
+            Icon(Icons.Default.ChevronRight,if(en)"Details" else "အသေးစိတ်",modifier=Modifier.size(18.dp))
+        }
     }
 }
 
