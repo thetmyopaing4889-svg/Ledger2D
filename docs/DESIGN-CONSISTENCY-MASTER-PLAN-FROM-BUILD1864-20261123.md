@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1940 P1–P5 source/CI SUCCESS; P6 cumulative repository and source audit recorded. Combined real-device visual/functional QA is still pending; no final acceptance or main merge.  
+**Status:** Build 1941 CI SUCCESS. User approved remaining Quick Entry changes after combined phone review; single-page entry and format/confirm refinement source checkpoint; new CI/device review pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -161,6 +161,12 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 | Accessibility | Narrow screen, long labels, large font, both languages; adaptive reflow and readable numbers | Pending device |
 
 **Remaining risks to verify on phone:** compact header with long multi-day ranges and both-draw badge, five risk options reflow, narrow/large-font JPEG page controls, actual export file content and storage permission, Bubble return/drag behavior, navigation/startup performance. Do not change layout or protected modules without identifying a concrete issue. A source test or green CI cannot replace this device gate. Record screenshots, expected/actual values, build and screen before targeted corrections.
+
+### User-approved post-P6 Quick Entry refinement (2026-11-25)
+
+- Verified Build 1941 successful; latest branch head 161b2f7f9b3c3d8181ee6056bce62e4d76c9b4dd. User reviewed other screens and explicitly approved merging Quick Entry selection into the entry page, the 1/3/3/3/4 format grid, Special (အထူး) as the visible label for MANUAL, reset only on successful new submission, and exact form Save glossy button styling.
+- QuickEntryScreen now delegates directly to BettingScreen in the same route; fixed-person entry and edit routes remain. Defaults retained, changing agent immediately clears customer, only matching customers selectable; existing raw draft retained and revalidated on selection changes. Hide redundant Quick Entry bubble on the unified page and prevent scope/input changes during submit/receipt. Preview confirmation gated on scope and exact input/request. Capture receipt total before submit; clear input and reset MANUAL on success only; errors retain input/format. Edit uses original stored format and existing edit callback.
+- All 14 QuickFormat enum values and parser untouched; UI label only, existing HEAD spelling retained. Existing date/session/backdated checks, preview and save/validation VM methods unchanged. Confirm adopts approved profile-form Save gradient/rim/shadow; profile form itself unchanged. Source contracts updated for explicit user-approved flow; device validation and CI pending.
 
 ### Updated execution sequence
 

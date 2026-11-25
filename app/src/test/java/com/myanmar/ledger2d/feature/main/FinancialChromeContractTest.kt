@@ -17,15 +17,15 @@ class FinancialChromeContractTest {
         assertTrue(betting.contains(".cherryFinancialBackground().imePadding()"))
         assertFalse(betting.contains("CherryFinancialPanel {"))
         assertTrue(betting.contains("PremiumDateInput("))
-        assertTrue(betting.contains("PremiumSelectionButton("))
+        assertTrue(betting.contains("BetEntryConfirmButton("))
         assertTrue(betting.contains("CherryProfileIdentity(vm,ProfileKind.AGENT,agentId"))
         assertTrue(betting.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId"))
         assertTrue(betting.contains("vm.refreshPreview(customerId, agentId"))
         assertTrue(betting.contains("vm.confirm(customerId, agentId"))
         assertTrue(betting.contains("vm.editConfirm(item, it, session, raw, format)"))
-        assertTrue(betting.contains("preview.canConfirm && submit !is SubmitState.Working"))
+        assertTrue(betting.contains("scopeReady && currentPreview.canConfirm && !busy && date != null"))
         assertTrue(betting.contains("if (pastDraw && !backdated)"))
-        assertTrue(betting.contains("QuickFormat.entries.forEach"))
+        assertTrue(betting.contains("BetEntryFormatGrid(format, enabled = !busy"))
     }
 
     @Test fun historyKeepsVoucherEditDeleteAndFinancialDataRowsUntouched() {

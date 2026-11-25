@@ -64,7 +64,7 @@ import com.myanmar.ledger2d.core.model.DrawSession
         composable("historical2d"){Historical2DTimelineScreen(container, {nav.popBackStack()}, {nav.navigate("settings")}, {nav.navigate("historical2dLegacy")})}
         composable("historical2dLegacy"){Historical2DAnalysisScreen(container, {nav.popBackStack()}, {nav.navigate("settings")})}
         composable("todayLedger"){TodayLedgerScreen(vm,{nav.popBackStack()},{route->when(route){"home"->goTab("home");"ledger"->goTab("todayLedger");"manage"->goTab("agents");"quick"->nav.navigate("quickEntry")}})}
-        composable("quickEntry"){QuickEntryScreen(vm,onBet={agentId,customerId->nav.navigate("bet/$agentId/$customerId")}){nav.popBackStack()}}
+        composable("quickEntry"){QuickEntryScreen(vm){nav.popBackStack()}}
         composable("agents"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");"statementJpeg"->nav.navigate("agentSettlementJpeg");"total"->nav.navigate("agentWorkspace/total");else->nav.navigate("agentScope/$feature")}})}
         composable("agentDashboard"){AgentDashboardScreen(vm,{nav.popBackStack()},{},{nav.navigate("agentForm/0")},{feature->when(feature){"agentList"->nav.navigate("agentList");"statementJpeg"->nav.navigate("agentSettlementJpeg");else->nav.navigate("agentWorkspace/$feature")}})}
         composable("agentWorkspace/{feature}",listOf(navArgument("feature"){type=NavType.StringType})){e->val feature=e.arguments!!.getString("feature") ?: "total";if(feature=="winning") WinningNumberScreen(vm,"view"){nav.popBackStack()} else AgentFeatureWorkspaceScreen(vm,feature,{nav.popBackStack()})}

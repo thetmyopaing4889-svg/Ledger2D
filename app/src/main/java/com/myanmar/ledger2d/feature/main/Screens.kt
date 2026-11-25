@@ -866,83 +866,8 @@ fun transactionDisplayText(format: String, raw: String): String {
         Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.text("Cherry 2D • မြန်မာ 2D ဒိုင်များအတွက်", "Cherry 2D • For Myanmar 2D Agents"),Modifier.padding(start=6.dp),style=HomeTypography.footer(LocalLanguage.current.code),color=Color(0xFFB98DA0),maxLines=2,softWrap=true,textAlign=TextAlign.Center)
     }
 }
-@Composable fun QuickEntryScreen(vm:LedgerViewModel,onBet:(Long,Long)->Unit,onBack:()->Unit){
-    val l = LocalLanguage.current
-    val agents by vm.agents.collectAsStateWithLifecycle()
-    var agentId by rememberSaveable { mutableStateOf(l.defaultAgentId) }
-    var customerId by rememberSaveable { mutableStateOf(l.defaultCustomerId) }
-    val customers by vm.customers(agentId).collectAsStateWithLifecycle(initialValue = emptyList())
-    LaunchedEffect(agents, l.defaultAgentId) {
-        if (agents.none { it.id == agentId }) agentId = agents.firstOrNull { it.id == l.defaultAgentId }?.id ?: 0L
-    }
-    LaunchedEffect(customers, agentId, l.defaultCustomerId) {
-        if (customers.none { it.id == customerId }) customerId = if (agentId == l.defaultAgentId) customers.firstOrNull { it.id == l.defaultCustomerId }?.id ?: 0L else 0L
-    }
-    AppScaffold(l.translate("အမြန်စာရင်းသွင်းရန်"), onBack, includeQuickEntryFab = false) { p ->
-        Column(
-            Modifier.fillMaxSize().padding(p).cherryManagementScreenBackground().imePadding()
-        ) {
-            Column(
-                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
-                    .padding(horizontal = AppDimens.screen).padding(top = AppDimens.screen, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(
-                    l.translate("အရင် ဒိုင်ကိုရွေးပါ။ ရွေးထားသောဒိုင်အောက်က ထိုးသားများပဲ ပြပါမည်။"),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                SelectionField(
-                    l.translate("ဒိုင်ရွေးပါ"),
-                    agents.firstOrNull { it.id == agentId }?.name ?: l.translate("ဒိုင်မရွေးရသေးပါ"),
-                    agents.map { it.id to "${it.name} • ${it.rate} ဆ" },
-                    agentId, true,
-                    avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
-                ) { agentId = it }
-                SelectionField(
-                    l.translate("ထိုးသားရွေးပါ"),
-                    if (agentId == 0L) l.translate("ဒိုင်ရွေးပြီးမှ ထိုးသားရွေးပါ")
-                        else customers.firstOrNull { it.id == customerId }?.name ?: l.translate("ထိုးသားရွေးပါ"),
-                    customers.map { it.id to it.name },
-                    customerId, agentId > 0,
-                    avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
-                ) { customerId = it }
-                if (agentId > 0 && customerId > 0) {
-                    CherryManagementSelectionSummary {
-                        CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, agentId, Modifier.size(34.dp))
-                        CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, customerId, Modifier.size(34.dp))
-                        Text(
-                            "${agents.firstOrNull { it.id == agentId }?.name} • ${customers.firstOrNull { it.id == customerId }?.name} • ${l.selectedSession.label}",
-                            Modifier.weight(1f),
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDeep,
-                            textAlign = TextAlign.Start,
-                        )
-                    }
-                }
-            }
-            PremiumSelectionButton(
-                onClick = { onBet(agentId, customerId) },
-                enabled = agentId > 0 && customerId > 0,
-                modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = AppDimens.screen).padding(bottom = AppDimens.screen)
-                    .height(56.dp),
-            ) {
-                Text(l.translate("အကွက်နှင့် ထိုးကြေးထည့်ရန်"), style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
-            }
-        }
-    }
-}
-/** Quick Entry uses the same selector as Settings, Agent and Customer workspaces. */
-@Composable private fun SelectionField(
-    label: String, selected: String, options: List<Pair<Long, String>>,
-    value: Long, enabled: Boolean = true,
-    avatar: (@Composable (Long) -> Unit)? = null,
-    onSelect: (Long) -> Unit,
-) {
-    PremiumScopeDropdown(label, selected, options, value, Modifier.fillMaxWidth(), enabled = enabled, compact = true, avatar = avatar, onSelect = onSelect)
+@Composable fun QuickEntryScreen(vm: LedgerViewModel, onBack: () -> Unit) {
+    BettingScreen(vm, 0L, 0L, onBack = onBack, quickEntry = true)
 }
 @Composable fun AgentListScreen(vm:LedgerViewModel,onAgent:(Long)->Unit,onAdd:()->Unit,onEdit:(Long)->Unit,onWinning:()->Unit,onClosedDays:()->Unit,onSettings:()->Unit){
     val agents by vm.agents.collectAsStateWithLifecycle()
@@ -1307,8 +1232,15 @@ fun CustomerFormScreen(vm:LedgerViewModel,id:Long,agentId:Long,onBack:()->Unit){
     }
 }
 @Composable
-fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: () -> Unit, entryId: Long = 0L) {
+fun BettingScreen(vm: LedgerViewModel, initialAgentId: Long, initialCustomerId: Long, onBack: () -> Unit, entryId: Long = 0L, quickEntry: Boolean = false) {
     val language = LocalLanguage.current
+    var agentId by rememberSaveable(initialAgentId, quickEntry) { mutableStateOf(if (quickEntry) language.defaultAgentId else initialAgentId) }
+    var customerId by rememberSaveable(initialCustomerId, quickEntry) { mutableStateOf(if (quickEntry) language.defaultCustomerId else initialCustomerId) }
+    val agents by vm.agents.collectAsStateWithLifecycle()
+    val customers = if (quickEntry) key(agentId) {
+        val scoped by remember(agentId) { vm.customers(agentId) }.collectAsStateWithLifecycle(initialValue = emptyList())
+        scoped.filter { it.agentId == agentId }
+    } else emptyList()
     val nextDraw = remember { DrawSchedule.nextDraw(LocalDateTime.now()) }
     var dateText by rememberSaveable(entryId) { mutableStateOf(if (entryId == 0L) language.selectedDate else nextDraw.date.toString()) }
     var session by rememberSaveable(entryId) { mutableStateOf(if (entryId == 0L) language.selectedSession else nextDraw.session) }
@@ -1317,8 +1249,11 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
     var backdated by rememberSaveable(entryId) { mutableStateOf(entryId > 0L) }
     var showLateError by rememberSaveable { mutableStateOf(false) }
     var receiptId by rememberSaveable { mutableStateOf(0L) }
-    val agentProfile by vm.agent(agentId).collectAsStateWithLifecycle(initialValue = null)
-    val customerProfile by vm.customer(customerId).collectAsStateWithLifecycle(initialValue = null)
+    var receiptTotal by rememberSaveable { mutableStateOf("-") }
+    val agentProfile by remember(agentId) { vm.agent(agentId) }.collectAsStateWithLifecycle(initialValue = null)
+    val customerProfile by remember(customerId) { vm.customer(customerId) }.collectAsStateWithLifecycle(initialValue = null)
+    val scopeReady = if (quickEntry) agents.any { it.id == agentId } && customers.any { it.id == customerId && it.agentId == agentId }
+        else agentId > 0L && customerId > 0L && agentProfile?.id == agentId && customerProfile?.id == customerId && customerProfile?.agentId == agentId
     val existing by vm.betEntry(entryId).collectAsStateWithLifecycle(initialValue = null)
     val preview by vm.preview.collectAsStateWithLifecycle()
     val submit by vm.submit.collectAsStateWithLifecycle()
@@ -1328,10 +1263,33 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
         it.isBefore(now.toLocalDate()) ||
             (it == now.toLocalDate() && !DrawSchedule.isSessionOpenForToday(session,now))
     } ?: false
-    val visiblePreview = if (pastDraw && !backdated) null else preview
+    val busy = submit is SubmitState.Working || submit is SubmitState.Success || receiptId > 0L
+    // A changed scope/input must never reuse a successful preview from the previous request.
+    val previewKey = listOf(agentId, customerId, entryId, raw, format, date, session, backdated, scopeReady)
+    var requestedKey by remember { mutableStateOf<List<Any?>?>(null) }
+    val currentPreview = if (scopeReady && requestedKey == previewKey && preview === vm.preview.value) preview
+        else BetPreview(emptyInput = raw.isBlank(), loading = scopeReady && raw.isNotBlank())
+    val visiblePreview = if (pastDraw && !backdated) null else currentPreview
     LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.entry.sourceText; format = QuickFormat.entries.firstOrNull { selected -> selected.name == it.entry.inputFormat } ?: QuickFormat.MANUAL } }
-    LaunchedEffect(customerId,agentId,entryId,raw, format, date, session, backdated) { date?.let { vm.refreshPreview(customerId, agentId, it, session, raw, format, entryId, backdated) } }
-    LaunchedEffect(submit) { if (submit is SubmitState.Success) { receiptId=(submit as SubmitState.Success).id; vm.resetSubmit() } }
+    LaunchedEffect(previewKey) {
+        requestedKey = null
+        if (scopeReady && date != null) {
+            vm.refreshPreview(customerId, agentId, date, session, raw, format, entryId, backdated)
+            requestedKey = previewKey
+        }
+    }
+    LaunchedEffect(submit) {
+        if (submit is SubmitState.Success) {
+            receiptId = (submit as SubmitState.Success).id
+            if (entryId == 0L) {
+                raw = ""
+                format = QuickFormat.MANUAL
+            }
+            vm.resetSubmit()
+        }
+    }
+    androidx.activity.compose.BackHandler(enabled = submit is SubmitState.Working || submit is SubmitState.Success) {}
+
     if (showLateError) AlertDialog(
         onDismissRequest = { showLateError = false },
         title = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်း၍ မရပါ")) },
@@ -1340,21 +1298,44 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
         dismissButton = { TextButton({ showLateError = false }) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မလုပ်တော့ပါ")) } }
     )
     if (receiptId>0L && entryId>0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းပြင်ပြီးပါပြီ"))},text={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("မူရင်း Entry ကို ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ။"))},confirmButton={TextButton({receiptId=0L;onBack()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြီးပါပြီ"))}})
-    if (receiptId>0L && entryId==0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်းပြီးပါပြီ"))},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းစုစုပေါင်း • ") + ((preview.parse as? ParseResult.Success)?.total?.mmk() ?: "-"));Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw=""}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီထိုးသားအတွက် ဆက်သွင်းရန်"))}},dismissButton={TextButton({receiptId=0L;onBack()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြီးပါပြီ"))}})
-    AppScaffold(if (entryId == 0L) "2D Form\nစာရင်းသွင်းရန်" else "2D Form\nစာရင်းပြင်ရန်", onBack) { padding ->
+    if (receiptId>0L && entryId==0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်းပြီးပါပြီ"))},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းစုစုပေါင်း • ") + receiptTotal);Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw="";format=QuickFormat.MANUAL}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီထိုးသားအတွက် ဆက်သွင်းရန်"))}},dismissButton={TextButton({receiptId=0L;onBack()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြီးပါပြီ"))}})
+    AppScaffold(if (entryId == 0L) "2D Form\nစာရင်းသွင်းရန်" else "2D Form\nစာရင်းပြင်ရန်", { if (!busy) onBack() }, includeQuickEntryFab = !quickEntry && !busy) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().imePadding()) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                        CherryProfileIdentity(vm,ProfileKind.AGENT,agentId,agentProfile?.name ?: "ဒိုင်",Modifier.weight(1f),avatarSize=34.dp)
-                        CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,customerProfile?.name ?: "ထိုးသား",Modifier.weight(1f),avatarSize=34.dp)
+                    if (quickEntry) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            PremiumScopeDropdown(
+                                language.translate("ဒိုင်ရွေးပါ"),
+                                agents.firstOrNull { it.id == agentId }?.name ?: language.translate("ဒိုင်မရွေးရသေးပါ"),
+                                agents.map { it.id to it.name }, agentId, Modifier.weight(1f), enabled = !busy,
+                                avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId, Modifier.size(32.dp)) },
+                            ) { selected ->
+                                if (selected != agentId) {
+                                    customerId = 0L
+                                    agentId = selected
+                                }
+                            }
+                            PremiumScopeDropdown(
+                                language.translate("ထိုးသားရွေးပါ"),
+                                customers.firstOrNull { it.id == customerId }?.name ?: language.translate("ထိုးသားရွေးပါ"),
+                                customers.map { it.id to it.name }, customerId, Modifier.weight(1f),
+                                enabled = !busy && agents.any { it.id == agentId },
+                                avatar = { photoId -> CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId, Modifier.size(32.dp)) },
+                            ) { customerId = it }
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                            CherryProfileIdentity(vm,ProfileKind.AGENT,agentId,agentProfile?.name ?: "ဒိုင်",Modifier.weight(1f),avatarSize=34.dp)
+                            CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId,customerProfile?.name ?: "ထိုးသား",Modifier.weight(1f),avatarSize=34.dp)
+                        }
                     }
                 }
-                item { PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ") }
-                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးမည့်အချိန်"), style = MaterialTheme.typography.titleLarge); SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) { DrawSession.entries.forEachIndexed { i, draw -> SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(i, 2), colors = SegmentedButtonDefaults.colors(activeContainerColor = AppColors.PrimaryDeep, activeContentColor = Color.White, inactiveContainerColor = Color(0xEBFFFFFF), inactiveContentColor = AppColors.PrimaryDeep)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) } } } }
+                item { PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ", enabled = !busy) }
+                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးမည့်အချိန်"), style = MaterialTheme.typography.titleLarge); SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) { DrawSession.entries.forEachIndexed { i, draw -> SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(i, 2), enabled = !busy, colors = SegmentedButtonDefaults.colors(activeContainerColor = AppColors.PrimaryDeep, activeContentColor = Color.White, inactiveContainerColor = Color(0xEBFFFFFF), inactiveContentColor = AppColors.PrimaryDeep)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) } } } }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = backdated, onCheckedChange = { backdated = it })
+                        Checkbox(checked = backdated, onCheckedChange = { backdated = it }, enabled = !busy)
                         Column { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း"), fontWeight = FontWeight.SemiBold); Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်လွန်စာရင်းသွင်းခြင်း"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
@@ -1362,13 +1343,28 @@ fun BettingScreen(vm: LedgerViewModel, agentId: Long, customerId: Long, onBack: 
                     Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နောက်ကြောင်းပြန်စာရင်းကို ရွေးထားသော Session ၏ ဒိုင်အဆနဲ့ Customer ကော်မရှင်အတိုင်း အလိုအလျောက်တွက်မည်။ နှုန်းပြောင်းရန် Dashboard မှ Session ရွေးပြီး ပြင်ပါ။"),
                         style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းထည့်ရန်")) }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, shape = premiumSelectorShape, colors = premiumSelectorColors()) }
-                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အမြန်ထည့်သွင်းပုံများ"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { QuickFormat.entries.forEach { f -> PremiumSelectionChip(format == f, { format = f }, label = { Text(f.label) }) } } }
-                item { if (visiblePreview == null && pastDraw && !backdated) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။")) else PreviewCard(visiblePreview ?: BetPreview(emptyInput=true)) }
+                item { OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().heightIn(min = 130.dp), label = { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းထည့်ရန်")) }, placeholder = { Text(if (format == QuickFormat.MANUAL) "ဥပမာ 456ခွေပူး1000၊ 20.39R2000၊ 9ပါ1000" else if (format == QuickFormat.COMBINATION || format == QuickFormat.COMBINATION_DOUBLES) "ဥပမာ 345 100၊ 456 100" else if (format in listOf(QuickFormat.EVEN_ODD, QuickFormat.ODD_EVEN, QuickFormat.EVEN_EVEN, QuickFormat.ODD_ODD)) "ဥပမာ ${format.label}1000" else "ပုံစံအတိုင်း ထည့်ပါ") }, enabled = !busy, shape = premiumSelectorShape, colors = premiumSelectorColors()) }
+                item { BetEntryFormatGrid(format, enabled = !busy, onSelect = { format = it }) }
+                item { if (!scopeReady) UnavailableState(language.text("ဒိုင်နှင့် ထိုးသား ရွေးပါ", "Select an agent and customer")) else if (visiblePreview == null && pastDraw && !backdated) UnavailableState(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဂဏန်းထွက်ပြီးချိန်ဖြစ်ပါသဖြင့် Preview မပြနိုင်သေးပါ။\nနောက်ကြောင်းပြန်စာရင်းသွင်းခြင်းကို အမှန်ခြစ်ပါ။")) else PreviewCard(visiblePreview ?: BetPreview(emptyInput=true)) }
                 item { (submit as? SubmitState.Error)?.let { UnavailableState(it.message) } }
             }
             Surface(color = Color(0xFFFCEEF3), shadowElevation = 10.dp) {
-                PremiumSelectionButton(onClick = { if (pastDraw && !backdated) showLateError = true else date?.let { if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format, backdated) else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) } } }, modifier = Modifier.fillMaxWidth().padding(AppDimens.screen).height(54.dp), enabled = preview.canConfirm && submit !is SubmitState.Working) { Text(if (submit is SubmitState.Working) com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အတည်ပြုနေသည်…") else com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("Confirm")) }
+                BetEntryConfirmButton(
+                    onClick = {
+                        // Re-check the exact current preview as well as the visible enabled state.
+                        if (!scopeReady || requestedKey != previewKey || currentPreview !== vm.preview.value ||
+                            !currentPreview.canConfirm || vm.submit.value is SubmitState.Working || busy) return@BetEntryConfirmButton
+                        if (pastDraw && !backdated) showLateError = true
+                        else date?.let {
+                            receiptTotal = (currentPreview.parse as? ParseResult.Success)?.total?.mmk() ?: "-"
+                            if (entryId == 0L) vm.confirm(customerId, agentId, it, session, raw, format, backdated)
+                            else existing?.let { item -> vm.editConfirm(item, it, session, raw, format) }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(AppDimens.screen),
+                    enabled = scopeReady && currentPreview.canConfirm && !busy && date != null,
+                    saving = submit is SubmitState.Working,
+                )
             }
         }
     }

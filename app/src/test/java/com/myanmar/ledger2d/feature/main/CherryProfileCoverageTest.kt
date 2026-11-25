@@ -15,15 +15,12 @@ class CherryProfileCoverageTest {
 
     @Test fun quickEntryAndSettingsIncludeBothRealPersonSelectors() {
         val screens = file("Screens.kt")
-        val quick = screens.substringAfter("fun QuickEntryScreen(").substringBefore("/** Quick Entry")
+        val quick = screens.substringAfter("fun BettingScreen(").substringBefore("@Composable private fun PreviewCard")
         val settings = screens.substringAfter("fun SettingsScreen(")
         assertEquals(2, Regex("avatar\\s*=\\s*\\{\\s*photoId").findAll(quick).count())
-        assertTrue(quick.contains("ProfileKind.AGENT"))
-        assertTrue(quick.contains("ProfileKind.CUSTOMER"))
+        assertTrue(quick.contains("CherryProfileAvatar(vm.profilePhotos, ProfileKind.AGENT, photoId"))
+        assertTrue(quick.contains("CherryProfileAvatar(vm.profilePhotos, ProfileKind.CUSTOMER, photoId"))
         assertEquals(2, Regex("avatar = \\{ photoId").findAll(settings).count())
-        assertTrue(screens.contains("avatar = avatar, onSelect = onSelect"))
-        val compactQuick = quick.replace(Regex("\\s+"), "")
-        assertTrue(compactQuick.contains("CherryProfileAvatar(vm.profilePhotos,ProfileKind.CUSTOMER,customerId"))
     }
 
     @Test fun customerAndAgentOperationalHeadersNeverUseTransactionRows() {
