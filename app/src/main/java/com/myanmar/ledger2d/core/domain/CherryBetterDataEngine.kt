@@ -446,7 +446,18 @@ object CherryBetterDataEngine {
                         "${digit} နောက် ${friends} တွဲဖက်")
                 }
             }
-            section6[last]?.let{rule("s6-$last","အပိုင်း (၆) သီးသန့်မွေး",it)}
+            // Explicit R trigger rows: keep the canonical evidence ID for both
+            // directions. The recorded output pairs remain unchanged.
+            val reverseSourceKeys = setOf("43","79","83","84")
+            val sourceKey = if(last in section6) last
+                else last.reversed().takeIf { it in reverseSourceKeys } ?: last
+            section6[sourceKey]?.let{
+                rule("s6-$sourceKey","အပိုင်း (၆) သီးသန့်မွေး",it)
+            }
+            // Source 10R has an explicit break but no expiry. Same immediate
+            // next-draw convention as existing duration-free current rules.
+            if(last=="10"||last=="01")
+                rule("s6-10","10R နောက် 7 ဘရိတ်",CherryPairExpander.bk(7))
             // Explicit page-2 6-BK => 1649 wheel; current draw only.
             if(bk(last)==6)
                 rule("new-bk-six","6 ဘရိတ်နောက် 1649 အခွေ",
@@ -478,17 +489,17 @@ object CherryBetterDataEngine {
                     CherryPairExpander.wheel("4789"))
             }
             if(last=="70")rule("s6-70","70 R နောက် ပါဝါ",power)
-            if(last=="80")rule("s8-80","80 R → 1264 အပူးခွေ",
+            if(last=="80"||last=="08")rule("s8-80","80 R → 1264 အပူးခွေ",
                 CherryPairExpander.wheel("1264",true))
-            if(last=="67")rule("s8-67","67 R → 8123 အပူးခွေ",
+            if(last=="67"||last=="76")rule("s8-67","67 R → 8123 အပူးခွေ",
                 CherryPairExpander.wheel("8123",true))
             if(last[0]=='8')rule("s2-8head","8 ထိပ် → 01234 အပူးခွေ",
                 CherryPairExpander.wheel("01234",true))
-            if(last=="48")rule("s8-48","48 R နောက် 6 ပိတ်",CherryPairExpander.tail(6))
-            if(last=="13")rule("s8-13","13 R နောက် 3 ဘရိတ်",CherryPairExpander.bk(3))
-            if(last=="74")rule("s8-74","74 R နောက် 8 ပတ်သီး",CherryPairExpander.any(8))
-            if(last=="71")rule("s8-71","71 R နောက် 2 ပတ်သီး",CherryPairExpander.any(2))
-            if(last=="15")rule("s8-15","15 R နောက် 4 ပတ်သီး",CherryPairExpander.any(4))
+            if(last=="48"||last=="84")rule("s8-48","48 R နောက် 6 ပိတ်",CherryPairExpander.tail(6))
+            if(last=="13"||last=="31")rule("s8-13","13 R နောက် 3 ဘရိတ်",CherryPairExpander.bk(3))
+            if(last=="74"||last=="47")rule("s8-74","74 R နောက် 8 ပတ်သီး",CherryPairExpander.any(8))
+            if(last=="71"||last=="17")rule("s8-71","71 R နောက် 2 ပတ်သီး",CherryPairExpander.any(2))
+            if(last=="15"||last=="51")rule("s8-15","15 R နောက် 4 ပတ်သီး",CherryPairExpander.any(4))
             if(last=="88")rule("s8-88","88 နောက် 3 ပတ်သီး",CherryPairExpander.any(3))
             if(last in listOf("16","94","83"))rule("s3-ten","ပါဝါနောက် ဆယ်ပြည့်",
                 (0..9).map{"$it${(10-it)%10}"})
@@ -548,6 +559,11 @@ object CherryBetterDataEngine {
             if(x=="19"||x=="91")
                 birth(d,"new-bk-19r","19R နောက် 1 ဘရိတ်",
                     CherryPairExpander.bk(1),limit=5,calendarDays=true)
+            // Source 94R explicitly says five days, with no trading-day
+            // qualifier. Apply the documented calendar-day convention.
+            if(x=="94"||x=="49")
+                birth(d,"s6-94","94R နောက် 1 ပတ်သီး",CherryPairExpander.any(1),
+                    limit=5,calendarDays=true)
             if(x[0]==x[1]) {
                 wheels[x].orEmpty().forEachIndexed{i,w->
                     birth(d,"s4-wheel-$x-$i","${x} အပူး → ${w} ခွေ",
@@ -555,9 +571,9 @@ object CherryBetterDataEngine {
                 }
                 birth(d,"s4-born-$x","${x} အပူးမွေးဂဏန်း",doubleBorn[x].orEmpty())
             }
-            if(x=="80")birth(d,"s8-80","80 R → 1264 အပူးခွေ",
+            if(x=="80"||x=="08")birth(d,"s8-80","80 R → 1264 အပူးခွေ",
                 CherryPairExpander.wheel("1264",true))
-            if(x=="67")birth(d,"s8-67","67 R → 8123 အပူးခွေ",
+            if(x=="67"||x=="76")birth(d,"s8-67","67 R → 8123 အပူးခွေ",
                 CherryPairExpander.wheel("8123",true))
             if(x=="00")birth(d,"s8-00-bk","00 နောက် 5 ဘရိတ်",
                 listOf("05","14","23","69","78"))

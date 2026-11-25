@@ -214,4 +214,57 @@ class CherryBetterDataEngineTest {
         assertTrue(report.current.isEmpty())
         assertTrue(report.math.isEmpty())
     }
+
+    @Test fun explicitReverseSourceTriggersUseCanonicalIdsAndIdenticalOutputs() {
+        fun pairs(input:String,id:String):Set<String> =
+            CherryBetterDataEngine.calculate(
+                listOf(d("2026-11-09",DrawSession.EVENING,input)),
+                target("2026-11-10",DrawSession.MORNING))
+                .current.filter{p->p.evidence.any{it.id==id}}.map{it.pair}.toSet()
+        for((base,id) in listOf(
+            "43" to "s6-43","79" to "s6-79","83" to "s6-83","84" to "s6-84",
+            "80" to "s8-80","67" to "s8-67","48" to "s8-48",
+            "13" to "s8-13","74" to "s8-74","71" to "s8-71","15" to "s8-15",
+            "10" to "s6-10")) {
+            assertTrue(id,pairs(base,id).isNotEmpty())
+            assertEquals(id,pairs(base,id),pairs(base.reversed(),id))
+            assertTrue(id,pairs("22",id).isEmpty())
+        }
+        assertEquals(CherryPairExpander.bk(7).toSet(),pairs("01","s6-10"))
+        // A source without R is not silently expanded.
+        assertTrue(pairs("40","s6-04").isEmpty())
+    }
+
+    @Test fun reverseWheelBornRetainsExpiryAndStopsAfterObservedHit() {
+        val start=d("2026-11-09",DrawSession.MORNING,"08")
+        val next=CherryBetterDataEngine.calculate(listOf(start),
+            target("2026-11-09",DrawSession.EVENING))
+        val born=next.activeRules.single{it.id.startsWith("s8-80@")}
+        assertEquals(16,born.produced.size)
+        val settled=CherryBetterDataEngine.calculate(
+            listOf(start,d("2026-11-09",DrawSession.EVENING,"12")),
+            target("2026-11-10",DrawSession.MORNING))
+        assertFalse(settled.activeRules.any{it.id.startsWith("s8-80@")})
+        val second=CherryBetterDataEngine.calculate(
+            listOf(d("2026-11-09",DrawSession.EVENING,"76")),
+            target("2026-11-10",DrawSession.MORNING))
+        assertTrue(second.activeRules.any{it.id.startsWith("s8-67@")})
+    }
+
+    @Test fun ninetyFourReverseBornUsesFiveCalendarDaysAndExcludesFutureInput() {
+        val start=d("2026-11-20",DrawSession.EVENING,"49")
+        val within=CherryBetterDataEngine.calculate(listOf(start),
+            target("2026-11-25",DrawSession.MORNING))
+        val born=within.activeRules.single{it.id.startsWith("s6-94@")}
+        assertEquals(LocalDate.parse("2026-11-25"),born.expires)
+        assertEquals(CherryPairExpander.any(1).toSet(),born.produced.toSet())
+        val expired=CherryBetterDataEngine.calculate(listOf(start),
+            target("2026-11-26",DrawSession.MORNING))
+        assertFalse(expired.activeRules.any{it.id.startsWith("s6-94@")})
+        val future=CherryBetterDataEngine.calculate(
+            listOf(d("2026-11-25",DrawSession.EVENING,"94")),
+            target("2026-11-25",DrawSession.MORNING))
+        assertFalse(future.activeRules.any{it.id.startsWith("s6-94@")})
+    }
+
 }
