@@ -477,10 +477,6 @@ object CherryBetterDataEngine {
                 // User later confirmed the separate 1267 weekly rule uses
                 // this same group; it is evaluated in the weekly born block.
             }
-            if(last in setOf("98","11","91"))
-                rule("new-special-khant","2D Ko Khant — 0 ထိပ်",
-                    CherryPairExpander.top(0),
-                    "98 / 11 / 91 ထွက်ပြီး 0 ထိပ်ကို စောင့်ကြည့်သော အပိုင်းသာ တွက်ထားသည်။")
             if(last=="12"||last=="21") {
                 // Already exists as reader rule cherry-038; this fills only
                 // the previously missing Better Data calculation.
@@ -503,32 +499,12 @@ object CherryBetterDataEngine {
             if(last=="88")rule("s8-88","88 နောက် 3 ပတ်သီး",CherryPairExpander.any(3))
             if(last in listOf("16","94","83"))rule("s3-ten","ပါဝါနောက် ဆယ်ပြည့်",
                 (0..9).map{"$it${(10-it)%10}"})
-            if(last in listOf("50","27")||last[0]==last[1])
-                rule("s3-sib","ညီအစ်ကို အလိုက်မူ",siblings)
-            if(last in listOf("12","65","32"))rule("s3-power","ညီအစ်ကိုနောက် ပါဝါ",power)
-            if(last in siblings)rule("s3-astro","ညီအစ်ကိုနောက် နက္ခတ်",astrology)
-            if(last in listOf("35","81","10","29","38","56","47"))
-                rule("s3-double","အပူး အလိုက်မူ",(0..9).map{"$it$it"})
-            if(bk(last)==9)rule("s3-9to7","9 BK → 7 BK",CherryPairExpander.bk(7))
-            if(bk(last)==7)rule("s3-7to4","7 BK → 4 BK",CherryPairExpander.bk(4))
             if(target.session==DrawSession.EVENING&&last=="05")
                 rule("s7-am05","မနက် 05 → ညနေ 7–2",
                     listOf("52","25","27","72"))
             if(target.session==DrawSession.EVENING&&last=="92")
                 rule("s6-am92","မနက် 92 → ညနေ 7 ဘရိတ်",
                     listOf("43","07"))
-            if(target.session==DrawSession.MORNING&&modern?.matches(Regex("[0-9]{2}"))==true&&
-                internet?.matches(Regex("[0-9]{2}"))==true){
-                if(modern[0]==internet[0]||modern[1]==internet[1])
-                    rule("s1-930","9:30 ထိပ်/ပိတ်တူ",
-                        CherryPairExpander.any(0)+(0..9).map{"$it$it"},
-                        "Modern $modern / Internet $internet")
-                if(bk(modern)==bk(internet))
-                    rule("s1-930bk","9:30 ဘရိတ်တူ",
-                        CherryPairExpander.any(0)+(0..9).map{"$it$it"}+
-                            listOf(modern.reversed(),internet.reversed()),
-                        "Modern $modern / Internet $internet")
-            }
         }
         fun birth(origin:HistoricDraw,code:String,name:String,pairs:List<String>,
                   limit:Int=5,calendarDays:Boolean=false) {
@@ -615,7 +591,7 @@ object CherryBetterDataEngine {
         }
         fun scopedBorn(code:String,name:String,pairs:List<String>,origin:HistoricDraw,
                        end:LocalDate,stopOnHit:Boolean=true,detail:String="",
-                       starts:LocalDate=origin.date) {
+                       starts:LocalDate=origin.date,family:String=code) {
             if(target.date<starts || target.date>end || !before(origin,target))return
             val values=pairs.filter(::validHistoric2D).toSet()
             if(values.isEmpty())return
@@ -623,7 +599,7 @@ object CherryBetterDataEngine {
                     it.date>=starts && it.date<=end && it.digit in values})return
             val key="$code@${origin.date}-${origin.session.name}"
             births+=CherryBirth(key,name,identity(origin),end,values)
-            add(born,key,code,name,
+            add(born,key,family,name,
                 "${origin.date} ${origin.session.label}: ${origin.digit} • $name" +
                     if(detail.isBlank()) "" else " • $detail",
                 values,identity(origin),CherryTab.BORN)
@@ -686,6 +662,97 @@ object CherryBetterDataEngine {
                 scopedBorn("s6-06","06R ညီအစ်ကိုမွေးမူ",siblings,origin,
                     validSlots.last().date,detail="4 sessions • ${validSlots.last().session.label}")
         }
+        // 9:30 is an independent input, not an official-result derivative.
+        // The revised break-rule ID does not merge old reverse-input evidence.
+        if(target.session==DrawSession.MORNING && modern?.matches(Regex("[0-9]{2}"))==true &&
+            internet?.matches(Regex("[0-9]{2}"))==true) {
+            val context="Modern $modern / Internet $internet"
+            if(modern[0]==internet[0] || modern[1]==internet[1])
+                add(current,"s1-930","s1-930","9:30 ထိပ်/ပိတ်တူမူ",context,
+                    followDigits(0)+doubles,null,CherryTab.CURRENT)
+            if(bk(modern)==bk(internet))
+                add(current,"s1-930bk-v2","s1-930bk-v2","9:30 ဘရိတ်တူမူ",
+                    "$context • ယခုအပတ် ပြန်ကျ",
+                    followDigits(0)+doubles+thisWeek,null,CherryTab.CURRENT)
+        }
+
+        // Absent throughout the previous complete trading week, then first
+        // return this week. A missing historical slot is not evidence of absence.
+        val previousWeekStart=mon.minusDays(7)
+        val previousDates=(0L..4L).map{previousWeekStart.plusDays(it)}
+            .filter{DrawSchedule.isWorkingDate(it,closed)}
+        val previousRows=rows.filter{it.date in previousDates}
+        val previousComplete=previousDates.isNotEmpty() && previousDates.all{date->
+            dayRow(date,DrawSession.MORNING)!=null && dayRow(date,DrawSession.EVENING)!=null
+        }
+        val returnPairs=listOf(
+            listOf("50","60","90"),listOf("01","13","15"),listOf("22","23","24"),
+            listOf("23","13","43"),listOf("24","34","94"),listOf("51","59","57"),
+            listOf("56","06","96"),listOf("79","75","77"),listOf("84","86","89"),
+            listOf("09","59","79"))
+        if(previousComplete && prev!=null && prev.date>=mon && target.date<=weekEnd) {
+            // Require known earlier scheduled slots this week too, to establish
+            // that this is the first return, not a gap in observed results.
+            val expectedEarlier=(0L..4L).map{mon.plusDays(it)}
+                .filter{DrawSchedule.isWorkingDate(it,closed)}
+                .flatMap{date->listOf(DrawIdentity(date,DrawSession.MORNING),
+                    DrawIdentity(date,DrawSession.EVENING))}
+                .filter{it.date<prev.date || (it.date==prev.date && it.session.ordinal<prev.session.ordinal)}
+            if(expectedEarlier.all{dayRow(it.date,it.session)!=null}) {
+                for(d in prev.digit.toSet()) {
+                    if(previousRows.none{d in it.digit} &&
+                        weekRows.none{before(it,identity(prev)) && d in it.digit})
+                        currentRule("s2-return-$d","$d ပျောက်ပြီးပြန်လာမူ",
+                            returnPairs[d.digitToInt()],prev,
+                            "$previousWeekStart မှ ယခင်အပတ် $d မပါ • ယခုအပတ် ${prev.digit} တွင် ပြန်လာ")
+                }
+            }
+        }
+        rows.takeLast(4).filter{it.digit[1]=='6'}.forEach{origin->
+            var slot=identity(origin)
+            val slots=(1..4).map{slot=nextSlot(slot);slot}
+            if(target in slots)
+                scopedBorn("s2-tail6-49","6 ပိတ်နောက် 4/9 ပတ်သီးမူ",
+                    followDigits(4,9),origin,slots.last().date,
+                    detail="4 sessions • ${slots.last().session.label}")
+        }
+
+        // Literal listed pairs are not reversed unless R is explicitly present.
+        // Named arithmetic breaks use complete modulo-10 expansion.
+        val directSiblings=listOf("01","12","23","34","45","56","67","78","89","90")
+        val directPower=listOf("05","16","27","38","49")
+        val directAstrology=listOf("07","18","24","35","69")
+        val tenSum=(1..9).map{"$it${10-it}"}
+        for(origin in weekRows) {
+            val x=origin.digit
+            if(x in setOf("50","27"))
+                scopedBorn("s3-w-010","ပါဝါနောက် ညီအစ်ကိုမူ",
+                    directSiblings,origin,weekEnd)
+            if(x in setOf("12","65","32"))
+                scopedBorn("s3-w-011","ညီအစ်ကိုနောက် ပါဝါ / ဆယ်ပြည့်မူ",
+                    directPower+tenSum,origin,weekEnd)
+            // The specific subset and its parent share one evidence family.
+            if(x in setOf("34","45","67","78","89"))
+                scopedBorn("s3-w-012","သီးသန့် ညီအစ်ကိုနောက် နက္ခတ်မူ",
+                    directAstrology,origin,weekEnd,family="s3-w-astro")
+            if(x in setOf("35","81"))
+                scopedBorn("s3-w-013","နက္ခတ်နောက် အပူးမူ",doubles,origin,weekEnd)
+            if(x in setOf("10","29","38","56","47"))
+                scopedBorn("s3-w-014","အပူးအလိုက်မူ",doubles,origin,weekEnd)
+            if(x[0]==x[1])
+                scopedBorn("s3-w-015","အပူးနောက် ညီအစ်ကိုမူ",
+                    directSiblings,origin,weekEnd)
+            if(x in directSiblings)
+                scopedBorn("s3-w-016","ညီအစ်ကိုနောက် နက္ခတ်မူ",
+                    directAstrology,origin,weekEnd,family="s3-w-astro")
+            if(bk(x)==9)
+                scopedBorn("s3-w-017-9","9 ဘရိတ်နောက် 7 ဘရိတ်မူ",
+                    breaks(7),origin,weekEnd)
+            if(bk(x)==7)
+                scopedBorn("s3-w-017-7","7 ဘရိတ်နောက် 4 ဘရိတ်မူ",
+                    breaks(4),origin,weekEnd)
+        }
+
         val mondayAm=dayRow(mon,DrawSession.MORNING)
         val mondayPm=dayRow(mon,DrawSession.EVENING)
         if(mondayAm!=null && mondayPm!=null) {

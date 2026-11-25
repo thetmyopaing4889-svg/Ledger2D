@@ -1,0 +1,9 @@
+# Partial coverage implementation — batch 1 from Build 1956
+Code baseline 8e314ff24fb548498b8626e66366a95180bf459d, latest approved requirements 3e353b21cae4e538371ba9b9cbba4f32ad9bd345. Implements first ten reviewed entries (005,008,010–017) plus requested exclusion of 50/new-special-khant. Other 39 retained partial entries remain queued. No UI redesign, no archive rewrite, no library asset or main change.
+
+- 9:30 standalone with exact current-week repeat, no previous official result requirement. New versioned 930-break evidence ID; source trace preserved, library score reconciliation intentionally deferred.
+- Absent-return: require complete prior scheduled week and earlier current-week slots to establish first return; proposed default next session only, literal table outputs. 6-tail 4/9 digit union, four scheduled slots, stop first hit. Existing +7, +4, head and friend table interpretations unchanged.
+- 010–017 same-week born, literal explicit pairs, canonical direct named groups for no-R cases; ten-sum is exact sum 10, not zero sum. Both break rules use full arithmetic expansion. New IDs distinguish changed semantics from archived legacy IDs. 012 and 016 share evidence family. No independent extra rank credit for overlapping subset. Source lookup extended; whole-source score mapping for new IDs deferred until scoring review.
+- Ko Khant no longer generates active rules, but reader and earlier snapshots remain untouched.
+- New tests: independent 930, absent/missing data, exact slot/holiday expiry, direct and reverse negatives, same-week scope, overlap family, exclusion. CI pending. Phone performance not measured.
+- Remaining open assumptions: next-session first-return and stop-on-hit defaults for 008, direct canonical named group convention, prior 29 equal-tail branch unresolved. No predictive accuracy claim.

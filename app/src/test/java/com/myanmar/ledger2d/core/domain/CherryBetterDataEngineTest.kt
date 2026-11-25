@@ -197,14 +197,15 @@ class CherryBetterDataEngineTest {
         assertFalse(expired.activeRules.any{it.id.startsWith("new-bk-19r@")})
     }
 
-    @Test fun khantTriggerShowsOnlyDocumentedZeroHead() {
+    @Test fun excludedKhantNeverProducesActiveEvidence() {
         val report=CherryBetterDataEngine.calculate(
             listOf(d("2026-11-09",DrawSession.EVENING,"98")),
             target("2026-11-10",DrawSession.MORNING))
         val pairs=report.current.filter{p->p.evidence.any{
             it.id=="new-special-khant"
         }}.map{it.pair}.toSet()
-        assertEquals((0..9).map{"0$it"}.toSet(),pairs)
+        assertTrue(pairs.isEmpty())
+        assertTrue(report.born.none{p->p.evidence.any{it.id.startsWith("new-special-khant")}})
     }
 
     @Test fun missingImmediateResultDisablesStaleCurrentMath() {

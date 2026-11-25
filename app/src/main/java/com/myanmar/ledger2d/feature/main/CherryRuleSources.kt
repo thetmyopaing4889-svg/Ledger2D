@@ -129,16 +129,18 @@ internal object CherryRuleSources {
 
         when {
             id.startsWith("s2-p-")||id.startsWith("s2-h-")||
-                id.startsWith("s2-f-")||id=="s2-8head"->{
+                id.startsWith("s2-f-")||id.startsWith("s2-return-")||id=="s2-tail6-49"||id=="s2-8head"->{
                 part=2
                 val digit=when{
                     id=="s2-8head"->8
+                    id=="s2-tail6-49"->6
                     id.startsWith("s2-h-")->id.split("-").getOrNull(2)?.toIntOrNull()
                     else->id.substringAfterLast('-').toIntOrNull()
                 }?:return null
                 val column=when{
                     id.startsWith("s2-p-")->2
                     id.startsWith("s2-h-")->3
+                    id.startsWith("s2-return-")->4
                     else->5
                 }
                 val table=section(source,2)
@@ -149,6 +151,7 @@ internal object CherryRuleSources {
                 label=when(column){
                     2->"အပိုင်း (၂) · +4 ပတ်သီး"
                     3->"အပိုင်း (၂) · ထိပ်စီးဇယား"
+                    4->"အပိုင်း (၂) · ပျောက်ပြီးပြန်လာမူ"
                     else->"အပိုင်း (၂) · တွဲဖက်ဂဏန်း"
                 }
                 raw=listOf("ဂဏန်း $digit",table.getOrNull(column)?:return null,row[column])
@@ -157,6 +160,14 @@ internal object CherryRuleSources {
                 part=3;label="အပိုင်း (၃) · အုပ်စုမူ"
                 val markers=when(id){
                     "s3-ten"->listOf("ပါဝါထဲမှ (16 - 94 - 83)")
+                    "s3-w-010"->listOf("ပါဝါထဲမှ (50 - 27)")
+                    "s3-w-011"->listOf("ညီအစ်ကိုထဲမှ (12 - 65 - 32)")
+                    "s3-w-012"->listOf("ညီအစ်ကိုထဲမှ (34 - 45 - 67 - 78 - 89)")
+                    "s3-w-013"->listOf("နက္ခတ်ထဲမှ (35 - 81)")
+                    "s3-w-014"->listOf("အပူးအလိုက်:")
+                    "s3-w-015"->listOf("ညီအစ်ကိုအလိုက်:")
+                    "s3-w-016"->listOf("နက္ခတ်အလိုက်:")
+                    "s3-w-017-9","s3-w-017-7"->listOf("၉ ဘရိတ် နှင့် ၇ ဘရိတ် အလိုက်:")
                     "s3-sib"->if(Regex("""နောက်ဆုံးထွက် (50|27)""").containsMatchIn(detail))
                         listOf("ပါဝါထဲမှ (50 - 27)") else listOf("ညီအစ်ကိုအလိုက်:")
                     "s3-power"->listOf("ညီအစ်ကိုထဲမှ (12 - 65 - 32)")
@@ -228,7 +239,7 @@ internal object CherryRuleSources {
             }
             id.startsWith("s1-930")->{
                 part=1;label="အပိုင်း (၁) · 9:30 တူညီမှုမူ"
-                val marker=if(id=="s1-930bk")"ဘရိတ်တူလျှင်:" else
+                val marker=if(id.startsWith("s1-930bk"))"ဘရိတ်တူလျှင်:" else
                     "ထိပ်တူ (သို့မဟုတ်) ပိတ်တူလျှင်:"
                 raw=listOfNotNull(bullet(1,marker))
             }
