@@ -16,6 +16,22 @@ class UnifiedQuickEntryContractTest {
         assertEquals(QuickFormat.MANUAL, betEntryFormatRows.first().single())
     }
 
+    @Test fun compactFirstViewRetainsDateSessionAndAllFormatTouchTargets() {
+        assertTrue(bet.contains("BetEntryDateSessionRow("))
+        assertTrue(bet.contains("onDate = { dateText = it; language.setDate(it) }"))
+        assertTrue(bet.contains("onSession = { session = it; language.setSession(it) }"))
+        assertTrue(bet.contains("heightIn(min = 130.dp)"))
+        assertTrue(bet.contains("Checkbox(checked = backdated"))
+        assertTrue(bet.contains("if(backdated&&entryId==0L)item"))
+        assertFalse(bet.contains("ထိုးမည့်အချိန်"))
+        val ui = File(root + "BetEntryControls.kt").readText()
+        assertTrue(ui.contains("maxWidth >= 340.dp"))
+        assertTrue(ui.contains("LocalDensity.current.fontScale <= 1.25f"))
+        assertTrue(ui.contains("while (!DrawSchedule.isWeekday(picked)) picked = picked.plusDays(1)"))
+        assertTrue(ui.contains("Modifier.weight(1f).heightIn(min = 48.dp)"))
+        assertTrue(ui.contains("DrawSession.entries.forEachIndexed"))
+    }
+
     @Test fun scopeAndPreviewMustMatchBeforeConfirmAndSuccessResetsOnlyNewEntry() {
         assertTrue(bet.contains("customerId = 0L\n                                    agentId = selected"))
         assertTrue(bet.contains("customers.any { it.id == customerId && it.agentId == agentId }"))

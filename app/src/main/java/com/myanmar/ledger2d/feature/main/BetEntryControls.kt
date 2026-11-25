@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.myanmar.ledger2d.feature.main
 
 import androidx.compose.foundation.BorderStroke
@@ -6,13 +8,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -20,6 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.design.LocalLanguage
 import com.myanmar.ledger2d.core.domain.QuickFormat
+import com.myanmar.ledger2d.core.domain.DrawSchedule
+import com.myanmar.ledger2d.core.model.DrawSession
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /** UI-only grouping; enum identities and parser remain unchanged. */
 internal val betEntryFormatRows = listOf(
@@ -33,14 +44,14 @@ internal val betEntryFormatRows = listOf(
 @Composable
 internal fun BetEntryFormatGrid(selected: QuickFormat, enabled: Boolean, onSelect: (QuickFormat) -> Unit) {
     val language = LocalLanguage.current
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(language.translate("အမြန်ထည့်သွင်းပုံများ"), style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold, color = AppColors.PrimaryDeep)
         Surface(shape = RoundedCornerShape(16.dp), color = Color(0xEBFFFFFF),
             border = BorderStroke(1.dp, Color.White)) {
-            Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Column(Modifier.fillMaxWidth().padding(5.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 betEntryFormatRows.forEach { row ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         row.forEach { format ->
                             val active = selected == format
                             val shape = RoundedCornerShape(12.dp)
@@ -50,7 +61,7 @@ internal fun BetEntryFormatGrid(selected: QuickFormat, enabled: Boolean, onSelec
                                     .border(1.dp, if (active) Color.White else Color(0xFFEFC4D2), shape)
                                     .selectable(selected = active, enabled = enabled, role = Role.RadioButton,
                                         onClick = { onSelect(format) })
-                                    .padding(horizontal = 3.dp, vertical = 8.dp),
+                                    .padding(horizontal = 3.dp, vertical = 5.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(if (format == QuickFormat.MANUAL) language.text("အထူး", "Special") else language.translate(format.label),
@@ -62,6 +73,91 @@ internal fun BetEntryFormatGrid(selected: QuickFormat, enabled: Boolean, onSelec
                     }
                 }
             }
+        }
+    }
+}
+
+/** Date and draw selection share one row on ordinary phones, with a readable
+ * stacked fallback for narrow layouts or enlarged system fonts. No new draw state. */
+@Composable
+internal fun BetEntryDateSessionRow(
+    dateText: String,
+    session: DrawSession,
+    enabled: Boolean,
+    onDate: (String) -> Unit,
+    onSession: (DrawSession) -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val compact = maxWidth >= 340.dp && LocalDensity.current.fontScale <= 1.25f
+        if (compact) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                BetEntryCompactDate(dateText, onDate, enabled, Modifier.weight(1f))
+                BetEntrySessionSelector(session, onSession, enabled, Modifier.weight(1f))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                BetEntryCompactDate(dateText, onDate, enabled, Modifier.fillMaxWidth())
+                BetEntrySessionSelector(session, onSession, enabled, Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun BetEntryCompactDate(value: String, onValue: (String) -> Unit, enabled: Boolean, modifier: Modifier) {
+    val language = LocalLanguage.current
+    var open by rememberSaveable { mutableStateOf(false) }
+    val display = runCatching { LocalDate.parse(value).displayDate() }.getOrElse { value }
+    Surface(onClick = { open = true }, enabled = enabled,
+        modifier = modifier.heightIn(min = 48.dp),
+        shape = RoundedCornerShape(15.dp), color = Color(0xEBFFFFFF),
+        border = BorderStroke(1.dp, Color.White)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(Icons.Default.CalendarMonth, contentDescription = language.translate("ရက်စွဲ"),
+                tint = AppColors.PrimaryDeep, modifier = Modifier.size(20.dp))
+            Text(display, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        }
+    }
+    // Same date picker and weekday adjustment as the existing DateInput.
+    if (open && enabled) {
+        val initial = runCatching {
+            LocalDate.parse(value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }.getOrNull()
+        val state = rememberDatePickerState(initialSelectedDateMillis = initial)
+        DatePickerDialog(onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let {
+                        var picked = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                        while (!DrawSchedule.isWeekday(picked)) picked = picked.plusDays(1)
+                        onValue(picked.toString())
+                    }
+                    open = false
+                }) { Text(language.translate("ရွေးမည်")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { open = false }) { Text(language.translate("မလုပ်ပါ")) }
+            }) { DatePicker(state) }
+    }
+}
+
+@Composable
+private fun BetEntrySessionSelector(session: DrawSession, onSession: (DrawSession) -> Unit,
+    enabled: Boolean, modifier: Modifier) {
+    val language = LocalLanguage.current
+    SingleChoiceSegmentedButtonRow(modifier) {
+        DrawSession.entries.forEachIndexed { i, draw ->
+            SegmentedButton(
+                selected = session == draw, onClick = { onSession(draw) },
+                shape = SegmentedButtonDefaults.itemShape(i, DrawSession.entries.size), enabled = enabled,
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = AppColors.PrimaryDeep, activeContentColor = Color.White,
+                    inactiveContainerColor = Color(0xEBFFFFFF), inactiveContentColor = AppColors.PrimaryDeep),
+                icon = {},
+            ) { Text(language.translate(draw.label), style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center) }
         }
     }
 }

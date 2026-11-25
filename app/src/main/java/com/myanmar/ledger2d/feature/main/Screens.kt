@@ -1311,7 +1311,7 @@ fun BettingScreen(vm: LedgerViewModel, initialAgentId: Long, initialCustomerId: 
     if (receiptId>0L && entryId==0L) AlertDialog(onDismissRequest={receiptId=0L;onBack()},title={Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းသွင်းပြီးပါပြီ"))},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){Text("ဒိုင် • ထိုးသား • ${session.label}",fontWeight=FontWeight.Bold);Text("ရက်စွဲ • $dateText");Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("စာရင်းစုစုပေါင်း • ") + receiptTotal);Text("Entry #$receiptId",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}},confirmButton={TextButton({receiptId=0L;raw="";format=QuickFormat.MANUAL}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ဒီထိုးသားအတွက် ဆက်သွင်းရန်"))}},dismissButton={TextButton({receiptId=0L;onBack()}){Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ပြီးပါပြီ"))}})
     AppScaffold(if (entryId == 0L) "2D Form\nစာရင်းသွင်းရန်" else "2D Form\nစာရင်းပြင်ရန်", { if (!busy) onBack() }, includeQuickEntryFab = !quickEntry && !busy) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).cherryFinancialBackground().imePadding()) {
-            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(AppDimens.screen), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = AppDimens.screen, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     if (quickEntry) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1341,12 +1341,18 @@ fun BettingScreen(vm: LedgerViewModel, initialAgentId: Long, initialCustomerId: 
                         }
                     }
                 }
-                item { PremiumDateInput(dateText, { dateText = it; language.setDate(it) }, "ရက်စွဲ", enabled = !busy) }
-                item { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("ထိုးမည့်အချိန်"), style = MaterialTheme.typography.titleLarge); SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) { DrawSession.entries.forEachIndexed { i, draw -> SegmentedButton(session == draw, { session = draw; language.setSession(draw) }, SegmentedButtonDefaults.itemShape(i, 2), enabled = !busy, colors = SegmentedButtonDefaults.colors(activeContainerColor = AppColors.PrimaryDeep, activeContentColor = Color.White, inactiveContainerColor = Color(0xEBFFFFFF), inactiveContentColor = AppColors.PrimaryDeep)) { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate(draw.label)) } } } }
+                item {
+                    BetEntryDateSessionRow(
+                        dateText = dateText, session = session, enabled = !busy,
+                        onDate = { dateText = it; language.setDate(it) },
+                        onSession = { session = it; language.setSession(it) },
+                    )
+                }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = backdated, onCheckedChange = { backdated = it }, enabled = !busy)
-                        Column { Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း"), fontWeight = FontWeight.SemiBold); Text(com.myanmar.ledger2d.core.design.LocalLanguage.current.translate("အချိန်လွန်စာရင်းသွင်းခြင်း"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Text(language.translate("နောက်ကြောင်းပြန်စာရင်းသွင်းခြင်း"),
+                            style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 if(backdated&&entryId==0L)item {

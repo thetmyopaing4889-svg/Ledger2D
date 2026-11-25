@@ -16,7 +16,7 @@ class FinancialChromeContractTest {
             .substringBefore("@Composable private fun PreviewCard(")
         assertTrue(betting.contains(".cherryFinancialBackground().imePadding()"))
         assertFalse(betting.contains("CherryFinancialPanel {"))
-        assertTrue(betting.contains("PremiumDateInput("))
+        assertTrue(betting.contains("BetEntryDateSessionRow("))
         assertTrue(betting.contains("BetEntryConfirmButton("))
         assertTrue(betting.contains("CherryProfileIdentity(vm,ProfileKind.AGENT,agentId"))
         assertTrue(betting.contains("CherryProfileIdentity(vm,ProfileKind.CUSTOMER,customerId"))

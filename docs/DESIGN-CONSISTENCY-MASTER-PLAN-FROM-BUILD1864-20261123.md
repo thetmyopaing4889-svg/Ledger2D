@@ -1,7 +1,7 @@
 # Cherry 2D — Home-First Design Consistency Master Plan (Build 1864 baseline / Build 1865 checkpoint)
 
 **Created:** 2026-11-23  
-**Status:** Build 1942 unified Quick Entry compiled and unit tested but lint failed; scoped preview observation repair committed; new CI/device review pending. No main merge.  
+**Status:** Build 1943 CI SUCCESS; user reviewed unified entry and approved compact first-view layout. Targeted date/session/spacing change committed; new CI and phone verification pending. No main merge.  
 **Repository:** `thetmyopaing4889-svg/Ledger2D`  
 **Approved baseline:** successful Android CI Build **1864**, commit `f48c8ae8a45d584c8d416196a9cd4404916626ff`  
 **Base branch:** `fix/profile-photo-coverage-pass-from-build1861-20261123`  
@@ -172,6 +172,11 @@ Build 1931 (2af35cfcebe40ad15d2d02575ae563c610a570b4) CI succeeded, run https://
 
 - Build 1942 (66a1780f6e2a5ee83dc891fbe598f4f4e542c91c, run https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45541654954) compiled Kotlin, ran unit tests and assembled debug, but lintDebug rejected Screens.kt:1270 StateFlowValueCalledInComposition. No APK artifacts uploaded.
 - Repair only the preview observation boundary: key-scoped Compose state, reset before requesting, collect after refresh in the existing LaunchedEffect; retain event-time latest-preview check, scope/submit checks and all UI/form/parser behavior. Source contract updated to forbid direct composition-time StateFlow.value reads. New CI pending.
+
+### Unified entry first-view compactness (2026-11-25)
+
+- Verified Build 1943 (2396f6d20ff27275076dbeccfecb0c1eafa86234) CI SUCCESS, https://github.com/thetmyopaing4889-svg/Ledger2D/actions/runs/45543570798, release artifact 14991205743 / debug 14990488280 matching commit. Phone screenshot confirms one-page entry; bottom format rows below first viewport. User approved date + AM/PM in one row, no separate session title, single-line backdated label, retain 130dp raw field, same 1/3/3/3/4 format rows, tighter spacing, existing glossy Confirm.
+- Scoped UI change in BettingScreen and BetEntryControls only; existing picker selection/weekday adjustment reproduced locally, date and session callbacks unchanged; compact row at 340dp available width and font scale <=1.25, stacked fallback otherwise. Keep 48dp format targets, scrolling and backdated warning when checked. No fixed screen-height assumption. Confirm button source, parser, save/reset, preview state, route and all other screens untouched. First-view fit remains device-dependent; keyboard/large fonts may require scroll. Source tests updated; CI and phone review pending.
 
 ### Updated execution sequence
 
