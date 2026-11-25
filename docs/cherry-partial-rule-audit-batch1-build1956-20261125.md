@@ -1,0 +1,17 @@
+# Partial coverage re-audit — first ten, Build 1956
+Successful code baseline 8e314ff24fb548498b8626e66366a95180bf459d, CI 45593562457. All CI steps including APK uploads passed. Checked original two_d_rules_source.txt, reader JSON, and CherryBetterDataEngine.kt at this revision. Static inspection, not device validation. This document does not modify application code.
+
+| No. | Canonical ID | Present behavior | Remaining gap / proposed resolution |
+|---|---|---|---|
+| 1 | cherry-005 | s1-930bk: 0-any, doubles, reversed Modern and Internet; nested under immediate previous official draw check. | User already defined exact current-week repeat as previously recorded same-week 2D, not reversal. Replace reverse inputs with exact prior week-to-date values; independent 9:30 trigger should not require previous result for 004/005. Preserve input and score identity semantics, do not backfill. |
+| 2 | cherry-008 | +7 ending cut, +4 digit, grouped head table, friend pairs, 8-head wheel. | Missing disappeared-then-returned column (absence duration unknown) and 6-tail four-session 4/9 follow (digit-vs-pair scope unknown). Existing heads and friend pairs need user confirmation before interpreting alternative groups. |
+| 3 | cherry-010 | 50 or 27 emits siblings under s3-sib; same ID as double-trigger rule 015. | Separate evidence identity without counting the same condition twice. Source does not explicitly mark R or expiry; ask common convention for 010–016. |
+| 4 | cherry-011 | 12/65/32 emits power only. | Source explicitly says power / ten-sum; missing ten-sum output. Clarify next session and input reversal convention. |
+| 5 | cherry-012 | Generic sibling trigger s3-astro already emits astrology for the specified 34/45/67/78/89 subset. | Source-specific rule identity absent; avoid artificially counting a subset and its parent as independent corroboration. |
+| 6 | cherry-013 | 35/81 emits doubles via shared s3-double. | Separate from 014 (distinct trigger list); source 81 is literal, do not silently change it to 18. |
+| 7 | cherry-014 | 10/29/38/56/47 emits doubles via shared s3-double. | Separate source identity from 013. |
+| 8 | cherry-015 | Doubles emit siblings via shared s3-sib. | Separate source identity from 010. Output currently expanded both directions; source lists direct examples without R. |
+| 9 | cherry-016 | Any sibling group pair emits astrology via s3-astro. | Covers 012 and other siblings; no extra output needed. Resolve overlap and scoring once per underlying evidence family. |
+| 10 | cherry-017 | Any 9 break -> 7 break; any 7 break -> 4 break, both using full modulo-10 pair expansion. | Source examples 22/77 already included in 4-break expansion. No missing output in this branch. Verify next-session convention and retain direct/reverse break definition. |
+
+Open questions for user: (a) 008 absence threshold in sessions, 6-tail 4/9 means two separate digits or 49/94, whether 4-session lifetime ends on first hit; (b) common group-rule duration and whether explicitly listed triggers without R are literal or direct/reverse; (c) for 012/016, retain both original reader identities but use a single evidence family to avoid double-weighting. 005 exact repeat definition already confirmed. No change to ranking, library text, archive, or other app areas. Remaining 40 original P rows still require re-audit; these ten have not yet been certified complete. Build number 1956 is the code baseline, not this docs-only commit.
