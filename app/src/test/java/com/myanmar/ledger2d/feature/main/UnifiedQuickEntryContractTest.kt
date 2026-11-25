@@ -19,7 +19,11 @@ class UnifiedQuickEntryContractTest {
     @Test fun scopeAndPreviewMustMatchBeforeConfirmAndSuccessResetsOnlyNewEntry() {
         assertTrue(bet.contains("customerId = 0L\n                                    agentId = selected"))
         assertTrue(bet.contains("customers.any { it.id == customerId && it.agentId == agentId }"))
-        assertTrue(bet.contains("requestedKey == previewKey && preview === vm.preview.value"))
+        assertTrue(bet.contains("requestedKey == previewKey) requestedPreview"))
+        assertTrue(bet.contains("var requestedPreview by remember(previewKey)"))
+        assertTrue(bet.contains("vm.preview.collect { result ->"))
+        assertTrue(bet.indexOf("vm.refreshPreview(customerId, agentId") < bet.indexOf("vm.preview.collect { result ->"))
+        assertFalse(bet.substringBefore("BetEntryConfirmButton(").contains("vm.preview.value"))
         assertTrue(bet.contains("currentPreview !== vm.preview.value"))
         assertTrue(bet.contains("if (submit is SubmitState.Success)"))
         assertTrue(bet.contains("if (entryId == 0L) {\n                raw = \"\"\n                format = QuickFormat.MANUAL"))

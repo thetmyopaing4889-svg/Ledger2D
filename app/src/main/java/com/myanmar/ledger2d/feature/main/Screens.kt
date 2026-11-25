@@ -64,6 +64,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
 import com.myanmar.ledger2d.core.database.*
 import com.myanmar.ledger2d.core.design.*
 import com.myanmar.ledger2d.core.domain.*
@@ -1255,7 +1256,6 @@ fun BettingScreen(vm: LedgerViewModel, initialAgentId: Long, initialCustomerId: 
     val scopeReady = if (quickEntry) agents.any { it.id == agentId } && customers.any { it.id == customerId && it.agentId == agentId }
         else agentId > 0L && customerId > 0L && agentProfile?.id == agentId && customerProfile?.id == customerId && customerProfile?.agentId == agentId
     val existing by vm.betEntry(entryId).collectAsStateWithLifecycle(initialValue = null)
-    val preview by vm.preview.collectAsStateWithLifecycle()
     val submit by vm.submit.collectAsStateWithLifecycle()
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
     val now = LocalDateTime.now()
@@ -1267,7 +1267,12 @@ fun BettingScreen(vm: LedgerViewModel, initialAgentId: Long, initialCustomerId: 
     // A changed scope/input must never reuse a successful preview from the previous request.
     val previewKey = listOf(agentId, customerId, entryId, raw, format, date, session, backdated, scopeReady)
     var requestedKey by remember { mutableStateOf<List<Any?>?>(null) }
-    val currentPreview = if (scopeReady && requestedKey == previewKey && preview === vm.preview.value) preview
+    // Reset immediately on a key change, before the new effect starts collecting.
+    var requestedPreview by remember(previewKey) {
+        mutableStateOf(BetPreview(emptyInput = raw.isBlank(), loading = scopeReady && raw.isNotBlank()),
+            referentialEqualityPolicy())
+    }
+    val currentPreview = if (scopeReady && requestedKey == previewKey) requestedPreview
         else BetPreview(emptyInput = raw.isBlank(), loading = scopeReady && raw.isNotBlank())
     val visiblePreview = if (pastDraw && !backdated) null else currentPreview
     LaunchedEffect(existing) { existing?.let { backdated = true; dateText = it.entry.drawDate.toString(); session = it.entry.drawSession; raw = it.entry.sourceText; format = QuickFormat.entries.firstOrNull { selected -> selected.name == it.entry.inputFormat } ?: QuickFormat.MANUAL } }
@@ -1275,7 +1280,12 @@ fun BettingScreen(vm: LedgerViewModel, initialAgentId: Long, initialCustomerId: 
         requestedKey = null
         if (scopeReady && date != null) {
             vm.refreshPreview(customerId, agentId, date, session, raw, format, entryId, backdated)
-            requestedKey = previewKey
+            // refreshPreview synchronously publishes loading/empty state before
+            // launching validation. Collect only after that request has started.
+            vm.preview.collect { result ->
+                requestedPreview = result
+                requestedKey = previewKey
+            }
         }
     }
     LaunchedEffect(submit) {
