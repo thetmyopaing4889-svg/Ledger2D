@@ -1,0 +1,6 @@
+# Partial coverage implementation batch 3 — Build 1964 baseline
+Parent daf27e87a742b0cd16bf204313e9206473845e71; CI run 45611924692 succeeded including tests/lint/release/upload. Implements approved entries 21–30 (036,038,039,040,041,042,043,044,045,047).
+- Move direct 09/14/17/23/27/49/54/59, explicit 43R and 12R from next-session Current to same-week Born. No reverse unless approved. Preserve 94R separate. 12R adds independent digit 1, 48R, 80/35R and 7894 distinct wheel. 27R adds independent zero-head or 8-break branch. 59 exact current-week repeat tracked chronologically, no lookahead or reverse; independent 47/79. Original 88% text is not a verified score.
+- Source references for revised branches; keep prior historical snapshots intact. Update old R test to inspect both tabs. New tests for literal orientation, future exclusion, independent branch hits and weekly expiry. No new ranking change, no library score mapping yet.
+- Batch 2 review confirms actual cut evidence controls +7 UI, double table tests passed. Specificity counts unique evidence families; no device performance validation. Earlier unresolved lifetime assumptions and 29 equal-tail remain.
+- 31/50 dispositions coded, 19 remain. CI pending. No main/reader/Home/Research/LIVE/Math edits. No predictive claim.

@@ -221,7 +221,7 @@ class CherryBetterDataEngineTest {
             CherryBetterDataEngine.calculate(
                 listOf(d("2026-11-09",DrawSession.EVENING,input)),
                 target("2026-11-10",DrawSession.MORNING))
-                .current.filter{p->p.evidence.any{it.id==id}}.map{it.pair}.toSet()
+                .let{it.current+it.born}.filter{p->p.evidence.any{it.id.substringBefore('@')==id}}.map{it.pair}.toSet()
         for((base,id) in listOf(
             "43" to "s6-43","79" to "s6-79","83" to "s6-83","84" to "s6-84",
             "80" to "s8-80","67" to "s8-67","48" to "s8-48",

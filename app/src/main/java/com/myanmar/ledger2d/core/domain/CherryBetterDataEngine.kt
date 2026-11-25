@@ -293,9 +293,7 @@ object CherryPairExpander {
 object CherryBetterDataEngine {
     private val section6 = mapOf(
         // 01, 04, 07 are now evaluated by their approved weekly born rules.
-        "09" to listOf("68"),"14" to listOf("17"),"17" to listOf("14"),
-        "23" to listOf("79"),"27" to listOf("47","37"),"43" to listOf("89"),
-        "49" to listOf("60"),"54" to listOf("04"),"59" to listOf("47","79"),
+        // 09, 14, 17, 23, 27, 43R, 49, 54, 59 moved to weekly born.
         "64" to listOf("65"),"65" to listOf("27","64"),"69" to listOf("09"),
         "78" to listOf("72","50","61","83","13","41","85","63"),
         "79" to listOf("47","29"),"83" to listOf("43"),"84" to listOf("13","10"),
@@ -448,7 +446,7 @@ object CherryBetterDataEngine {
             }
             // Explicit R trigger rows: keep the canonical evidence ID for both
             // directions. The recorded output pairs remain unchanged.
-            val reverseSourceKeys = setOf("43","79","83","84")
+            val reverseSourceKeys = setOf("79","83","84")
             val sourceKey = if(last in section6) last
                 else last.reversed().takeIf { it in reverseSourceKeys } ?: last
             section6[sourceKey]?.let{
@@ -476,13 +474,6 @@ object CherryBetterDataEngine {
                     "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး အပူးအုပ်စု လိုက်မူ။ သက်တမ်းမပေးထားသဖြင့် နောက်တစ်ပွဲအတွက်သာ ပြ။")
                 // User later confirmed the separate 1267 weekly rule uses
                 // this same group; it is evaluated in the weekly born block.
-            }
-            if(last=="12"||last=="21") {
-                // Already exists as reader rule cherry-038; this fills only
-                // the previously missing Better Data calculation.
-                rule("s6-12","12R → 48R",listOf("48","84"))
-                rule("s6-12-wheel","12R → 4789 အခွေ",
-                    CherryPairExpander.wheel("4789"))
             }
             if(last=="80"||last=="08")rule("s8-80","80 R → 1264 အပူးခွေ",
                 CherryPairExpander.wheel("1264",true))
@@ -811,6 +802,35 @@ object CherryBetterDataEngine {
                 seen.add(row.digit)
             }
             return false
+        }
+        // Approved 21–30: same-week born, literal outputs except marked R.
+        val weeklyDirect6=mapOf("09" to listOf("68"),"14" to listOf("17"),
+            "17" to listOf("14"),"23" to listOf("79"),"27" to listOf("47","37"),
+            "49" to listOf("60"),"54" to listOf("04"),"59" to listOf("47","79"))
+        for(origin in weekRows) {
+            val x=origin.digit
+            weeklyDirect6[x]?.let{pairs->
+                scopedBorn("s6-$x","$x နောက် ${pairs.joinToString("/")} မွေးမူ",
+                    pairs,origin,weekEnd)
+            }
+            if(x=="43"||x=="34")
+                scopedBorn("s6-43","43R နောက် 89 မွေးမူ",listOf("89"),origin,weekEnd)
+            if(x=="12"||x=="21") {
+                scopedBorn("s6-12-digit","12R နောက် 1 ပတ်သီးမူ",
+                    followDigits(1),origin,weekEnd)
+                scopedBorn("s6-12","12R နောက် 48R မွေးမူ",
+                    listOf("48","84"),origin,weekEnd)
+                scopedBorn("s6-12-extra","12R နောက် 80/35R မွေးမူ",
+                    withReverse(listOf("80","35")),origin,weekEnd)
+                scopedBorn("s6-12-wheel","12R နောက် 7894 အခွေမူ",
+                    CherryPairExpander.wheel("7894"),origin,weekEnd)
+            }
+            if(x=="27"||x=="72")
+                scopedBorn("s6-27-extra","27R နောက် 0 ထိပ် / 8 ဘရိတ်မူ",
+                    CherryPairExpander.top(0)+breaks(8),origin,weekEnd)
+            if(x=="59" && !exactRepeatAfter(origin))
+                scopedBorn("s6-59-repeat","59 နောက် ပြန်ကျမူ",
+                    thisWeek.toList(),origin,weekEnd,stopOnHit=false)
         }
         for(origin in listOfNotNull(mondayAm,mondayPm)) {
             val x=origin.digit

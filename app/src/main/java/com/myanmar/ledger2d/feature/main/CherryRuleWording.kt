@@ -37,7 +37,7 @@ internal object CherryRuleWording {
             key=="new-born-75" -> "75 နောက် 45789 အခွေမူ"
             key=="new-bk-19r" -> "19R နောက် 1 ဘရိတ်မူ"
             key=="new-special-khant" -> "2D Ko Khant 0 ထိပ်မူ"
-            key=="s6-12-wheel" -> "12R နောက် 4789 အခွေမူ"
+            key=="s6-12-wheel" -> "12R နောက် 7894 အခွေမူ"
             key.startsWith("s4-wheel-") -> raw.replace(" → "," နောက် ")+"မူ"
             key.startsWith("s4-born-") -> raw.let{if(it.endsWith("မူ"))it else it+"မူ"}
             key=="s5-fri" -> "သောကြာ ပါဝါမွေးမူ"
@@ -62,6 +62,7 @@ internal object CherryRuleWording {
             key=="s8-15" -> "15 နောက် 4 ပတ်သီးမူ"
             key=="s8-88" -> "88 အပူးနောက် 3 ပတ်သီးမူ"
             key=="s6-57"||key=="s6-06"||key in setOf("s6-01-68","s6-01-46","s6-04","s6-07","s6-70") -> raw.let{if(it.endsWith("မူ"))it else it+"မူ"}
+            key.startsWith("s6-") && raw.endsWith("မူ") -> raw
             key.startsWith("s6-") -> raw.replace(Regex("အပိုင်း\\s*\\([^)]+\\)\\s*"),"")
                 .replace("သီးသန့်မွေး","သီးသန့်မွေးဂဏန်း").trim()+"မူ"
             else -> raw.replace(Regex("အပိုင်း\\s*\\([^)]+\\)\\s*"),"")
