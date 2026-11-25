@@ -46,6 +46,13 @@ internal object CherryLibrarySuccessBridge {
     // their Better Data snapshots remain intact, but a single winning pair
     // is NOT evidence the entire original Library rule succeeded.
     private val direct = mapOf(
+        "s1-day-head-tail" to "cherry-001",
+        "s1-day-break" to "cherry-002",
+        "s1-day-diagonal" to "cherry-003",
+        "s6-57" to "cherry-046",
+        "s8-zero-follow" to "cherry-078",
+        "s8-evening-four" to "cherry-085",
+        "s9-wailin" to "cherry-089",
         "new-mob-double" to "new-mob-double",
         "new-bk-six" to "new-bk-six",
         "new-born-75" to "new-born-75",

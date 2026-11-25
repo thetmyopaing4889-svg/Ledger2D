@@ -39,6 +39,70 @@ internal object CherryRuleSources {
         )
     }
 
+    // Exact reader text at the approved library baseline. These are reader
+    // excerpts, not newly transcribed photo originals; retain excluded branches
+    // in the reference while the calculator uses only authorized branches.
+    private fun clarifiedReaderSource(id:String):CherryOriginalReference? = when(id) {
+        "s1-day-head-tail" -> CherryOriginalReference(
+            1, "မူစာအုပ် • ထိပ်တူ / ပိတ်တူမူ",
+            "မနက်ပိုင်းနှင့် ညနေပိုင်းတွင် ထိပ်စီးချင်းတူ သို့မဟုတ် နောက်ပိတ်ချင်းတူ ထွက်ခဲ့ပါက တူသည့်ဂဏန်း၏ ရှေ့တစ်လုံး (၁ လျှော့ဂဏန်း) လာတတ်သည်။ အကယ်၍ မလာခဲ့ပါက 0 ဆင်းတတ်ပြီး၊ 0 မဆင်းပါက အပူး ဆင်းတတ်သည်။")
+        "s1-day-break" -> CherryOriginalReference(
+            1, "မူစာအုပ် • ဘရိတ်တူမူ",
+            "မနက်ပိုင်းနှင့် ညနေပိုင်း ဘရိတ်တူခဲ့ပါက 0 လာတတ်သည်။ 0 မလာခဲ့ပါက အပူး ဆင်းတတ်ပြီး၊ အပူးမဆင်းပါက ပြန်ကျဂဏန်း လာတတ်သည်။")
+        "s1-day-diagonal" -> CherryOriginalReference(
+            1, "မူစာအုပ် • ဘေးတစ်စောင်း ဘရိတ်တူမူ",
+            "ဘေးတစ်စောင်း ဘရိတ်တူ ထွက်ခဲ့ပါက နက္ခတ် နှင့် ပြန်ကျဂဏန်း ကို ပြန်လည်ကစားရမည်။")
+        "s6-57" -> CherryOriginalReference(
+            6, "မူစာအုပ် • (57) R ထွက်လျှင်",
+            "(57) R ထွက်လျှင်: 357 အထိ ပြန်ထိုးပါ။")
+        "s8-zero-follow" -> CherryOriginalReference(
+            8, "မူစာအုပ် • 0 ထွက်လျှင် ပတ်သီး/ပိတ်မူ",
+            "0 ထွက်လျှင် ➔ 7 သာပတ်ပါ။")
+        "s8-evening-four" -> CherryOriginalReference(
+            8, "မူစာအုပ် • ညနေပိုင်း 4 ထိပ်မူ",
+            "ညနေပိုင်းတွင် 4 ထိပ် လာတိုင်း ပါဝါ သို့မဟုတ် နက္ခတ် လိုက်သည်။")
+        "s9-wailin" -> CherryOriginalReference(
+            9, "မူစာအုပ် • WaiLin 2D နေ့စဉ် တစ်လုံးပိုင်မူ",
+            "မနေ့က ထွက်သွားသော မနက်ဂဏန်းနှင့် ညနေဂဏန်းကို ချရေးပြီး (မနက်ထိပ်စီး + ညနေထိပ်စီး + ညနေနောက်ပိတ်) သုံးလုံးပေါင်းလဒ်သည် ယနေ့အတွက် တစ်လုံးပိုင် ဖြစ်သည်။")
+        "s6-06" -> CherryOriginalReference(
+            6, "မူစာအုပ် • (06) R ထွက်လျှင်",
+            "(06) R ထွက်လျှင်: (၄) ပွဲ ဆတိုးဖြင့် ညီအစ်ကို အပိုင်မွေးရမည်။")
+        "s5-mon-ones" -> CherryOriginalReference(
+            5, "မူစာအုပ် • တနင်္လာနေ့ 1 နှစ်လုံး/သုံးလုံး မူ",
+            "တနင်္လာနေ့ နေကုန်ထွက်ဂဏန်းတွင် 1 နှစ်လုံး (သို့မဟုတ်) 1 သုံးလုံး ပါနေခဲ့လျှင် တစ်ပတ်အတွင်း (9) ဘရိတ် အပိုင်လိုက်ကစားပါ (09 - 18 - 27 - 36 - 45 R / အထွက်အများဆုံးဂဏန်းမှာ 09 - 27 R ဖြစ်သည်)။")
+        "s5-mon-nine" -> CherryOriginalReference(
+            5, "မူစာအုပ် • တနင်္လာနေ့တွင် (9) လာပါက",
+            "အပူး မွေးရမည်။")
+        "s5-mon-three" -> CherryOriginalReference(
+            5, "မူစာအုပ် • တနင်္လာနေ့တွင် (3) လာပါက",
+            "အပြန်ဂဏန်း (ပြန်ကျ) မွေးရမည်။")
+        "s5-mon-five-break", "s5-mon-five-digit" -> CherryOriginalReference(
+            5, "မူစာအုပ် • တနင်္လာနေ့တွင် (5) လာပါက",
+            "ဘူ (၀ ဘရိတ်) / တစ်ဆယ်ပေါင်း မွေးရမည်ဖြစ်ပြီး၊ ကျန် (၄) ရက်အတွင်း (5) တစ်လုံး ရာနှုန်းပြည့် ပြန်ဆင်းပေးသည်။")
+        "s8-mon-seven" -> CherryOriginalReference(
+            8, "မူစာအုပ် • တနင်္လာမနက် 7 ထိပ်မူ",
+            "တနင်္လာနေ့မနက်တွင် 7 ထိပ် ကျလာတိုင်း 3 ဇွတ်လိုက်ပါ။ ထို့ပြင် ကြာသပတေးနေ့တွင် 5 တစ်လုံး နှင့် သောကြာနေ့တွင် 4 ကျိန်းသေ ဆင်းသည်။")
+        "s8-thufri-power" -> CherryOriginalReference(
+            8, "မူစာအုပ် • ကြာသပတေး/သောကြာ ထိပ်ပေါင်း ပါဝါတွဲမူ",
+            "ကြာသပတေးမနက် ထိပ်စီးနှင့် သောကြာမနက် ထိပ်စီးနှစ်လုံးသည် ပါဝါအတွဲ (05, 16, 27, 38, 49) ဖြစ်ခဲ့လျှင် နောက်တစ်ပတ်အတွင်း (26, 29, 28, 48, 46, 49) R ကို ဆတိုးမွေးထိုးပါ။")
+        "new-bk-evening7" -> CherryOriginalReference(
+            10, "မူစာအုပ် • ညနေ 7 ပိတ်မူ",
+            "ညနေ 7 ပိတ်ထွက်ပြီး နောက်ရက်များတွင် 5/0 ပတ်သီး သို့မဟုတ် 3 ဘရိတ် လိုက်တတ်သည်ဟု ဖော်ပြထားသည်။")
+        "new-day-mon-b4", "new-day-mon-t6", "new-day-mon-79", "new-day-mon-89" -> CherryOriginalReference(
+            10, "မူစာအုပ် • တနင်္လာနေ့ဆက်စပ်မူ",
+            "4 ဘရိတ်ကျလျှင် 27, 45။ 6 ပိတ်ကျလျှင် (09, 27, 35, 49, 56, 89)R။ 79R ကျလျှင် (12, 15, 17, 29, 36, 69)R။ 89R ကျလျှင် 2/7/4/9 ဘရိတ်။ နောက်ဆုံးပိတ်တူနေပါက (94, 95, 96, 97, 98)R ကိုဖော်ပြထားသည်။")
+        "new-day-tue-b3", "new-day-tue-56", "new-day-tue-h5", "new-day-tue-b0", "new-day-tue-b4" -> CherryOriginalReference(
+            10, "မူစာအုပ် • အင်္ဂါနေ့ဆက်စပ်မူ",
+            "3 ဘရိတ်ကျလျှင် 5/9 ဘရိတ်။ 56R ထွက်လျှင် 13R၊ 5 ထိပ်ကျလျှင် 63R၊ 0 ဘရိတ်ကျလျှင် 0 ဘရိတ်၊ 4 ဘရိတ်ကျလျှင် 8 ဘရိတ်ကို ဖော်ပြထားသည်။")
+        "new-day-wed-b9", "new-day-wed-b5", "new-day-wed-t6" -> CherryOriginalReference(
+            10, "မူစာအုပ် • ဗုဒ္ဓဟူးနေ့ဆက်စပ်မူ",
+            "9 ဘရိတ်ကျလျှင် 1456 အခွေ၊ 5 ဘရိတ်ကျလျှင် 678 ဘရိတ်။ 6 ပိတ်ကျလျှင် 8 ထိပ်/8 ဘရိတ်။ 5 သုံးလုံးတွင် 0 ဘရိတ်ကျလျှင် 2479 ဘရိတ်ကို ဖော်ပြထားသည်။")
+        "new-groups-weekly-nine", "new-groups-weekly-break", "new-groups-weekly-wheel" -> CherryOriginalReference(
+            10, "မူစာအုပ် • အပတ်စဉ်မပျောက်တတ်သည့် မူများ",
+            "9 လုံး၊ 1 ဘရိတ်နှင့် 4679 အခွေကို တစ်ပတ်အတွင်း စောင့်ကြည့်ရန် ဖော်ပြထားသည့် ရင်းမြစ်အဆိုသုံးချက်။")
+        else -> null
+    }
+
     private fun section(source:String,number:Int):List<String> {
         if(number !in 1..9)return emptyList()
         val lines=source.lineSequence().map{it.trim()}.toList()
@@ -55,6 +119,7 @@ internal object CherryRuleSources {
     fun lookup(source:String?,ruleId:String,detail:String=""):CherryOriginalReference? {
         if(source.isNullOrBlank())return null
         val id=ruleId.substringBefore('@')
+        clarifiedReaderSource(id)?.let { return it }
         addedSource(id)?.let { return it }
         val part:Int
         val label:String

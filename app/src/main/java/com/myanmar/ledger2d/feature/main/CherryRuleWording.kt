@@ -60,6 +60,7 @@ internal object CherryRuleWording {
             key=="s8-71" -> "71 နောက် 2 ပတ်သီးမူ"
             key=="s8-15" -> "15 နောက် 4 ပတ်သီးမူ"
             key=="s8-88" -> "88 အပူးနောက် 3 ပတ်သီးမူ"
+            key=="s6-57"||key=="s6-06" -> raw.let{if(it.endsWith("မူ"))it else it+"မူ"}
             key.startsWith("s6-") -> raw.replace(Regex("အပိုင်း\\s*\\([^)]+\\)\\s*"),"")
                 .replace("သီးသန့်မွေး","သီးသန့်မွေးဂဏန်း").trim()+"မူ"
             else -> raw.replace(Regex("အပိုင်း\\s*\\([^)]+\\)\\s*"),"")

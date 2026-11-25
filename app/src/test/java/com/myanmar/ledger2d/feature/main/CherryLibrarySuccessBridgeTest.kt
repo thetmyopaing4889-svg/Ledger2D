@@ -118,11 +118,39 @@ class CherryLibrarySuccessBridgeTest {
         assertNull(CherryLibrarySuccessBridge.libraryRuleId("s6-12"))
     }
 
+    @Test fun clarifiedCurrentRulesResolveAndCountOncePerConfirmedDraw() {
+        val expected = mapOf(
+            "s1-day-head-tail" to "cherry-001",
+            "s1-day-break" to "cherry-002",
+            "s1-day-diagonal" to "cherry-003",
+            "s6-57" to "cherry-046",
+            "s8-zero-follow" to "cherry-078",
+            "s8-evening-four" to "cherry-085",
+            "s9-wailin" to "cherry-089",
+        )
+        val target = draw(0)
+        val snap = snapshot(target, *expected.keys.map {
+            pair(it, CherryTab.CURRENT, "12")
+        }.toTypedArray())
+        val scores = CherryLibrarySuccessBridge.scoredCompleted(
+            CherrySuccessEngine.completed(listOf(snap), mapOf(target to "12")), expected.values.toSet())
+        assertEquals(expected.values.toSet(), scores.keys)
+        expected.forEach { (id, canonical) ->
+            assertEquals(canonical, CherryLibrarySuccessBridge.libraryRuleId(id))
+            assertEquals(1, scores.getValue(canonical).eligible)
+            assertEquals(1, scores.getValue(canonical).correct)
+        }
+        assertTrue(CherryLibrarySuccessBridge.scoredCompleted(
+            CherrySuccessEngine.completed(listOf(snap), emptyMap()), expected.values.toSet()).isEmpty())
+    }
+
     @Test fun weeklyAndPartialRuleSignalsCannotEarnWholeSourcePoints() {
         val withheld = listOf(
             "s3-power", "s3-six", "s3-week", "s5-mon", "s5-wed",
             "s6-70", "s6-12", "s6-12-wheel", "s6-am92", "s6-92",
-            "s8-00-bk", "s6-78",
+            "s8-00-bk", "s6-78", "s6-06", "s8-mon-seven", "s5-mon-five-digit",
+            "s5-mon-five-break", "s8-thufri-power", "new-bk-evening7",
+            "new-day-mon-b4", "new-day-tue-b3", "new-day-wed-b9", "new-groups-weekly-nine",
         )
         withheld.forEach { assertNull("Must not award a whole-rule score for $it",
             CherryLibrarySuccessBridge.libraryRuleId(it)) }

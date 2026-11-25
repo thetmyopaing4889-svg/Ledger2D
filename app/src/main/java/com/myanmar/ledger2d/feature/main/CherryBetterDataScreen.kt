@@ -346,12 +346,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             )
                         }
                         val groups=cherryRuleGroups(report.born)
-                        val actualBorn=groups.filterNot{
-                            it.id=="s3-week"||it.id=="s3-six"
-                        }
-                        val weekly=groups.filter{
-                            it.id=="s3-week"||it.id=="s3-six"
-                        }
+                        val (weekly,actualBorn)=groups.partition{isCherryWeeklyWatch(it.id)}
                         item {
                             CherryHeading(tr("အကျုံးဝင်နေသော မွေးမူတစ်ခုချင်း","Individual active born rules"),
                                 tr("မူကိုနှိပ်ပြီး စတင်ချိန်၊ သက်တမ်း၊ တွက်ချက်ပုံနှင့် အတွဲအားလုံးကို ကြည့်ရန်",
@@ -737,3 +732,4 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         }
     }
 }
+

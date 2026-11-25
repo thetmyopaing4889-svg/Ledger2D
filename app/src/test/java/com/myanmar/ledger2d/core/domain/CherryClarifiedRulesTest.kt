@@ -27,13 +27,18 @@ class CherryClarifiedRulesTest {
         val b=d("2026-11-23",pm,"02")
         val r=report("2026-11-24",am,a,b)
         assertEquals(digit(9)+digit(0)+doubles,pairs(r,"s1-day-head-tail"))
-        assertEquals(digit(3),pairs(r,"s9-wailin"))
+        assertEquals(digit(2),pairs(r,"s9-wailin"))
         assertEquals(pairs(r,"s1-day-head-tail"),pairs(report("2026-11-24",pm,a,b),"s1-day-head-tail"))
         assertTrue(pairs(report("2026-11-24",am,a),"s1-day-head-tail").isEmpty())
         assertTrue(pairs(report("2026-11-30",am,d("2026-11-27",am,"01"),
             d("2026-11-27",pm,"02")),"s1-day-head-tail").isEmpty())
         assertTrue(pairs(report("2026-11-25",am,a,b,
             closed=setOf(LocalDate.parse("2026-11-24"))),"s9-wailin").isEmpty())
+    }
+
+    @Test fun waiLinUsesLastDigitOfThreeTermSum() {
+        val r=report("2026-11-24",am,d("2026-11-23",am,"90"),d("2026-11-23",pm,"44"))
+        assertEquals(digit(7),pairs(r,"s9-wailin"))
     }
 
     @Test fun sameBreakAndDiagonalUseExactRecordedPairsOnly() {
