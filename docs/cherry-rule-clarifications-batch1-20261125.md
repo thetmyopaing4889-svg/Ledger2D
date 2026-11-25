@@ -28,3 +28,6 @@ TwoDAnalysisEngine.kt at baseline implements exact-pair repeat events from curre
 - Exact repeat references: all two-digit results already recorded in the same week, not reversed pairs; use only observations strictly before target.
 - 031: exclude from Better Data only. Preserve 2D Analysis reader and original source; do not delete the library entry.
 - Batch 1: seven principal rule specifications clarified; 018 and 022 pending; 031 intentionally excluded. No code changes in this clarification commit.
+
+## Final batch 1 disposition
+User explicitly excludes pending cherry-018 and cherry-022 from Better Data only, in addition to cherry-031. Preserve all three in the 2D Analysis reader and original source. Seven rules approved in principle, three intentionally excluded. No application code changes in this commit.
