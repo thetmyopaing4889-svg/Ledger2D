@@ -291,14 +291,6 @@ object CherryPairExpander {
 }
 
 object CherryBetterDataEngine {
-    private val section6 = mapOf(
-        // 01, 04, 07 are now evaluated by their approved weekly born rules.
-        // 09, 14, 17, 23, 27, 43R, 49, 54, 59 moved to weekly born.
-        "64" to listOf("65"),"65" to listOf("27","64"),"69" to listOf("09"),
-        "78" to listOf("72","50","61","83","13","41","85","63"),
-        "79" to listOf("47","29"),"83" to listOf("43"),"84" to listOf("13","10"),
-        "89" to listOf("49","76"),"92" to listOf("90")
-    )
     private val wheels = mapOf(
         "00" to listOf("0457","0459"),"11" to listOf("1267"),
         "22" to listOf("2479"),"33" to listOf("1368"),
@@ -444,14 +436,6 @@ object CherryBetterDataEngine {
                         "${digit} နောက် ${friends} တွဲဖက်")
                 }
             }
-            // Explicit R trigger rows: keep the canonical evidence ID for both
-            // directions. The recorded output pairs remain unchanged.
-            val reverseSourceKeys = setOf("79","83","84")
-            val sourceKey = if(last in section6) last
-                else last.reversed().takeIf { it in reverseSourceKeys } ?: last
-            section6[sourceKey]?.let{
-                rule("s6-$sourceKey","အပိုင်း (၆) သီးသန့်မွေး",it)
-            }
             // Source 10R has an explicit break but no expiry. Same immediate
             // next-draw convention as existing duration-free current rules.
             if(last=="10"||last=="01")
@@ -492,9 +476,10 @@ object CherryBetterDataEngine {
             if(target.session==DrawSession.EVENING&&last=="05")
                 rule("s7-am05","မနက် 05 → ညနေ 7–2",
                     listOf("52","25","27","72"))
-            if(target.session==DrawSession.EVENING&&last=="92")
-                rule("s6-am92","မနက် 92 → ညနေ 7 ဘရိတ်",
-                    listOf("43","07"))
+            if(target.session==DrawSession.EVENING&&prev.session==DrawSession.MORNING&&
+                prev.date==target.date&&last=="92")
+                rule("s6-am92","မနက် 92 နောက် ညနေ 7 ဘရိတ်မူ",
+                    CherryPairExpander.bk(7),"မနက် 92 ဒဲ့ • ညနေ 7 ဘရိတ် • အထူး 43/07")
         }
         fun birth(origin:HistoricDraw,code:String,name:String,pairs:List<String>,
                   limit:Int=5,calendarDays:Boolean=false) {
@@ -534,8 +519,6 @@ object CherryBetterDataEngine {
                 CherryPairExpander.wheel("1264",true))
             if(x=="67"||x=="76")birth(d,"s8-67","67 R → 8123 အပူးခွေ",
                 CherryPairExpander.wheel("8123",true))
-            if(x=="00")birth(d,"s8-00-bk","00 နောက် 5 ဘရိတ်",
-                listOf("05","14","23","69","78"))
         }
         val mon=target.date.minusDays((target.date.dayOfWeek.value-1).toLong())
         val thisWeek=rows.filter{it.date>=mon&&it.date<mon.plusDays(7)}
@@ -806,7 +789,9 @@ object CherryBetterDataEngine {
         // Approved 21–30: same-week born, literal outputs except marked R.
         val weeklyDirect6=mapOf("09" to listOf("68"),"14" to listOf("17"),
             "17" to listOf("14"),"23" to listOf("79"),"27" to listOf("47","37"),
-            "49" to listOf("60"),"54" to listOf("04"),"59" to listOf("47","79"))
+            "49" to listOf("60"),"54" to listOf("04"),"59" to listOf("47","79"),
+            "64" to listOf("65"),"65" to listOf("27","64"),"69" to listOf("09"),
+            "89" to listOf("49","76"),"92" to listOf("90"))
         for(origin in weekRows) {
             val x=origin.digit
             weeklyDirect6[x]?.let{pairs->
@@ -815,6 +800,17 @@ object CherryBetterDataEngine {
             }
             if(x=="43"||x=="34")
                 scopedBorn("s6-43","43R နောက် 89 မွေးမူ",listOf("89"),origin,weekEnd)
+            // 31–40: the 78 trigger is literal, R marks the whole output group.
+            if(x=="78")
+                scopedBorn("s6-78","78 နောက် ပါဝါပဒေသာမွေးမူ",
+                    withReverse(listOf("72","50","61","83","13","41","85","63")),
+                    origin,weekEnd)
+            if(x=="79"||x=="97")
+                scopedBorn("s6-79","79R နောက် 47/29 မွေးမူ",listOf("47","29"),origin,weekEnd)
+            if(x=="83"||x=="38")
+                scopedBorn("s6-83","83R နောက် 43 မွေးမူ",listOf("43"),origin,weekEnd)
+            if(x=="84"||x=="48")
+                scopedBorn("s6-84","84R နောက် 13/10 မွေးမူ",listOf("13","10"),origin,weekEnd)
             if(x=="12"||x=="21") {
                 scopedBorn("s6-12-digit","12R နောက် 1 ပတ်သီးမူ",
                     followDigits(1),origin,weekEnd)
@@ -831,6 +827,13 @@ object CherryBetterDataEngine {
             if(x=="59" && !exactRepeatAfter(origin))
                 scopedBorn("s6-59-repeat","59 နောက် ပြန်ကျမူ",
                     thisWeek.toList(),origin,weekEnd,stopOnHit=false)
+        }
+        // Plain five calendar days, including closures/weekends. The reader
+        // lists five literal pairs, not the entire 5-break group.
+        rows.filter{it.date>=target.date.minusDays(5)&&it.digit=="00"}.forEach{origin->
+            scopedBorn("s8-00-bk","00 နောက် 5 ဘရိတ်မွေးမူ",
+                listOf("05","14","23","69","78"),origin,origin.date.plusDays(5),
+                detail="5 ရက် • အထူး 05/69")
         }
         for(origin in listOfNotNull(mondayAm,mondayPm)) {
             val x=origin.digit
