@@ -1,0 +1,11 @@
+# Build 1946 follow-up — clarified source rules implementation
+
+Baseline code build 1946 (fb9cf6f7e515eed9e88cb4274fe2a329b7b56266), branch documentation head 40eec95687f8a3cb28d013c2bb35946fbeb1e63f. Implements the 20 retained missing-rule entries across user clarification batches 1–4, except unresolved sub-branches. 17 excluded entries and two excluded sub-branches remain untouched in the reader; no source deletion.
+
+## Implementation
+- Current: previous calendar day AM/PM matching (001–003), WaiLin (089), 57R double-inclusive wheel (046), 0→7 (078), evening 4-head next morning (085).
+- Born: Monday rules (024–027), 06R exactly four scheduled sessions (034), Monday AM 7-head (086), prior Thu/Fri power pair (087), mob wheel and evening 7-tail, weekday branches Mon/Tue/Wed, and independent weekly watches.
+- All inputs strictly before the target. No historical reconstruction of Success, no discovery or ranking algorithm change. New rules feed normal report and existing pre-draw Success snapshots; separate reader scoring mapping remains for the next audit.
+- Implementation assumptions: previous calendar day only for day-scoped rules; both AM/PM remain eligible; both matching digits included if both positions match. WaiLin recalculates daily inside the week. The evening 4-head rule uses the next calendar morning (no holiday rollover). Same-week born rules use existing stop-on-hit behavior; weekly watches retire individually on first hit. 06R expires at the fourth scheduled slot (not the fourth observed row). Monday 5 digit branch begins Tuesday. Group 29 last-tail-equality sub-branch remains absent pending user definition. Wednesday 5-three-occurrences branch and Monday 7-head Thu/Fri branches are intentionally excluded. 1456/1267/4679 wheels without explicit doubles use existing distinct-digit expansion.
+- New focused regression tests exercise scheduled slots, missing inputs, no future input, weekly boundaries, exact repeats and distinct branches.
+- CI pending at commit creation. No phone test performed. The 50 originally partially implemented source entries, exact source references, source-specific score linkage, and remaining edge cases must still be reviewed. No claim of forecasting improvement.

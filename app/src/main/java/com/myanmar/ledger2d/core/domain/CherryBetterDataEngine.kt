@@ -474,8 +474,8 @@ object CherryBetterDataEngine {
                 rule("new-mob-double","လူမိုက်ကြီးအပူး",
                     (0..9).map{"$it$it"},
                     "လူမိုက်အုပ်စုထဲမှ $last ထွက်ပြီး အပူးအုပ်စု လိုက်မူ။ သက်တမ်းမပေးထားသဖြင့် နောက်တစ်ပွဲအတွက်သာ ပြ။")
-                // The 1267 rule references a separate mob group whose
-                // members are not listed in the user's source image.
+                // User later confirmed the separate 1267 weekly rule uses
+                // this same group; it is evaluated in the weekly born block.
             }
             if(last in setOf("98","11","91"))
                 rule("new-special-khant","2D Ko Khant — 0 ထိပ်",
@@ -598,6 +598,191 @@ object CherryBetterDataEngine {
         if(groupSix.any{it in thisWeek})add(born,"s3-six","s3-six",
             "အပတ်စဉ် ၆ ကွက်အုပ်စု","ယခုအပတ် အုပ်စုတစ်ကွက် ပေါ်ပြီး",
             groupSix.filterNot{it in thisWeek},null,CherryTab.BORN)
+        // User-confirmed omissions, clarification batches 1–4.
+        // IDs are independent of legacy evidence; no retrospective scoring.
+        // Use only rows strictly before the target (filtered above).
+        val weekRows=rows.filter{it.date>=mon && it.date<mon.plusDays(7)}
+        val weekEnd=mon.plusDays(4)
+        val doubles=(0..9).map{"$it$it"}
+        fun withReverse(pairs:List<String>)=pairs.flatMap{listOf(it,it.reversed())}.distinct()
+        fun breaks(vararg digits:Int)=digits.flatMap{CherryPairExpander.bk(it)}.distinct()
+        fun followDigits(vararg digits:Int)=digits.flatMap{CherryPairExpander.any(it)}.distinct()
+        fun dayRow(date:LocalDate,session:DrawSession)=rows.firstOrNull{
+            it.date==date && it.session==session
+        }
+        fun currentRule(code:String,name:String,pairs:List<String>,origin:HistoricDraw,detail:String) {
+            add(current,code,code,name,detail,pairs,identity(origin),CherryTab.CURRENT)
+        }
+        fun scopedBorn(code:String,name:String,pairs:List<String>,origin:HistoricDraw,
+                       end:LocalDate,stopOnHit:Boolean=true,detail:String="",
+                       starts:LocalDate=origin.date) {
+            if(target.date<starts || target.date>end || !before(origin,target))return
+            val values=pairs.filter(::validHistoric2D).toSet()
+            if(values.isEmpty())return
+            if(stopOnHit && rows.any{before(origin,identity(it)) &&
+                    it.date>=starts && it.date<=end && it.digit in values})return
+            val key="$code@${origin.date}-${origin.session.name}"
+            births+=CherryBirth(key,name,identity(origin),end,values)
+            add(born,key,code,name,
+                "${origin.date} ${origin.session.label}: ${origin.digit} • $name" +
+                    if(detail.isBlank()) "" else " • $detail",
+                values,identity(origin),CherryTab.BORN)
+        }
+        // One-day rules: previous calendar day's two confirmed sessions.
+        // No stale substitution or Friday-to-Monday rollover. Both AM/PM
+        // remain applicable for that day; this is a per-session observation.
+        val yesterday=target.date.minusDays(1)
+        if(yesterday>=mon && DrawSchedule.isWorkingDate(yesterday,closed)) {
+            val am=dayRow(yesterday,DrawSession.MORNING)
+            val pm=dayRow(yesterday,DrawSession.EVENING)
+            if(am!=null && pm!=null) {
+                val a=am.digit
+                val b=pm.digit
+                val common=(0..1).filter{a[it]==b[it]}
+                    .map{Math.floorMod(a[it].digitToInt()-1,10)}.distinct()
+                val context="$yesterday • မနက် $a / ညနေ $b"
+                if(common.isNotEmpty())
+                    currentRule("s1-day-head-tail","ထိပ်တူ / ပိတ်တူမူ",
+                        common.flatMap{CherryPairExpander.any(it)}+CherryPairExpander.any(0)+doubles,
+                        pm,"$context • တူဂဏန်း 1 လျှော့၊ 0 သို့ အပူး")
+                if(bk(a)==bk(b))
+                    currentRule("s1-day-break","ဘရိတ်တူမူ",
+                        CherryPairExpander.any(0)+doubles+thisWeek,pm,
+                        "$context • ဘရိတ်တူ၊ 0 / အပူး / ယခုအပတ် ပြန်ကျ")
+                if((a[0].digitToInt()+b[1].digitToInt())%10==
+                    (a[1].digitToInt()+b[0].digitToInt())%10)
+                    currentRule("s1-day-diagonal","ဘေးတစ်စောင်း ဘရိတ်တူမူ",
+                        astrology+thisWeek,pm,"$context • ဘေးတစ်စောင်း ဘရိတ်တူ")
+                val digit=(a[0].digitToInt()+b[0].digitToInt()+b[1].digitToInt())%10
+                currentRule("s9-wailin","WaiLin နေ့စဉ် တစ်လုံးပိုင်မူ",
+                    CherryPairExpander.any(digit),pm,
+                    "$context • ${a[0]} + ${b[0]} + ${b[1]} → $digit")
+            }
+        }
+        if(prev!=null) {
+            val x=prev.digit
+            if(x=="57"||x=="75")currentRule("s6-57","57R နောက် 357 အခွေပူးမူ",
+                CherryPairExpander.wheel("357",true),prev,"$x • နောက် session တစ်ကြိမ်")
+            if('0' in x)currentRule("s8-zero-follow","0 နောက် 7 ပတ်သီးမူ",
+                CherryPairExpander.any(7),prev,"$x • 0 ပါဝင်")
+            if(prev.session==DrawSession.EVENING && target.session==DrawSession.MORNING &&
+                prev.date==yesterday && x[0]=='4')
+                currentRule("s8-evening-four","ညနေ 4 ထိပ်မူ",power+astrology,prev,
+                    "${prev.date} ညနေ $x • နောက်နေ့မနက်")
+        }
+        // Exactly four scheduled sessions, including gaps in observed history.
+        // The expiry date is the date of session 4; the detail retains session.
+        fun nextSlot(slot:DrawIdentity):DrawIdentity {
+            if(slot.session==DrawSession.MORNING)
+                return DrawIdentity(slot.date,DrawSession.EVENING)
+            var next=slot.date.plusDays(1)
+            while(!DrawSchedule.isWorkingDate(next,closed))next=next.plusDays(1)
+            return DrawIdentity(next,DrawSession.MORNING)
+        }
+        rows.takeLast(4).filter{it.digit=="06"||it.digit=="60"}.forEach{origin->
+            var slot=identity(origin)
+            val validSlots=(1..4).map{slot=nextSlot(slot);slot}
+            if(target in validSlots)
+                scopedBorn("s6-06","06R ညီအစ်ကိုမွေးမူ",siblings,origin,
+                    validSlots.last().date,detail="4 sessions • ${validSlots.last().session.label}")
+        }
+        val mondayAm=dayRow(mon,DrawSession.MORNING)
+        val mondayPm=dayRow(mon,DrawSession.EVENING)
+        if(mondayAm!=null && mondayPm!=null) {
+            val ones=(mondayAm.digit+mondayPm.digit).count{it=='1'}
+            if(ones==2||ones==3)
+                scopedBorn("s5-mon-ones","တနင်္လာ 1 နှစ်လုံး/သုံးလုံးမူ",
+                    breaks(9),mondayPm,weekEnd)
+        }
+        if(mondayAm!=null && mondayAm.digit[0]=='7')
+            scopedBorn("s8-mon-seven","တနင်္လာမနက် 7 ထိပ်မူ",
+                followDigits(3),mondayAm,weekEnd)
+        // Dynamic exact repeat watch: compare each observed result only with
+        // earlier same-week results, not with a later enlarged candidate set.
+        fun exactRepeatAfter(origin:HistoricDraw):Boolean {
+            val seen=mutableSetOf<String>()
+            for(row in weekRows) {
+                if(before(origin,identity(row)) && row.digit in seen)return true
+                seen.add(row.digit)
+            }
+            return false
+        }
+        for(origin in listOfNotNull(mondayAm,mondayPm)) {
+            val x=origin.digit
+            if('9' in x)scopedBorn("s5-mon-nine","တနင်္လာ 9 အပူးမွေးမူ",
+                doubles,origin,weekEnd)
+            if('3' in x && !exactRepeatAfter(origin))
+                scopedBorn("s5-mon-three","တနင်္လာ 3 ပြန်ကျမူ",thisWeek.toList(),
+                    origin,weekEnd,stopOnHit=false)
+            if('5' in x) {
+                scopedBorn("s5-mon-five-break","တနင်္လာ 5 ဘူ / ဆယ်ပြည့်မူ",
+                    breaks(0),origin,weekEnd)
+                scopedBorn("s5-mon-five-digit","တနင်္လာ 5 တစ်လုံးမူ",
+                    followDigits(5),origin,weekEnd,starts=mon.plusDays(1))
+            }
+        }
+        // Previous week's exact Thursday/Friday morning input slots.
+        val th=dayRow(mon.minusDays(4),DrawSession.MORNING)
+        val fr=dayRow(mon.minusDays(3),DrawSession.MORNING)
+        if(th!=null && fr!=null && "${th.digit[0]}${fr.digit[0]}" in power)
+            scopedBorn("s8-thufri-power","ကြာသပတေး/သောကြာ ပါဝါတွဲမွေးမူ",
+                withReverse(listOf("26","29","28","48","46","49")),fr,weekEnd,starts=mon)
+        for(origin in weekRows) {
+            val x=origin.digit
+            if(x in mobGroup)scopedBorn("new-mob-wheel","လူမိုက်အခွေမူ",
+                CherryPairExpander.wheel("1267"),origin,weekEnd)
+            if(origin.session==DrawSession.EVENING && x[1]=='7')
+                scopedBorn("new-bk-evening7","ညနေ 7 ပိတ်မူ",
+                    followDigits(5,0)+breaks(3),origin,weekEnd)
+            // Weekday branches get independent stable IDs and lifetimes.
+            // Source 29's unresolved equal-tail branch is intentionally absent.
+            when(origin.date.dayOfWeek) {
+                DayOfWeek.MONDAY->{
+                    if(bk(x)==4)scopedBorn("new-day-mon-b4","တနင်္လာ 4 ဘရိတ်မူ",
+                        listOf("27","45"),origin,weekEnd)
+                    if(x[1]=='6')scopedBorn("new-day-mon-t6","တနင်္လာ 6 ပိတ်မူ",
+                        withReverse(listOf("09","27","35","49","56","89")),origin,weekEnd)
+                    if(x=="79"||x=="97")scopedBorn("new-day-mon-79","တနင်္လာ 79R မူ",
+                        withReverse(listOf("12","15","17","29","36","69")),origin,weekEnd)
+                    if(x=="89"||x=="98")scopedBorn("new-day-mon-89","တနင်္လာ 89R မူ",
+                        breaks(2,7,4,9),origin,weekEnd)
+                }
+                DayOfWeek.TUESDAY->{
+                    if(bk(x)==3)scopedBorn("new-day-tue-b3","အင်္ဂါ 3 ဘရိတ်မူ",
+                        breaks(5,9),origin,weekEnd)
+                    if(x=="56"||x=="65")scopedBorn("new-day-tue-56","အင်္ဂါ 56R မူ",
+                        withReverse(listOf("13")),origin,weekEnd)
+                    if(x[0]=='5')scopedBorn("new-day-tue-h5","အင်္ဂါ 5 ထိပ်မူ",
+                        withReverse(listOf("63")),origin,weekEnd)
+                    if(bk(x)==0)scopedBorn("new-day-tue-b0","အင်္ဂါ 0 ဘရိတ်မူ",
+                        breaks(0),origin,weekEnd)
+                    if(bk(x)==4)scopedBorn("new-day-tue-b4","အင်္ဂါ 4 ဘရိတ်မူ",
+                        breaks(8),origin,weekEnd)
+                }
+                DayOfWeek.WEDNESDAY->{
+                    if(bk(x)==9)scopedBorn("new-day-wed-b9","ဗုဒ္ဓဟူး 9 ဘရိတ်မူ",
+                        CherryPairExpander.wheel("1456"),origin,weekEnd)
+                    if(bk(x)==5)scopedBorn("new-day-wed-b5","ဗုဒ္ဓဟူး 5 ဘရိတ်မူ",
+                        breaks(6,7,8),origin,weekEnd)
+                    if(x[1]=='6')scopedBorn("new-day-wed-t6","ဗုဒ္ဓဟူး 6 ပိတ်မူ",
+                        CherryPairExpander.top(8)+breaks(8),origin,weekEnd)
+                    // User excludes the 5-three-occurrences branch.
+                }
+                else->Unit
+            }
+        }
+        // Weekly watches begin Monday; each criterion independently retires
+        // after the first observed matching result, like existing born rules.
+        if(DrawSchedule.isWorkingDate(target.date,closed) && target.date<=weekEnd) {
+            fun weeklyWatch(code:String,name:String,pairs:List<String>) {
+                if(pairs.none{it in thisWeek})add(born,code,code,name,
+                    "$mon – $weekEnd • အပတ်စဉ် စောင့်ကြည့်မူ",pairs,null,CherryTab.BORN)
+            }
+            weeklyWatch("new-groups-weekly-nine","အပတ်စဉ် 9 လုံးမူ",followDigits(9))
+            weeklyWatch("new-groups-weekly-break","အပတ်စဉ် 1 ဘရိတ်မူ",breaks(1))
+            weeklyWatch("new-groups-weekly-wheel","အပတ်စဉ် 4679 အခွေမူ",
+                CherryPairExpander.wheel("4679"))
+        }
         // Legacy DOC/Gemini Math generation is retired. The V3 discovery
         // engine is a separate, explicit-tap workflow and never executes here.
         fun group(e:List<CherryEvidence>):List<CherryPick> =
