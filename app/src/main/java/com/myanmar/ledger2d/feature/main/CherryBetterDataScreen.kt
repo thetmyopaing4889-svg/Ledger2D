@@ -44,11 +44,13 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val en = LocalLanguage.current.code == "en"
     fun tr(mm: String, english: String) = if(en) english else mm
     val context = LocalContext.current
-    val originalSource=remember(context){
-        runCatching {
-            context.assets.open("two_d_rules_source.txt")
-                .bufferedReader(Charsets.UTF_8).use{it.readText()}
-        }.getOrNull()
+    val originalSource by produceState<String?>(null,context) {
+        value=withContext(Dispatchers.IO) {
+            runCatching {
+                context.assets.open("two_d_rules_source.txt")
+                    .bufferedReader(Charsets.UTF_8).use{it.readText()}
+            }.getOrNull()
+        }
     }
     var now by remember { mutableStateOf(LocalDateTime.now(cherryYangon).withSecond(0).withNano(0)) }
     LaunchedEffect(Unit) {
@@ -65,16 +67,39 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     val winners by wFlow.collectAsStateWithLifecycle(initialValue=null)
     val locks by lFlow.collectAsStateWithLifecycle(initialValue=null)
     val closed by cFlow.collectAsStateWithLifecycle(initialValue=null)
-    val ready=history!=null&&daily!=null&&winners!=null&&locks!=null&&closed!=null
+    val inputsReady=history!=null&&daily!=null&&winners!=null&&locks!=null&&closed!=null
     val closedDates=remember(closed){closed.orEmpty().map{it.date}.toSet()}
-    val merged=remember(history,daily,winners,locks,now,closedDates) {
-        Historic2DDataSource.resolve(
-            liveDaily=daily.orEmpty(),history=history.orEmpty(),
-            today=now.toLocalDate(),now=now.toLocalTime(),
-            winners=winners.orEmpty(),manualLocks=locks.orEmpty(),
-            cherryClosedDates=closedDates
-        ).draws
+    // Freeze the actual Room inputs at request creation. A live reference or
+    // updatedAt-only change cannot invalidate the confirmed-result projection.
+    val historyInput=history.orEmpty()
+    val dailyInput=daily.orEmpty()
+    val winnerInput=winners.orEmpty()
+    val lockInput=locks.orEmpty()
+    val dailyResultKey=remember(dailyInput) { dailyInput.map {
+        listOf(it.date,it.morning2d,it.evening2d,it.morningSourceAt,it.eveningSourceAt)
+    } }
+    val day=now.toLocalDate()
+    val boundary=CherryWorkClock.resultBoundary(now)
+    val projectionKey:List<Any?> = remember(inputsReady,historyInput,dailyResultKey,
+        winnerInput,lockInput,closedDates,day,boundary) {
+        listOf(inputsReady,historyInput,dailyResultKey,winnerInput,lockInput,closedDates,day,boundary)
     }
+    val projected by produceState<CherryWorkResult<List<Any?>,List<HistoricDraw>>?>(null,projectionKey) {
+        if(inputsReady) {
+            val result=withContext(Dispatchers.Default) {
+                Historic2DDataSource.resolve(
+                    liveDaily=dailyInput,history=historyInput,today=day,now=boundary,
+                    winners=winnerInput,manualLocks=lockInput,cherryClosedDates=closedDates
+                ).draws
+            }
+            value=CherryWorkResult(projectionKey,result)
+        } else value=null
+    }
+    val freshHistory=projected?.current(projectionKey)
+    val ready=inputsReady && freshHistory!=null
+    // Keep the previous projection for stable navigation while refreshing;
+    // no capture or report computation may use it until the key matches.
+    val merged=freshHistory ?: projected?.value.orEmpty()
     // The exact same confirmed result projection is used by Success.
     val successStore = remember(context) { CherrySuccessSnapshotStore(context) }
     var successSnapshots by remember(successStore) {
@@ -125,15 +150,26 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         else override.takeIf{it.length==2}?:fallback
     val modern=input("modern930",modernOverride,fromModern)
     val internet=input("internet930",internetOverride,fromInternet)
-    val calculated=remember(ready,merged,target,modern,internet,closedDates) {
-        if(ready) CherryBetterDataEngine.calculate(merged,target,modern,internet,closedDates)
-        else null
+    val calculationKey:List<Any?> = remember(merged,target,modern,internet,closedDates) {
+        listOf(merged,target,modern,internet,closedDates)
     }
-    // While on screen, retain the last pre-cutoff report. On reopen use the
-    // same target and saved input values; the archive itself remains immutable.
+    val calculation by produceState<CherryWorkResult<List<Any?>,CherryReport>?>(null,
+        ready,calculationKey) {
+        if(ready) {
+            val result=withContext(Dispatchers.Default) {
+                CherryBetterDataEngine.calculate(merged,target,modern,internet,closedDates)
+            }
+            value=CherryWorkResult(calculationKey,result)
+        }
+    }
+    val calculated=if(ready)calculation?.current(calculationKey) else null
+    // While inputs refresh, the last same-target report keeps fields mounted.
+    // It is explicitly marked as refreshing and NEVER used for archive writes.
+    val previousReport=calculation?.value?.takeIf{it.target==target}
     var frozen by remember(target) { mutableStateOf<CherryReport?>(null) }
     SideEffect { if(captureOpen && calculated!=null && frozen!=calculated) frozen=calculated }
-    val report=if(captureOpen) calculated else frozen ?: calculated
+    val report=if(captureOpen) calculated ?: previousReport else frozen ?: calculated
+    val refreshing=ready && calculated==null && (captureOpen || frozen==null)
     // A V3 choice is bound to one draw, never silently reused next session.
     // Reading choices does not invoke the expensive discovery engine.
     val v3ChoicePrefs = remember(context) {
@@ -170,15 +206,17 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     // never backfill or silently revise earlier predictions.
     val mathForSnapshot = v3Choices.toMap()
     var selectedSuccessDraw by remember { mutableStateOf<DrawIdentity?>(null) }
-    LaunchedEffect(target, report, mathForSnapshot, captureOpen,archiveReady,archiveFailed) {
-        if(report != null && captureOpen && archiveReady && !archiveFailed) {
+    LaunchedEffect(target, calculated, calculationKey, mathForSnapshot, captureOpen,archiveReady,archiveFailed,ready) {
+        if(calculated != null && ready && captureOpen && archiveReady && !archiveFailed) {
             val capturedAt = System.currentTimeMillis()
             if(CherrySuccessEngine.beforeCutoff(target,capturedAt)) {
-                val snapshot = CherrySuccessEngine.createSnapshot(
-                    report,mathForSnapshot.values,capturedAt,
-                    "modern930=" + (modern ?: "none") +
-                        ";internet930=" + (internet ?: "none"))
                 try {
+                    val snapshot = withContext(Dispatchers.Default) {
+                        CherrySuccessEngine.createSnapshot(
+                            calculated,mathForSnapshot.values,capturedAt,
+                            "modern930=" + (modern ?: "none") +
+                                ";internet930=" + (internet ?: "none"))
+                    }
                     successSnapshots = withContext(Dispatchers.IO) {
                         successStore.recordBeforeCutoff(snapshot)
                     }
@@ -242,9 +280,14 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                 Text(tr("အောင်ချက်မှတ်တမ်း ဖတ်/သိမ်း၍မရပါ။","Success archive unavailable."),
                     color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
             }
-            if(!ready || (!archiveReady && !archiveFailed)){
+            if(!ready || (!archiveReady && !archiveFailed) || refreshing){
                 item{LinearProgressIndicator(Modifier.fillMaxWidth())}
-            } else if(report!=null) {
+            }
+            if(ready && (archiveReady || archiveFailed) && report!=null) {
+                if(refreshing) item {
+                    Text(tr("ပြန်လည်တွက်ချက်နေသည်","Updating rules"),
+                        style=MaterialTheme.typography.labelSmall)
+                }
                 when(tab){
                     CherryTab.CURRENT->{
                         item {

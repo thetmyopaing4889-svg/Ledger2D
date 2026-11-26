@@ -20,6 +20,8 @@ internal class CherrySuccessSnapshotStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(
         "cherry_success_draw_archive_v1", Context.MODE_PRIVATE)
 
+    private val decoded=CherryArchiveDecodeCache<CherrySuccessSnapshot>()
+
     companion object {
         private val processLock = Any()
         private const val PREFIX = "draw_"
@@ -105,8 +107,8 @@ internal class CherrySuccessSnapshotStore(context: Context) {
     }
 
     fun load(): List<CherrySuccessSnapshot> = synchronized(processLock) {
-        prefs.all.entries.filter { it.key.startsWith(PREFIX) }.map { (archiveKey, raw) ->
-            val snap = runCatching { deserialize(raw as String) }.getOrElse {
+        decoded.read(prefs.all.filterKeys{it.startsWith(PREFIX)}) { archiveKey, encoded ->
+            val snap = runCatching { deserialize(encoded) }.getOrElse {
                 // Fail closed. NEVER overwrite unreadable pre-draw evidence
                 // with fabricated or empty records.
                 throw IllegalStateException("Invalid Cherry success archive entry", it)
@@ -125,21 +127,26 @@ internal class CherrySuccessSnapshotStore(context: Context) {
                 !CherrySuccessEngine.beforeCutoff(candidate.target,System.currentTimeMillis())) {
                 return@synchronized load()
             }
-            val previous = prefs.getString(key(candidate.target), null)?.let {
-                deserialize(it)
-            }
+            // Validate the full persisted archive before any write, including
+            // changes from another store instance / restore.
+            val existing=load()
+            val previous=existing.firstOrNull{it.target==candidate.target}
             if (previous != null && previous.rules == candidate.rules &&
                 previous.inputEvidence == candidate.inputEvidence &&
                 previous.sourceVersion == candidate.sourceVersion &&
                 previous.rawRules == candidate.rawRules &&
                 previous.cutRules == candidate.cutRules) {
-                return@synchronized load()
+                return@synchronized existing
             }
             if (previous != null &&
                 previous.capturedAtMillis > candidate.capturedAtMillis) {
-                return@synchronized load()
+                return@synchronized existing
             }
-            check(prefs.edit().putString(key(candidate.target),serialize(candidate)).commit()) {
+            val encoded=serialize(candidate)
+            // Recheck after validation/serialization, not only before it.
+            if(!CherrySuccessEngine.beforeCutoff(candidate.target,System.currentTimeMillis()))
+                return@synchronized existing
+            check(prefs.edit().putString(key(candidate.target),encoded).commit()) {
                 "Could not persist Cherry success snapshot"
             }
             load()
