@@ -108,9 +108,7 @@ internal object CherryLibrarySourceEvidence {
 
     fun scored(snapshots:List<CherrySuccessSnapshot>,history:List<HistoricDraw>,
                allowed:Set<String>):Map<String,List<Component>> {
-        val confirmed=history.filter{it.digit.matches(Regex("[0-9]{2}"))}
-            .distinctBy{it.date to it.session}
-            .associate{DrawIdentity(it.date,it.session) to it.digit}
+        val confirmed=CherryVerifiedHistory.results(history)
         return scoredCompleted(CherrySuccessEngine.completed(snapshots,confirmed),allowed)
     }
 
@@ -130,11 +128,12 @@ internal object CherryLibrarySourceEvidence {
             result+=Component(id,rows.first().second.rule.name,Metric.DRAW,
                 events.count{it.label=="မှန်"},events.size,0,events)
         }
-        val birthNames=records.associate{it.second.rule.id to it.second.rule.name}
+        val birthRecords=records.groupBy{it.second.rule.id}
+        val birthNames=birthRecords.mapValues{it.value.first().second.rule.name}
         CherryBornLifetime.evaluate(raw).groupBy{it.id.substringBefore('@')}.forEach{(id,episodes)->
             if(sourceKey(id)==null)return@forEach
             val events=episodes.map{ep->
-                val first=records.first{it.second.rule.id==ep.id}.first
+                val first=birthRecords.getValue(ep.id).first().first
                 val origin=runCatching{LocalDate.parse(ep.id.substringAfter('@').take(10))}.getOrDefault(first.date)
                 Event(origin,when(ep.status){
                     CherryBornLifetime.Status.HIT->"မှန်"

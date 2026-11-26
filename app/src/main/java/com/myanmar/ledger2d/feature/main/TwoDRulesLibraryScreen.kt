@@ -5,6 +5,8 @@ package com.myanmar.ledger2d.feature.main
 import android.content.Context
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.domain.CherrySuccessSnapshot
+import com.myanmar.ledger2d.core.domain.CherrySuccessEngine
+import com.myanmar.ledger2d.core.domain.CherryVerifiedHistory
 import com.myanmar.ledger2d.core.domain.HistoricDraw
 import com.myanmar.ledger2d.core.model.DrawSession
 import androidx.compose.foundation.BorderStroke
@@ -136,18 +138,17 @@ internal fun TwoDRulesLibraryScreen(
     val books = library?.first.orEmpty()
     val catalog = library?.second
     val successReady = successSnapshots != null && historyReady
-    val scores = remember(books, confirmedHistory, successSnapshots, historyReady) {
-        if (!successReady) emptyMap()
-        else CherryLibrarySuccessBridge.scored(
-            successSnapshots.orEmpty(),
-            confirmedHistory,
-            books.flatMap { it.rules }.map { it.id }.toSet(),
-        )
+    val completedEvidence = remember(confirmedHistory, successSnapshots, successReady) {
+        if (!successReady) emptyList()
+        else CherrySuccessEngine.completed(successSnapshots.orEmpty(),
+            CherryVerifiedHistory.results(confirmedHistory))
     }
-    val sourceEvidence = remember(books, confirmedHistory, successSnapshots, historyReady) {
-        if (!successReady) emptyMap()
-        else CherryLibrarySourceEvidence.scored(successSnapshots.orEmpty(),confirmedHistory,
-            books.flatMap{it.rules}.map{it.id}.toSet())
+    val allowedIds = remember(books) { books.flatMap { it.rules }.map { it.id }.toSet() }
+    val scores = remember(completedEvidence, allowedIds) {
+        CherryLibrarySuccessBridge.scoredCompleted(completedEvidence, allowedIds)
+    }
+    val sourceEvidence = remember(completedEvidence, allowedIds) {
+        CherryLibrarySourceEvidence.scoredCompleted(completedEvidence, allowedIds)
     }
     // A derived display shelf: no copied source rules and no new saved score
     // table. The canonical 10 books and 98 rules remain exactly as shipped.

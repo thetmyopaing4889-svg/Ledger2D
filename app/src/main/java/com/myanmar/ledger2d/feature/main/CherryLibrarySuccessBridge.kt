@@ -1,5 +1,6 @@
 package com.myanmar.ledger2d.feature.main
 
+import com.myanmar.ledger2d.core.domain.CherryVerifiedHistory
 import com.myanmar.ledger2d.core.domain.CherrySuccessCheck
 import com.myanmar.ledger2d.core.domain.CherrySuccessCriterion
 import com.myanmar.ledger2d.core.domain.CherrySuccessDraw
@@ -148,10 +149,7 @@ internal object CherryLibrarySuccessBridge {
     ): Map<String, CherryLibrarySuccessScore> {
         // Same confirmed-draw matching semantics as Better Data -> Success.
         // In particular: never retroactively generate a missing snapshot.
-        val verified = confirmedHistory
-            .filter { it.digit.matches(Regex("[0-9]{2}")) }
-            .distinctBy { it.date to it.session }
-            .associate { DrawIdentity(it.date, it.session) to it.digit }
+        val verified = CherryVerifiedHistory.results(confirmedHistory)
         return scoredCompleted(
             CherrySuccessEngine.completed(snapshots, verified),
             allowedLibraryIds,

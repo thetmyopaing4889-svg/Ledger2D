@@ -152,6 +152,18 @@ fun Historical2DTimelineScreen(
     var openGroup by rememberSaveable { mutableStateOf("1") }
     var openCheck by rememberSaveable { mutableStateOf("") }
     var activeTwoDTab by rememberSaveable { mutableStateOf("analysis") }
+    // Rules evidence must see the same strict projection as Better Data,
+    // BEFORE any shared analysis/Research merge resolves conflicting duplicates.
+    // Compute only while the rules tab is open. Leave other tabs unchanged.
+    val rulesHistory = remember(activeTwoDTab, inputsReady, daily, history, winners,
+        locks, closedDates, now.toLocalDate(), now.hour, now.minute) {
+        if (activeTwoDTab == "rules" && inputsReady)
+            Historic2DDataSource.resolve(
+                daily.orEmpty(), history.orEmpty(), now.toLocalDate(), now.toLocalTime(),
+                winners.orEmpty(), locks.orEmpty(), cherryClosedDates = closedDates,
+            ).draws
+        else emptyList()
+    }
     val archiveContext = LocalContext.current
     val successArchive by produceState<Result<List<CherrySuccessSnapshot>>?>(
         initialValue = null, activeTwoDTab
@@ -344,7 +356,7 @@ fun Historical2DTimelineScreen(
         } else if (openCheck.isEmpty() && activeTwoDTab == "rules") {
             TwoDRulesLibraryScreen(
                 en = en,
-                confirmedHistory = if (inputsReady) merged.draws else emptyList(),
+                confirmedHistory = rulesHistory,
                 historyReady = inputsReady,
                 successSnapshots = successArchive?.getOrNull(),
                 archiveError = successArchive?.isFailure == true,
