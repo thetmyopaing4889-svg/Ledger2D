@@ -132,7 +132,9 @@ internal object CherrySuccessEngine {
                         evidence.first().origin?.let {
                             it.date.toString() + "/" + it.session.name
                         }.orEmpty(), evidence.first().detail,
-                        if(tab==CherryTab.BORN) births[id]?.eligibleSlots.orEmpty() else emptyList()))
+                        if(tab==CherryTab.BORN)
+                            births[id]?.eligibleSlots ?: report.weeklySlots[id].orEmpty()
+                        else emptyList()))
                 }
             }
         }

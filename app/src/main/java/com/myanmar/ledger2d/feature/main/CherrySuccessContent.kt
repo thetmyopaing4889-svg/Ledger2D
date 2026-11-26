@@ -79,6 +79,8 @@ internal fun CherrySuccessContent(
         byCompleted[DrawIdentity(it.date,it.session)]
     }
     val episodes=remember(completed) { CherryBornLifetime.evaluate(completed) }
+    val weekly=remember(completed) { CherryWeeklyLifetime.evaluate(completed) }
+    var expandedWeek by rememberSaveable { mutableStateOf(false) }
 
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
@@ -234,6 +236,49 @@ internal fun CherrySuccessContent(
                 fontWeight=FontWeight.SemiBold)
             Text(if(en) "All recorded triggered instances; not a per-draw rate. Missing slots are not losses."
                 else "မှတ်တမ်းရှိ မွေးမူသက်တမ်းအလိုက်။ ပွဲမှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
+                style=MaterialTheme.typography.labelSmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        SuccessCard {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text(if(en) "Weekly evidence" else "အပတ်စဉ်မူ အောင်ချက်",
+                    modifier=Modifier.weight(1f),fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+                TextButton(onClick={expandedWeek=!expandedWeek}) {
+                    Text(if(expandedWeek) { if(en) "Hide" else "ပိတ်" }
+                        else { if(en) "Details" else "အသေးစိတ်" })
+                }
+            }
+            if(weekly.isEmpty()) Text(if(en) "No recorded weekly evidence yet."
+                else "အပတ်စဉ် ကြိုတင်မှတ်တမ်း မရှိသေးပါ။",
+                style=MaterialTheme.typography.bodySmall)
+            else {
+                val latest=weekly.first().week
+                val visible=if(expandedWeek)weekly else weekly.filter{it.week==latest}
+                visible.forEach { item ->
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(CherryRuleWording.title(item.id,item.name),
+                                fontWeight=FontWeight.SemiBold,style=MaterialTheme.typography.bodySmall)
+                            Text(item.week.toString()+" • "+
+                                (if(en) "${item.recorded}/${item.expected} recorded draws"
+                                 else "မှတ်တမ်း ${item.recorded}/${item.expected} ပွဲ"),
+                                style=MaterialTheme.typography.labelSmall)
+                        }
+                        Column(horizontalAlignment=Alignment.End) {
+                            Text("${item.distinctHits}/${item.goal}",fontWeight=FontWeight.Bold,
+                                color=AppColors.PrimaryDeep)
+                            Text(when(item.status) {
+                                CherryWeeklyLifetime.Status.COMPLETE -> if(en) "Target met" else "သတ်မှတ်ချက်ပြည့်"
+                                CherryWeeklyLifetime.Status.LOWER_TARGET -> if(en) "Lower target met" else "အနည်းဆုံးပြည့်"
+                                CherryWeeklyLifetime.Status.RECORDED_WINDOW_END -> if(en) "Window recorded" else "သက်တမ်းမှတ်တမ်းပြည့်"
+                                CherryWeeklyLifetime.Status.UNRESOLVED -> if(en) "Incomplete evidence" else "မဆုံးဖြတ်ရသေး"
+                            },style=MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+            Text(if(en) "Distinct recorded matches; eight-pair coverage is not a whole-source win. Missing draws are not losses."
+                else "မှတ်တမ်းရှိ ဒဲ့အတွဲများကိုသာ ရေတွက်သည်။ ၈ ကွက်မှာ အုပ်စုထွက်ရှိမှုသာ ဖြစ်သည်။ မှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
                 style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }

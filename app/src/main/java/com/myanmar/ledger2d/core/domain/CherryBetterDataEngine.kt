@@ -165,6 +165,8 @@ data class CherryReport(
     val cuts: Map<String, List<String>>,
     val has930: Boolean,
     val mathAnalysis: CherryMathAnalysis,
+    /** Frozen schedules for weekly watches, not triggered birth instances. */
+    val weeklySlots: Map<String,List<DrawIdentity>> = emptyMap(),
 ) {
     fun visible(tab: CherryTab, limit: Int = 5): List<CherryPick> = when (tab) {
         CherryTab.CURRENT -> current
@@ -698,18 +700,28 @@ object CherryBetterDataEngine {
                     breaks(4),origin,weekEnd)
         }
 
+        // Weekly scope metadata only; no change to offered pairs.
+        val fullWeekSlots=(0L..4L).map{mon.plusDays(it)}
+            .filter{DrawSchedule.isWorkingDate(it,closed)}
+            .flatMap{listOf(DrawIdentity(it,DrawSession.MORNING),
+                DrawIdentity(it,DrawSession.EVENING))}
+        val weeklySlots=linkedMapOf<String,List<DrawIdentity>>()
         // Reviewed weekly watches, exact pairs only (no implicit R).
         if(DrawSchedule.isWorkingDate(target.date,closed) && target.date<=weekEnd) {
+            weeklySlots["s3-week"]=fullWeekSlots
             add(born,"s3-week","s3-week","အပတ်စဉ် ၈ ကွက်",
                 "ယခုအပတ် မပေါ်သေးသော အုပ်စု",
                 weeklyEight.filterNot{it in thisWeek},null,CherryTab.BORN)
             val seenSix=groupSix.filter{it in thisWeek}
             // First distinct hit is the trigger; three additional distinct
             // hits complete the watch. Repeated pairs never advance it.
-            if(seenSix.size in 1..3)
+            if(seenSix.size in 1..3) {
+                val trigger=weekRows.first{it.digit in groupSix}
+                weeklySlots["s3-six"]=fullWeekSlots.filter{before(trigger,it)}
                 add(born,"s3-six","s3-six","အပတ်စဉ် ၆ ကွက်အုပ်စု",
                     "နောက်ဆက်တွဲ ထွက်ပြီး ${seenSix.size-1}/3",
                     groupSix.filterNot{it in thisWeek},null,CherryTab.BORN)
+            }
         }
         for(origin in weekRows) {
             val x=origin.digit
@@ -916,8 +928,11 @@ object CherryBetterDataEngine {
         // after the first observed matching result, like existing born rules.
         if(DrawSchedule.isWorkingDate(target.date,closed) && target.date<=weekEnd) {
             fun weeklyWatch(code:String,name:String,pairs:List<String>) {
-                if(pairs.none{it in thisWeek})add(born,code,code,name,
-                    "$mon – $weekEnd • အပတ်စဉ် စောင့်ကြည့်မူ",pairs,null,CherryTab.BORN)
+                if(pairs.none{it in thisWeek}) {
+                    weeklySlots[code]=fullWeekSlots
+                    add(born,code,code,name,
+                        "$mon – $weekEnd • အပတ်စဉ် စောင့်ကြည့်မူ",pairs,null,CherryTab.BORN)
+                }
             }
             weeklyWatch("new-groups-weekly-nine","အပတ်စဉ် 9 လုံးမူ",followDigits(9))
             weeklyWatch("new-groups-weekly-break","အပတ်စဉ် 1 ဘရိတ်မူ",breaks(1))
@@ -961,7 +976,7 @@ object CherryBetterDataEngine {
             target.session==DrawSession.MORNING&&
                 modern?.matches(Regex("[0-9]{2}"))==true&&
                 internet?.matches(Regex("[0-9]{2}"))==true,
-            inactiveMath,
+            inactiveMath,weeklySlots,
         )
     }
 }
