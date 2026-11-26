@@ -200,9 +200,13 @@ internal object CherrySuccessEngine {
         snapshots: List<CherrySuccessSnapshot>,
         confirmed: Map<DrawIdentity, String>,
     ): List<CherrySuccessDraw> =
-        snapshots.mapNotNull { snap ->
-            confirmed[snap.target]?.let { evaluate(snap, it) }
-        }.sortedWith(compareByDescending<CherrySuccessDraw> { it.snapshot.target.date }
+        snapshots.filter{beforeCutoff(it.target,it.capturedAtMillis)}
+            .groupBy{it.target}.values.mapNotNull{group->
+                val latest=group.maxOf{it.capturedAtMillis}
+                val candidates=group.filter{it.capturedAtMillis==latest}.distinct()
+                val snap=candidates.singleOrNull() ?: return@mapNotNull null
+                confirmed[snap.target]?.let{evaluate(snap,it)}
+            }.sortedWith(compareByDescending<CherrySuccessDraw> { it.snapshot.target.date }
             .thenByDescending { it.snapshot.target.session.ordinal })
 
     /**
@@ -243,11 +247,14 @@ internal object CherrySuccessEngine {
         limit: Int = 5,
     ): List<CherrySuccessRank> {
         require(minimumEvaluated > 0 && limit > 0)
-        val keys=draws.flatMap { draw ->
-            draw.checks.filter { isCurrentRuleEvidence(draw,it) }.map { rankKey(it.rule) }
-        }.distinct()
-        return keys.mapNotNull { id ->
-            val ordered=rankEvidence(draws,id)
+        val grouped=draws.flatMap{draw->draw.checks.filter{isCurrentRuleEvidence(draw,it)}
+            .map{check->Triple(rankKey(check.rule),draw.snapshot.target,check)}}
+            .groupBy{it.first}
+        return grouped.mapNotNull { (id,records) ->
+            val ordered=records.groupBy{it.second}
+                .map{(target,items)->RankEvidence(target,items.map{it.third})}
+                .sortedWith(compareByDescending<RankEvidence>{it.target.date}
+                    .thenByDescending{it.target.session.ordinal})
             if (ordered.size < minimumEvaluated) null else {
                 val first=ordered.first().checks.first().rule
                 CherrySuccessRank(id, first.name, first.tab, first.criterion,

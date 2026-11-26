@@ -396,9 +396,7 @@ object CherryBetterDataEngine {
 
     fun calculate(raw:List<HistoricDraw>,target:DrawIdentity,modern:String?=null,
                   internet:String?=null,closed:Set<LocalDate> = emptySet()):CherryReport {
-        val rows=raw.filter{validHistoric2D(it.digit)&&before(it,target)&&it.date !in closed}
-            .sortedWith(compareBy<HistoricDraw>{it.date}.thenBy{it.session.ordinal})
-            .distinctBy{it.date to it.session}
+        val rows=CherryVerifiedHistory.normalize(raw.filter{before(it,target)},closed)
         val prev=priorSlots(rows,target,closed,1)?.firstOrNull()
         val current=mutableListOf<CherryEvidence>()
         val born=mutableListOf<CherryEvidence>()

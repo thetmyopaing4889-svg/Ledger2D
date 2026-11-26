@@ -71,13 +71,23 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         Historic2DDataSource.resolve(
             liveDaily=daily.orEmpty(),history=history.orEmpty(),
             today=now.toLocalDate(),now=now.toLocalTime(),
-            winners=winners.orEmpty(),manualLocks=locks.orEmpty()
-        ).draws.filterNot{it.date in closedDates}
+            winners=winners.orEmpty(),manualLocks=locks.orEmpty(),
+            cherryClosedDates=closedDates
+        ).draws
     }
     // The exact same confirmed result projection is used by Success.
     val successStore = remember(context) { CherrySuccessSnapshotStore(context) }
     var successSnapshots by remember(successStore) {
-        mutableStateOf(successStore.load())
+        mutableStateOf(emptyList<CherrySuccessSnapshot>())
+    }
+    var archiveReady by remember(successStore) { mutableStateOf(false) }
+    var archiveFailed by remember(successStore) { mutableStateOf(false) }
+    LaunchedEffect(successStore) {
+        try {
+            successSnapshots=withContext(Dispatchers.IO){successStore.load()}
+            archiveReady=true
+        } catch(e:kotlinx.coroutines.CancellationException) { throw e }
+        catch(_:Exception) { archiveFailed=true }
     }
     val confirmedKeys=remember(merged) {
         merged.filter { it.digit.matches(Regex("[0-9]{2}")) }
@@ -160,17 +170,20 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     // never backfill or silently revise earlier predictions.
     val mathForSnapshot = v3Choices.toMap()
     var selectedSuccessDraw by remember { mutableStateOf<DrawIdentity?>(null) }
-    LaunchedEffect(target, report, mathForSnapshot, captureOpen) {
-        if(report != null && captureOpen) {
+    LaunchedEffect(target, report, mathForSnapshot, captureOpen,archiveReady,archiveFailed) {
+        if(report != null && captureOpen && archiveReady && !archiveFailed) {
             val capturedAt = System.currentTimeMillis()
             if(CherrySuccessEngine.beforeCutoff(target,capturedAt)) {
                 val snapshot = CherrySuccessEngine.createSnapshot(
                     report,mathForSnapshot.values,capturedAt,
                     "modern930=" + (modern ?: "none") +
                         ";internet930=" + (internet ?: "none"))
-                successSnapshots = withContext(Dispatchers.IO) {
-                    successStore.recordBeforeCutoff(snapshot)
-                }
+                try {
+                    successSnapshots = withContext(Dispatchers.IO) {
+                        successStore.recordBeforeCutoff(snapshot)
+                    }
+                } catch(e:kotlinx.coroutines.CancellationException) { throw e }
+                catch(_:Exception) { archiveFailed=true }
             }
         }
     }
@@ -225,7 +238,11 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             contentPadding=PaddingValues(horizontal=15.dp,vertical=14.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)
         ){
-            if(!ready){
+            if(archiveFailed) item {
+                Text(tr("အောင်ချက်မှတ်တမ်း ဖတ်/သိမ်း၍မရပါ။","Success archive unavailable."),
+                    color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+            }
+            if(!ready || (!archiveReady && !archiveFailed)){
                 item{LinearProgressIndicator(Modifier.fillMaxWidth())}
             } else if(report!=null) {
                 when(tab){

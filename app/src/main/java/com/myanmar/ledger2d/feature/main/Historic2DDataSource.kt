@@ -8,6 +8,7 @@ import com.myanmar.ledger2d.core.domain.HistoricDraw
 import com.myanmar.ledger2d.core.domain.HistoricDrawMerger
 import com.myanmar.ledger2d.core.domain.HistoricMerge
 import com.myanmar.ledger2d.core.domain.HistoricSource
+import com.myanmar.ledger2d.core.domain.CherryVerifiedHistory
 import com.myanmar.ledger2d.core.model.DrawSession
 import java.time.Instant
 import java.time.LocalDate
@@ -55,6 +56,8 @@ internal object Historic2DDataSource {
         now: LocalTime = LocalTime.now(yangon),
         winners: List<WinningNumberEntity> = emptyList(),
         manualLocks: List<ManualWinnerLockEntity> = emptyList(),
+        // Opt-in only for Cherry evidence; preserve all other consumers.
+        cherryClosedDates: Set<LocalDate>? = null,
     ): HistoricMerge {
         val primary = liveDaily.flatMap { row ->
             val isToday = row.date == today
@@ -95,8 +98,12 @@ internal object Historic2DDataSource {
         // historical or live fallback MUST NOT resurrect the withdrawn result.
         val winnerKeys = authoritative.map { it.date to it.session }.toSet()
         val suppressed = manualLocks.map { it.date to it.session }.toSet() - winnerKeys
+        val resolved=if(cherryClosedDates==null) merged.draws else
+            CherryVerifiedHistory.normalize(
+                (authoritative+primary+secondary).filter{it.date<=today},
+                cherryClosedDates)
         return HistoricMerge(
-            draws = merged.draws.filterNot { (it.date to it.session) in suppressed },
+            draws = resolved.filterNot { (it.date to it.session) in suppressed },
             conflicts = (available.conflicts + merged.conflicts).filterNot {
                 (it.date to it.session) in suppressed
             }.distinctBy { it.date to it.session },
