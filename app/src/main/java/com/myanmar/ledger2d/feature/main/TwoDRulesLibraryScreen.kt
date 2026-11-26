@@ -144,6 +144,11 @@ internal fun TwoDRulesLibraryScreen(
             books.flatMap { it.rules }.map { it.id }.toSet(),
         )
     }
+    val sourceEvidence = remember(books, confirmedHistory, successSnapshots, historyReady) {
+        if (!successReady) emptyMap()
+        else CherryLibrarySourceEvidence.scored(successSnapshots.orEmpty(),confirmedHistory,
+            books.flatMap{it.rules}.map{it.id}.toSet())
+    }
     // A derived display shelf: no copied source rules and no new saved score
     // table. The canonical 10 books and 98 rules remain exactly as shipped.
     val shelfBooks = remember(books, scores) {
@@ -203,6 +208,7 @@ internal fun TwoDRulesLibraryScreen(
     var highlightedQuery by rememberSaveable { mutableStateOf("") }
     var sheet by remember { mutableStateOf<String?>(null) }
     var selectedScoreRuleId by remember { mutableStateOf<String?>(null) }
+    var selectedSourceEvidence by remember { mutableStateOf<String?>(null) }
     val successRuleKeys = remember(scores) {
         CherryLibrarySuccessBridge.successful(scores).map { it.libraryRuleId }
     }
@@ -509,6 +515,8 @@ internal fun TwoDRulesLibraryScreen(
                     book = openedBook,
                     colors = colors,
                     scores = scores,
+                    sourceEvidence = sourceEvidence,
+                    onSourceEvidence = { selectedSourceEvidence=it },
                     successReady = successReady,
                     successRuleKeys = successRuleKeys,
                     onScoreSelected = { selectedScoreRuleId = it },
@@ -842,6 +850,37 @@ internal fun TwoDRulesLibraryScreen(
         }
     }
 
+    selectedSourceEvidence?.let { key ->
+        val original=books.flatMap{book->book.rules.map{rule->
+            CherryLibrarySuccessBridge.entryScoreKey(book.id,rule.id) to rule
+        }}.firstOrNull{it.first==key}?.second
+        AlertDialog(onDismissRequest={selectedSourceEvidence=null},
+            title={Text(original?.title?:key,color=colors.accent)},
+            text={
+                Column(Modifier.heightIn(max=430.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Text(tr("မူရင်းမူခွဲအလိုက် မှတ်တမ်း","Original component evidence"),
+                        fontWeight=FontWeight.Bold,color=colors.ink)
+                    sourceEvidence[key].orEmpty().forEach{component->
+                        Text(component.name,fontWeight=FontWeight.SemiBold,color=colors.ink)
+                        val metric=when(component.metric) {
+                            CherryLibrarySourceEvidence.Metric.DRAW->tr("တစ်ပွဲချင်း","Per draw")
+                            CherryLibrarySourceEvidence.Metric.BIRTH->tr("မွေးမူသက်တမ်း","Birth lifetime")
+                            CherryLibrarySourceEvidence.Metric.WEEK->tr("အပတ်စဉ် မှတ်တမ်း","Weekly coverage")
+                            CherryLibrarySourceEvidence.Metric.CUT->tr("အသေမူ","Exclusion")
+                        }
+                        Text(metric + if(component.metric==CherryLibrarySourceEvidence.Metric.WEEK) ""
+                            else " • ${component.correct}/${component.evaluated}"+
+                                if(component.unresolved>0) " • ${component.unresolved} "+tr("မဆုံးဖြတ်ရသေး","unresolved") else "",
+                            color=colors.softInk,style=MaterialTheme.typography.bodySmall)
+                        component.events.forEach{event->
+                            Text("${event.date} • ${event.label} • ${event.detail}",
+                                color=colors.ink,style=MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },confirmButton={TextButton(onClick={selectedSourceEvidence=null}){Text(tr("ပိတ်","Close"))}})
+    }
     selectedScoreRuleId?.let { id ->
         scores[id]?.let { score ->
             val original = books.flatMap { book ->
@@ -860,7 +899,7 @@ internal fun TwoDRulesLibraryScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(
-                            tr("အောင်ချက်", "Success") +
+                            tr("ဖြတ်ပြီးအောင်ချက်", "Offered-pair checks") +
                                 "  ${score.correct}/${score.eligible}  (${score.percent}%)",
                             fontWeight = FontWeight.Bold, color = colors.ink,
                         )
@@ -1427,6 +1466,8 @@ private fun RulesOpenedBook(
     colors: BookColors,
     en: Boolean,
     scores: Map<String, CherryLibrarySuccessScore>,
+    sourceEvidence: Map<String,List<CherryLibrarySourceEvidence.Component>>,
+    onSourceEvidence: (String)->Unit,
     successReady: Boolean,
     successRuleKeys: List<String>,
     onScoreSelected: (String) -> Unit,
@@ -1548,7 +1589,7 @@ private fun RulesOpenedBook(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(
-                                            (if (en) "Success " else "အောင်ချက် ") +
+                                            (if (en) "Offered " else "ဖြတ်ပြီးအောင်ချက် ") +
                                                 "${score.correct}/${score.eligible}  (${score.percent}%)",
                                             color = colors.accent,
                                             fontWeight = FontWeight.SemiBold,
@@ -1567,6 +1608,18 @@ private fun RulesOpenedBook(
                                     color = colors.softInk,
                                     style = MaterialTheme.typography.labelSmall,
                                 )
+                            }
+                            val components=sourceEvidence[scoreKey].orEmpty()
+                            if(components.isNotEmpty()) {
+                                TextButton(onClick={onSourceEvidence(scoreKey)}) {
+                                    Text(if(en) "Original evidence · ${components.size} components"
+                                        else "မူရင်းအောင်ချက် · ${components.size} မူခွဲ",
+                                        color=colors.accent)
+                                }
+                            } else if(successReady && CherryLibrarySourceEvidence.supported(scoreKey)) {
+                                Text(if(en) "No original evidence recorded yet"
+                                    else "မူရင်းအောင်ချက် မှတ်တမ်းမရှိသေး",
+                                    color=colors.softInk,style=MaterialTheme.typography.labelSmall)
                             }
                             if (rule.text.isNotBlank()) {
                                 ReaderDigitsText(
