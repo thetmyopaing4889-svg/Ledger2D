@@ -45,7 +45,7 @@ internal object CherryLibrarySuccessBridge {
     // Weekly goals and partial implementations are intentionally unmapped:
     // their Better Data snapshots remain intact, but a single winning pair
     // is NOT evidence the entire original Library rule succeeded.
-    private val direct = mapOf(
+    private val legacyDirect = mapOf(
         "s1-day-head-tail" to "cherry-001",
         "s1-day-break" to "cherry-002",
         "s1-day-diagonal" to "cherry-003",
@@ -92,11 +92,35 @@ internal object CherryLibrarySuccessBridge {
     private val doubleWheel = Regex("""s4-wheel-(00|11|22|33|44|55|66|77|88|99)-[0-9]+""")
     private val doubleBorn = Regex("""s4-born-(00|11|22|33|44|55|66|77|88|99)""")
 
-    fun libraryRuleId(successRuleId: String): String? {
+    // Conservative first batch: exact, reviewed, draw-scoped current rules.
+    // Multi-session born and weekly goals await a separate lifetime metric.
+    private val currentDirect = mapOf(
+        "s1-day-head-tail" to "cherry-001",
+        "s1-day-break" to "cherry-002",
+        "s1-day-diagonal" to "cherry-003",
+        "s1-930" to "cherry-004",
+        "s1-930bk-v2" to "cherry-005",
+        "s6-10" to "cherry-037",
+        "s6-57" to "cherry-046",
+        "s8-zero-follow" to "cherry-078",
+        "s8-74" to "cherry-079",
+        "s8-48" to "cherry-080",
+        "s8-71" to "cherry-081",
+        "s8-15" to "cherry-082",
+        "s8-88" to "cherry-083",
+        "s8-13" to "cherry-084",
+        "s8-evening-four" to "cherry-085",
+        "s9-wailin" to "cherry-089",
+        "new-bk-six" to "new-bk-six",
+        "new-born-50" to "new-born-50",
+    )
+
+    fun libraryRuleId(successRuleId: String, legacyArchive: Boolean = false): String? {
         // Born IDs include their input origin as a suffix. Strip only this
         // stable suffix, never match by a rule's display name.
         val normalized = successRuleId.substringBefore('@')
-        return direct[normalized] ?: when {
+        if (!legacyArchive) return currentDirect[normalized]
+        return legacyDirect[normalized] ?: when {
             doubleWheel.matches(normalized) -> "cherry-021#wheel"
             doubleBorn.matches(normalized) -> "cherry-021#born"
             else -> null
@@ -104,9 +128,10 @@ internal object CherryLibrarySuccessBridge {
     }
 
     /** Only the cross-listed 021 table needs a distinct presentation key. */
-    fun isSupportedSource(bookId: String, sourceId: String): Boolean {
+    fun isSupportedSource(bookId: String, sourceId: String, legacyArchive: Boolean = false): Boolean {
         val scoreKey = entryScoreKey(bookId, sourceId)
-        return scoreKey in direct.values ||
+        return if (!legacyArchive) scoreKey in currentDirect.values
+        else scoreKey in legacyDirect.values ||
             scoreKey == "cherry-021#wheel" || scoreKey == "cherry-021#born"
     }
 
@@ -136,14 +161,20 @@ internal object CherryLibrarySuccessBridge {
     fun scoredCompleted(
         draws: List<CherrySuccessDraw>,
         allowedLibraryIds: Set<String>,
+        legacyArchive: Boolean = false,
     ): Map<String, CherryLibrarySuccessScore> {
         val grouped = linkedMapOf<String, MutableMap<DrawIdentity, MutableList<CherrySuccessCheck>>>()
         for (draw in draws) {
+            val version = draw.snapshot.sourceVersion
+            if (legacyArchive) {
+                if (version !in setOf("cherry-success-snapshot-v1", "cherry-better-data-v3.2-success-v1")) continue
+            } else if (version != CherrySuccessEngine.CURRENT_RULE_VERSION) continue
             for (check in draw.checks) {
                 if (check.rule.tab != CherryTab.CURRENT &&
                     check.rule.tab != CherryTab.BORN) continue
                 if (check.rule.criterion != CherrySuccessCriterion.PAIR) continue
-                val libraryId = libraryRuleId(check.rule.id) ?: continue
+                if (!legacyArchive && check.rule.tab != CherryTab.CURRENT) continue
+                val libraryId = libraryRuleId(check.rule.id, legacyArchive) ?: continue
                 if (libraryId.substringBefore('#') !in allowedLibraryIds) continue
                 grouped.getOrPut(libraryId) { linkedMapOf() }
                     .getOrPut(draw.snapshot.target) { mutableListOf() }.add(check)

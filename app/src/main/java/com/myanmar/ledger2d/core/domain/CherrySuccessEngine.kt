@@ -78,6 +78,12 @@ internal data class CherrySuccessRank(
 }
 
 internal object CherrySuccessEngine {
+    // Earlier builds reused IDs across calculation changes. Their snapshots
+    // remain readable but cannot establish a current-version rule score.
+    const val CURRENT_RULE_VERSION = "cherry-better-data-v3.2-reviewed-rules-v2"
+    fun isCurrentRuleEvidence(draw: CherrySuccessDraw, check: CherrySuccessCheck): Boolean =
+        check.rule.tab == CherryTab.MATH || draw.snapshot.sourceVersion == CURRENT_RULE_VERSION
+
     private val yangon = ZoneId.of("Asia/Yangon")
     private val twoDigits = Regex("[0-9]{2}")
     private val order = listOf(CherryTab.CURRENT, CherryTab.BORN, CherryTab.MATH)
@@ -146,7 +152,7 @@ internal object CherrySuccessEngine {
         } ?: "none") + ";has930=" + report.has930 +
             (if(inputEvidence.isBlank()) "" else ";" + inputEvidence)
         return CherrySuccessSnapshot(report.target, capturedAtMillis, rules,
-            sourceVersion="cherry-better-data-v3.2-success-v1",inputEvidence=context)
+            sourceVersion=CURRENT_RULE_VERSION,inputEvidence=context)
     }
 
     fun evaluate(snapshot: CherrySuccessSnapshot, result: String): CherrySuccessDraw? {
@@ -202,7 +208,8 @@ internal object CherrySuccessEngine {
     ): List<CherrySuccessRank> {
         require(minimumEvaluated > 0 && limit > 0)
         val groups = draws.flatMap { draw ->
-            draw.checks.map { check -> draw.snapshot.target to check }
+            draw.checks.filter { isCurrentRuleEvidence(draw, it) }
+                .map { check -> draw.snapshot.target to check }
         }.groupBy { (_, check) -> check.rule.tab.name + ":" + check.rule.id }
         return groups.mapNotNull { (id, records) ->
             val ordered = records.sortedWith(

@@ -23,6 +23,12 @@ class CherryLibrarySuccessBridgeTest {
     private fun pair(id: String, tab: CherryTab, vararg pairs: String) =
         CherrySuccessRule(id, id, tab, CherrySuccessCriterion.PAIR, pairs.toList())
 
+    private fun legacyScore(draws: List<CherrySuccessDraw>, ids: Set<String>) =
+        CherryLibrarySuccessBridge.scoredCompleted(draws, ids, legacyArchive=true)
+    private fun legacyId(id:String) = CherryLibrarySuccessBridge.libraryRuleId(id, legacyArchive=true)
+    private fun legacySupported(book:String,id:String) =
+        CherryLibrarySuccessBridge.isSupportedSource(book,id,legacyArchive=true)
+
     private val known = setOf(
         "new-mob-double", "new-bk-six", "new-born-75",
         "cherry-038", "cherry-021", "cherry-017",
@@ -35,7 +41,7 @@ class CherryLibrarySuccessBridgeTest {
         val winners = (0..6).associate { i ->
             draw(i) to if (i in setOf(2, 3, 6)) "11" else "34"
         }
-        val scores = CherryLibrarySuccessBridge.scoredCompleted(
+        val scores = legacyScore(
             CherrySuccessEngine.completed(stored, winners), known)
         val stat = requireNotNull(scores["new-mob-double"])
         assertEquals(7, stat.eligible)
@@ -53,12 +59,12 @@ class CherryLibrarySuccessBridgeTest {
             snapshot(draw(3), pair("new-bk-six", CherryTab.CURRENT, "16")),
         )
         val knownResults = (0..5).associate { draw(it) to "22" }
-        val actual = CherryLibrarySuccessBridge.scoredCompleted(
+        val actual = legacyScore(
             CherrySuccessEngine.completed(stored, knownResults), known)
         assertEquals(0, actual.getValue("new-bk-six").correct)
         assertEquals(4, actual.getValue("new-bk-six").eligible)
         assertTrue(CherryLibrarySuccessBridge.successful(actual).isEmpty())
-        val noResults = CherryLibrarySuccessBridge.scoredCompleted(
+        val noResults = legacyScore(
             CherrySuccessEngine.completed(stored, emptyMap()), known)
         assertTrue(noResults.isEmpty())
     }
@@ -68,7 +74,7 @@ class CherryLibrarySuccessBridgeTest {
         val snap = snapshot(target,
             pair("s3-9to7", CherryTab.CURRENT, "07"),
             pair("s3-9to7", CherryTab.BORN, "70", "61"))
-        val actual = CherryLibrarySuccessBridge.scoredCompleted(
+        val actual = legacyScore(
             CherrySuccessEngine.completed(listOf(snap), mapOf(target to "70")), known)
         val score = actual.getValue("cherry-017")
         assertEquals(1, score.eligible)
@@ -82,10 +88,10 @@ class CherryLibrarySuccessBridgeTest {
         val target = draw(0)
         val snap = snapshot(target,
             pair("new-born-75", CherryTab.BORN, "45", "54"))
-        val first = CherryLibrarySuccessBridge.scoredCompleted(
+        val first = legacyScore(
             CherrySuccessEngine.completed(listOf(snap), mapOf(target to "45")),
             known)
-        val revised = CherryLibrarySuccessBridge.scoredCompleted(
+        val revised = legacyScore(
             CherrySuccessEngine.completed(listOf(snap), mapOf(target to "08")),
             known)
         assertEquals(1, first.getValue("new-born-75").correct)
@@ -102,20 +108,20 @@ class CherryLibrarySuccessBridgeTest {
             pair("s2-p-1", CherryTab.CURRENT, "12"),
             CherrySuccessRule("LONE:v1", "Math formula", CherryTab.MATH,
                 CherrySuccessCriterion.LONE, listOf("2")))
-        val score = CherryLibrarySuccessBridge.scoredCompleted(
+        val score = legacyScore(
             CherrySuccessEngine.completed(listOf(snap), mapOf(target to "12")), known)
         assertTrue(score.isEmpty())
-        assertNull(CherryLibrarySuccessBridge.libraryRuleId("new-mob-wheel"))
-        assertNull(CherryLibrarySuccessBridge.libraryRuleId("new-special-khant"))
-        assertEquals("cherry-021#wheel", CherryLibrarySuccessBridge.libraryRuleId("s4-wheel-44-0"))
-        assertEquals("cherry-021#wheel", CherryLibrarySuccessBridge.libraryRuleId("s4-wheel-44-0@2026-11-16-MORNING"))
-        assertEquals("cherry-021#born", CherryLibrarySuccessBridge.libraryRuleId("s4-born-11@2026-11-16-EVENING"))
+        assertNull(legacyId("new-mob-wheel"))
+        assertNull(legacyId("new-special-khant"))
+        assertEquals("cherry-021#wheel", legacyId("s4-wheel-44-0"))
+        assertEquals("cherry-021#wheel", legacyId("s4-wheel-44-0@2026-11-16-MORNING"))
+        assertEquals("cherry-021#born", legacyId("s4-born-11@2026-11-16-EVENING"))
         assertEquals("cherry-021#wheel", CherryLibrarySuccessBridge.entryScoreKey("category-double","cherry-021"))
         assertEquals("cherry-021#born", CherryLibrarySuccessBridge.entryScoreKey("category-born","cherry-021"))
-        assertEquals("new-born-75", CherryLibrarySuccessBridge.libraryRuleId("new-born-75@2026-11-16-MORNING"))
-        assertEquals("new-bk-19r", CherryLibrarySuccessBridge.libraryRuleId("new-bk-19r@2026-11-16-EVENING"))
-        assertEquals("cherry-017", CherryLibrarySuccessBridge.libraryRuleId("s3-7to4"))
-        assertNull(CherryLibrarySuccessBridge.libraryRuleId("s6-12"))
+        assertEquals("new-born-75", legacyId("new-born-75@2026-11-16-MORNING"))
+        assertEquals("new-bk-19r", legacyId("new-bk-19r@2026-11-16-EVENING"))
+        assertEquals("cherry-017", legacyId("s3-7to4"))
+        assertNull(legacyId("s6-12"))
     }
 
     @Test fun clarifiedCurrentRulesResolveAndCountOncePerConfirmedDraw() {
@@ -132,15 +138,15 @@ class CherryLibrarySuccessBridgeTest {
         val snap = snapshot(target, *expected.keys.map {
             pair(it, CherryTab.CURRENT, "12")
         }.toTypedArray())
-        val scores = CherryLibrarySuccessBridge.scoredCompleted(
+        val scores = legacyScore(
             CherrySuccessEngine.completed(listOf(snap), mapOf(target to "12")), expected.values.toSet())
         assertEquals(expected.values.toSet(), scores.keys)
         expected.forEach { (id, canonical) ->
-            assertEquals(canonical, CherryLibrarySuccessBridge.libraryRuleId(id))
+            assertEquals(canonical, legacyId(id))
             assertEquals(1, scores.getValue(canonical).eligible)
             assertEquals(1, scores.getValue(canonical).correct)
         }
-        assertTrue(CherryLibrarySuccessBridge.scoredCompleted(
+        assertTrue(legacyScore(
             CherrySuccessEngine.completed(listOf(snap), emptyMap()), expected.values.toSet()).isEmpty())
     }
 
@@ -153,12 +159,12 @@ class CherryLibrarySuccessBridgeTest {
             "new-day-mon-b4", "new-day-tue-b3", "new-day-wed-b9", "new-groups-weekly-nine",
         )
         withheld.forEach { assertNull("Must not award a whole-rule score for $it",
-            CherryLibrarySuccessBridge.libraryRuleId(it)) }
+            legacyId(it)) }
         val target=draw(0)
         val snap=snapshot(target, *withheld.map {
             pair(it, CherryTab.CURRENT, "47")
         }.toTypedArray())
-        val actual=CherryLibrarySuccessBridge.scoredCompleted(
+        val actual=legacyScore(
             CherrySuccessEngine.completed(listOf(snap), mapOf(target to "47")),
             setOf("cherry-011","cherry-019","cherry-020","cherry-028",
                 "cherry-029","cherry-035","cherry-038","cherry-051",
@@ -168,17 +174,17 @@ class CherryLibrarySuccessBridgeTest {
     }
 
     @Test fun unsupportedOriginalsDoNotPretendToHaveZeroEligibleHistory() {
-        assertFalse(CherryLibrarySuccessBridge.isSupportedSource(
+        assertFalse(legacySupported(
             "category-groups","cherry-019"))
-        assertFalse(CherryLibrarySuccessBridge.isSupportedSource(
+        assertFalse(legacySupported(
             "category-groups","cherry-020"))
-        assertFalse(CherryLibrarySuccessBridge.isSupportedSource(
+        assertFalse(legacySupported(
             "category-born","cherry-038"))
-        assertTrue(CherryLibrarySuccessBridge.isSupportedSource(
+        assertTrue(legacySupported(
             "category-double","cherry-021"))
-        assertTrue(CherryLibrarySuccessBridge.isSupportedSource(
+        assertTrue(legacySupported(
             "category-born","cherry-021"))
-        assertTrue(CherryLibrarySuccessBridge.isSupportedSource(
+        assertTrue(legacySupported(
             "category-bk","new-bk-six"))
     }
 
@@ -192,7 +198,7 @@ class CherryLibrarySuccessBridgeTest {
             "new-mob-double", "new-bk-six", "new-born-75", "new-bk-19r",
             "new-born-50", "s1-930", "s3-ten", "s3-astro", "s5-fri",
             "s6-65", "s8-80", "s4-born-11", "s4-wheel-44-0",
-        ).mapNotNull { CherryLibrarySuccessBridge.libraryRuleId(it) }
+        ).mapNotNull { legacyId(it) }
         assertTrue(allMapped.all { it.substringBefore('#') in ids })
         assertEquals(98, ids.size)
     }
@@ -202,7 +208,7 @@ class CherryLibrarySuccessBridgeTest {
         val snap=snapshot(target,
             pair("new-born-75@2026-11-16-MORNING",CherryTab.BORN,"45"),
             pair("new-born-75@2026-11-17-MORNING",CherryTab.BORN,"54"))
-        val scored=CherryLibrarySuccessBridge.scoredCompleted(
+        val scored=legacyScore(
             CherrySuccessEngine.completed(listOf(snap),mapOf(target to "54")),known)
         val single=scored.getValue("new-born-75")
         assertEquals(1,single.eligible)
@@ -215,7 +221,7 @@ class CherryLibrarySuccessBridgeTest {
         val snap=snapshot(target,
             pair("s4-wheel-44-0@2026-11-13-EVENING",CherryTab.BORN,"12"),
             pair("s4-born-44@2026-11-13-EVENING",CherryTab.BORN,"81"))
-        val scores=CherryLibrarySuccessBridge.scoredCompleted(
+        val scores=legacyScore(
             CherrySuccessEngine.completed(listOf(snap),mapOf(target to "81")),known)
         assertEquals(0,scores.getValue("cherry-021#wheel").correct)
         assertEquals(1,scores.getValue("cherry-021#wheel").eligible)
@@ -230,7 +236,7 @@ class CherryLibrarySuccessBridgeTest {
         val snap = snapshot(target, pair("new-mob-double", CherryTab.CURRENT, "11"))
         val late = snap.copy(
             capturedAtMillis = target.date.atTime(12, 1).atZone(zone).toInstant().toEpochMilli())
-        assertTrue(CherryLibrarySuccessBridge.scoredCompleted(
+        assertTrue(legacyScore(
             CherrySuccessEngine.completed(listOf(late), mapOf(target to "11")),
             known).isEmpty())
     }

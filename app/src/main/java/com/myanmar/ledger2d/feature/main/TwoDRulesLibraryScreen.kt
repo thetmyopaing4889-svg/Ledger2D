@@ -1562,8 +1562,8 @@ private fun RulesOpenedBook(
                             } else if (successReady &&
                                 CherryLibrarySuccessBridge.isSupportedSource(book.id, rule.id)) {
                                 Text(
-                                    if (en) "No eligible draw recorded yet"
-                                    else "အကျုံးဝင်မှတ်တမ်း မရှိသေး",
+                                    if (en) "No eligible draw for the current rule version yet"
+                                    else "လက်ရှိမူဗားရှင်း အကျုံးဝင်မှတ်တမ်း မရှိသေး",
                                     color = colors.softInk,
                                     style = MaterialTheme.typography.labelSmall,
                                 )

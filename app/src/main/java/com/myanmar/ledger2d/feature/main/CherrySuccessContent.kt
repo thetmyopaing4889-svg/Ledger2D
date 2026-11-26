@@ -258,8 +258,8 @@ internal fun CherrySuccessContent(
                     }
                 }
             }
-            Text(if(en) "Historical checks, not a guarantee of the next result."
-                else "ယခင်မှတ်တမ်းအောင်ချက်သာဖြစ်ပြီး နောက်ပွဲကို အာမမခံပါ။",
+            Text(if(en) "Current rule version only (Math unchanged). Historical checks do not guarantee the next result."
+                else "လက်ရှိမူဗားရှင်း၏ အောင်ချက်သာ (သင်္ချာနည်း မပြောင်းပါ)။ နောက်ပွဲကို အာမမခံပါ။",
                 style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -316,7 +316,8 @@ internal fun CherrySuccessContent(
     }
     openedRule?.let { rank ->
         val proof = recentDraws.flatMap { draw ->
-            draw.checks.filter { rank.id==it.rule.tab.name+":"+it.rule.id }
+            draw.checks.filter { CherrySuccessEngine.isCurrentRuleEvidence(draw,it) &&
+                rank.id==it.rule.tab.name+":"+it.rule.id }
                 .map { draw.snapshot.target to it }
         }
         AlertDialog(onDismissRequest={openedRule=null},

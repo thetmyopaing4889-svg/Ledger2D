@@ -85,7 +85,7 @@ class CherrySuccessEngineTest {
         val snap = CherrySuccessEngine.createSnapshot(
             report,listOf(selected),before,"modern930=23;internet930=24")
         assertEquals(morning,snap.target)
-        assertTrue(snap.sourceVersion.contains("v3.2"))
+        assertEquals(CherrySuccessEngine.CURRENT_RULE_VERSION,snap.sourceVersion)
         assertTrue(snap.inputEvidence.contains("modern930=23"))
         assertTrue(snap.rules.any { it.tab==CherryTab.CURRENT })
         assertTrue(snap.rules.any { it.tab==CherryTab.BORN })
@@ -107,7 +107,8 @@ class CherrySuccessEngineTest {
         val snapshots = (0..3).map { i ->
             CherrySuccessSnapshot(morning.copy(date=morning.date.minusDays(i.toLong())),
                 before - i * 86_400_000L,
-                listOf(rule("repeat", CherryTab.BORN, CherrySuccessCriterion.PAIR, "80")))
+                listOf(rule("repeat", CherryTab.BORN, CherrySuccessCriterion.PAIR, "80")),
+                sourceVersion=CherrySuccessEngine.CURRENT_RULE_VERSION)
         }
         val confirmed = snapshots.associate { it.target to if (it.target.date == morning.date.minusDays(3)) "08" else "80" }
         val scored = CherrySuccessEngine.completed(snapshots, confirmed)
