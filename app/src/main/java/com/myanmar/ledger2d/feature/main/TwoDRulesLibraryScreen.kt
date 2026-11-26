@@ -151,7 +151,10 @@ internal fun TwoDRulesLibraryScreen(
     }
     // A derived display shelf: no copied source rules and no new saved score
     // table. The canonical 10 books and 98 rules remain exactly as shipped.
-    val shelfBooks = remember(books, scores) {
+    val successEntries=remember(books,scores,sourceEvidence) {
+        CherrySuccessfulShelf.entries(books,scores,sourceEvidence)
+    }
+    val shelfBooks = remember(books, successEntries) {
         if (books.isEmpty()) emptyList()
         else {
             val originalByScoreKey = books.flatMap { book ->
@@ -159,8 +162,7 @@ internal fun TwoDRulesLibraryScreen(
                     CherryLibrarySuccessBridge.entryScoreKey(book.id, rule.id) to rule
                 }
             }.toMap()
-            val awarded = CherryLibrarySuccessBridge.successful(scores)
-                .mapNotNull { originalByScoreKey[it.libraryRuleId] }
+            val awarded = successEntries.map { originalByScoreKey.getValue(it.key) }
             books + TwoDReaderBook(
                 id = "category-success", title = "အောင်ခဲ့သောမူများ",
                 pastel = "#FADDE5", legacyBookIds = emptyList(),
@@ -209,9 +211,8 @@ internal fun TwoDRulesLibraryScreen(
     var sheet by remember { mutableStateOf<String?>(null) }
     var selectedScoreRuleId by remember { mutableStateOf<String?>(null) }
     var selectedSourceEvidence by remember { mutableStateOf<String?>(null) }
-    val successRuleKeys = remember(scores) {
-        CherryLibrarySuccessBridge.successful(scores).map { it.libraryRuleId }
-    }
+    val successRuleKeys = remember(successEntries) { successEntries.map { it.key } }
+    val successKinds = remember(successEntries) { successEntries.associate { it.key to it.kinds } }
     val openedBook = shelfBooks.firstOrNull { it.id == openedBookId }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -519,6 +520,7 @@ internal fun TwoDRulesLibraryScreen(
                     onSourceEvidence = { selectedSourceEvidence=it },
                     successReady = successReady,
                     successRuleKeys = successRuleKeys,
+                    successKinds = successKinds,
                     onScoreSelected = { selectedScoreRuleId = it },
                     en = en,
                     favorite = "book:" + openedBook.id in favorites,
@@ -1470,6 +1472,7 @@ private fun RulesOpenedBook(
     onSourceEvidence: (String)->Unit,
     successReady: Boolean,
     successRuleKeys: List<String>,
+    successKinds: Map<String,Set<CherrySuccessfulShelf.Kind>>,
     onScoreSelected: (String) -> Unit,
     favorite: Boolean,
     onClose: () -> Unit,
@@ -1480,6 +1483,19 @@ private fun RulesOpenedBook(
     modifier: Modifier = Modifier,
 ) {
     val readerListState = rememberLazyListState()
+    val isSuccess=book.id=="category-success"
+    var successFilter by rememberSaveable(book.id) { mutableStateOf("ALL") }
+    fun kindLabel(kind:CherrySuccessfulShelf.Kind):String=when(kind) {
+        CherrySuccessfulShelf.Kind.OFFERED->if(en)"Offered" else "ဖြတ်ပြီး"
+        CherrySuccessfulShelf.Kind.DRAW->if(en)"Current" else "လက်ရှိမူ"
+        CherrySuccessfulShelf.Kind.BIRTH->if(en)"Born" else "မွေးမူ"
+        CherrySuccessfulShelf.Kind.WEEK->if(en)"Weekly" else "အပတ်စဉ်"
+        CherrySuccessfulShelf.Kind.CUT->if(en)"Exclusion" else "အသေမူ"
+    }
+    val visibleRules=book.rules.withIndex().filter{(index,_)->
+        !isSuccess || successFilter=="ALL" ||
+            successKinds[successRuleKeys.getOrNull(index)].orEmpty().any{it.name==successFilter}
+    }
     // One header item precedes all source formulas in the book.
     LaunchedEffect(book.id, focusedRuleIndex) {
         focusedRuleIndex?.takeIf { it in book.rules.indices }?.let { index ->
@@ -1533,7 +1549,22 @@ private fun RulesOpenedBook(
                                 fontWeight = FontWeight.Bold, color = colors.accent,
                             )
                             HorizontalDivider(color = colors.border)
-                            if (book.id == "category-success" && book.rules.isEmpty()) {
+                            if(isSuccess) {
+                                Text(if(en) "Recorded matching components; not a whole-rule score."
+                                    else "မှတ်တမ်းရှိ မှန်ခဲ့သောမူခွဲများ",
+                                    color=colors.softInk,style=MaterialTheme.typography.labelSmall)
+                                Row(Modifier.horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    FilterChip(selected=successFilter=="ALL",onClick={successFilter="ALL"},
+                                        label={Text(if(en)"All" else "အားလုံး")})
+                                    CherrySuccessfulShelf.Kind.entries.forEach{kind->
+                                        FilterChip(selected=successFilter==kind.name,
+                                            onClick={successFilter=kind.name},
+                                            label={Text(kindLabel(kind))})
+                                    }
+                                }
+                            }
+                            if (isSuccess && visibleRules.isEmpty()) {
                                 Text(
                                     if (en) "No rule has a verified success record yet."
                                     else "မှန်ကန်ခဲ့သော မူမှတ်တမ်း မရှိသေးပါ။",
@@ -1543,10 +1574,10 @@ private fun RulesOpenedBook(
                             }
                         }
                     }
-                    listItemsIndexed(
-                        book.rules,
-                        key = { index, rule -> "${index}:${rule.id}" },
-                    ) { index, rule ->
+                    listItems(
+                        visibleRules,
+                        key = { (index,rule) -> "${index}:${rule.id}" },
+                    ) { (index,rule) ->
                         Column(
                             modifier = Modifier.fillMaxWidth()
                                 .background(
@@ -1577,6 +1608,18 @@ private fun RulesOpenedBook(
                             val scoreKey = if (book.id == "category-success")
                                 successRuleKeys.getOrNull(index) ?: rule.id
                             else CherryLibrarySuccessBridge.entryScoreKey(book.id, rule.id)
+                            if(isSuccess) {
+                                val kinds=successKinds[scoreKey].orEmpty()
+                                Text(kinds.joinToString(" • "){kindLabel(it)},
+                                    style=MaterialTheme.typography.labelSmall,color=colors.accent,
+                                    fontWeight=FontWeight.SemiBold)
+                                if(scoreKey.endsWith("#wheel") || scoreKey.endsWith("#born")) {
+                                    Text(if(scoreKey.endsWith("#wheel")) {
+                                        if(en)"Wheel component" else "အပြီးခွေ မူခွဲ"
+                                    } else { if(en)"Born component" else "မွေးဂဏန်း မူခွဲ" },
+                                        style=MaterialTheme.typography.labelSmall,color=colors.softInk)
+                                }
+                            }
                             val score = scores[scoreKey]
                             if (score != null) {
                                 Surface(
@@ -1637,7 +1680,7 @@ private fun RulesOpenedBook(
                                 ReaderRuleExample(
                                     rule.exampleLines, colors, highlightedQuery)
                             }
-                            if (index < book.rules.lastIndex) {
+                            if (index != visibleRules.lastOrNull()?.index) {
                                 HorizontalDivider(
                                     color = colors.border,
                                     modifier = Modifier.padding(vertical = 8.dp),

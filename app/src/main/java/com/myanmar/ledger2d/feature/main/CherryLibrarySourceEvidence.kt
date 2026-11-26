@@ -18,6 +18,8 @@ internal object CherryLibrarySourceEvidence {
         val id:String,val name:String,val metric:Metric,
         val correct:Int,val evaluated:Int,val unresolved:Int,
         val events:List<Event>,
+        // Weekly coverage is not a binary win; only an explicitly met target qualifies.
+        val weeklyTargetMet:Boolean=false,
     )
     private val sources=mapOf(
         "cherry-001" to setOf("s1-day-head-tail"),
@@ -155,7 +157,11 @@ internal object CherryLibrarySourceEvidence {
                         CherryWeeklyLifetime.Status.LOWER_TARGET->"အနည်းဆုံးပြည့်"
                         CherryWeeklyLifetime.Status.RECORDED_WINDOW_END->"သက်တမ်းမှတ်တမ်းပြည့်"
                         CherryWeeklyLifetime.Status.UNRESOLVED->"မဆုံးဖြတ်ရသေး"
-                    })})
+                    })},
+                weeklyTargetMet=id!="s3-week" && episodes.any{
+                    it.status==CherryWeeklyLifetime.Status.COMPLETE ||
+                        (id=="s3-six" && it.status==CherryWeeklyLifetime.Status.LOWER_TARGET)
+                })
         }
         CherryCutSuccess.scores(draws).forEach{score->
             if(sourceKey(score.id)==null)return@forEach
