@@ -42,8 +42,15 @@ internal data class CherrySuccessSnapshot(
     val rules: List<CherrySuccessRule>,
     val sourceVersion: String = "cherry-success-snapshot-v1",
     val inputEvidence: String = "",
+    // Optional new evidence. Old snapshots have neither and are never backfilled.
+    val rawRules: List<CherrySuccessRule> = emptyList(),
+    val cutRules: List<CherryCutEvidence> = emptyList(),
 ) {
     init {
+        require(rawRules.all { it.tab in listOf(CherryTab.CURRENT,CherryTab.BORN) &&
+            it.criterion==CherrySuccessCriterion.PAIR })
+        require(rawRules.map { it.tab.name+":"+it.id }.distinct().size==rawRules.size)
+        require(cutRules.map { it.id }.distinct().size==cutRules.size)
         require(capturedAtMillis > 0L)
         require(sourceVersion.isNotBlank() && inputEvidence.length <= 512)
         require(rules.map { it.tab.name + ":" + it.id }.distinct().size == rules.size)
@@ -112,13 +119,11 @@ internal object CherrySuccessEngine {
         inputEvidence: String = "",
     ): CherrySuccessSnapshot {
         val rules = mutableListOf<CherrySuccessRule>()
+        val rawRules = mutableListOf<CherrySuccessRule>()
         val births=report.activeRules.associateBy { it.id }
-        for ((tab, picks) in listOf(
-            CherryTab.CURRENT to report.current,
-            CherryTab.BORN to report.born,
-        )) {
+        fun capture(tab:CherryTab,picks:List<CherryPick>,into:MutableList<CherrySuccessRule>) {
             val byRule = linkedMapOf<String, MutableList<CherryEvidence>>()
-            picks.filter { it.cuts.isEmpty() }.forEach { pick ->
+            picks.forEach { pick ->
                 pick.evidence.filter { it.tab == tab }.forEach { evidence ->
                     byRule.getOrPut(evidence.id) { mutableListOf() }.add(evidence)
                 }
@@ -127,7 +132,7 @@ internal object CherrySuccessEngine {
                 val pairs = evidence.map { it.pair }.filter(twoDigits::matches)
                     .distinct().sorted()
                 if (pairs.isNotEmpty()) {
-                    rules.add(CherrySuccessRule(id, evidence.first().name,
+                    into.add(CherrySuccessRule(id, evidence.first().name,
                         tab, CherrySuccessCriterion.PAIR, pairs,
                         evidence.first().origin?.let {
                             it.date.toString() + "/" + it.session.name
@@ -137,6 +142,10 @@ internal object CherrySuccessEngine {
                         else emptyList()))
                 }
             }
+        }
+        for ((tab,picks) in listOf(CherryTab.CURRENT to report.current,CherryTab.BORN to report.born)) {
+            capture(tab,picks.filter{it.cuts.isEmpty()},rules)
+            capture(tab,picks,rawRules)
         }
         for (choice in selectedMath.distinctBy { it.kind }.sortedBy { it.kind.name }) {
             val criterion = when (choice.kind) {
@@ -158,7 +167,8 @@ internal object CherrySuccessEngine {
         } ?: "none") + ";has930=" + report.has930 +
             (if(inputEvidence.isBlank()) "" else ";" + inputEvidence)
         return CherrySuccessSnapshot(report.target, capturedAtMillis, rules,
-            sourceVersion=CURRENT_RULE_VERSION,inputEvidence=context)
+            sourceVersion=CURRENT_RULE_VERSION,inputEvidence=context,
+            rawRules=rawRules,cutRules=report.cutEvidence)
     }
 
     fun evaluate(snapshot: CherrySuccessSnapshot, result: String): CherrySuccessDraw? {

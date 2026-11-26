@@ -150,6 +150,20 @@ data class CherryValue(
     val formula: String,
     val kind: String,
 )
+/** Exact exclusions generated before the target result; one identity per criterion. */
+data class CherryCutEvidence(
+    val id:String,
+    val name:String,
+    val excluded:List<String>,
+    val origin:DrawIdentity,
+    val detail:String,
+) {
+    init {
+        require(id.isNotBlank() && name.isNotBlank())
+        require(excluded.isNotEmpty() && excluded.distinct().size==excluded.size)
+        require(excluded.all{it.matches(Regex("[0-9]{2}"))})
+    }
+}
 data class CherryReport(
     val target: DrawIdentity,
     val observed: Int,
@@ -167,6 +181,7 @@ data class CherryReport(
     val mathAnalysis: CherryMathAnalysis,
     /** Frozen schedules for weekly watches, not triggered birth instances. */
     val weeklySlots: Map<String,List<DrawIdentity>> = emptyMap(),
+    val cutEvidence: List<CherryCutEvidence> = emptyList(),
 ) {
     fun visible(tab: CherryTab, limit: Int = 5): List<CherryPick> = when (tab) {
         CherryTab.CURRENT -> current
@@ -388,6 +403,13 @@ object CherryBetterDataEngine {
         val current=mutableListOf<CherryEvidence>()
         val born=mutableListOf<CherryEvidence>()
         val cut=mutableMapOf<String,MutableList<String>>()
+        val cutEvidence=mutableListOf<CherryCutEvidence>()
+        fun exclude(id:String,name:String,pairs:List<String>,origin:DrawIdentity,detail:String) {
+            val values=pairs.distinct()
+            if(values.isEmpty())return
+            cutEvidence+=CherryCutEvidence(id,name,values.sorted(),origin,detail)
+            values.forEach{p->cut.getOrPut(p){mutableListOf()}+=detail}
+        }
         val births=mutableListOf<CherryBirth>()
         fun add(to:MutableList<CherryEvidence>,rule:String,family:String,
                 title:String,detail:String,pairs:Iterable<String>,origin:DrawIdentity?=null,tab:CherryTab) {
@@ -399,23 +421,22 @@ object CherryBetterDataEngine {
             val last=prev.digit
             val origin=identity(prev)
             val tail=(last[1].digitToInt()+7)%10
-            CherryPairExpander.tail(tail).forEach{p->
-                cut.getOrPut(p){mutableListOf()}+="+7 ပိတ်ဖြတ်: ${last[1]} → $tail"
-            }
+            exclude("cut-tail-plus7","+7 ပိတ်အသေမူ",CherryPairExpander.tail(tail),
+                origin,"+7 ပိတ်ဖြတ်: ${last[1]} → $tail")
             if(last[0]==last[1]){
-                CherryPairExpander.any(last[0].digitToInt()).forEach{p->
-                    cut.getOrPut(p){mutableListOf()}+="အပူး Cut Digit: ${last[0]}"
-                }
+                exclude("cut-double-digit","အပူးလုံးအသေမူ",
+                    CherryPairExpander.any(last[0].digitToInt()),origin,
+                    "အပူး Cut Digit: ${last[0]}")
             }
             if(target.session==DrawSession.EVENING){
-                CherryPairExpander.any(last[0].digitToInt()).forEach{p->
-                    cut.getOrPut(p){mutableListOf()}+="မနက်ထိပ် Cut Digit: ${last[0]}"
-                }
+                exclude("cut-morning-head","မနက်ထိပ်လုံးအသေမူ",
+                    CherryPairExpander.any(last[0].digitToInt()),origin,
+                    "မနက်ထိပ် Cut Digit: ${last[0]}")
             }
             val triple=deadTriples[last[1].digitToInt()].orEmpty()
-            CherryPairExpander.wheel(triple).forEach{p->
-                cut.getOrPut(p){mutableListOf()}+="အပိုင်း (၈) ${triple} (ဒဲ့/R) ဖြတ်မူ"
-            }
+            exclude("cut-dead-triples","နောက်ပိတ် အသေခြောက်ကွက်မူ",
+                CherryPairExpander.wheel(triple),origin,
+                "အပိုင်း (၈) ${triple} (ဒဲ့/R) ဖြတ်မူ")
             fun rule(id:String,name:String,pairs:List<String>,text:String?=null)=
                 add(current,id,id,name,
                     "နောက်ဆုံးထွက် ${last} ကြောင့် ${name} အကျုံးဝင်သည်။ " +
@@ -976,7 +997,7 @@ object CherryBetterDataEngine {
             target.session==DrawSession.MORNING&&
                 modern?.matches(Regex("[0-9]{2}"))==true&&
                 internet?.matches(Regex("[0-9]{2}"))==true,
-            inactiveMath,weeklySlots,
+            inactiveMath,weeklySlots,cutEvidence,
         )
     }
 }

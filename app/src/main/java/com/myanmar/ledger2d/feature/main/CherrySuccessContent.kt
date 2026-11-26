@@ -81,6 +81,12 @@ internal fun CherrySuccessContent(
     val episodes=remember(completed) { CherryBornLifetime.evaluate(completed) }
     val weekly=remember(completed) { CherryWeeklyLifetime.evaluate(completed) }
     var expandedWeek by rememberSaveable { mutableStateOf(false) }
+    var rawWeek by rememberSaveable { mutableStateOf(false) }
+    var expandedCuts by rememberSaveable { mutableStateOf(false) }
+    val rawCompleted=remember(completed) { completed.mapNotNull(CherryCutSuccess::rawView) }
+    val rawEpisodes=remember(rawCompleted) { CherryBornLifetime.evaluate(rawCompleted) }
+    val rawWeekly=remember(rawCompleted) { CherryWeeklyLifetime.evaluate(rawCompleted) }
+    val cutScores=remember(recentDraws) { CherryCutSuccess.scores(recentDraws) }
 
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
@@ -226,14 +232,68 @@ internal fun CherrySuccessContent(
         }
 
         SuccessCard {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text(if(en) "Exclusion checks" else "အသေမူ အောင်ချက်",
+                    modifier=Modifier.weight(1f),fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+                TextButton(onClick={expandedCuts=!expandedCuts}) {
+                    Text(if(expandedCuts) { if(en) "Hide" else "ပိတ်" }
+                        else { if(en) "Details" else "အသေးစိတ်" })
+                }
+            }
+            val cutChecks=draw?.let(CherryCutSuccess::checks).orEmpty()
+            if(cutChecks.isEmpty()) Text(if(en) "No recorded exclusions for this draw."
+                else "ဤပွဲ အသေမူ ကြိုတင်မှတ်တမ်း မရှိသေးပါ။",style=MaterialTheme.typography.bodySmall)
+            cutChecks.forEach { check ->
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text(check.rule.name,modifier=Modifier.weight(1f),style=MaterialTheme.typography.bodySmall)
+                    Text(if(check.correct) { if(en) "Correct" else "မှန်" }
+                        else { if(en) "Miss" else "လွဲ" },fontWeight=FontWeight.Bold,
+                        color=if(check.correct) Color(0xFF16854E) else Color(0xFFC13D56))
+                }
+                if(expandedCuts) {
+                    Text(check.rule.excluded.joinToString(" / "),style=MaterialTheme.typography.labelSmall)
+                }
+            }
+            val raw=draw?.let(CherryCutSuccess::rawView)
+            if(raw!=null) listOf(CherryTab.CURRENT,CherryTab.BORN).forEach { tab ->
+                val rawChecks=raw.forTab(tab)
+                val offered=draw?.forTab(tab).orEmpty()
+                if(rawChecks.isNotEmpty()) Text(successTabName(tab,en)+" • "+
+                    (if(en) "Raw ${rawChecks.count{it.correct}}/${rawChecks.size} · Offered ${offered.count{it.correct}}/${offered.size}"
+                     else "မူရင်း ${rawChecks.count{it.correct}}/${rawChecks.size} · ဖြတ်ပြီး ${offered.count{it.correct}}/${offered.size}"),
+                    style=MaterialTheme.typography.bodySmall)
+            }
+            if(expandedCuts) {
+                Text(if(en) "Recent $period draws" else "နောက်ဆုံး $period ပွဲ",
+                    fontWeight=FontWeight.SemiBold)
+                cutScores.forEach { score ->
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Text(score.name,modifier=Modifier.weight(1f),style=MaterialTheme.typography.bodySmall)
+                        Text("${score.correct}/${score.evaluated}",fontWeight=FontWeight.SemiBold)
+                    }
+                }
+            }
+            Text(if(en) "Correct when the confirmed result is outside the recorded exclusion set."
+                else "ပေါက်ဂဏန်း အသေတွဲထဲ မပါလျှင် မှန်သည်။",
+                style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        SuccessCard {
             Text(if(en) "Born lifetime • recorded instances" else "မွေးမူ သက်တမ်းအောင်ချက်",
                 fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
             val hit=episodes.count { it.status==CherryBornLifetime.Status.HIT }
             val miss=episodes.count { it.status==CherryBornLifetime.Status.MISS }
             val unresolved=episodes.size-hit-miss
-            Text(if(en) "$hit hit / $miss miss / $unresolved unresolved"
-                else "$hit မှန် / $miss လွဲ / $unresolved မဆုံးဖြတ်ရသေး",
+            Text(if(en) "Offered: $hit hit / $miss miss / $unresolved unresolved"
+                else "ဖြတ်ပြီး • $hit မှန် / $miss လွဲ / $unresolved မဆုံးဖြတ်ရသေး",
                 fontWeight=FontWeight.SemiBold)
+            if(rawEpisodes.isNotEmpty()) {
+                val rawHit=rawEpisodes.count{it.status==CherryBornLifetime.Status.HIT}
+                val rawMiss=rawEpisodes.count{it.status==CherryBornLifetime.Status.MISS}
+                val rawUnknown=rawEpisodes.size-rawHit-rawMiss
+                Text(if(en) "Raw: $rawHit hit / $rawMiss miss / $rawUnknown unresolved"
+                    else "မူရင်း • $rawHit မှန် / $rawMiss လွဲ / $rawUnknown မဆုံးဖြတ်ရသေး",
+                    fontWeight=FontWeight.SemiBold)
+            }
             Text(if(en) "All recorded triggered instances; not a per-draw rate. Missing slots are not losses."
                 else "မှတ်တမ်းရှိ မွေးမူသက်တမ်းအလိုက်။ ပွဲမှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
                 style=MaterialTheme.typography.labelSmall,
@@ -248,12 +308,19 @@ internal fun CherrySuccessContent(
                         else { if(en) "Details" else "အသေးစိတ်" })
                 }
             }
-            if(weekly.isEmpty()) Text(if(en) "No recorded weekly evidence yet."
+            Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                FilterChip(selected=!rawWeek,onClick={rawWeek=false},
+                    label={Text(if(en) "Offered" else "ဖြတ်ပြီး")})
+                FilterChip(selected=rawWeek,onClick={rawWeek=true},
+                    label={Text(if(en) "Raw" else "မူရင်း")})
+            }
+            val weekEvidence=if(rawWeek)rawWeekly else weekly
+            if(weekEvidence.isEmpty()) Text(if(en) "No recorded weekly evidence yet."
                 else "အပတ်စဉ် ကြိုတင်မှတ်တမ်း မရှိသေးပါ။",
                 style=MaterialTheme.typography.bodySmall)
             else {
-                val latest=weekly.first().week
-                val visible=if(expandedWeek)weekly else weekly.filter{it.week==latest}
+                val latest=weekEvidence.first().week
+                val visible=if(expandedWeek)weekEvidence else weekEvidence.filter{it.week==latest}
                 visible.forEach { item ->
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {

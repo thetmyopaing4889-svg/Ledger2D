@@ -27,9 +27,9 @@ internal class CherrySuccessSnapshotStore(context: Context) {
             PREFIX + target.date + "_" + target.session.name
     }
 
-    private fun serialize(snap: CherrySuccessSnapshot): String {
-        val rules = JSONArray()
-        snap.rules.forEach { rule ->
+    private fun encodeRules(input:List<CherrySuccessRule>):JSONArray {
+        val rules=JSONArray()
+        input.forEach { rule ->
             rules.put(JSONObject().put("id", rule.id).put("name", rule.name)
                 .put("tab", rule.tab.name).put("criterion", rule.criterion.name)
                 .put("predictions", JSONArray(rule.predictions))
@@ -40,20 +40,28 @@ internal class CherrySuccessSnapshotStore(context: Context) {
                     }
                 }))
         }
+        return rules
+    }
+
+    private fun serialize(snap: CherrySuccessSnapshot): String {
+        val cuts=JSONArray()
+        snap.cutRules.forEach { cut ->
+            cuts.put(JSONObject().put("id",cut.id).put("name",cut.name)
+                .put("excluded",JSONArray(cut.excluded))
+                .put("originDate",cut.origin.date.toString())
+                .put("originSession",cut.origin.session.name).put("detail",cut.detail))
+        }
         return JSONObject().put("date", snap.target.date.toString())
             .put("session", snap.target.session.name)
-            .put("time", snap.capturedAtMillis).put("rules", rules)
+            .put("time", snap.capturedAtMillis).put("rules", encodeRules(snap.rules))
+            .put("rawRules",encodeRules(snap.rawRules)).put("cutRules",cuts)
             .put("version",snap.sourceVersion)
             .put("inputs",snap.inputEvidence).toString()
     }
 
-    private fun deserialize(encoded: String): CherrySuccessSnapshot {
-        val item = JSONObject(encoded)
-        val target = DrawIdentity(LocalDate.parse(item.getString("date")),
-            DrawSession.valueOf(item.getString("session")))
-        val rows = item.getJSONArray("rules")
+    private fun decodeRules(rows:JSONArray):List<CherrySuccessRule> {
         require(rows.length() <= 1000)
-        val rules = (0 until rows.length()).map { index ->
+        return (0 until rows.length()).map { index ->
             val rule = rows.getJSONObject(index)
             val predictions = rule.getJSONArray("predictions")
             require(predictions.length() <= 100)
@@ -71,9 +79,29 @@ internal class CherrySuccessSnapshotStore(context: Context) {
                     }
                 }.orEmpty())
         }
-        return CherrySuccessSnapshot(target, item.getLong("time"), rules,
+    }
+
+    private fun deserialize(encoded: String): CherrySuccessSnapshot {
+        val item = JSONObject(encoded)
+        val target = DrawIdentity(LocalDate.parse(item.getString("date")),
+            DrawSession.valueOf(item.getString("session")))
+        val cuts=item.optJSONArray("cutRules")?.let { rows ->
+            require(rows.length()<=16)
+            (0 until rows.length()).map { i ->
+                val cut=rows.getJSONObject(i)
+                val pairs=cut.getJSONArray("excluded")
+                require(pairs.length()<=100)
+                CherryCutEvidence(cut.getString("id"),cut.getString("name"),
+                    (0 until pairs.length()).map{pairs.getString(it)},
+                    DrawIdentity(LocalDate.parse(cut.getString("originDate")),
+                        DrawSession.valueOf(cut.getString("originSession"))),
+                    cut.getString("detail"))
+            }
+        }.orEmpty()
+        return CherrySuccessSnapshot(target, item.getLong("time"), decodeRules(item.getJSONArray("rules")),
             item.optString("version","cherry-success-snapshot-v1"),
-            item.optString("inputs",""))
+            item.optString("inputs",""),
+            item.optJSONArray("rawRules")?.let(::decodeRules).orEmpty(),cuts)
     }
 
     fun load(): List<CherrySuccessSnapshot> = synchronized(processLock) {
@@ -102,7 +130,9 @@ internal class CherrySuccessSnapshotStore(context: Context) {
             }
             if (previous != null && previous.rules == candidate.rules &&
                 previous.inputEvidence == candidate.inputEvidence &&
-                previous.sourceVersion == candidate.sourceVersion) {
+                previous.sourceVersion == candidate.sourceVersion &&
+                previous.rawRules == candidate.rawRules &&
+                previous.cutRules == candidate.cutRules) {
                 return@synchronized load()
             }
             if (previous != null &&
