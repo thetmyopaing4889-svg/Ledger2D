@@ -56,14 +56,12 @@ internal fun CherrySuccessContent(
     en: Boolean,
     sourceText: String? = null,
 ) {
-    val confirmed = confirmedHistory
-        .filter { it.digit.matches(Regex("[0-9]{2}")) }
-        .distinctBy { it.date to it.session }
-        .sortedWith(compareByDescending<HistoricDraw> { it.date }
-            .thenByDescending { it.session.ordinal })
-    val byTarget = confirmed.associate { DrawIdentity(it.date,it.session) to it.digit }
-    val completed = CherrySuccessEngine.completed(snapshots,byTarget)
-    val byCompleted = completed.associateBy { it.snapshot.target }
+    val confirmed = remember(confirmedHistory) {
+        CherryVerifiedHistory.normalize(confirmedHistory).asReversed()
+    }
+    val byTarget = remember(confirmed) { confirmed.associate { DrawIdentity(it.date,it.session) to it.digit } }
+    val completed = remember(snapshots,byTarget) { CherrySuccessEngine.completed(snapshots,byTarget) }
+    val byCompleted = remember(completed) { completed.associateBy { it.snapshot.target } }
     val latest = confirmed.firstOrNull()
     val showing = selectedDraw ?: latest?.let { DrawIdentity(it.date,it.session) }
     val winning = showing?.let { byTarget[it] }
@@ -75,15 +73,20 @@ internal fun CherrySuccessContent(
     var openedRule by remember { mutableStateOf<CherrySuccessRank?>(null) }
     var openedCheck by remember(showing) { mutableStateOf<CherrySuccessCheck?>(null) }
     var showMisses by remember(showing,expandedTab) { mutableStateOf(false) }
-    val recentDraws = confirmed.take(period).mapNotNull {
-        byCompleted[DrawIdentity(it.date,it.session)]
+    val recentDraws = remember(confirmed,byCompleted,period) {
+        confirmed.take(period).mapNotNull { byCompleted[DrawIdentity(it.date,it.session)] }
     }
-    val episodes=remember(completed) { CherryBornLifetime.evaluate(completed) }
-    val weekly=remember(completed) { CherryWeeklyLifetime.evaluate(completed) }
+    val cohort=remember(completed) { CherryComparableEvidence.cohort(completed) }
+    val canCompare=cohort.raw.isNotEmpty()
+    // If raw evidence is absent, show the prior offered archive as such, never
+    // pretend it has a corresponding original score.
+    val offeredHistory=if(canCompare)cohort.offered else completed
+    val episodes=remember(offeredHistory) { CherryBornLifetime.evaluate(offeredHistory) }
+    val weekly=remember(offeredHistory) { CherryWeeklyLifetime.evaluate(offeredHistory) }
     var expandedWeek by rememberSaveable { mutableStateOf(false) }
     var rawWeek by rememberSaveable { mutableStateOf(false) }
     var expandedCuts by rememberSaveable { mutableStateOf(false) }
-    val rawCompleted=remember(completed) { completed.mapNotNull(CherryCutSuccess::rawView) }
+    val rawCompleted=cohort.raw
     val rawEpisodes=remember(rawCompleted) { CherryBornLifetime.evaluate(rawCompleted) }
     val rawWeekly=remember(rawCompleted) { CherryWeeklyLifetime.evaluate(rawCompleted) }
     val cutScores=remember(recentDraws) { CherryCutSuccess.scores(recentDraws) }
@@ -258,10 +261,19 @@ internal fun CherrySuccessContent(
             if(raw!=null) listOf(CherryTab.CURRENT,CherryTab.BORN).forEach { tab ->
                 val rawChecks=raw.forTab(tab)
                 val offered=draw?.forTab(tab).orEmpty()
-                if(rawChecks.isNotEmpty()) Text(successTabName(tab,en)+" • "+
-                    (if(en) "Raw ${rawChecks.count{it.correct}}/${rawChecks.size} · Offered ${offered.count{it.correct}}/${offered.size}"
-                     else "မူရင်း ${rawChecks.count{it.correct}}/${rawChecks.size} · ဖြတ်ပြီး ${offered.count{it.correct}}/${offered.size}"),
-                    style=MaterialTheme.typography.bodySmall)
+                val counts=CherryComparableEvidence.counts(rawChecks,offered)
+                if(rawChecks.isNotEmpty()) {
+                    val offeredText=if(counts.offeredCount==0) {
+                        if(en) "No offer" else "ရွေးကွက်မကျန်"
+                    } else "${counts.offeredHits}/${counts.offeredCount}"
+                    Text(successTabName(tab,en)+" • "+
+                        (if(en) "Raw ${counts.rawHits}/${counts.rawCount} · Offered $offeredText"
+                         else "မူရင်း ${counts.rawHits}/${counts.rawCount} · ဖြတ်ပြီး $offeredText"),
+                        style=MaterialTheme.typography.bodySmall)
+                    if(counts.noOffer>0) Text(if(en) "${counts.noOffer} rules without offered pairs"
+                        else "ရွေးကွက်မကျန်သောမူ ${counts.noOffer} ခု",
+                        style=MaterialTheme.typography.labelSmall)
+                }
             }
             if(expandedCuts) {
                 Text(if(en) "Recent $period draws" else "နောက်ဆုံး $period ပွဲ",
@@ -294,8 +306,20 @@ internal fun CherrySuccessContent(
                     else "မူရင်း • $rawHit မှန် / $rawMiss လွဲ / $rawUnknown မဆုံးဖြတ်ရသေး",
                     fontWeight=FontWeight.SemiBold)
             }
-            Text(if(en) "All recorded triggered instances; not a per-draw rate. Missing slots are not losses."
-                else "မှတ်တမ်းရှိ မွေးမူသက်တမ်းအလိုက်။ ပွဲမှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
+            val offeredIds=episodes.map{it.id}.toSet()
+            val rawOnly=rawEpisodes.count{it.id !in offeredIds}
+            if(rawOnly>0) Text(if(en) "$rawOnly original instances without offered evidence"
+                else "ဖြတ်ပြီးမှတ်တမ်းမရှိသော မူရင်းသက်တမ်း $rawOnly ခု",
+                style=MaterialTheme.typography.labelSmall)
+            Text(if(canCompare) {
+                val dates=cohort.raw.map{it.snapshot.target.date}
+                val range="${dates.minOrNull()} – ${dates.maxOrNull()}"
+                if(en) "${cohort.raw.size} common recorded draws • $range. Missing slots are not losses."
+                else "မှတ်တမ်းတူ ${cohort.raw.size} ပွဲ • $range။ မှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။"
+            } else {
+                if(en) "Offered archive only; no original evidence yet."
+                else "ဖြတ်ပြီးမှတ်တမ်းသာ ရှိသေးသည်။"
+            },
                 style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -308,19 +332,22 @@ internal fun CherrySuccessContent(
                         else { if(en) "Details" else "အသေးစိတ်" })
                 }
             }
-            Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            if(canCompare) Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 FilterChip(selected=!rawWeek,onClick={rawWeek=false},
                     label={Text(if(en) "Offered" else "ဖြတ်ပြီး")})
                 FilterChip(selected=rawWeek,onClick={rawWeek=true},
                     label={Text(if(en) "Raw" else "မူရင်း")})
             }
-            val weekEvidence=if(rawWeek)rawWeekly else weekly
+            val weekEvidence=if(rawWeek && canCompare)rawWeekly else weekly
             if(weekEvidence.isEmpty()) Text(if(en) "No recorded weekly evidence yet."
                 else "အပတ်စဉ် ကြိုတင်မှတ်တမ်း မရှိသေးပါ။",
                 style=MaterialTheme.typography.bodySmall)
             else {
-                val latest=weekEvidence.first().week
+                val latest=(weekly+rawWeekly).maxOf{it.week}
                 val visible=if(expandedWeek)weekEvidence else weekEvidence.filter{it.week==latest}
+                if(visible.isEmpty()) Text(if(en) "No evidence for the common latest week."
+                    else "ဤအပတ်အတွက် မှတ်တမ်းမရှိသေးပါ။",
+                    style=MaterialTheme.typography.bodySmall)
                 visible.forEach { item ->
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -344,6 +371,10 @@ internal fun CherrySuccessContent(
                     }
                 }
             }
+            if(canCompare && cohort.withoutRaw.isNotEmpty()) Text(
+                if(en) "Older / unpaired records remain in draw history."
+                else "မူရင်းမပါသောမှတ်တမ်းများကို ပွဲစဉ်မှတ်တမ်းတွင် ကြည့်နိုင်သည်။",
+                style=MaterialTheme.typography.labelSmall)
             Text(if(en) "Distinct recorded matches; eight-pair coverage is not a whole-source win. Missing draws are not losses."
                 else "မှတ်တမ်းရှိ ဒဲ့အတွဲများကိုသာ ရေတွက်သည်။ ၈ ကွက်မှာ အုပ်စုထွက်ရှိမှုသာ ဖြစ်သည်။ မှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
                 style=MaterialTheme.typography.labelSmall,
@@ -352,7 +383,7 @@ internal fun CherrySuccessContent(
         SuccessCard {
             Text(if(en) "🔥 Top 5 performing rules" else "🔥 အောင်ချက်အကောင်းဆုံး မူ ၅ ခု",
                 fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-            val leaders = CherrySuccessEngine.ranking(recentDraws)
+            val leaders = remember(recentDraws) { CherrySuccessEngine.ranking(recentDraws) }
             if(leaders.isEmpty()) {
                 Text(if(en) "Not enough pre-draw evidence yet (at least 3 evaluations per rule)."
                     else "မူတစ်ခုချင်းစီအတွက် အနည်းဆုံး ၃ ပွဲ မှတ်တမ်းမပြည့်သေးပါ။",
@@ -497,11 +528,9 @@ internal fun CherrySuccessHistoryDialog(
     onSelected: (DrawIdentity) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val confirmed = confirmedHistory
-        .filter { it.digit.matches(Regex("[0-9]{2}")) }
-        .distinctBy { it.date to it.session }
-        .sortedWith(compareByDescending<HistoricDraw> { it.date }
-            .thenByDescending { it.session.ordinal })
+    val confirmed = remember(confirmedHistory) {
+        CherryVerifiedHistory.normalize(confirmedHistory).asReversed()
+    }
     val stored = snapshots.associateBy { it.target }
     AlertDialog(onDismissRequest=onDismiss,
         title={Text(if(en) "Draw history" else "ပွဲစဉ်မှတ်တမ်း")},
