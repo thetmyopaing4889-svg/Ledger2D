@@ -74,6 +74,8 @@ class CherryLibraryHistoryParityTest {
         val lock=ManualWinnerLockEntity(date=day,session=am,createdAt=0,updatedAt=0)
         assertParity(resolve(rows,locks=listOf(lock)),null)
         assertParity(resolve(rows,listOf(winner("12")),listOf(lock)),1)
+        assertParity(resolve(listOf(daily(day,"12")),listOf(winner("?")),listOf(lock)),null)
+        assertParity(resolve(listOf(daily(day,"12")),listOf(winner("12"),winner("34")),listOf(lock)),null)
     }
 
     @Test fun weekendsClosedDatesAndUnconfirmedTodayAreExcluded() {

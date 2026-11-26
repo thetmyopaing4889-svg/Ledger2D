@@ -96,7 +96,11 @@ internal object Historic2DDataSource {
         val merged = HistoricDrawMerger.merge(authoritative, available.draws, today)
         // A deleted manual winner leaves a lock/tombstone. In that case a
         // historical or live fallback MUST NOT resurrect the withdrawn result.
-        val winnerKeys = authoritative.map { it.date to it.session }.toSet()
+        // An invalid or conflicting winner cannot release a manual deletion
+        // lock in Cherry's strict projection. Preserve legacy consumers.
+        val lockWinners=if(cherryClosedDates==null) authoritative else
+            CherryVerifiedHistory.normalize(authoritative,cherryClosedDates)
+        val winnerKeys = lockWinners.map { it.date to it.session }.toSet()
         val suppressed = manualLocks.map { it.date to it.session }.toSet() - winnerKeys
         val resolved=if(cherryClosedDates==null) merged.draws else
             CherryVerifiedHistory.normalize(
