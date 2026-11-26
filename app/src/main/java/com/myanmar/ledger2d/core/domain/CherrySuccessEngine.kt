@@ -21,6 +21,8 @@ internal data class CherrySuccessRule(
     val sourceOrigin: String = "",
     /** Optional original pre-draw calculation trace; older archives lack it. */
     val detail: String = "",
+    /** Frozen scheduled slots of this triggered born instance; old records lack these. */
+    val eligibleSlots: List<DrawIdentity> = emptyList(),
 ) {
     init {
         require(id.isNotBlank() && name.isNotBlank() && predictions.isNotEmpty())
@@ -110,6 +112,7 @@ internal object CherrySuccessEngine {
         inputEvidence: String = "",
     ): CherrySuccessSnapshot {
         val rules = mutableListOf<CherrySuccessRule>()
+        val births=report.activeRules.associateBy { it.id }
         for ((tab, picks) in listOf(
             CherryTab.CURRENT to report.current,
             CherryTab.BORN to report.born,
@@ -128,7 +131,8 @@ internal object CherrySuccessEngine {
                         tab, CherrySuccessCriterion.PAIR, pairs,
                         evidence.first().origin?.let {
                             it.date.toString() + "/" + it.session.name
-                        }.orEmpty(), evidence.first().detail))
+                        }.orEmpty(), evidence.first().detail,
+                        if(tab==CherryTab.BORN) births[id]?.eligibleSlots.orEmpty() else emptyList()))
                 }
             }
         }
@@ -194,12 +198,32 @@ internal object CherrySuccessEngine {
      * Absent snapshots are never false negatives. A tab is a hit when >=1 of
      * its pre-selected rules matched; rule-level ranking uses another measure.
      */
-    fun tabRate(draws: List<CherrySuccessDraw>, tab: CherryTab): CherrySuccessRate {
-        val eligible = draws.filter { it.forTab(tab).isNotEmpty() }
-        return CherrySuccessRate(eligible.count { draw ->
-            draw.forTab(tab).any { it.correct }
-        }, eligible.size)
+    fun tabRate(draws: List<CherrySuccessDraw>, tab: CherryTab,
+                currentVersionOnly: Boolean = false): CherrySuccessRate {
+        val eligible = draws.map { draw ->
+            draw.forTab(tab).filter { !currentVersionOnly || isCurrentRuleEvidence(draw,it) }
+        }.filter { it.isNotEmpty() }
+        return CherrySuccessRate(eligible.count { checks -> checks.any { it.correct } }, eligible.size)
     }
+
+    // Origin suffix identifies an instance, not a different formula.
+    fun rankKey(rule:CherrySuccessRule):String =
+        rule.tab.name + ":" + if(rule.tab==CherryTab.BORN)
+            rule.id.substringBefore('@') else rule.id
+
+    internal data class RankEvidence(
+        val target:DrawIdentity, val checks:List<CherrySuccessCheck>,
+    ) {
+        val correct:Boolean get()=checks.any{it.correct}
+        val pairCount:Int get()=checks.flatMap{it.rule.predictions}.distinct().size
+    }
+
+    fun rankEvidence(draws:List<CherrySuccessDraw>,id:String):List<RankEvidence> =
+        draws.flatMap{draw->draw.checks.filter{isCurrentRuleEvidence(draw,it)&&rankKey(it.rule)==id}
+            .map{draw.snapshot.target to it}}
+            .groupBy{it.first}.map{(target,records)->RankEvidence(target,records.map{it.second})}
+            .sortedWith(compareByDescending<RankEvidence>{it.target.date}
+                .thenByDescending{it.target.session.ordinal})
 
     fun ranking(
         draws: List<CherrySuccessDraw>,
@@ -207,20 +231,17 @@ internal object CherrySuccessEngine {
         limit: Int = 5,
     ): List<CherrySuccessRank> {
         require(minimumEvaluated > 0 && limit > 0)
-        val groups = draws.flatMap { draw ->
-            draw.checks.filter { isCurrentRuleEvidence(draw, it) }
-                .map { check -> draw.snapshot.target to check }
-        }.groupBy { (_, check) -> check.rule.tab.name + ":" + check.rule.id }
-        return groups.mapNotNull { (id, records) ->
-            val ordered = records.sortedWith(
-                compareByDescending<Pair<DrawIdentity, CherrySuccessCheck>> { it.first.date }
-                    .thenByDescending { it.first.session.ordinal })
+        val keys=draws.flatMap { draw ->
+            draw.checks.filter { isCurrentRuleEvidence(draw,it) }.map { rankKey(it.rule) }
+        }.distinct()
+        return keys.mapNotNull { id ->
+            val ordered=rankEvidence(draws,id)
             if (ordered.size < minimumEvaluated) null else {
-                val first = ordered.first().second.rule
+                val first=ordered.first().checks.first().rule
                 CherrySuccessRank(id, first.name, first.tab, first.criterion,
-                    ordered.count { it.second.correct }, ordered.size,
-                    ordered.takeWhile { it.second.correct }.size,
-                    first.predictions.size)
+                    ordered.count { it.correct }, ordered.size,
+                    ordered.takeWhile { it.correct }.size,
+                    ordered.first().pairCount)
             }
         }.sortedWith(compareByDescending<CherrySuccessRank> { it.percent }
             .thenByDescending { it.evaluated }

@@ -140,6 +140,8 @@ data class CherryBirth(
     val origin: DrawIdentity,
     val expires: LocalDate,
     val produced: Set<String>,
+    // Schedule known at calculation time. Empty means no lifetime evidence.
+    val eligibleSlots: List<DrawIdentity> = emptyList(),
 )
 data class CherryValue(
     val id: String,
@@ -468,6 +470,16 @@ object CherryBetterDataEngine {
                 rule("s6-am92","မနက် 92 နောက် ညနေ 7 ဘရိတ်မူ",
                     CherryPairExpander.bk(7),"မနက် 92 ဒဲ့ • ညနေ 7 ဘရိတ် • အထူး 43/07")
         }
+        fun eligibleSlots(origin:HistoricDraw,starts:LocalDate,end:LocalDate,
+                          endSession:DrawSession=DrawSession.EVENING):List<DrawIdentity> {
+            if(end<starts)return emptyList()
+            return generateSequence(starts){it.plusDays(1)}.takeWhile{it<=end}
+                .filter{DrawSchedule.isWorkingDate(it,closed)}
+                .flatMap{date->sequenceOf(DrawIdentity(date,DrawSession.MORNING),
+                    DrawIdentity(date,DrawSession.EVENING))}
+                .filter{before(origin,it) && (it.date<end || it.session.ordinal<=endSession.ordinal)}
+                .toList()
+        }
         fun birth(origin:HistoricDraw,code:String,name:String,pairs:List<String>,
                   limit:Int=5,calendarDays:Boolean=false) {
             // The original legacy born rules use trading days. The user-supplied
@@ -481,9 +493,10 @@ object CherryBetterDataEngine {
             val after=rows.filter{r->before(origin,identity(r))}
             if(after.any{it.digit in values})return
             val key="$code@${origin.date}-${origin.session.name}"
-            births+=CherryBirth(key,name,identity(origin),
-                if(calendarDays) origin.date.plusDays(limit.toLong())
-                else plusWorkingDays(origin.date,limit,closed),values)
+            val end=if(calendarDays) origin.date.plusDays(limit.toLong())
+                else plusWorkingDays(origin.date,limit,closed)
+            births+=CherryBirth(key,name,identity(origin),end,values,
+                eligibleSlots(origin,origin.date,end))
             add(born,key,code,name,
                 "${origin.date} ${origin.session.label}: ${origin.digit} → $name",
                 values,identity(origin),CherryTab.BORN)
@@ -520,14 +533,16 @@ object CherryBetterDataEngine {
         }
         fun scopedBorn(code:String,name:String,pairs:List<String>,origin:HistoricDraw,
                        end:LocalDate,stopOnHit:Boolean=true,detail:String="",
-                       starts:LocalDate=origin.date,family:String=code) {
+                       starts:LocalDate=origin.date,family:String=code,
+                       endSession:DrawSession=DrawSession.EVENING) {
             if(target.date<starts || target.date>end || !before(origin,target))return
             val values=pairs.filter(::validHistoric2D).toSet()
             if(values.isEmpty())return
             if(stopOnHit && rows.any{before(origin,identity(it)) &&
                     it.date>=starts && it.date<=end && it.digit in values})return
             val key="$code@${origin.date}-${origin.session.name}"
-            births+=CherryBirth(key,name,identity(origin),end,values)
+            births+=CherryBirth(key,name,identity(origin),end,values,
+                eligibleSlots(origin,starts,end,endSession))
             add(born,key,family,name,
                 "${origin.date} ${origin.session.label}: ${origin.digit} • $name" +
                     if(detail.isBlank()) "" else " • $detail",
@@ -589,7 +604,8 @@ object CherryBetterDataEngine {
             val validSlots=(1..4).map{slot=nextSlot(slot);slot}
             if(target in validSlots)
                 scopedBorn("s6-06","06R ညီအစ်ကိုမွေးမူ",siblings,origin,
-                    validSlots.last().date,detail="4 sessions • ${validSlots.last().session.label}")
+                    validSlots.last().date,detail="4 sessions • ${validSlots.last().session.label}",
+                    endSession=validSlots.last().session)
         }
         // 9:30 is an independent input, not an official-result derivative.
         // The revised break-rule ID does not merge old reverse-input evidence.
@@ -643,7 +659,7 @@ object CherryBetterDataEngine {
             if(target in slots)
                 scopedBorn("s2-tail6-49","6 ပိတ်နောက် 4/9 ပတ်သီးမူ",
                     followDigits(4,9),origin,slots.last().date,
-                    detail="4 sessions • ${slots.last().session.label}")
+                    detail="4 sessions • ${slots.last().session.label}",endSession=slots.last().session)
         }
 
         // Literal listed pairs are not reversed unless R is explicitly present.
@@ -731,7 +747,7 @@ object CherryBetterDataEngine {
             if(target in slots)
                 scopedBorn("s5-wed","ဗုဒ္ဓဟူးညနေ အပူးနောက် 7 ဘရိတ်မူ",
                     breaks(7),origin,slots.last().date,
-                    detail="4 sessions • ${slots.last().session.label}")
+                    detail="4 sessions • ${slots.last().session.label}",endSession=slots.last().session)
         }
         // Friday power is a named group; existing group definition includes
         // both directions. Output list is literal. Start next Monday only.

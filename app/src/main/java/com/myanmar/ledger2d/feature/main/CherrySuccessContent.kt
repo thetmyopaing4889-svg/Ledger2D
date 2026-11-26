@@ -78,6 +78,7 @@ internal fun CherrySuccessContent(
     val recentDraws = confirmed.take(period).mapNotNull {
         byCompleted[DrawIdentity(it.date,it.session)]
     }
+    val episodes=remember(completed) { CherryBornLifetime.evaluate(completed) }
 
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
@@ -202,7 +203,7 @@ internal fun CherrySuccessContent(
                 }
             }
             tabs.forEach { tab ->
-                val rate = CherrySuccessEngine.tabRate(recentDraws,tab)
+                val rate = CherrySuccessEngine.tabRate(recentDraws,tab,currentVersionOnly=true)
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Text(successTabName(tab,en),modifier=Modifier.weight(1f),
                         style=MaterialTheme.typography.bodySmall)
@@ -216,12 +217,26 @@ internal fun CherrySuccessContent(
                     modifier=Modifier.fillMaxWidth().height(7.dp),
                     color=AppColors.Primary,trackColor=cherrySuccessPale)
             }
-            Text(if(en) "Per draw: at least one recorded rule matched. Draws without a snapshot are excluded."
-                else "ပွဲတစ်ပွဲတွင် အနည်းဆုံး မူတစ်ခုမှန်လျှင် ထိုကဏ္ဍအောင်ချက်အဖြစ်တွက်သည်။ မှတ်တမ်းမရှိသောပွဲ မပါဝင်ပါ။",
+            Text(if(en) "Current version, per draw. Math history unchanged; missing snapshots excluded."
+                else "လက်ရှိဗားရှင်း တစ်ပွဲချင်းအောင်ချက်။ သင်္ချာနည်းမှတ်တမ်း မပြောင်းပါ။ မှတ်တမ်းမရှိသောပွဲ မပါဝင်ပါ။",
                 style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        SuccessCard {
+            Text(if(en) "Born lifetime • recorded instances" else "မွေးမူ သက်တမ်းအောင်ချက်",
+                fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+            val hit=episodes.count { it.status==CherryBornLifetime.Status.HIT }
+            val miss=episodes.count { it.status==CherryBornLifetime.Status.MISS }
+            val unresolved=episodes.size-hit-miss
+            Text(if(en) "$hit hit / $miss miss / $unresolved unresolved"
+                else "$hit မှန် / $miss လွဲ / $unresolved မဆုံးဖြတ်ရသေး",
+                fontWeight=FontWeight.SemiBold)
+            Text(if(en) "All recorded triggered instances; not a per-draw rate. Missing slots are not losses."
+                else "မှတ်တမ်းရှိ မွေးမူသက်တမ်းအလိုက်။ ပွဲမှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
+                style=MaterialTheme.typography.labelSmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         SuccessCard {
             Text(if(en) "🔥 Top 5 performing rules" else "🔥 အောင်ချက်အကောင်းဆုံး မူ ၅ ခု",
                 fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
@@ -315,11 +330,7 @@ internal fun CherrySuccessContent(
             },confirmButton={TextButton(onClick={openedCheck=null}) { Text(if(en)"Close" else "ပိတ်") }})
     }
     openedRule?.let { rank ->
-        val proof = recentDraws.flatMap { draw ->
-            draw.checks.filter { CherrySuccessEngine.isCurrentRuleEvidence(draw,it) &&
-                rank.id==it.rule.tab.name+":"+it.rule.id }
-                .map { draw.snapshot.target to it }
-        }
+        val proof = CherrySuccessEngine.rankEvidence(recentDraws,rank.id)
         AlertDialog(onDismissRequest={openedRule=null},
             title={Text(successRankTitle(rank),color=AppColors.PrimaryDeep)},
             text={
@@ -327,12 +338,12 @@ internal fun CherrySuccessContent(
                     verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     Text("${rank.correct}/${rank.evaluated} • ${rank.percent}%",
                         fontWeight=FontWeight.Bold)
-                    proof.forEach { (draw,check) ->
+                    proof.forEach { evidence ->
                         Row(verticalAlignment=Alignment.CenterVertically) {
-                            Text(successDrawName(draw,en),modifier=Modifier.weight(1f),
+                            Text(successDrawName(evidence.target,en),modifier=Modifier.weight(1f),
                                 style=MaterialTheme.typography.bodySmall)
-                            Icon(if(check.correct) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                                null,tint=if(check.correct) Color(0xFF16854E) else Color(0xFFC13D56))
+                            Icon(if(evidence.correct) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                                null,tint=if(evidence.correct) Color(0xFF16854E) else Color(0xFFC13D56))
                         }
                     }
                 }

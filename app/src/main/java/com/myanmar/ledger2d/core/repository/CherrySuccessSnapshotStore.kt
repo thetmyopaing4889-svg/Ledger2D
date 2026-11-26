@@ -33,7 +33,12 @@ internal class CherrySuccessSnapshotStore(context: Context) {
             rules.put(JSONObject().put("id", rule.id).put("name", rule.name)
                 .put("tab", rule.tab.name).put("criterion", rule.criterion.name)
                 .put("predictions", JSONArray(rule.predictions))
-                .put("origin",rule.sourceOrigin).put("detail",rule.detail))
+                .put("origin",rule.sourceOrigin).put("detail",rule.detail)
+                .put("eligibleSlots",JSONArray().apply {
+                    rule.eligibleSlots.forEach { slot ->
+                        put(JSONObject().put("date",slot.date.toString()).put("session",slot.session.name))
+                    }
+                }))
         }
         return JSONObject().put("date", snap.target.date.toString())
             .put("session", snap.target.session.name)
@@ -56,7 +61,15 @@ internal class CherrySuccessSnapshotStore(context: Context) {
                 CherryTab.valueOf(rule.getString("tab")),
                 CherrySuccessCriterion.valueOf(rule.getString("criterion")),
                 (0 until predictions.length()).map { predictions.getString(it) },
-                rule.optString("origin", ""), rule.optString("detail", ""))
+                rule.optString("origin", ""), rule.optString("detail", ""),
+                rule.optJSONArray("eligibleSlots")?.let { slots ->
+                    require(slots.length()<=366)
+                    (0 until slots.length()).map { i ->
+                        val slot=slots.getJSONObject(i)
+                        DrawIdentity(LocalDate.parse(slot.getString("date")),
+                            DrawSession.valueOf(slot.getString("session")))
+                    }
+                }.orEmpty())
         }
         return CherrySuccessSnapshot(target, item.getLong("time"), rules,
             item.optString("version","cherry-success-snapshot-v1"),
