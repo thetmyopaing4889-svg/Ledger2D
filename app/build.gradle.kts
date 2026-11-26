@@ -1,3 +1,11 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.*
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+import kotlin.math.roundToInt
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -84,4 +92,56 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+
+/** Offline color variants from the unchanged Quick Entry glass orb.
+ * Preserve green leaf, brown stem, highlights and the original circular silhouette.
+ * No image processing or extra allocations on the Android device. */
+@CacheableTask
+abstract class GenerateCherryRuleOrbs : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceImage: RegularFileProperty
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val src=checkNotNull(ImageIO.read(sourceImage.get().asFile))
+        val dir=outputDir.get().asFile.resolve("drawable-nodpi").apply{mkdirs()}
+        for(variant in listOf("ruby","rose","pearl")) {
+            val out=BufferedImage(src.width,src.height,BufferedImage.TYPE_INT_RGB)
+            for(y in 0 until src.height) for(x in 0 until src.width) {
+                val rgb=src.getRGB(x,y)
+                val r=(rgb shr 16) and 255
+                val g=(rgb shr 8) and 255
+                val b=rgb and 255
+                // Red/pink glass and fruit, but not the green leaf or brown stem.
+                val mask=if(r>g && r>=b*0.9 && g<=b+16)
+                    ((r-g)/24.0).coerceIn(0.0,1.0) else 0.0
+                val light=(0.299*r+0.587*g+0.114*b)
+                fun mix(v:Int,t:Double)= (v*(1-mask)+t.coerceIn(0.0,255.0)*mask)
+                    .roundToInt().coerceIn(0,255)
+                val channels=when(variant) {
+                    "rose"->listOf(mix(r,120+light*0.56),mix(g,58+light*0.75),mix(b,88+light*0.66))
+                    "pearl"->listOf(mix(r,108+light*0.61),mix(g,106+light*0.61),mix(b,112+light*0.60))
+                    else->listOf(r,g,b)
+                }
+                out.setRGB(x,y,(channels[0] shl 16) or (channels[1] shl 8) or channels[2])
+            }
+            check(ImageIO.write(out,"png",dir.resolve("cherry_rule_"+variant+".png")))
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val generate=tasks.register<GenerateCherryRuleOrbs>(
+            "generate"+variant.name.replaceFirstChar{it.uppercase()}+"CherryRuleOrbs") {
+            sourceImage.set(layout.projectDirectory.file("src/main/res/drawable/btn_cherry_orb.jpg"))
+            outputDir.set(layout.buildDirectory.dir("generated/cherryRuleOrbs/"+variant.name))
+        }
+        variant.sources.res?.addGeneratedSourceDirectory(generate,GenerateCherryRuleOrbs::outputDir)
+    }
 }
