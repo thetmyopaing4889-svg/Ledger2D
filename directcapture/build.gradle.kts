@@ -6,8 +6,8 @@ android {
         applicationId = "com.myanmar.cherrydirectcapture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "5.0-isolated-overlay"
+        versionCode = 6
+        versionName = "6.0-basic-workflow"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

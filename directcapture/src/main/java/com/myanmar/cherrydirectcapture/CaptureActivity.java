@@ -35,10 +35,23 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 5",24);
+        label("🍒 Direct Capture Test 6",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
+        if(CaptureService.armed()) label("ယခုဖမ်းယူမှု "+CaptureService.sessionSaved()+" ကြိမ်",16);
+        button(CaptureService.armed()?"ဖမ်းယူမှု ရပ်မည်":"ဖမ်းယူမှု စတင်မည်",v->{
+            if(CaptureService.armed()) {CaptureService.endSession(); draw();return;}
+            new AlertDialog.Builder(this).setTitle("ဖမ်းယူမှု စတင်မည်")
+                .setMessage("Viber / Messenger ရှိ ခွင့်ပြုထားသော စမ်းသပ်စာများကိုသာ Cherry ခလုတ်နှိပ်၍ ဖမ်းယူပါ။")
+                .setNegativeButton("မစတင်ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{
+                    if(!CaptureService.beginSession()) new AlertDialog.Builder(this)
+                        .setMessage("Service မချိတ်ဆက်သေးပါ။ Accessibility Setting စစ်ပါ။")
+                        .setPositiveButton("OK",null).show();
+                    draw();
+                }).show();
+        });
+        label("ပုံမှန်စမ်းသပ်မှု: စတင်မည် → Viber / Messenger → 🍒 ဖမ်းမည် → ရပ်မည် → Test App",14);
         label("Shortcut: "+CaptureService.shortcutStatus(),16);
         label("Diagnostic: "+CaptureService.diagnostic(this),14);
         label("Target: "+CaptureService.targetDiagnostic(this),14);
@@ -47,15 +60,9 @@ public final class CaptureActivity extends Activity {
         label("Self-test: "+CaptureService.selfTestDiagnostic(this),14);
         label("Windows: "+CaptureService.windowDiagnostic(this),12);
         button("Overlay ခလုတ် သီးသန့်စမ်းမည်",v->{if(CaptureService.connected()) {CaptureService.testOverlay();draw();}else label("Service not connected",16);});
-        label("Overlay သီးသန့်စမ်းမည်ကို နှိပ်ပြီး ပေါ်လာသော ခလုတ်ကို ၁၅ စက္ကန့်အတွင်း နှိပ်ပါ။ ပြီးလျှင် အခြေအနေ ပြန်စစ်မည်ကို နှိပ်ပါ။ ဒီစမ်းသပ်မှုတွင် Chat ဖတ်ခြင်းမရှိပါ။",14);
+        label("Overlay သီးသန့်စမ်းမည်သည် အမှားရှာရန်သာ ဖြစ်သည်။ ပုံမှန်ဖမ်းယူမှုအတွက် မနှိပ်ပါနှင့်။",14);
         button("အခြေအနေ ပြန်စစ်မည်",v->draw());
         button("Accessibility Setting",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
-        button("ဖမ်းယူမှု စတင်မည်",v->{
-            new AlertDialog.Builder(this).setTitle("ဖမ်းယူမှု စတင်မည်")
-                .setMessage("Viber / Messenger တွင် Cherry ဖမ်းမည် သို့မဟုတ် Android Accessibility shortcut ကို ကိုယ်တိုင်နှိပ်ပါ။ အခြားသူ၏ ခွင့်မပြုသောစာ မဖမ်းယူပါနှင့်။")
-                .setNegativeButton("မစတင်ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{if(!CaptureService.beginSession()) new AlertDialog.Builder(this).setMessage("Service မချိတ်ဆက်သေးပါ။ Accessibility Setting စစ်ပြီး ပြန်စမ်းပါ။").setPositiveButton("OK",null).show(); draw();}).show();
-        });
-        button("ဖမ်းယူမှု ရပ်မည်",v->{CaptureService.endSession();draw();});
         button("သိမ်းထားသောစာအားလုံး ဖျက်မည်",v->new AlertDialog.Builder(this)
             .setMessage("စမ်းသပ်မှတ်တမ်းများ အားလုံး ဖျက်မည်လား?")
             .setNegativeButton("မဖျက်ပါ",null).setPositiveButton("ဖျက်မည်",(d,w)->{CaptureService.endSession();store.clear();offset=0;draw();}).show());
