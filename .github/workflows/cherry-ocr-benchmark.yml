@@ -16,10 +16,13 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Fetch pinned offline model assets and validate CRNN inference
         run: |
-          python3 -m pip install onnx==1.18.0 onnxruntime==1.22.0 numpy==2.2.6
-          python3 ocrbenchmark/tools/fetch_models.py
+          python -m pip install onnx==1.18.0 onnxruntime==1.22.0 numpy==2.2.6
+          python ocrbenchmark/tools/fetch_models.py
       - name: Build isolated test APK
         run: |
           chmod +x gradlew
@@ -27,7 +30,7 @@ jobs:
       - name: Print complete lint diagnostics on failure
         if: failure()
         run: |
-          find ocrbenchmark/build -name 'lint-results-*.txt' -type f -exec cat {} \;
+          if [ -d ocrbenchmark/build ]; then find ocrbenchmark/build -name 'lint-results-*.txt' -type f -exec cat {} \;; fi
       - name: Verify isolated package and bundled files
         run: |
           python3 - <<'PY'
