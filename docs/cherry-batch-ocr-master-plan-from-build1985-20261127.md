@@ -62,3 +62,6 @@ Deliverables per gate: documented decision, source commit, test evidence, CI sta
 
 ## 10. Immediate next step
 After this plan is reviewed and implementation is authorized, create the isolated OCR benchmark APK and corpus workflow (Stage A). Do not integrate OCR into the approved app yet. No engine winner or measured performance exists as of this plan.
+
+## Stage A.3 follow-up
+Real device 18-image run: exact SHA-256 match to local ZIP; 9 working variants, all 3 CRNN variants failed on ConvInteger(10). Reuse exact local images by matching 18 hashes and recovering previous SAF grants or importing the user's existing ZIP once; copy to private app storage, no real images/amounts committed or bundled in CI. Add Tesseract AUTO/SPARSE layout comparisons; these are not a validated text-region detector. CRNN compatibility rewrite replaces unsupported integer convolution with centered floating point convolution and int32 cast; CI CPU inference smoke required. Not claimed bit-exact or Android validated. Full segmentation, semantic validation and smart retry remain pending; new independent holdout required for gate.

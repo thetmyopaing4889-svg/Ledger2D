@@ -38,8 +38,10 @@ digest=hashlib.sha256(data).hexdigest()
 assert digest==entry["lfs"]["sha256"], "CRNN LFS SHA256 mismatch"
 dest=ROOT/"crnn"/name
 dest.parent.mkdir(parents=True,exist_ok=True)
-dest.write_bytes(data)
-records.append(dict(path=str(dest.relative_to(ROOT)),source=url,sha256=digest,bytes=len(data),license="Apache-2.0"))
+from crnn_compat import convert
+converted=convert(data)
+dest.write_bytes(converted)
+records.append(dict(path=str(dest.relative_to(ROOT)),source=url,source_sha256=digest,sha256=hashlib.sha256(converted).hexdigest(),bytes=len(converted),license="Apache-2.0",conversion="ConvInteger float accumulator v1"))
 license=fetch("https://raw.githubusercontent.com/kaungsithu/mmpdfkit/034a567b91c9c11205422902119bee97dccd844c/LICENSE")
 (ROOT/"crnn"/"UPSTREAM-LICENSE").write_bytes(license)
 (ROOT/"models.json").write_text(json.dumps(records,indent=2),encoding="utf-8")
