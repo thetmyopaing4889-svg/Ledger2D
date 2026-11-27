@@ -30,8 +30,8 @@ private val cherrySuccessPale = Color(0xFFFFEDF2)
 private fun SuccessCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(shape=RoundedCornerShape(18.dp), color=Color.White,
         border=BorderStroke(1.dp,cherrySuccessEdge)) {
-        Column(Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement=Arrangement.spacedBy(10.dp),content=content)
+        Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=8.dp),
+            verticalArrangement=Arrangement.spacedBy(5.dp),content=content)
     }
 }
 private fun successTabName(tab: CherryTab, en: Boolean): String = when(tab) {
@@ -68,325 +68,105 @@ internal fun CherrySuccessContent(
     val draw = showing?.let { byCompleted[it] }
     val stored = showing?.let { target -> snapshots.firstOrNull { it.target==target } }
     val tabs = listOf(CherryTab.CURRENT,CherryTab.BORN,CherryTab.MATH)
-    var expandedTab by rememberSaveable { mutableStateOf<String?>(null) }
     var period by rememberSaveable { mutableIntStateOf(10) }
+    var openedSection by rememberSaveable(showing) { mutableStateOf<String?>(null) }
     var openedRule by remember { mutableStateOf<CherrySuccessRank?>(null) }
     var openedCheck by remember(showing) { mutableStateOf<CherrySuccessCheck?>(null) }
-    var showMisses by remember(showing,expandedTab) { mutableStateOf(false) }
+    var showMisses by remember(showing,openedSection) { mutableStateOf(false) }
     val recentDraws = remember(confirmed,byCompleted,period) {
         confirmed.take(period).mapNotNull { byCompleted[DrawIdentity(it.date,it.session)] }
     }
-    val cohort=remember(completed) { CherryComparableEvidence.cohort(completed) }
-    val canCompare=cohort.raw.isNotEmpty()
-    // If raw evidence is absent, show the prior offered archive as such, never
-    // pretend it has a corresponding original score.
-    val offeredHistory=if(canCompare)cohort.offered else completed
-    val episodes=remember(offeredHistory) { CherryBornLifetime.evaluate(offeredHistory) }
-    val weekly=remember(offeredHistory) { CherryWeeklyLifetime.evaluate(offeredHistory) }
-    var expandedWeek by rememberSaveable { mutableStateOf(false) }
-    var rawWeek by rememberSaveable { mutableStateOf(false) }
-    var expandedCuts by rememberSaveable { mutableStateOf(false) }
-    val rawCompleted=cohort.raw
-    val rawEpisodes=remember(rawCompleted) { CherryBornLifetime.evaluate(rawCompleted) }
-    val rawWeekly=remember(rawCompleted) { CherryWeeklyLifetime.evaluate(rawCompleted) }
-    val cutScores=remember(recentDraws) { CherryCutSuccess.scores(recentDraws) }
+    val cutChecks=remember(draw) { draw?.let(CherryCutSuccess::checks).orEmpty() }
 
-    Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
-            Text(if(en) "🏆 Success" else "🏆 အောင်ချက်",
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text(if(en) "Success" else "အောင်ချက်",
                 color=AppColors.PrimaryDeep,fontWeight=FontWeight.Black,
-                style=MaterialTheme.typography.titleLarge)
-            Text(if(en) "Verified results of pre-draw predictions"
-                else "ပွဲမထွက်ခင် မှတ်ထားသောမူများ၏ အောင်ချက်",
-                style=MaterialTheme.typography.bodySmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
+                style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
+            TextButton(onClick=onHistory,contentPadding=PaddingValues(horizontal=6.dp)) {
+                Icon(Icons.Default.History,null,Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(if(en) "History" else "မှတ်တမ်း")
+            }
         }
         SuccessCard {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Text(if(en) "Latest draw result" else "နောက်ဆုံးပွဲစဉ်",
-                    color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
-                    modifier=Modifier.weight(1f))
-                TextButton(onClick=onHistory) {
-                    Icon(Icons.Default.History,null,Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(if(en) "History" else "မှတ်တမ်း")
-                }
-            }
-            if(showing==null) {
-                Text(if(en) "No confirmed draw yet."
-                    else "အတည်ပြုပေါက်ဂဏန်း မရှိသေးပါ။")
-            } else {
-                Row(verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                    Surface(color=cherrySuccessPale,
-                        shape=RoundedCornerShape(14.dp)) {
-                        Column(Modifier.padding(horizontal=20.dp,vertical=13.dp),
+            Text(if(selectedDraw==null) { if(en) "Latest draw" else "နောက်ဆုံးပွဲစဉ်" }
+                else { if(en) "Selected draw" else "ရွေးထားသောပွဲစဉ်" },
+                color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
+            if(showing==null) Text(if(en) "No confirmed result" else "ပေါက်ဂဏန်း မရှိသေးပါ။",
+                style=MaterialTheme.typography.bodySmall)
+            else {
+                Text(successDrawName(showing,en),style=MaterialTheme.typography.labelSmall)
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                    horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Surface(color=cherrySuccessPale,shape=RoundedCornerShape(14.dp)) {
+                        Column(Modifier.padding(horizontal=12.dp,vertical=12.dp),
                             horizontalAlignment=Alignment.CenterHorizontally) {
-                            Text(winning ?: "??",color=AppColors.PrimaryDeep,
+                            Text(winning ?: "—",color=AppColors.PrimaryDeep,
                                 fontSize=30.sp,fontWeight=FontWeight.Black)
-                            Text(if(en) "Winning" else "ပေါက်ဂဏန်း",
-                                style=MaterialTheme.typography.labelSmall)
+                            Text(if(en) "Result" else "ပေါက်ဂဏန်း",style=MaterialTheme.typography.labelSmall)
                         }
                     }
-                    Column(Modifier.weight(1f),
-                        verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                        Text(successDrawName(showing,en),
-                            style=MaterialTheme.typography.labelSmall,
-                            color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                         tabs.forEach { tab ->
-                            val results = draw?.forTab(tab).orEmpty()
-                            Row(verticalAlignment=Alignment.CenterVertically) {
-                                Text(successTabName(tab,en),
-                                    style=MaterialTheme.typography.bodySmall,
-                                    modifier=Modifier.weight(1f))
-                                Text(if(results.isEmpty()) "—" else
-                                    if(en) "${results.count { it.correct }} hit / ${results.count { !it.correct }} miss"
-                                    else "${results.count { it.correct }} မှန် / ${results.count { !it.correct }} လွဲ",
-                                    style=MaterialTheme.typography.labelSmall,
-                                    color=if(results.any { it.correct }) AppColors.PrimaryDeep
-                                        else MaterialTheme.colorScheme.onSurfaceVariant)
+                            val checks=draw?.forTab(tab).orEmpty()
+                            SuccessDashboardRow(successTabName(tab,en),
+                                successCountLabel(checks.count{it.correct},checks.size,en),en) {
+                                openedSection=tab.name
                             }
+                        }
+                        SuccessDashboardRow(if(en) "Exclusions" else "အသေမူ",
+                            successCountLabel(cutChecks.count{it.correct},cutChecks.size,en),en) {
+                            openedSection="cuts"
                         }
                     }
                 }
-                if(selectedDraw!=null) {
-                    TextButton(onClick=onLatest) {
-                        Text(if(en) "Back to latest draw" else "နောက်ဆုံးပွဲသို့ ပြန်မည်")
-                    }
-                }
-                if(winning!=null && stored==null) {
-                    Text(if(en) "No pre-draw snapshot for this session. Not counted as a loss."
-                        else "ဒီပွဲအတွက် ကြိုတင်မှတ်တမ်းမရှိပါ။ အရှုံးမတွက်ပါ။",
-                        style=MaterialTheme.typography.bodySmall,
-                        color=MaterialTheme.colorScheme.onSurfaceVariant)
-                } else if(winning!=null) {
-                    tabs.forEach { tab ->
-                        val checks=draw?.forTab(tab).orEmpty()
-                        val isOpen=expandedTab==tab.name
-                        Surface(onClick={expandedTab=if(isOpen)null else tab.name},
-                            color=cherrySuccessPale,shape=RoundedCornerShape(10.dp)) {
-                            Row(Modifier.fillMaxWidth().padding(11.dp),
-                                verticalAlignment=Alignment.CenterVertically) {
-                                Text(successTabName(tab,en),modifier=Modifier.weight(1f),
-                                    fontWeight=FontWeight.SemiBold,
-                                    color=AppColors.PrimaryDeep)
-                                Text(if(checks.isEmpty()) "—" else
-                                    "${checks.count { it.correct }} / ${checks.size}",
-                                    style=MaterialTheme.typography.labelSmall)
-                                Icon(if(isOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    null,tint=AppColors.PrimaryDeep)
-                            }
-                        }
-                        if(isOpen) {
-                            if(checks.isEmpty()) {
-                                Text(if(en) "No recorded rule for this tab."
-                                    else "ဒီကဏ္ဍအတွက် မူမှတ်တမ်း မရှိပါ။",
-                                    style=MaterialTheme.typography.bodySmall)
-                            }
-                            val hits=checks.filter { it.correct }
-                            val misses=checks.filterNot { it.correct }
-                            hits.forEach { check -> SuccessRuleRow(check,en) { openedCheck=check } }
-                            if(misses.isNotEmpty()) {
-                                TextButton(onClick={showMisses=!showMisses},modifier=Modifier.fillMaxWidth()) {
-                                    Text(if(en) "Missed rules — ${misses.size}"
-                                        else "လွဲခဲ့သောမူများ — ${misses.size} မူခွဲ")
-                                    Icon(if(showMisses) Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
-                                }
-                                if(showMisses) misses.forEach { check ->
-                                    SuccessRuleRow(check,en) { openedCheck=check }
-                                }
-                            }
-                        }
-                    }
+                if(draw==null && winning!=null) Text(if(en) "No verified pre-draw record"
+                    else "ဤပွဲ ကြိုတင်မှတ်တမ်းမရှိပါ။",
+                    style=MaterialTheme.typography.labelSmall)
+                if(selectedDraw!=null) TextButton(onClick=onLatest) {
+                    Text(if(en) "Back to latest draw" else "နောက်ဆုံးပွဲသို့ ပြန်မည်")
                 }
             }
         }
-
         SuccessCard {
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Text(if(en) "📊 Category success" else "📊 ကဏ္ဍအလိုက် အောင်ချက်နှုန်း",
-                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
-                    modifier=Modifier.weight(1f))
+                Text(if(en) "Draw success" else "ပွဲအလိုက် အောင်ချက်",
+                    fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,modifier=Modifier.weight(1f))
                 listOf(10,20).forEach { count ->
                     FilterChip(selected=period==count,onClick={period=count},
-                        label={Text(if(en) "$count draws" else "$count ပွဲ")})
-                    Spacer(Modifier.width(5.dp))
+                        label={Text(if(en) "$count draws" else "$count ပွဲ",
+                            style=MaterialTheme.typography.labelSmall)})
+                    Spacer(Modifier.width(3.dp))
                 }
             }
+            Text(if(en) "At least one recorded rule hit per draw."
+                else "မူတစ်ခုမှန်လျှင် တစ်ပွဲမှန်ဟု တွက်သည်။",style=MaterialTheme.typography.labelSmall)
             tabs.forEach { tab ->
                 val rate = CherrySuccessEngine.tabRate(recentDraws,tab,currentVersionOnly=true)
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Text(successTabName(tab,en),modifier=Modifier.weight(1f),
                         style=MaterialTheme.typography.bodySmall)
-                    Text(if(rate.evaluated==0) "—" else
-                        "${rate.percent}% (${rate.correct}/${rate.evaluated})",
-                        fontWeight=FontWeight.SemiBold,
-                        style=MaterialTheme.typography.bodySmall)
+                    Text(if(rate.evaluated==0) { if(en) "No record" else "မှတ်တမ်းမရှိ" }
+                        else if(en) "${rate.correct}/${rate.evaluated} draws hit"
+                        else "${rate.correct}/${rate.evaluated} ပွဲမှန်",
+                        fontWeight=FontWeight.SemiBold,style=MaterialTheme.typography.bodySmall)
                 }
-                LinearProgressIndicator(
-                    progress={if(rate.evaluated==0) 0f else rate.correct.toFloat()/rate.evaluated},
-                    modifier=Modifier.fillMaxWidth().height(7.dp),
+                if(rate.evaluated>0) LinearProgressIndicator(
+                    progress={rate.correct.toFloat()/rate.evaluated},
+                    modifier=Modifier.fillMaxWidth().height(6.dp),
                     color=AppColors.Primary,trackColor=cherrySuccessPale)
             }
-            Text(if(en) "Current version, per draw. Math history unchanged; missing snapshots excluded."
-                else "လက်ရှိဗားရှင်း တစ်ပွဲချင်းအောင်ချက်။ သင်္ချာနည်းမှတ်တမ်း မပြောင်းပါ။ မှတ်တမ်းမရှိသောပွဲ မပါဝင်ပါ။",
-                style=MaterialTheme.typography.labelSmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        SuccessCard {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text(if(en) "Exclusion checks" else "အသေမူ အောင်ချက်",
-                    modifier=Modifier.weight(1f),fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                TextButton(onClick={expandedCuts=!expandedCuts}) {
-                    Text(if(expandedCuts) { if(en) "Hide" else "ပိတ်" }
-                        else { if(en) "Details" else "အသေးစိတ်" })
-                }
-            }
-            val cutChecks=draw?.let(CherryCutSuccess::checks).orEmpty()
-            if(cutChecks.isEmpty()) Text(if(en) "No recorded exclusions for this draw."
-                else "ဤပွဲ အသေမူ ကြိုတင်မှတ်တမ်း မရှိသေးပါ။",style=MaterialTheme.typography.bodySmall)
-            cutChecks.forEach { check ->
-                Row(verticalAlignment=Alignment.CenterVertically) {
-                    Text(check.rule.name,modifier=Modifier.weight(1f),style=MaterialTheme.typography.bodySmall)
-                    Text(if(check.correct) { if(en) "Correct" else "မှန်" }
-                        else { if(en) "Miss" else "လွဲ" },fontWeight=FontWeight.Bold,
-                        color=if(check.correct) Color(0xFF16854E) else Color(0xFFC13D56))
-                }
-                if(expandedCuts) {
-                    Text(check.rule.excluded.joinToString(" / "),style=MaterialTheme.typography.labelSmall)
-                }
-            }
-            val raw=draw?.let(CherryCutSuccess::rawView)
-            if(raw!=null) listOf(CherryTab.CURRENT,CherryTab.BORN).forEach { tab ->
-                val rawChecks=raw.forTab(tab)
-                val offered=draw?.forTab(tab).orEmpty()
-                val counts=CherryComparableEvidence.counts(rawChecks,offered)
-                if(rawChecks.isNotEmpty()) {
-                    val offeredText=if(counts.offeredCount==0) {
-                        if(en) "No offer" else "ရွေးကွက်မကျန်"
-                    } else "${counts.offeredHits}/${counts.offeredCount}"
-                    Text(successTabName(tab,en)+" • "+
-                        (if(en) "Raw ${counts.rawHits}/${counts.rawCount} · Offered $offeredText"
-                         else "မူရင်း ${counts.rawHits}/${counts.rawCount} · ဖြတ်ပြီး $offeredText"),
-                        style=MaterialTheme.typography.bodySmall)
-                    if(counts.noOffer>0) Text(if(en) "${counts.noOffer} rules without offered pairs"
-                        else "ရွေးကွက်မကျန်သောမူ ${counts.noOffer} ခု",
-                        style=MaterialTheme.typography.labelSmall)
-                }
-            }
-            if(expandedCuts) {
-                Text(if(en) "Recent $period draws" else "နောက်ဆုံး $period ပွဲ",
-                    fontWeight=FontWeight.SemiBold)
-                cutScores.forEach { score ->
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Text(score.name,modifier=Modifier.weight(1f),style=MaterialTheme.typography.bodySmall)
-                        Text("${score.correct}/${score.evaluated}",fontWeight=FontWeight.SemiBold)
-                    }
-                }
-            }
-            Text(if(en) "Correct when the confirmed result is outside the recorded exclusion set."
-                else "ပေါက်ဂဏန်း အသေတွဲထဲ မပါလျှင် မှန်သည်။",
-                style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        SuccessCard {
-            Text(if(en) "Born lifetime • recorded instances" else "မွေးမူ သက်တမ်းအောင်ချက်",
-                fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-            val hit=episodes.count { it.status==CherryBornLifetime.Status.HIT }
-            val miss=episodes.count { it.status==CherryBornLifetime.Status.MISS }
-            val unresolved=episodes.size-hit-miss
-            Text(if(en) "Offered: $hit hit / $miss miss / $unresolved unresolved"
-                else "ဖြတ်ပြီး • $hit မှန် / $miss လွဲ / $unresolved မဆုံးဖြတ်ရသေး",
-                fontWeight=FontWeight.SemiBold)
-            if(rawEpisodes.isNotEmpty()) {
-                val rawHit=rawEpisodes.count{it.status==CherryBornLifetime.Status.HIT}
-                val rawMiss=rawEpisodes.count{it.status==CherryBornLifetime.Status.MISS}
-                val rawUnknown=rawEpisodes.size-rawHit-rawMiss
-                Text(if(en) "Raw: $rawHit hit / $rawMiss miss / $rawUnknown unresolved"
-                    else "မူရင်း • $rawHit မှန် / $rawMiss လွဲ / $rawUnknown မဆုံးဖြတ်ရသေး",
-                    fontWeight=FontWeight.SemiBold)
-            }
-            val offeredIds=episodes.map{it.id}.toSet()
-            val rawOnly=rawEpisodes.count{it.id !in offeredIds}
-            if(rawOnly>0) Text(if(en) "$rawOnly original instances without offered evidence"
-                else "ဖြတ်ပြီးမှတ်တမ်းမရှိသော မူရင်းသက်တမ်း $rawOnly ခု",
+            Text(if(en) "Only recorded draws count." else "မှတ်တမ်းရှိသောပွဲများသာ တွက်သည်။",
                 style=MaterialTheme.typography.labelSmall)
-            Text(if(canCompare) {
-                val dates=cohort.raw.map{it.snapshot.target.date}
-                val range="${dates.minOrNull()} – ${dates.maxOrNull()}"
-                if(en) "${cohort.raw.size} common recorded draws • $range. Missing slots are not losses."
-                else "မှတ်တမ်းတူ ${cohort.raw.size} ပွဲ • $range။ မှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။"
-            } else {
-                if(en) "Offered archive only; no original evidence yet."
-                else "ဖြတ်ပြီးမှတ်တမ်းသာ ရှိသေးသည်။"
-            },
-                style=MaterialTheme.typography.labelSmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         SuccessCard {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text(if(en) "Weekly evidence" else "အပတ်စဉ်မူ အောင်ချက်",
-                    modifier=Modifier.weight(1f),fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
-                TextButton(onClick={expandedWeek=!expandedWeek}) {
-                    Text(if(expandedWeek) { if(en) "Hide" else "ပိတ်" }
-                        else { if(en) "Details" else "အသေးစိတ်" })
-                }
-            }
-            if(canCompare) Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                FilterChip(selected=!rawWeek,onClick={rawWeek=false},
-                    label={Text(if(en) "Offered" else "ဖြတ်ပြီး")})
-                FilterChip(selected=rawWeek,onClick={rawWeek=true},
-                    label={Text(if(en) "Raw" else "မူရင်း")})
-            }
-            val weekEvidence=if(rawWeek && canCompare)rawWeekly else weekly
-            if(weekEvidence.isEmpty()) Text(if(en) "No recorded weekly evidence yet."
-                else "အပတ်စဉ် ကြိုတင်မှတ်တမ်း မရှိသေးပါ။",
-                style=MaterialTheme.typography.bodySmall)
-            else {
-                val latest=(weekly+rawWeekly).maxOf{it.week}
-                val visible=if(expandedWeek)weekEvidence else weekEvidence.filter{it.week==latest}
-                if(visible.isEmpty()) Text(if(en) "No evidence for the common latest week."
-                    else "ဤအပတ်အတွက် မှတ်တမ်းမရှိသေးပါ။",
-                    style=MaterialTheme.typography.bodySmall)
-                visible.forEach { item ->
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(CherryRuleWording.title(item.id,item.name),
-                                fontWeight=FontWeight.SemiBold,style=MaterialTheme.typography.bodySmall)
-                            Text(item.week.toString()+" • "+
-                                (if(en) "${item.recorded}/${item.expected} recorded draws"
-                                 else "မှတ်တမ်း ${item.recorded}/${item.expected} ပွဲ"),
-                                style=MaterialTheme.typography.labelSmall)
-                        }
-                        Column(horizontalAlignment=Alignment.End) {
-                            Text("${item.distinctHits}/${item.goal}",fontWeight=FontWeight.Bold,
-                                color=AppColors.PrimaryDeep)
-                            Text(when(item.status) {
-                                CherryWeeklyLifetime.Status.COMPLETE -> if(en) "Target met" else "သတ်မှတ်ချက်ပြည့်"
-                                CherryWeeklyLifetime.Status.LOWER_TARGET -> if(en) "Lower target met" else "အနည်းဆုံးပြည့်"
-                                CherryWeeklyLifetime.Status.RECORDED_WINDOW_END -> if(en) "Window recorded" else "သက်တမ်းမှတ်တမ်းပြည့်"
-                                CherryWeeklyLifetime.Status.UNRESOLVED -> if(en) "Incomplete evidence" else "မဆုံးဖြတ်ရသေး"
-                            },style=MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-            }
-            if(canCompare && cohort.withoutRaw.isNotEmpty()) Text(
-                if(en) "Older / unpaired records remain in draw history."
-                else "မူရင်းမပါသောမှတ်တမ်းများကို ပွဲစဉ်မှတ်တမ်းတွင် ကြည့်နိုင်သည်။",
-                style=MaterialTheme.typography.labelSmall)
-            Text(if(en) "Distinct recorded matches; eight-pair coverage is not a whole-source win. Missing draws are not losses."
-                else "မှတ်တမ်းရှိ ဒဲ့အတွဲများကိုသာ ရေတွက်သည်။ ၈ ကွက်မှာ အုပ်စုထွက်ရှိမှုသာ ဖြစ်သည်။ မှတ်တမ်းမပြည့်လျှင် အရှုံးမတွက်ပါ။",
-                style=MaterialTheme.typography.labelSmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        SuccessCard {
-            Text(if(en) "🔥 Top 5 performing rules" else "🔥 အောင်ချက်အကောင်းဆုံး မူ ၅ ခု",
+            Text(if(en) "Top 5 by recorded hit rate" else "အောင်ချက်နှုန်း ထိပ်ဆုံးမူ ၅ ခု",
                 fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
             val leaders = remember(recentDraws) { CherrySuccessEngine.ranking(recentDraws) }
             if(leaders.isEmpty()) {
                 Text(if(en) "Not enough pre-draw evidence yet (at least 3 evaluations per rule)."
-                    else "မူတစ်ခုချင်းစီအတွက် အနည်းဆုံး ၃ ပွဲ မှတ်တမ်းမပြည့်သေးပါ။",
+                    else "မူတစ်ခုလျှင် ၃ ပွဲစာ မှတ်တမ်းလိုသည်။",
                     style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -405,22 +185,114 @@ internal fun CherrySuccessContent(
                                 (if(en) "${rank.currentStreak} consecutive qualifying hits"
                                 else "အကျုံးဝင် ${rank.currentStreak} ကြိမ်ဆက်မှန်") +
                                 (if(rank.criterion==CherrySuccessCriterion.PAIR)
-                                    if(en) " • ${rank.pairCount} pairs"
-                                    else " • ${rank.pairCount} ကွက်"
+                                    if(en) " • Last: ${rank.pairCount} pairs"
+                                    else " • နောက်ဆုံး ${rank.pairCount} ကွက်"
                                 else ""),
                                 style=MaterialTheme.typography.labelSmall,
                                 color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("${rank.correct}/${rank.evaluated}",
+                        Text(if(en) "${rank.correct}/${rank.evaluated} draws" else "${rank.correct}/${rank.evaluated} ပွဲမှန်",
                             fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
                     }
                 }
             }
-            Text(if(en) "Current rule version only (Math unchanged). Historical checks do not guarantee the next result."
-                else "လက်ရှိမူဗားရှင်း၏ အောင်ချက်သာ (သင်္ချာနည်း မပြောင်းပါ)။ နောက်ပွဲကို အာမမခံပါ။",
+            Text(if(en) "Historical hit rate, not a next-draw guarantee."
+                else "ယခင်အောင်ချက်သာဖြစ်သည်။ နောက်ပွဲကို အာမမခံပါ။",
                 style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        SuccessCard {
+            Text(if(en) "Other records" else "အခြားအောင်ချက်မှတ်တမ်းများ",
+                fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+            SuccessDashboardRow(if(en) "Born rule lifetimes" else "မွေးမူ သက်တမ်းမှတ်တမ်း","",en) {
+                openedSection="birth"
+            }
+            SuccessDashboardRow(if(en) "Weekly rules" else "အပတ်စဉ်မူ မှတ်တမ်း","",en) {
+                openedSection="weekly"
+            }
+            SuccessDashboardRow(if(en) "Exclusion history" else "အသေမူ အောင်ချက်မှတ်တမ်း","",en) {
+                openedSection="cutHistory"
+            }
+        }
+    }
+    if(openedSection!=null && openedCheck==null) {
+        val section=openedSection.orEmpty()
+        val tab=tabs.firstOrNull{it.name==section}
+        val title=when(section) {
+            "birth"->if(en) "Born rule lifetimes" else "မွေးမူ သက်တမ်းမှတ်တမ်း"
+            "weekly"->if(en) "Weekly rules" else "အပတ်စဉ်မူ မှတ်တမ်း"
+            "cutHistory"->if(en) "Exclusion history" else "အသေမူ အောင်ချက်မှတ်တမ်း"
+            "cuts"->if(en) "Exclusions" else "အသေမူ"
+            else->tab?.let{successTabName(it,en)}.orEmpty()
+        }
+        AlertDialog(onDismissRequest={openedSection=null},title={Text(title,color=AppColors.PrimaryDeep)},
+            text={
+                Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    when {
+                        tab!=null -> {
+                            if(showing!=null) Text(successDrawName(showing,en),style=MaterialTheme.typography.labelSmall)
+                            val checks=draw?.forTab(tab).orEmpty()
+                            Text(successCountLabel(checks.count{it.correct},checks.size,en),fontWeight=FontWeight.Bold)
+                            checks.filter{it.correct}.forEach{check->SuccessRuleRow(check,en){openedCheck=check}}
+                            val misses=checks.filterNot{it.correct}
+                            if(misses.isNotEmpty()) {
+                                TextButton(onClick={showMisses=!showMisses}) {
+                                    Text(if(en) "Missed rules: ${misses.size}" else "လွဲခဲ့သောမူ ${misses.size} ခု")
+                                    Icon(if(showMisses) Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
+                                }
+                                if(showMisses) misses.forEach{check->SuccessRuleRow(check,en){openedCheck=check}}
+                            }
+                        }
+                        section=="cuts" || section=="cutHistory" -> {
+                            if(section=="cuts") {
+                                if(showing!=null) Text(successDrawName(showing,en),style=MaterialTheme.typography.labelSmall)
+                                if(cutChecks.isEmpty()) Text(if(en) "No record" else "မှတ်တမ်းမရှိ")
+                                cutChecks.forEach{check->
+                                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                                        Text(check.rule.name,modifier=Modifier.weight(1f))
+                                        Text(if(check.correct) {if(en)"Correct" else "မှန်"} else {if(en)"Miss" else "လွဲ"},
+                                            fontWeight=FontWeight.Bold,color=if(check.correct)Color(0xFF16854E) else Color(0xFFC13D56))
+                                    }
+                                    Text(check.rule.excluded.joinToString(" / "),style=MaterialTheme.typography.labelSmall)
+                                    HorizontalDivider()
+                                }
+                                Text(if(en) "Correct when the winning pair is not excluded."
+                                    else "ပေါက်ဂဏန်း အသေတွဲထဲ မပါလျှင် မှန်သည်။",
+                                    style=MaterialTheme.typography.labelSmall)
+                                val raw=draw?.let(CherryCutSuccess::rawView)
+                                if(raw!=null) listOf(CherryTab.CURRENT,CherryTab.BORN).forEach{kind->
+                                    val rawChecks=raw.forTab(kind)
+                                    if(rawChecks.isNotEmpty()) {
+                                        val counts=CherryComparableEvidence.counts(rawChecks,draw?.forTab(kind).orEmpty())
+                                        Text(successTabName(kind,en),fontWeight=FontWeight.Bold)
+                                        Text((if(en)"Before exclusions: " else "အသေမူ မသုံးမီ — ")+successCountLabel(counts.rawHits,counts.rawCount,en))
+                                        Text((if(en)"After exclusions: " else "အသေမူ သုံးပြီး — ")+
+                                            if(counts.offeredCount==0) {if(en)"No pairs remain" else "ရွေးကွက်မကျန်"} else
+                                                successCountLabel(counts.offeredHits,counts.offeredCount,en))
+                                        if(counts.noOffer>0) Text(if(en)"${counts.noOffer} rules without pairs"
+                                            else "ရွေးကွက်မကျန်သောမူ ${counts.noOffer} ခု",style=MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            } else {
+                                Text(if(en)"Last $period draws" else "နောက်ဆုံး $period ပွဲ",fontWeight=FontWeight.Bold)
+                                val scores=remember(recentDraws){CherryCutSuccess.scores(recentDraws)}
+                                if(scores.isEmpty()) Text(if(en)"No record" else "မှတ်တမ်းမရှိ")
+                                scores.forEach{score->
+                                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                                        Text(score.name,modifier=Modifier.weight(1f))
+                                        Text(if(en)"${score.correct}/${score.evaluated} draws" else "${score.correct}/${score.evaluated} ပွဲမှန်",
+                                            fontWeight=FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        section=="birth" || section=="weekly" -> {
+                            SuccessLifetimeDetails(completed,section=="weekly",en)
+                        }
+                    }
+                }
+            },confirmButton={TextButton(onClick={openedSection=null}){Text(if(en)"Close" else "ပိတ်")}})
     }
     openedCheck?.let { check ->
         val rule=check.rule
@@ -494,6 +366,122 @@ internal fun CherrySuccessContent(
             confirmButton={TextButton(onClick={openedRule=null}) {
                 Text(if(en) "Close" else "ပိတ်")
             }})
+    }
+}
+
+internal fun successCountLabel(correct:Int,total:Int,en:Boolean):String =
+    if(total==0) {if(en)"No record" else "မှတ်တမ်းမရှိ"}
+    else if(en) "$correct/$total hit" else "$correct/$total မှန်"
+
+@Composable
+private fun SuccessDashboardRow(label:String,value:String,en:Boolean,onClick:()->Unit) {
+    Surface(onClick=onClick,shape=RoundedCornerShape(8.dp),color=cherrySuccessPale.copy(alpha=.55f)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=42.dp).padding(horizontal=7.dp,vertical=4.dp),
+            verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+            Text(label,modifier=Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,
+                fontWeight=FontWeight.Medium)
+            if(value.isNotEmpty()) Text(value,color=AppColors.PrimaryDeep,fontWeight=FontWeight.SemiBold,
+                style=MaterialTheme.typography.labelSmall)
+            Icon(Icons.Default.ChevronRight,if(en)"Details" else "အသေးစိတ်",
+                tint=AppColors.PrimaryDeep,modifier=Modifier.size(15.dp))
+        }
+    }
+}
+
+@Composable
+private fun SuccessLifetimeDetails(completed:List<CherrySuccessDraw>,weeklyMode:Boolean,en:Boolean) {
+    val cohort=remember(completed){CherryComparableEvidence.cohort(completed)}
+    val compare=cohort.raw.isNotEmpty()
+    val offered=if(compare)cohort.offered else completed
+    // Only compare matched draw records. Old records remain in draw history.
+    if(compare) Text(if(en)"Compared on ${cohort.raw.size} recorded draws."
+        else "တူညီသောမှတ်တမ်း ${cohort.raw.size} ပွဲကို နှိုင်းယှဉ်ထားသည်။",style=MaterialTheme.typography.labelSmall)
+    else Text(if(en)"Only after-exclusion records available." else "အသေမူသုံးပြီး မှတ်တမ်းသာ ရှိသည်။",
+        style=MaterialTheme.typography.labelSmall)
+    if(weeklyMode) {
+        val actual=remember(offered){CherryWeeklyLifetime.evaluate(offered)}
+        val raw=remember(cohort.raw){CherryWeeklyLifetime.evaluate(cohort.raw)}
+        val actualBy=remember(actual){actual.associateBy{it.week to it.id}}
+        val rawBy=remember(raw){raw.associateBy{it.week to it.id}}
+        val keys=remember(actualBy,rawBy){(actualBy.keys+rawBy.keys).sortedWith(
+            compareByDescending<Pair<java.time.LocalDate,String>>{it.first}.thenBy{it.second})}
+        if(keys.isEmpty()) Text(if(en)"No weekly record" else "အပတ်စဉ်မှတ်တမ်း မရှိသေးပါ။")
+        keys.forEach{key->
+            val a=actualBy[key]; val r=rawBy[key]; val item=a?:r!!
+            Text(CherryRuleWording.title(item.id,item.name),fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+            Text(if(en)"Week of ${item.week}" else "${item.week} စတင်သောအပတ်",style=MaterialTheme.typography.labelSmall)
+            if(compare) SuccessWeeklyLine(if(en)"Before exclusions" else "အသေမူ မသုံးမီ",r,en)
+            SuccessWeeklyLine(if(en)"After exclusions" else "အသေမူ သုံးပြီး",a,en)
+            HorizontalDivider()
+        }
+        Text(if(en)"Distinct matching pairs, not draw counts. Eight-pair coverage is not a whole-source win."
+            else "မတူသော ဒဲ့အတွဲများကို ရေတွက်သည်။ ၈ ကွက်မှာ အုပ်စုထွက်ရှိမှုသာ ဖြစ်သည်။",
+            style=MaterialTheme.typography.labelSmall)
+    } else {
+        val actual=remember(offered){CherryBornLifetime.evaluate(offered)}
+        val raw=remember(cohort.raw){CherryBornLifetime.evaluate(cohort.raw)}
+        val actualBy=remember(actual){actual.associateBy{it.id}}
+        val rawBy=remember(raw){raw.associateBy{it.id}}
+        val ruleEvidence=remember(offered,cohort.raw){
+            (offered+cohort.raw).flatMap{it.checks}.filter{it.rule.tab==CherryTab.BORN}
+                .groupBy{it.rule.id}.mapValues{(_,checks)->checks.first().rule}
+        }
+        val ids=remember(actualBy,rawBy,ruleEvidence){(actualBy.keys+rawBy.keys).sortedWith(
+            compareByDescending<String>{ruleEvidence[it]?.sourceOrigin.orEmpty()}.thenBy{it})}
+        if(ids.isEmpty()) Text(if(en)"No born lifetime record" else "မွေးမူသက်တမ်းမှတ်တမ်း မရှိသေးပါ။")
+        ids.forEach{id->
+            val rule=ruleEvidence[id]
+            Text(rule?.let{successRuleTitle(it)}?:id.substringBefore('@'),fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+            if(rule!=null) {
+                val first=rule.eligibleSlots.minWithOrNull(compareBy<DrawIdentity>{it.date}.thenBy{it.session.ordinal})
+                val last=rule.eligibleSlots.maxWithOrNull(compareBy<DrawIdentity>{it.date}.thenBy{it.session.ordinal})
+                if(rule.sourceOrigin.isNotBlank()) Text((if(en)"Origin: " else "အသက်ဝင်စေသောပွဲ — ")+
+                    rule.sourceOrigin.replace("/MORNING",if(en)" • AM" else " • မနက်").replace("/EVENING",if(en)" • PM" else " • ညနေ"),
+                    style=MaterialTheme.typography.labelSmall)
+                if(first!=null && last!=null) Text(successDrawName(first,en)+" – "+successDrawName(last,en),
+                    style=MaterialTheme.typography.labelSmall)
+            }
+            if(compare) SuccessBornLine(if(en)"Before exclusions" else "အသေမူ မသုံးမီ",rawBy[id],en)
+            SuccessBornLine(if(en)"After exclusions" else "အသေမူ သုံးပြီး",actualBy[id],en)
+            HorizontalDivider()
+        }
+        Text(if(en)"One hit within the lifetime counts. Missing records are not misses."
+            else "သက်တမ်းအတွင်း တစ်ကြိမ်မှန်လျှင် မှန်သည်။ မှတ်တမ်းမပြည့်လျှင် လွဲဟု မတွက်ပါ။",
+            style=MaterialTheme.typography.labelSmall)
+    }
+    if(compare && cohort.withoutRaw.isNotEmpty()) Text(if(en)"Older unpaired records are in draw history."
+        else "နှိုင်းယှဉ်ရန် အချက်အလက်မပြည့်သော ပွဲဟောင်းများကို ပွဲစဉ်မှတ်တမ်းတွင် ကြည့်နိုင်သည်။",
+        style=MaterialTheme.typography.labelSmall)
+}
+
+@Composable
+private fun SuccessBornLine(label:String,item:CherryBornLifetime.Episode?,en:Boolean) {
+    val status=when(item?.status) {
+        CherryBornLifetime.Status.HIT->if(en)"Hit" else "မှန်"
+        CherryBornLifetime.Status.MISS->if(en)"Miss" else "လွဲ"
+        CherryBornLifetime.Status.UNRESOLVED->if(en)"Not yet established" else "အောင်ချက် မသတ်မှတ်နိုင်သေး"
+        null->if(en)"No record" else "မှတ်တမ်းမရှိ"
+    }
+    Text("$label — $status",style=MaterialTheme.typography.bodySmall)
+    if(item!=null) Text(if(en)"Recorded ${item.recorded}/${item.expected} draws"
+        else "မှတ်တမ်းရှိ ${item.recorded}/${item.expected} ပွဲ",style=MaterialTheme.typography.labelSmall)
+}
+
+@Composable
+private fun SuccessWeeklyLine(label:String,item:CherryWeeklyLifetime.Episode?,en:Boolean) {
+    Text(if(item==null) "$label — "+(if(en)"No record" else "မှတ်တမ်းမရှိ")
+        else if(en)"$label — ${item.distinctHits}/${item.goal} distinct pairs"
+        else "$label — ${item.distinctHits}/${item.goal} တွဲမှန်",
+        style=MaterialTheme.typography.bodySmall)
+    if(item!=null) {
+        val status=when(item.status) {
+            CherryWeeklyLifetime.Status.COMPLETE->if(en)"Target met" else "သတ်မှတ်ချက်ပြည့်"
+            CherryWeeklyLifetime.Status.LOWER_TARGET->if(en)"Lower target met" else "အနည်းဆုံးပြည့်"
+            CherryWeeklyLifetime.Status.RECORDED_WINDOW_END->if(en)"Window recorded" else "သက်တမ်းမှတ်တမ်းပြည့်"
+            CherryWeeklyLifetime.Status.UNRESOLVED->if(en)"Incomplete evidence" else "မှတ်တမ်းမပြည့်သေး"
+        }
+        Text((if(en)"Recorded ${item.recorded}/${item.expected} draws" else "မှတ်တမ်းရှိ ${item.recorded}/${item.expected} ပွဲ")+" • "+status,
+            style=MaterialTheme.typography.labelSmall)
     }
 }
 
