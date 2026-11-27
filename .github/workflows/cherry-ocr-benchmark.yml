@@ -1,0 +1,49 @@
+name: Cherry OCR Benchmark
+on:
+  push:
+    branches: [feature/cherry-batch-ocr-from-build1985-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Fetch pinned offline model assets
+        run: python3 ocrbenchmark/tools/fetch_models.py
+      - name: Build isolated test APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon -PocrBenchmark=true :ocrbenchmark:testDebugUnitTest :ocrbenchmark:lintDebug :ocrbenchmark:assembleDebug
+      - name: Verify isolated package and bundled files
+        run: |
+          python3 - <<'PY'
+          import zipfile, json, hashlib, pathlib
+          apk=pathlib.Path('ocrbenchmark/build/outputs/apk/debug/ocrbenchmark-debug.apk')
+          with zipfile.ZipFile(apk) as z:
+              models=json.loads(z.read('assets/models.json'))
+              for model in models:
+                  assert hashlib.sha256(z.read('assets/'+model['path'])).hexdigest()==model['sha256']
+              assert any(n.startswith('lib/arm64-v8a/') for n in z.namelist())
+          print('APK bytes:',apk.stat().st_size)
+          PY
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          "$AAPT" dump badging ocrbenchmark/build/outputs/apk/debug/ocrbenchmark-debug.apk | grep "package: name='com.myanmar.cherryocrbenchmark'"
+          if "$AAPT" dump permissions ocrbenchmark/build/outputs/apk/debug/ocrbenchmark-debug.apk | grep -q 'android.permission.INTERNET'; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cherry-ocr-benchmark-apk
+          path: ocrbenchmark/build/outputs/apk/debug/ocrbenchmark-debug.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cherry-ocr-model-provenance
+          path: ocrbenchmark/src/main/assets/models.json
+          if-no-files-found: error
