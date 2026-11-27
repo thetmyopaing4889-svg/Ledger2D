@@ -1,6 +1,5 @@
 package com.myanmar.ledger2d.feature.main
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -23,16 +22,11 @@ import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawIdentity
 import com.myanmar.ledger2d.core.model.DrawSession
 
-private val cherrySuccessEdge = Color(0xFFF4CFDA)
 private val cherrySuccessPale = Color(0xFFFFEDF2)
 
 @Composable
 private fun SuccessCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape=RoundedCornerShape(18.dp), color=Color.White,
-        border=BorderStroke(1.dp,cherrySuccessEdge)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=8.dp),
-            verticalArrangement=Arrangement.spacedBy(5.dp),content=content)
-    }
+    CherryPremiumPanel(content=content)
 }
 private fun successTabName(tab: CherryTab, en: Boolean): String = when(tab) {
     CherryTab.CURRENT -> if(en) "Current rules" else "လက်ရှိမူ"
@@ -52,7 +46,6 @@ internal fun CherrySuccessContent(
     snapshots: List<CherrySuccessSnapshot>,
     selectedDraw: DrawIdentity?,
     onLatest: () -> Unit,
-    onHistory: () -> Unit,
     en: Boolean,
     sourceText: String? = null,
 ) {
@@ -77,18 +70,14 @@ internal fun CherrySuccessContent(
         confirmed.take(period).mapNotNull { byCompleted[DrawIdentity(it.date,it.session)] }
     }
     val cutChecks=remember(draw) { draw?.let(CherryCutSuccess::checks).orEmpty() }
+    val rates=remember(recentDraws) {
+        tabs.associateWith { CherrySuccessEngine.tabRate(recentDraws,it,currentVersionOnly=true) }
+    }
 
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text(if(en) "Success" else "အောင်ချက်",
-                color=AppColors.PrimaryDeep,fontWeight=FontWeight.Black,
-                style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
-            TextButton(onClick=onHistory,contentPadding=PaddingValues(horizontal=6.dp)) {
-                Icon(Icons.Default.History,null,Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(if(en) "History" else "မှတ်တမ်း")
-            }
-        }
+        Text(if(en) "Success" else "အောင်ချက်",
+            color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
+            style=MaterialTheme.typography.titleSmall)
         SuccessCard {
             Text(if(selectedDraw==null) { if(en) "Latest draw" else "နောက်ဆုံးပွဲစဉ်" }
                 else { if(en) "Selected draw" else "ရွေးထားသောပွဲစဉ်" },
@@ -108,8 +97,12 @@ internal fun CherrySuccessContent(
                         }
                     }
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                        if(draw==null) {
+                            Text(if(en) "No pre-draw record" else "ကြိုတင်မှတ်တမ်းမရှိပါ။",
+                                style=MaterialTheme.typography.bodySmall)
+                        } else {
                         tabs.forEach { tab ->
-                            val checks=draw?.forTab(tab).orEmpty()
+                            val checks=draw.forTab(tab)
                             SuccessDashboardRow(successTabName(tab,en),
                                 successCountLabel(checks.count{it.correct},checks.size,en),en) {
                                 openedSection=tab.name
@@ -119,11 +112,9 @@ internal fun CherrySuccessContent(
                             successCountLabel(cutChecks.count{it.correct},cutChecks.size,en),en) {
                             openedSection="cuts"
                         }
+                        }
                     }
                 }
-                if(draw==null && winning!=null) Text(if(en) "No verified pre-draw record"
-                    else "ဤပွဲ ကြိုတင်မှတ်တမ်းမရှိပါ။",
-                    style=MaterialTheme.typography.labelSmall)
                 if(selectedDraw!=null) TextButton(onClick=onLatest) {
                     Text(if(en) "Back to latest draw" else "နောက်ဆုံးပွဲသို့ ပြန်မည်")
                 }
@@ -140,10 +131,12 @@ internal fun CherrySuccessContent(
                     Spacer(Modifier.width(3.dp))
                 }
             }
-            Text(if(en) "At least one recorded rule hit per draw."
-                else "မူတစ်ခုမှန်လျှင် တစ်ပွဲမှန်ဟု တွက်သည်။",style=MaterialTheme.typography.labelSmall)
+            if(rates.values.none{it.evaluated>0}) {
+                Text(if(en) "No recorded draws yet." else "ပွဲအောင်ချက်မှတ်တမ်း မရှိသေးပါ။",
+                    style=MaterialTheme.typography.bodySmall)
+            } else {
             tabs.forEach { tab ->
-                val rate = CherrySuccessEngine.tabRate(recentDraws,tab,currentVersionOnly=true)
+                val rate = rates.getValue(tab)
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Text(successTabName(tab,en),modifier=Modifier.weight(1f),
                         style=MaterialTheme.typography.bodySmall)
@@ -157,8 +150,10 @@ internal fun CherrySuccessContent(
                     modifier=Modifier.fillMaxWidth().height(6.dp),
                     color=AppColors.Primary,trackColor=cherrySuccessPale)
             }
-            Text(if(en) "Only recorded draws count." else "မှတ်တမ်းရှိသောပွဲများသာ တွက်သည်။",
+            Text(if(en) "One or more rules hit; recorded draws only."
+                else "မူတစ်ခုနှင့်အထက် မှန်သော မှတ်တမ်းရှိပွဲများ။",
                 style=MaterialTheme.typography.labelSmall)
+            }
         }
         SuccessCard {
             Text(if(en) "Top 5 by recorded hit rate" else "အောင်ချက်နှုန်း ထိပ်ဆုံးမူ ၅ ခု",
@@ -196,8 +191,8 @@ internal fun CherrySuccessContent(
                     }
                 }
             }
-            Text(if(en) "Historical hit rate, not a next-draw guarantee."
-                else "ယခင်အောင်ချက်သာဖြစ်သည်။ နောက်ပွဲကို အာမမခံပါ။",
+            if(leaders.isNotEmpty()) Text(if(en) "Historical results only."
+                else "ယခင်ပွဲများ၏ အောင်ချက်သာ ဖြစ်သည်။",
                 style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
         }

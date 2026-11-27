@@ -1,0 +1,5 @@
+# Better Data UI follow-up from Build 1983
+Approved 2026-11-27. Fresh install legitimately has no prior local success records. No backfill or archive edits.
+- Show 9:30 Modern/Internet on Current and Born, AM and PM. Only Current AM before cutoff is editable; all other contexts are read-only and marked AM data. PM uses same-date morning snapshot values if valid, otherwise same-day available data. No values invented, no changed calculation input, no new rule, no archive or math logic change.
+- Success uses the same CherryPremiumPanel and compact page margins as Current/Born. Only top app bar history action. Empty latest result shows a single missing pre-draw record note; empty recent window shows a single note. Preserve recorded zero and all existing drilldowns. Shorten explanatory text while retaining at-least-one-rule and recorded-draw definition.
+- No OCR, Research, live, engine, archive, premium scoring, or other screens changed. CI and phone visual check required.

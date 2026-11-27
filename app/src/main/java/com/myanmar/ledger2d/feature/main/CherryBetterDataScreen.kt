@@ -150,6 +150,15 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         else override.takeIf{it.length==2}?:fallback
     val modern=input("modern930",modernOverride,fromModern)
     val internet=input("internet930",internetOverride,fromInternet)
+    // Display-only: use the same day’s frozen morning inputs when available.
+    // Never feed these display values back into the current report or archive.
+    val morningEvidence=successSnapshots.firstOrNull {
+        it.target.date==target.date && it.target.session==DrawSession.MORNING
+    }?.inputEvidence
+    val displayModern=if(target.session==DrawSession.MORNING)modern else
+        cherry930DisplayValue(morningEvidence,"modern930",modern)
+    val displayInternet=if(target.session==DrawSession.MORNING)internet else
+        cherry930DisplayValue(morningEvidence,"internet930",internet)
     val calculationKey:List<Any?> = remember(merged,target,modern,internet,closedDates) {
         listOf(merged,target,modern,internet,closedDates)
     }
@@ -285,11 +294,12 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
             }
         }
     ){padding->
+        val compactTab=premiumTab || tab==CherryTab.SUMMARY
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding=PaddingValues(horizontal=if(premiumTab)10.dp else 15.dp,
-                vertical=if(premiumTab)6.dp else 14.dp),
-            verticalArrangement=Arrangement.spacedBy(if(premiumTab)6.dp else 12.dp)
+            contentPadding=PaddingValues(horizontal=if(compactTab)10.dp else 15.dp,
+                vertical=if(compactTab)6.dp else 14.dp),
+            verticalArrangement=Arrangement.spacedBy(if(compactTab)6.dp else 12.dp)
         ){
             if(archiveFailed) item {
                 Text(tr("အောင်ချက်မှတ်တမ်း ဖတ်/သိမ်း၍မရပါ။","Success archive unavailable."),
@@ -311,21 +321,20 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                             Text(tr("ပေါက်ဂဏန်း စောင့်နေသည်","Awaiting confirmed result"),
                                 style=MaterialTheme.typography.labelMedium,color=AppColors.PrimaryDeep)
                         }
-                        if(current && target.session==DrawSession.MORNING) item {
+                        item {
+                            val editable=current && target.session==DrawSession.MORNING && captureOpen
                             CherryPremiumPanel {
                                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
                                     horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                                     Column(Modifier.weight(1f)) {
                                         Text("9:30",fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
                                             style=MaterialTheme.typography.titleSmall)
-                                        if(modern==null||internet==null)Text(tr("ဒေတာ မစုံသေး","Incomplete"),
+                                        Text(tr("မနက်ဒေတာ","AM data"),style=MaterialTheme.typography.labelSmall)
+                                        if(displayModern==null||displayInternet==null)Text(tr("ဒေတာ မစုံသေး","Incomplete"),
                                             style=MaterialTheme.typography.labelSmall)
                                     }
-                                    listOf("Modern" to modern,"Internet" to internet).forEach{(label,value)->
-                                        Surface(onClick={if(captureOpen)edit930=true},
-                                            enabled=captureOpen,modifier=Modifier.weight(1f),
-                                            color=Color(0xFFFFF1F5),shape=RoundedCornerShape(12.dp),
-                                            border=BorderStroke(1.dp,Color(0xFFF2C8D6))) {
+                                    listOf("Modern" to displayModern,"Internet" to displayInternet).forEach{(label,value)->
+                                        val tileContent: @Composable () -> Unit = {
                                             Column(Modifier.padding(vertical=5.dp,horizontal=3.dp),
                                                 horizontalAlignment=Alignment.CenterHorizontally) {
                                                 Text(label,style=MaterialTheme.typography.labelSmall)
@@ -333,6 +342,13 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                                     color=AppColors.PrimaryDeep,style=MaterialTheme.typography.titleMedium)
                                             }
                                         }
+                                        if(editable) Surface(onClick={edit930=true},
+                                            modifier=Modifier.weight(1f),color=Color(0xFFFFF1F5),
+                                            shape=RoundedCornerShape(12.dp),border=BorderStroke(1.dp,Color(0xFFF2C8D6)),
+                                            content=tileContent)
+                                        else Surface(modifier=Modifier.weight(1f),color=Color(0xFFFFF1F5),
+                                            shape=RoundedCornerShape(12.dp),border=BorderStroke(1.dp,Color(0xFFF2C8D6)),
+                                            content=tileContent)
                                     }
                                 }
                             }
@@ -402,7 +418,6 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 snapshots=successSnapshots,
                                 selectedDraw=selectedSuccessDraw,
                                 onLatest={selectedSuccessDraw=null},
-                                onHistory={showHistory=true},
                                 en=en,
                                 sourceText=originalSource,
                             )
@@ -762,3 +777,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     }
 }
 
+
+/** Read-only 9:30 display fallback; never alters the formula input or stored snapshot. */
+internal fun cherry930DisplayValue(morningEvidence:String?,key:String,fallback:String?):String? {
+    val saved=morningEvidence.orEmpty().split(';').firstOrNull{it.substringBefore('=')==key}
+        ?.substringAfter('=',"")?.takeIf{it.matches(Regex("[0-9]{2}"))}
+    return saved ?: fallback?.takeIf{it.matches(Regex("[0-9]{2}"))}
+}
