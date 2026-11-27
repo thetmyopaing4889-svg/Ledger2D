@@ -7,6 +7,12 @@ public final class TextMetrics {
         text.codePoints().forEach(c -> out.appendCodePoint(c >= 0x1040 && c <= 0x1049 ? '0'+c-0x1040 : c));
         return out.toString().replace("\r\n","\n").replace('\r','\n').trim();
     }
+    public static java.util.List<String> numericTokens(String text) {
+        java.util.ArrayList<String> out=new java.util.ArrayList<>();
+        java.util.regex.Matcher m=java.util.regex.Pattern.compile("[0-9]+").matcher(normalize(text));
+        while(m.find())out.add(m.group());
+        return out;
+    }
     public static int distance(String a, String b) {
         int[] x=a.codePoints().toArray(), y=b.codePoints().toArray();
         int[] prev=new int[y.length+1], cur=new int[y.length+1];

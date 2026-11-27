@@ -8,8 +8,8 @@ android {
         applicationId = "com.myanmar.cherryocrbenchmark"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1-stage-a"
+        versionCode = 2
+        versionName = "0.2-accuracy-first"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
     compileOptions {
@@ -21,5 +21,6 @@ android {
 dependencies {
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
     testImplementation(libs.junit)
 }

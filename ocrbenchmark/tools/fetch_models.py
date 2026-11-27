@@ -26,5 +26,21 @@ for kind, rev in REVS.items():
         dest.parent.mkdir(parents=True,exist_ok=True)
         dest.write_bytes(data)
         records.append(dict(path=str(dest.relative_to(ROOT)),source=url,sha256=hashlib.sha256(data).hexdigest(),bytes=len(data),git_blob=blob))
+# Pinned model and checksum from Hugging Face's revision-specific LFS metadata.
+rev="456fa72d49996f1542fa7a957fd41c348f27ddca"
+repo="ksithu/myanmar-crnn-ocr"
+name="myanmar-crnn-ocr.onnx"
+meta=json.loads(fetch(f"https://huggingface.co/api/models/{repo}/revision/{rev}?blobs=true"))
+entry=next(x for x in meta["siblings"] if x["rfilename"]==name)
+url=f"https://huggingface.co/{repo}/resolve/{rev}/{name}"
+data=fetch(url)
+digest=hashlib.sha256(data).hexdigest()
+assert digest==entry["lfs"]["sha256"], "CRNN LFS SHA256 mismatch"
+dest=ROOT/"crnn"/name
+dest.parent.mkdir(parents=True,exist_ok=True)
+dest.write_bytes(data)
+records.append(dict(path=str(dest.relative_to(ROOT)),source=url,sha256=digest,bytes=len(data),license="Apache-2.0"))
+license=fetch("https://raw.githubusercontent.com/kaungsithu/mmpdfkit/034a567b91c9c11205422902119bee97dccd844c/LICENSE")
+(ROOT/"crnn"/"UPSTREAM-LICENSE").write_bytes(license)
 (ROOT/"models.json").write_text(json.dumps(records,indent=2),encoding="utf-8")
 print(json.dumps(records,indent=2))

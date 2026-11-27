@@ -27,12 +27,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class BenchmarkActivity extends Activity {
     private static final int PICK=10, EXPORT=11;
-    private static final String[] ENGINES={"Tesseract Fast","Tesseract Best","ML Kit Latin","Compare all 3","Myanmar CRNN — NOT_RUN"};
+    private static final String[] ENGINES={"Tesseract Fast","Tesseract Best","ML Kit Latin","Myanmar CRNN","Compare all 4"};
+    private static final String[] VARIANTS={"Original","Contrast / polarity","Upscale + contrast"};
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final AtomicBoolean stop=new AtomicBoolean();
     private final ArrayList<Item> images=new ArrayList<>();
     private final ArrayList<Trial> trials=new ArrayList<>();
-    private LinearLayout body,results,selected;
+    private LinearLayout body,results,selected,summary;
+    private Spinner variant;
     private TextView status;
     private Button pick,samples,run,cancel,export,clear;
     private Spinner engine,batch,repeats;
@@ -45,10 +47,10 @@ public final class BenchmarkActivity extends Activity {
         Item(Uri uri,String id,String truth){this.uri=uri;this.id=id;this.truth=truth;}
     }
     private static final class Trial {
-        final String engine; final int repeat; final long initMs,totalMs,peakPss,basePss,afterPss,peakNative,peakJava;
+        final String engine,variant; final int repeat; final long initMs,totalMs,peakPss,basePss,afterPss,peakNative,peakJava;
         final ArrayList<Row> rows; final String error;
-        Trial(String e,int r,long init,long total,long peak,long base,long after,long nativeMem,long javaMem,ArrayList<Row> rows,String err){
-            engine=e;repeat=r;initMs=init;totalMs=total;peakPss=peak;basePss=base;afterPss=after;peakNative=nativeMem;peakJava=javaMem;this.rows=rows;error=err;
+        Trial(String e,String v,int r,long init,long total,long peak,long base,long after,long nativeMem,long javaMem,ArrayList<Row> rows,String err){
+            engine=e;variant=v;repeat=r;initMs=init;totalMs=total;peakPss=peak;basePss=base;afterPss=after;peakNative=nativeMem;peakJava=javaMem;this.rows=rows;error=err;
         }
     }
     private static final class Row {
@@ -74,24 +76,25 @@ public final class BenchmarkActivity extends Activity {
             });
             scroll.requestApplyInsets();
         }
-        TextView title=label("Cherry OCR Test • Stage A",23);title.setTextColor(cherry);title.setTypeface(null,Typeface.BOLD);body.addView(title);
+        TextView title=label("Cherry OCR Test • Accuracy First",23);title.setTextColor(cherry);title.setTypeface(null,Typeface.BOLD);body.addView(title);
         body.addView(label("သီးခြားစမ်းသပ်မှု • Offline • စာရင်းမသွင်းပါ",14));
         pick=button("Screenshot ရွေးမည်",this::pickImages);body.addView(pick);
         samples=button("နမူနာပုံ 20 ခု ဖန်တီးမည်",this::generateSamples);body.addView(samples);
-        clear=button("ရွေးထားသောပုံများ ရှင်းမည်",()->{images.clear();trials.clear();renderSelection();results.removeAllViews();});body.addView(clear);
+        clear=button("ရွေးထားသောပုံများ ရှင်းမည်",()->{images.clear();trials.clear();renderSelection();summary.removeAllViews();results.removeAllViews();});body.addView(clear);
         selected=column();body.addView(selected);
-        body.addView(label("OCR Engine",16));engine=spinner(ENGINES);body.addView(engine);
-        body.addView(label("ပုံအရေအတွက်",16));batch=spinner(new String[]{"Selected all","1","5","10","20"});body.addView(batch);
+        body.addView(label("OCR Engine",16));engine=spinner(ENGINES);engine.setSelection(4);body.addView(engine);
+        body.addView(label("Image preprocessing",16));variant=spinner(new String[]{"Compare all 3 variants",VARIANTS[0],VARIANTS[1],VARIANTS[2]});body.addView(variant);
+        body.addView(label("ပုံအရေအတွက်",16));batch=spinner(new String[]{"Selected all","1","5","10","20","50"});body.addView(batch);
         body.addView(label("Repeat (engine reinitialized each trial)",14));repeats=spinner(new String[]{"1","3","5"});body.addView(repeats);
         run=button("စမ်းသပ်မည်",this::start);body.addView(run);
         cancel=button("ရပ်မည်",()->{stop.set(true);status.setText("ရပ်ရန် တောင်းဆိုထားသည်။ လက်ရှိပုံပြီးမှ ရပ်မည်။");});body.addView(cancel);
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);body.addView(progress);
         status=label("ပုံရွေးပါ။",15);body.addView(status);
         export=button("JSON ရလဒ် သိမ်းမည်",this::requestExport);body.addView(export);
-        results=column();body.addView(results);renderSelection();setBusy(false);
+        summary=column();body.addView(summary);results=column();body.addView(results);renderSelection();setBusy(false);
     }
     private void setBusy(boolean value){
-        busy=value;pick.setEnabled(!value);samples.setEnabled(!value);clear.setEnabled(!value);run.setEnabled(!value);engine.setEnabled(!value);batch.setEnabled(!value);repeats.setEnabled(!value);cancel.setEnabled(value);export.setEnabled(!value&&!trials.isEmpty());
+        busy=value;pick.setEnabled(!value);samples.setEnabled(!value);clear.setEnabled(!value);run.setEnabled(!value);engine.setEnabled(!value);variant.setEnabled(!value);batch.setEnabled(!value);repeats.setEnabled(!value);cancel.setEnabled(value);export.setEnabled(!value&&!trials.isEmpty());
         if(value)getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
     private void pickImages(){
@@ -148,13 +151,14 @@ public final class BenchmarkActivity extends Activity {
     private long now(){return SystemClock.elapsedRealtime();}
     private void start(){
         if(images.isEmpty()){status.setText("ပုံရွေးပါ။");return;}
-        int mode=engine.getSelectedItemPosition();if(mode==4){status.setText("Myanmar CRNN: NOT_RUN — segmentation and CTC decoder not integrated yet.");return;}
+        int mode=engine.getSelectedItemPosition();
         int n=batch.getSelectedItemPosition()==0?images.size():Integer.parseInt(batch.getSelectedItem().toString());if(images.size()<n){status.setText(n+" ပုံလိုသည်။ "+images.size()+" ပုံသာ ရှိသည်။");return;}
         int repeat=Integer.parseInt(repeats.getSelectedItem().toString());ArrayList<Item> input=new ArrayList<>();for(Item i:images.subList(0,n))input.add(new Item(i.uri,i.id,i.truth));
-        int[] modes=mode==3?new int[]{0,1,2}:new int[]{mode};
-        trials.clear();results.removeAllViews();stop.set(false);setBusy(true);progress.setMax(n*repeat*modes.length);progress.setProgress(0);
-        worker.execute(()->{int done=0;try{for(int m:modes)for(int r=1;r<=repeat&&!stop.get();r++){
-            final int base=done;Trial t=trial(m,r,input,base);done+=n;runOnUiThread(()->{trials.add(t);renderTrial(t);});
+        int[] modes=mode==4?new int[]{0,1,2,3}:new int[]{mode};
+        int vi=variant.getSelectedItemPosition();int[] variants=vi==0?new int[]{0,1,2}:new int[]{vi-1};
+        trials.clear();summary.removeAllViews();results.removeAllViews();stop.set(false);setBusy(true);progress.setMax(n*repeat*modes.length*variants.length);progress.setProgress(0);
+        worker.execute(()->{int done=0;try{for(int m:modes)for(int v:variants)for(int r=1;r<=repeat&&!stop.get();r++){
+            final int base=done;Trial t=trial(m,v,r,input,base);done+=n;runOnUiThread(()->{trials.add(t);renderTrial(t);renderSummary();});
         }}finally{runOnUiThread(()->{setBusy(false);status.setText(stop.get()?"Cancelled — partial outcomes retained":"ပြီးပါပြီ • JSON ရလဒ် သိမ်းနိုင်သည်");});}});
     }
     private File prepare(String kind)throws Exception{
@@ -164,36 +168,77 @@ public final class BenchmarkActivity extends Activity {
         }return root;
     }
     private long pss(){Debug.MemoryInfo info=new Debug.MemoryInfo();Debug.getMemoryInfo(info);return info.getTotalPss();}
-    private Trial trial(int mode,int repeat,List<Item> input,int base){
+    private Trial trial(int mode,int v,int repeat,List<Item> input,int base){
         String name=ENGINES[mode];long start=now(),init=0,baseMem=pss();long[] peak={baseMem,0,0};ScheduledExecutorService sampler=Executors.newSingleThreadScheduledExecutor();
         sampler.scheduleAtFixedRate(()->{synchronized(peak){peak[0]=Math.max(peak[0],pss());peak[1]=Math.max(peak[1],Debug.getNativeHeapAllocatedSize());Runtime rt=Runtime.getRuntime();peak[2]=Math.max(peak[2],rt.totalMemory()-rt.freeMemory());}},0,150,TimeUnit.MILLISECONDS);
-        TessBaseAPI tess=null;TextRecognizer ml=null;ArrayList<Row> rows=new ArrayList<>();String failure=null;
+        TessBaseAPI tess=null;TextRecognizer ml=null;CrnnEngine crnn=null;ArrayList<Row> rows=new ArrayList<>();String failure=null;
         try{
             if(mode==2)ml=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            else if(mode==3)crnn=new CrnnEngine(getAssets());
             else{File root=prepare(mode==0?"fast":"best");tess=new TessBaseAPI();if(!tess.init(root.getAbsolutePath(),"mya+eng",TessBaseAPI.OEM_LSTM_ONLY))throw new IOException("Tesseract init failed");tess.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK);}
             init=now()-start;
             for(int k=0;k<input.size();k++){
                 Item item=input.get(k);if(stop.get()){rows.add(new Row(item,"","","","CANCELLED",0,0,0,0,0,0));continue;}
                 final int pos=k;runOnUiThread(()->status.setText(name+" • "+(pos+1)+"/"+input.size()+" • trial "+repeat));
-                long begin=now(),dec=0,ocr=0,norm=0;String hash="",raw="",normalized="",err=null;Bitmap bitmap=null;int w=0,h=0;
+                long begin=now(),dec=0,ocr=0,norm=0;String hash="",raw="",normalized="",err=null;Bitmap bitmap=null,processed=null;int w=0,h=0;
                 try{hash=sha(item.uri);long d=now();bitmap=decode(item.uri,false);dec=now()-d;w=bitmap.getWidth();h=bitmap.getHeight();long o=now();
-                    if(tess!=null){tess.setImage(bitmap);raw=tess.getUTF8Text();tess.clear();}else raw=Tasks.await(ml.process(InputImage.fromBitmap(bitmap,0))).getText();
+                    processed=ImageVariants.prepare(bitmap,v);
+                    if(tess!=null){tess.setImage(processed);try{raw=tess.getUTF8Text();}finally{tess.clear();}}
+                    else if(crnn!=null)raw=crnn.read(processed);
+                    else raw=Tasks.await(ml.process(InputImage.fromBitmap(processed,0))).getText();
                     ocr=now()-o;if(raw==null||raw.trim().isEmpty()){raw=raw==null?"":raw;err="EMPTY";}
                     long z=now();normalized=TextMetrics.normalize(raw);norm=now()-z;
                 }catch(Exception|LinkageError|OutOfMemoryError e){err=e.getClass().getSimpleName()+": "+e.getMessage();}
-                finally{if(bitmap!=null)bitmap.recycle();}
+                finally{if(processed!=null&&processed!=bitmap)processed.recycle();if(bitmap!=null)bitmap.recycle();}
                 rows.add(new Row(item,hash,raw,normalized,err,dec,ocr,norm,now()-begin,w,h));final int p=base+k+1;runOnUiThread(()->progress.setProgress(p));
             }
         }catch(Exception|LinkageError|OutOfMemoryError e){failure=e.getClass().getSimpleName()+": "+e.getMessage();init=now()-start;}
-        finally{try{if(tess!=null)tess.recycle();}finally{if(ml!=null)ml.close();sampler.shutdownNow();}}
+        finally{try{if(tess!=null)tess.recycle();}finally{try{if(ml!=null)ml.close();if(crnn!=null)crnn.close();}catch(Exception e){failure="Cleanup: "+e.getMessage();}finally{sampler.shutdownNow();}}}
         for(int k=rows.size();k<input.size();k++)rows.add(new Row(input.get(k),"","","",failure==null?"NOT_RUN":failure,0,0,0,0,0,0));
-        long[] measured; synchronized(peak){measured=peak.clone();}return new Trial(name,repeat,init,now()-start,measured[0],baseMem,pss(),measured[1],measured[2],rows,failure);
+        long[] measured; synchronized(peak){measured=peak.clone();}return new Trial(name,VARIANTS[v],repeat,init,now()-start,measured[0],baseMem,pss(),measured[1],measured[2],rows,failure);
+    }
+    private void renderSummary(){
+        summary.removeAllViews();
+        TextView title=label("Accuracy comparison • Annotated images only",18);title.setTextColor(cherry);summary.addView(title);
+        Map<String,List<Row>> byImage=new LinkedHashMap<>();
+        for(Trial t:trials){
+            int scored=0,exact=0,numeric=0,read=0;
+            for(Row r:t.rows){
+                if(r.error==null)read++;
+                if(r.item.truth!=null){scored++;String truth=TextMetrics.normalize(r.item.truth);
+                    if(r.error==null&&truth.equals(r.normalized))exact++;
+                    if(r.error==null&&TextMetrics.numericTokens(truth).equals(TextMetrics.numericTokens(r.normalized)))numeric++;
+                }
+                byImage.computeIfAbsent(r.item.id,k->new ArrayList<>()).add(r);
+            }
+            summary.addView(label(t.engine+" / "+t.variant+" #"+t.repeat+"\nRead "+read+"/"+t.rows.size()+" • Exact "+(scored==0?"—":exact+"/"+scored)+" • Numeric tokens "+(scored==0?"—":numeric+"/"+scored)+" • "+t.totalMs+" ms",13));
+        }
+        summary.addView(label("Numeric token match is not amount/format validation. Review original image; no automatic winner.",13));
+        int number=0;
+        for(Map.Entry<String,List<Row>> e:byImage.entrySet()){
+            int index=++number;
+            Set<String> values=new HashSet<>();
+            for(Row r:e.getValue())values.add(r.error==null?"READ:"+r.normalized:"ERROR:"+r.error);
+            if(values.size()>1)summary.addView(button("ပုံ "+index+" • ဖတ်ချက်ကွဲလွဲ",()->compareImage(e.getKey(),index)));
+        }
+    }
+    private void compareImage(String id,int index){
+        LinearLayout l=column();Row first=null;
+        for(Trial t:trials)for(Row r:t.rows)if(r.item.id.equals(id)){
+            if(first==null)first=r;
+            l.addView(label(t.engine+" / "+t.variant+" #"+t.repeat+"\n"+(r.error==null?r.raw:r.error),15));
+        }
+        if(first!=null){final Row image=first;ImageView im=new ImageView(this);im.setAdjustViewBounds(true);im.setMaxHeight(dp(300));l.addView(im,0);
+            worker.execute(()->{try{Bitmap bmp=decode(image.item.uri,true);runOnUiThread(()->im.setImageBitmap(bmp));}catch(Exception ignored){}});
+            l.addView(label("Ground truth: "+(image.item.truth==null?"Not annotated":image.item.truth),14),1);
+        }
+        ScrollView sc=new ScrollView(this);sc.addView(l);new AlertDialog.Builder(this).setTitle("ပုံ "+index+" • Compare").setView(sc).setPositiveButton("ပိတ်",null).show();
     }
     private void renderTrial(Trial t){
         int ok=0,scored=0,exact=0;long sum=0;ArrayList<Long> timings=new ArrayList<>();
         for(Row r:t.rows){if(r.error==null)ok++;if(r.total>0){sum+=r.total;timings.add(r.total);}if(r.item.truth!=null){scored++;if(r.error==null&&TextMetrics.normalize(r.item.truth).equals(r.normalized))exact++;}}
         Collections.sort(timings);long p90=timings.isEmpty()?0:timings.get((int)Math.ceil(timings.size()*.9)-1);
-        TextView heading=label(t.engine+" • Trial "+t.repeat,18);heading.setTextColor(cherry);results.addView(heading);
+        TextView heading=label(t.engine+" • "+t.variant+" • Trial "+t.repeat,18);heading.setTextColor(cherry);results.addView(heading);
         results.addView(label("Read "+ok+"/"+t.rows.size()+" • Init "+t.initMs+" ms • Wall "+t.totalMs+" ms\nMean attempted "+(timings.isEmpty()?"—":sum/timings.size()+" ms")+" • p90 "+(timings.isEmpty()?"—":p90+" ms")+"\nExact normalized "+(scored==0?"Not scored":exact+"/"+scored)+" • Peak sampled PSS "+t.peakPss+" KB",14));
         if(t.error!=null)results.addView(label(t.error,13));
         for(int j=0;j<t.rows.size();j++){Row r=t.rows.get(j);int number=j+1;results.addView(button("ပုံ "+number+" • "+(r.error==null?r.total+" ms":r.error),()->showResult(r,number)));}
@@ -205,12 +250,12 @@ public final class BenchmarkActivity extends Activity {
     }
     private void requestExport(){
         try{
-            JSONObject root=new JSONObject();root.put("schema",1).put("device",android.os.Build.MODEL).put("sdk",android.os.Build.VERSION.SDK_INT).put("abis",new JSONArray(Arrays.asList(android.os.Build.SUPPORTED_ABIS))).put("apk_bytes",new File(getApplicationInfo().sourceDir).length()).put("tesseract_version","4.9.0").put("mlkit_version","16.0.1").put("crnn_status","NOT_RUN").put("protocol","Each trial initializes a new engine; first inference may include lazy initialization; no fresh-process cold-run claim.");
+            JSONObject root=new JSONObject();root.put("schema",1).put("device",android.os.Build.MODEL).put("sdk",android.os.Build.VERSION.SDK_INT).put("abis",new JSONArray(Arrays.asList(android.os.Build.SUPPORTED_ABIS))).put("apk_bytes",new File(getApplicationInfo().sourceDir).length()).put("tesseract_version","4.9.0").put("mlkit_version","16.0.1").put("crnn_model_revision","456fa72d49996f1542fa7a957fd41c348f27ddca").put("onnxruntime_version","1.22.0").put("protocol","Each trial initializes a new engine; first inference may include lazy initialization; no fresh-process cold-run claim.");
             try(InputStream in=getAssets().open("models.json")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[4096];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);root.put("models",new JSONArray(out.toString("UTF-8")));}
             JSONArray ts=new JSONArray();
-            for(Trial t:trials){JSONObject tj=new JSONObject().put("engine",t.engine).put("repeat",t.repeat).put("init_ms",t.initMs).put("wall_ms",t.totalMs).put("base_pss_kb",t.basePss).put("sampled_peak_pss_kb",t.peakPss).put("after_pss_kb",t.afterPss).put("sampled_peak_native_bytes",t.peakNative).put("sampled_peak_java_bytes",t.peakJava).put("error",t.error==null?JSONObject.NULL:t.error);JSONArray rs=new JSONArray();
+            for(Trial t:trials){JSONObject tj=new JSONObject().put("engine",t.engine).put("variant",t.variant).put("repeat",t.repeat).put("init_ms",t.initMs).put("wall_ms",t.totalMs).put("base_pss_kb",t.basePss).put("sampled_peak_pss_kb",t.peakPss).put("after_pss_kb",t.afterPss).put("sampled_peak_native_bytes",t.peakNative).put("sampled_peak_java_bytes",t.peakJava).put("error",t.error==null?JSONObject.NULL:t.error);JSONArray rs=new JSONArray();
                 for(Row r:t.rows){JSONObject j=new JSONObject().put("id",r.item.id).put("sha256",r.sha).put("raw",r.raw).put("normalized",r.normalized).put("truth",r.item.truth==null?JSONObject.NULL:r.item.truth).put("status",r.error==null?"READ":r.error).put("decode_ms",r.decode).put("ocr_ms",r.ocr).put("normalize_ms",r.norm).put("total_ms",r.total).put("width",r.width).put("height",r.height);
-                    if(r.item.truth!=null){String nt=TextMetrics.normalize(r.item.truth);j.put("raw_edit_distance",TextMetrics.distance(r.item.truth,r.raw)).put("raw_truth_codepoints",r.item.truth.codePointCount(0,r.item.truth.length())).put("normalized_edit_distance",TextMetrics.distance(nt,r.normalized)).put("normalized_truth_codepoints",nt.codePointCount(0,nt.length())).put("normalized_exact",r.error==null&&nt.equals(r.normalized)).put("ordered_line_edit_distance",TextMetrics.lineDistance(nt,r.normalized));}rs.put(j);}
+                    if(r.item.truth!=null){String nt=TextMetrics.normalize(r.item.truth);j.put("raw_edit_distance",TextMetrics.distance(r.item.truth,r.raw)).put("raw_truth_codepoints",r.item.truth.codePointCount(0,r.item.truth.length())).put("normalized_edit_distance",TextMetrics.distance(nt,r.normalized)).put("normalized_truth_codepoints",nt.codePointCount(0,nt.length())).put("normalized_exact",r.error==null&&nt.equals(r.normalized)).put("ordered_line_edit_distance",TextMetrics.lineDistance(nt,r.normalized)).put("numeric_tokens_exact",r.error==null&&TextMetrics.numericTokens(nt).equals(TextMetrics.numericTokens(r.normalized)));}rs.put(j);}
                 tj.put("actual_selected_count",t.rows.size()).put("images",rs);ts.put(tj);}
             root.put("trials",ts);exportJson=root.toString(2);
             Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"cherry-ocr-benchmark.json");startActivityForResult(i,EXPORT);

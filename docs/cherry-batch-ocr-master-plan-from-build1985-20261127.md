@@ -1,5 +1,5 @@
 # Cherry 2D — Session-Based Batch OCR Master Plan
-2026-11-27 | v1.1 | Stage A implementation authorized; Gates A–F remain required
+2026-11-27 | v1.2 | Accuracy First — Stage A.2 authorized; Gates A–F remain required
 
 ## 1. Baseline and scope
 - Approved Build 1985, commit afa77be118dd5b4c1129b3db6a3a35853e2badb6, workflow run 45960509723 (success).
@@ -15,6 +15,7 @@ Manus ZIP "Cherry2D-Offline-Batch-OCR-Benchmark.zip": REPORT.md, README.md, andr
 Repository integration: QuickEntryScreen delegates to BettingScreen in Screens.kt; BetEntryControls.kt defines 14 formats (1+3+3+3+4). LedgerViewModel.prepareInput uses existing smartExpand, validates each line, refuses a partially invalid batch; refreshPreview uses request IDs, confirm reparses and revalidates under mutationMutex. Existing preview is keyed by scope/input. These remain the authority.
 
 ## 3. Non-negotiable acceptance and proposed targets
+- User decision 2026-11-27: accuracy outranks latency; real redacted Messenger/Viber crops next. First device synthetic trial: Fast 15/20 exact, 1.830 s; Best 13/20, 2.953 s; ML Kit Latin 8/20, 1.177 s. No final winner. Amount errors are critical. Do not sacrifice accuracy to meet the original timing goal. Preserve raw OCR and disagreements; no auto-correction or auto-acceptance.
 - After APK install, first recognition must work in airplane mode with bundled models and no key/account/download. Free personal use; verify licenses and retain required notices.
 - Target warm mean <=1 s/image, batch wall time <=5/10/20 s for actual batches 5/10/20 images respectively, including decoding, segmentation, inference, sanitation and required fallback. Also report p50/p90/max, cold start (process/first initialization separated), time to review, manual end-to-end comparison. These are proposed goals, not measurements or guarantees; do not sacrifice correctness to meet them.
 - No silent dropped/duplicated/misattributed lines, unreadable image, altered amount or automatic acceptance. All selected images have explicit outcomes; no partial batch accepted without explicit user exclusion and review. OCR is never the final accounting authority.
