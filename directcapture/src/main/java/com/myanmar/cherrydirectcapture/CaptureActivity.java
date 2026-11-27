@@ -35,7 +35,7 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 6",24);
+        label("🍒 Direct Capture Test 7",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
@@ -51,7 +51,7 @@ public final class CaptureActivity extends Activity {
                     draw();
                 }).show();
         });
-        label("ပုံမှန်စမ်းသပ်မှု: စတင်မည် → Viber / Messenger → 🍒 ဖမ်းမည် → ရပ်မည် → Test App",14);
+        label("ပုံမှန်စမ်းသပ်မှု: စတင်မည် → အဆင်သင့်ကို မနှိပ်ဘဲ Viber / Messenger → 🍒 ဖမ်းမည် → ရပ်မည် → Test App",14);
         label("Shortcut: "+CaptureService.shortcutStatus(),16);
         label("Diagnostic: "+CaptureService.diagnostic(this),14);
         label("Target: "+CaptureService.targetDiagnostic(this),14);

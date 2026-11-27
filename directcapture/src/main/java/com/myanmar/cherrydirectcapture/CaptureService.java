@@ -33,7 +33,7 @@ public final class CaptureService extends AccessibilityService {
     private boolean readyOverlay;
     private int sessionBaseline;
     private int routeRetries;
-    private static final int[] ROUTE_DELAYS={150,400,900};
+    private static final int[] ROUTE_DELAYS={150,400,900,1500};
     private final Runnable retryRoute=()->retryRouting();
     private static boolean ownActivityVisible;
     private final Runnable testTimeout=()->finishSelfTest("timeout; no self-test click");
@@ -146,14 +146,13 @@ public final class CaptureService extends AccessibilityService {
         if(instance==null) return;
         if(!visible && instance.selfTest)
             instance.finishSelfTest("cancelled: left test app");
-        if(instance.readyOverlay) {
-            if(!visible) {
-                instance.readyOverlay=false;
-                instance.hide();
-                instance.scheduleRouting();
-            }
+        if(!visible && armed()) {
+            instance.readyOverlay=false;
+            instance.hide();
+            instance.scheduleRouting();
             return;
         }
+        if(instance.readyOverlay) return;
         if(visible && armed()) {
             instance.foreground="";
             instance.handler.removeCallbacks(instance.retryRoute);
@@ -260,16 +259,50 @@ public final class CaptureService extends AccessibilityService {
             scheduleRouting();
         }
     }
+    // Display routing only. A focused application may be the visible target even
+    // when the last-touched active root is stale. Never read node text here.
+    // null = no reliable focused-app information; empty = blocked/ambiguous.
+    private String focusedPackage() {
+        String focused=null;
+        boolean blocked=false;
+        try {
+            List<AccessibilityWindowInfo> windows=getWindows();
+            for(AccessibilityWindowInfo w:windows) {
+                try {
+                    if(!w.isFocused()) continue;
+                    if(w.getType()==AccessibilityWindowInfo.TYPE_SYSTEM) {
+                        blocked=true;
+                    } else if(w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION) {
+                        AccessibilityNodeInfo root=w.getRoot();
+                        if(root==null) {blocked=true;continue;}
+                        try {
+                            String pkg=root.getPackageName()==null?"":root.getPackageName().toString();
+                            if(pkg.isEmpty() || (focused!=null && !focused.equals(pkg))) blocked=true;
+                            else focused=pkg;
+                        } finally {root.recycle();}
+                    }
+                } finally {w.recycle();}
+            }
+        } catch(RuntimeException e) {return "";}
+        return blocked?"":focused;
+    }
     private void route() {
         if(selfTest || readyOverlay) return;
         if(!armed() || locked() || ownActivityVisible) {hide();return;}
-        String pkg=activePackage();
-        if(armed() && CapturePolicy.target(pkg)) {
+        String active=activePackage();
+        String focused=focusedPackage();
+        String pkg=CapturePolicy.overlayTarget(active,focused);
+        if(CapturePolicy.target(pkg)) {
             lastTarget=pkg; foreground=pkg; show();
         } else {
             foreground=""; hide();
         }
-        record("active root: "+category(pkg));
+        String status="active="+category(active)+"; focus="+
+            (focused==null?"unknown":focused.isEmpty()?"blocked":category(focused))+
+            "; overlay="+(overlay!=null);
+        record(status);
+        if(CapturePolicy.target(active) || CapturePolicy.target(focused))
+            recordTarget(status);
     }
     private void requestShortcut() {
         if(!armed() || locked()) {
@@ -309,16 +342,17 @@ public final class CaptureService extends AccessibilityService {
         capture.setTextColor(Color.WHITE); capture.setBackgroundColor(Color.rgb(170,24,61));
         refresh();
         if(testing) capture.setText("Overlay စမ်းမည်");
-        else if(ready) capture.setText("🍒 အဆင်သင့်");
+        else if(ready) {
+            capture.setText("🍒 အဆင်သင့်");
+            capture.setEnabled(false); // indicator only; no extra tap required
+        }
         capture.setOnClickListener(v->{
             if(testing) {
                 if(selfTest && ownActivityVisible && !locked()) {
                     finishSelfTest("PASS: self-test click received; no chat read");
                     toast("Overlay ခလုတ် အလုပ်လုပ်သည်");
                 }
-            } else if(ready) {
-                toast("Viber / Messenger Chat ကို ဖွင့်ပါ");
-            } else if(!selfTest && !readyOverlay) captureOnce(false,foreground);
+            } else if(!ready && !selfTest && !readyOverlay) captureOnce(false,foreground);
         });
         Button stop=new Button(this); stop.setAllCaps(false); stop.setText("ရပ်မည်");
         stop.setOnClickListener(v->endSession());
