@@ -14,14 +14,14 @@ public class CapturePolicyTest {
         assertFalse(CapturePolicy.allow(true,null,null));
     }
 
-    @Test public void overlayRoutingUsesFocusedAppWithoutRelaxingCaptureGate() {
-        assertEquals("com.viber.voip",CapturePolicy.overlayTarget("com.myanmar.cherrydirectcapture","com.viber.voip"));
-        assertEquals("com.facebook.orca",CapturePolicy.overlayTarget("","com.facebook.orca"));
-        assertEquals("",CapturePolicy.overlayTarget("com.viber.voip","com.android.settings"));
-        assertEquals("",CapturePolicy.overlayTarget("com.viber.voip",""));
-        assertEquals("",CapturePolicy.overlayTarget("com.viber.voip","com.facebook.orca"));
-        assertEquals("com.viber.voip",CapturePolicy.overlayTarget("com.viber.voip",null));
-        assertEquals("",CapturePolicy.overlayTarget("com.android.settings",null));
-        assertFalse(CapturePolicy.allow(true,"com.viber.voip","com.myanmar.cherrydirectcapture"));
+    @Test public void explicitCaptureRequiresUnlockedTargetAndArmedSession() {
+        assertTrue(CapturePolicy.allowExplicit(true,false,false,false,"com.viber.voip"));
+        assertTrue(CapturePolicy.allowExplicit(true,false,false,false,"com.facebook.orca"));
+        assertFalse(CapturePolicy.allowExplicit(false,false,false,false,"com.viber.voip"));
+        assertFalse(CapturePolicy.allowExplicit(true,true,false,false,"com.viber.voip"));
+        assertFalse(CapturePolicy.allowExplicit(true,false,true,false,"com.viber.voip"));
+        assertFalse(CapturePolicy.allowExplicit(true,false,false,true,"com.viber.voip"));
+        assertFalse(CapturePolicy.allowExplicit(true,false,false,false,"com.android.settings"));
+        assertFalse(CapturePolicy.allowExplicit(true,false,false,false,null));
     }
 }

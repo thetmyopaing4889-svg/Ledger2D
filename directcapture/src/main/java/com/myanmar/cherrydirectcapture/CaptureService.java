@@ -4,6 +4,10 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityButtonController;
 import android.app.KeyguardManager;
 import android.content.Context;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.os.Build;
+import android.os.PowerManager;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -27,18 +31,20 @@ public final class CaptureService extends AccessibilityService {
     // Session is explicit and in-memory; process death or unbind disarms.
     private static boolean session;
     private static CaptureService instance;
-    private String foreground="";
     private final Handler handler=new Handler(Looper.getMainLooper());
     private boolean selfTest;
-    private boolean readyOverlay;
     private int sessionBaseline;
-    private int routeRetries;
-    private static final int[] ROUTE_DELAYS={150,400,900,1500};
-    private final Runnable retryRoute=()->retryRouting();
+    private boolean screenReceiverRegistered;
+    private final BroadcastReceiver screenReceiver=new BroadcastReceiver() {
+        @Override public void onReceive(Context c,Intent intent) {
+            if(Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                endSession();
+                record("screen off; session stopped");
+            }
+        }
+    };
     private static boolean ownActivityVisible;
     private final Runnable testTimeout=()->finishSelfTest("timeout; no self-test click");
-    private String lastTarget="";
-    private final Runnable routeLater=()->route();
     private WindowManager manager;
     private LinearLayout overlay;
     private Button capture;
@@ -73,22 +79,20 @@ public final class CaptureService extends AccessibilityService {
     static boolean connected() { return instance!=null; }
     static boolean armed() { return connected() && session; }
     static boolean beginSession() {
-        if(instance==null) return false;
-        // Starting is independent of the diagnostic self-test.
+        if(instance==null || instance.locked() || !instance.screenReceiverRegistered) return false;
         endSession();
         session=true;
         instance.sessionBaseline=instance.store.count();
-        instance.record("session started; open target chat");
-        instance.recordTarget("no target event yet");
+        instance.record("session started; open authorized test chat");
+        instance.recordTarget("checked only on explicit capture");
         instance.recordCapture("no capture attempt yet");
-        instance.lastTarget="";
-        instance.recordOverlay("session started; awaiting chat");
-        // Warm up the same overlay while our own activity is visible, with
-        // a non-capture control. Never read chat in this mode.
-        if(ownActivityVisible && !instance.locked()) {
-            instance.readyOverlay=true;
-            instance.show();
-        } else instance.route();
+        instance.recordOverlay("creating session overlay");
+        instance.show();
+        if(instance.overlay==null) {
+            session=false;
+            instance.record("session could not start: overlay unavailable");
+            return false;
+        }
         return true;
     }
     static void endSession() {
@@ -96,9 +100,8 @@ public final class CaptureService extends AccessibilityService {
         if(instance!=null) {
             instance.handler.removeCallbacksAndMessages(null);
             if(instance.selfTest) instance.finishSelfTest("stopped");
-            instance.readyOverlay=false;
             instance.hide();
-            instance.record("session stopped by user");
+            instance.record("session stopped");
         }
     }
     static String diagnostic(Context c) {
@@ -116,7 +119,12 @@ public final class CaptureService extends AccessibilityService {
         instance=this;
         manager=(WindowManager)getSystemService(WINDOW_SERVICE);
         if(store==null) store=new CaptureStore(this);
-        lastTarget="";
+        if(!screenReceiverRegistered) {
+            IntentFilter filter=new IntentFilter(Intent.ACTION_SCREEN_OFF);
+            if(Build.VERSION.SDK_INT>=33) registerReceiver(screenReceiver,filter,Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(screenReceiver,filter);
+            screenReceiverRegistered=true;
+        }
         if(buttonController!=null) buttonController.unregisterAccessibilityButtonCallback(shortcut);
         buttonController=getAccessibilityButtonController();
         buttonController.registerAccessibilityButtonCallback(shortcut);
@@ -124,7 +132,8 @@ public final class CaptureService extends AccessibilityService {
     }
     private boolean locked() {
         KeyguardManager km=(KeyguardManager)getSystemService(KEYGUARD_SERVICE);
-        return km!=null && km.isKeyguardLocked();
+        PowerManager pm=(PowerManager)getSystemService(POWER_SERVICE);
+        return (km!=null && km.isKeyguardLocked()) || (pm!=null && !pm.isInteractive());
     }
     private String category(String pkg) {
         if(CapturePolicy.target(pkg)) return pkg;
@@ -132,49 +141,16 @@ public final class CaptureService extends AccessibilityService {
         if("com.android.systemui".equals(pkg)) return "system UI";
         return pkg.isEmpty()?"no root":"other app";
     }
-    // Inspect only active root package metadata for routing. No node text is read
-    // until a user presses an explicit capture control.
-    private String activePackage() {
-        AccessibilityNodeInfo root=getRootInActiveWindow();
-        if(root==null) return "";
-        try { return root.getPackageName()==null?"":root.getPackageName().toString(); }
-        finally {root.recycle();}
-    }
-    // Activity lifecycle, not Accessibility root identity, owns the self-test.
+    // The session overlay is intentionally independent of Activity focus and roots.
+    // No package/tree query on app transitions. Self-test remains own-app only.
     static void activityVisible(boolean visible) {
         ownActivityVisible=visible;
-        if(instance==null) return;
-        if(!visible && instance.selfTest)
+        if(!visible && instance!=null && instance.selfTest)
             instance.finishSelfTest("cancelled: left test app");
-        if(!visible && armed()) {
-            instance.readyOverlay=false;
-            instance.hide();
-            instance.scheduleRouting();
-            return;
-        }
-        if(instance.readyOverlay) return;
-        if(visible && armed()) {
-            instance.foreground="";
-            instance.handler.removeCallbacks(instance.retryRoute);
-            instance.handler.removeCallbacks(instance.routeLater);
-            instance.hide();
-        }
     }
     static int sessionSaved() {
         return armed() && instance.store!=null
             ? Math.max(0,instance.store.count()-instance.sessionBaseline) : 0;
-    }
-    private void scheduleRouting() {
-        handler.removeCallbacks(retryRoute);
-        routeRetries=0;
-        if(armed() && !ownActivityVisible && !locked())
-            handler.postDelayed(retryRoute,ROUTE_DELAYS[0]);
-    }
-    private void retryRouting() {
-        if(!armed() || ownActivityVisible || locked() || selfTest) return;
-        route();
-        if(overlay==null && ++routeRetries<ROUTE_DELAYS.length)
-            handler.postDelayed(retryRoute,ROUTE_DELAYS[routeRetries]);
     }
     static void testOverlay() {
         if(instance==null) return;
@@ -234,98 +210,11 @@ public final class CaptureService extends AccessibilityService {
         getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("overlay",reason).apply();
     }
     @Override public void onAccessibilityEvent(AccessibilityEvent e) {
-        if(e==null || (!armed() && !selfTest)) return;
-        if(selfTest) {
-            if(!ownActivityVisible || locked()) finishSelfTest("cancelled: app hidden or locked");
-            return; // no root queries or auto-hide from window event during isolated test
-        }
-        if(locked()) { readyOverlay=false; hide(); return; }
-        if(ownActivityVisible) return;
-        int kind=e.getEventType();
-        if(kind!=AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-           kind!=AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
-           kind!=AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return;
-        String pkg=e.getPackageName()==null?"":e.getPackageName().toString();
-        if(kind==AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && !CapturePolicy.target(pkg)) return;
-        if(CapturePolicy.target(pkg)) {
-            lastTarget=pkg;
-            recordTarget(pkg+" event="+kind+"; active="+category(activePackage()));
-        }
-        route();
-        // A window transition can report the previous root; one bounded recheck.
-        if(kind!=AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            handler.removeCallbacks(routeLater);
-            handler.postDelayed(routeLater,300);
-            scheduleRouting();
-        }
-    }
-    // Display routing only. A focused application may be the visible target even
-    // when the last-touched active root is stale. Never read node text here.
-    // null = no reliable focused-app information; empty = blocked/ambiguous.
-    private String focusedPackage() {
-        String focused=null;
-        boolean blocked=false;
-        try {
-            List<AccessibilityWindowInfo> windows=getWindows();
-            for(AccessibilityWindowInfo w:windows) {
-                try {
-                    if(!w.isFocused()) continue;
-                    if(w.getType()==AccessibilityWindowInfo.TYPE_SYSTEM) {
-                        blocked=true;
-                    } else if(w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION) {
-                        AccessibilityNodeInfo root=w.getRoot();
-                        if(root==null) {blocked=true;continue;}
-                        try {
-                            String pkg=root.getPackageName()==null?"":root.getPackageName().toString();
-                            if(pkg.isEmpty() || (focused!=null && !focused.equals(pkg))) blocked=true;
-                            else focused=pkg;
-                        } finally {root.recycle();}
-                    }
-                } finally {w.recycle();}
-            }
-        } catch(RuntimeException e) {return "";}
-        return blocked?"":focused;
-    }
-    private void route() {
-        if(selfTest || readyOverlay) return;
-        if(!armed() || locked() || ownActivityVisible) {hide();return;}
-        String active=activePackage();
-        String focused=focusedPackage();
-        String pkg=CapturePolicy.overlayTarget(active,focused);
-        if(CapturePolicy.target(pkg)) {
-            lastTarget=pkg; foreground=pkg; show();
-        } else {
-            foreground=""; hide();
-        }
-        String status="active="+category(active)+"; focus="+
-            (focused==null?"unknown":focused.isEmpty()?"blocked":category(focused))+
-            "; overlay="+(overlay!=null);
-        record(status);
-        if(CapturePolicy.target(active) || CapturePolicy.target(focused))
-            recordTarget(status);
+        // No app detection, tree access, or text collection on events.
+        if((armed() || selfTest) && locked()) endSession();
     }
     private void requestShortcut() {
-        if(!armed() || locked()) {
-            recordCapture("shortcut: refused; session stopped or locked"); return;
-        }
-        recordWindows("shortcut");
-        String pkg=activePackage();
-        recordCapture("shortcut initial root: "+category(pkg));
-        if(CapturePolicy.target(pkg)) { captureOnce(true,pkg); return; }
-        // Do not select hidden windows or read another app. If the system shortcut
-        // temporarily owns focus, permit one delayed check of the same recent target.
-        if(!"com.android.systemui".equals(pkg) || !CapturePolicy.target(lastTarget)) {
-            toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
-        }
-        final String expected=lastTarget;
-        handler.postDelayed(()->{
-            if(!armed() || locked()) return;
-            String now=activePackage();
-            if(!expected.equals(now)) {
-                recordCapture("shortcut: root stayed "+category(now));return;
-            }
-            captureOnce(true,expected);
-        },350);
+        captureOnce(true);
     }
     private void show() {
         if(overlay!=null) return;
@@ -335,24 +224,19 @@ public final class CaptureService extends AccessibilityService {
             return;
         }
         final boolean testing=selfTest;
-        final boolean ready=readyOverlay;
         LinearLayout layout=new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         capture=new Button(this); capture.setAllCaps(false);
         capture.setTextColor(Color.WHITE); capture.setBackgroundColor(Color.rgb(170,24,61));
         refresh();
         if(testing) capture.setText("Overlay စမ်းမည်");
-        else if(ready) {
-            capture.setText("🍒 အဆင်သင့်");
-            capture.setEnabled(false); // indicator only; no extra tap required
-        }
         capture.setOnClickListener(v->{
             if(testing) {
                 if(selfTest && ownActivityVisible && !locked()) {
                     finishSelfTest("PASS: self-test click received; no chat read");
                     toast("Overlay ခလုတ် အလုပ်လုပ်သည်");
                 }
-            } else if(!ready && !selfTest && !readyOverlay) captureOnce(false,foreground);
+            } else if(!selfTest) captureOnce(false);
         });
         Button stop=new Button(this); stop.setAllCaps(false); stop.setText("ရပ်မည်");
         stop.setOnClickListener(v->endSession());
@@ -372,14 +256,11 @@ public final class CaptureService extends AccessibilityService {
             manager.addView(layout,params); overlay=layout;
             if(testing) {
                 recordSelfTest(layout.isAttachedToWindow()?"attached; press floating Overlay test button":"addView returned; awaiting attachment");
-            } else recordOverlay(ready?"ready overlay added; no capture":"target overlay added: "+foreground);
+            } else recordOverlay("session overlay added; retained until stop");
         } catch(RuntimeException e) {
             capture=null;
             if(testing) finishSelfTest("addView failed: "+e.getClass().getSimpleName());
-            else {
-                readyOverlay=false;
-                recordOverlay("overlay failed: "+e.getClass().getSimpleName());
-            }
+            else recordOverlay("overlay failed: "+e.getClass().getSimpleName());
         }
     }
     private void refresh() {
@@ -391,30 +272,30 @@ public final class CaptureService extends AccessibilityService {
         }
         overlay=null; capture=null;
     }
-    private void captureOnce(boolean viaShortcut,String expectedPackage) {
+    private void captureOnce(boolean viaShortcut) {
         String source=viaShortcut?"shortcut":"overlay";
-        if(!armed() || locked() || ownActivityVisible || selfTest || readyOverlay) {
-            recordCapture(source+": refused; session stopped, locked or test app visible"); toast("ဖမ်းယူမှု စတင်ပါ"); return;
+        if(!armed() || locked() || ownActivityVisible || selfTest) {
+            recordCapture(source+": refused; session stopped, locked or test app visible");
+            toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
         }
-        if(!viaShortcut && !CapturePolicy.target(foreground)) {
-            recordCapture(source+": refused; target not identified"); hide(); return;
-        }
-        if(!viaShortcut) recordWindows("overlay");
+        // An explicit tap is the only place where active chat content is accessed.
         AccessibilityNodeInfo root=getRootInActiveWindow();
-        if(root==null) { recordCapture(source+": no active root"); toast("ဖမ်းယူ၍မရပါ"); return; }
+        if(root==null) {
+            recordCapture(source+": no active root");
+            recordWindows(source);
+            toast("Chat ကို ထိပြီး ထပ်ဖမ်းပါ"); return;
+        }
         try {
             String pkg=root.getPackageName()==null?"":root.getPackageName().toString();
-            // Explicit shortcut does not depend on overlay's event routing.
-            // Read no node text unless the actual active root belongs to the target.
-            if(!CapturePolicy.target(pkg) || !pkg.equals(expectedPackage) || (!viaShortcut && !CapturePolicy.allow(session,foreground,pkg))) {
-                recordCapture(source+": active root mismatch: "+category(pkg));
-                if(!viaShortcut) hide();
+            recordTarget("explicit tap: "+category(pkg));
+            if(!CapturePolicy.allowExplicit(armed(),locked(),ownActivityVisible,selfTest,pkg)) {
+                recordCapture(source+": active root not target: "+category(pkg));
                 toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
             }
             JSONArray nodes=new JSONArray();
             scan(root,pkg,nodes,new int[]{0,0},0);
             if(nodes.length()==0) { recordCapture(source+": no visible text nodes"); toast("မြင်ရသောစာသား မရရှိပါ"); return; }
-            if(!armed() || locked() || (!viaShortcut && !pkg.equals(foreground))) {
+            if(!CapturePolicy.allowExplicit(armed(),locked(),ownActivityVisible,selfTest,pkg)) {
                 recordCapture(source+": cancelled"); return;
             }
             AccessibilityNodeInfo check=getRootInActiveWindow();
@@ -465,8 +346,12 @@ public final class CaptureService extends AccessibilityService {
         record("feedback interrupted; session "+(session?"armed":"stopped"));
     }
     private void disconnect() {
-        session=false; readyOverlay=false; if(selfTest) finishSelfTest("cancelled: service disconnected");
-        handler.removeCallbacksAndMessages(null); hide(); lastTarget=""; foreground="";
+        session=false; if(selfTest) finishSelfTest("cancelled: service disconnected");
+        handler.removeCallbacksAndMessages(null); hide();
+        if(screenReceiverRegistered) {
+            unregisterReceiver(screenReceiver);
+            screenReceiverRegistered=false;
+        }
         if(buttonController!=null) {buttonController.unregisterAccessibilityButtonCallback(shortcut);buttonController=null;}
         if(instance==this) instance=null;
         record("service disconnected; session stopped");

@@ -35,7 +35,7 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 7",24);
+        label("🍒 Direct Capture Test 8",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
@@ -43,15 +43,15 @@ public final class CaptureActivity extends Activity {
         button(CaptureService.armed()?"ဖမ်းယူမှု ရပ်မည်":"ဖမ်းယူမှု စတင်မည်",v->{
             if(CaptureService.armed()) {CaptureService.endSession(); draw();return;}
             new AlertDialog.Builder(this).setTitle("ဖမ်းယူမှု စတင်မည်")
-                .setMessage("Viber / Messenger ရှိ ခွင့်ပြုထားသော စမ်းသပ်စာများကိုသာ Cherry ခလုတ်နှိပ်၍ ဖမ်းယူပါ။")
+                .setMessage("Session ဖွင့်ထားချိန် Cherry ခလုတ်သည် အခြား App ပေါ်တွင်လည်း ရှိနိုင်သည်။ Viber / Messenger ရှိ ခွင့်ပြုထားသော စမ်းသပ်စာများကိုသာ ဖမ်းမည်နှိပ်ပါ။ ရပ်မည် သို့မဟုတ် ဖုန်းမျက်နှာပြင်ပိတ်လျှင် Session ပိတ်မည်။")
                 .setNegativeButton("မစတင်ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{
                     if(!CaptureService.beginSession()) new AlertDialog.Builder(this)
-                        .setMessage("Service မချိတ်ဆက်သေးပါ။ Accessibility Setting စစ်ပါ။")
+                        .setMessage("Session မစတင်နိုင်ပါ။ Service နှင့် Overlay Diagnostic ကို စစ်ပါ။")
                         .setPositiveButton("OK",null).show();
                     draw();
                 }).show();
         });
-        label("ပုံမှန်စမ်းသပ်မှု: စတင်မည် → အဆင်သင့်ကို မနှိပ်ဘဲ Viber / Messenger → 🍒 ဖမ်းမည် → ရပ်မည် → Test App",14);
+        label("ပုံမှန်စမ်းသပ်မှု: စတင်မည် → Viber / Messenger → 🍒 ဖမ်းမည် → ရပ်မည် → Test App",14);
         label("Shortcut: "+CaptureService.shortcutStatus(),16);
         label("Diagnostic: "+CaptureService.diagnostic(this),14);
         label("Target: "+CaptureService.targetDiagnostic(this),14);
