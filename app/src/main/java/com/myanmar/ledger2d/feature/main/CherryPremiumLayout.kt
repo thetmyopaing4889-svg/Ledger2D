@@ -28,7 +28,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.R
@@ -134,17 +133,31 @@ private fun CherryRuleOrb(rule:CherryRuleGroup,tone:CherryOrbTone,weekly:Boolean
         CherryOrbTone.ROSE->R.drawable.cherry_rule_rose
         CherryOrbTone.PEARL->R.drawable.cherry_rule_pearl
     }
-    Box(Modifier.size(48.dp).clip(CircleShape).clickable(interactionSource=interactions,
+    // The hit target is not clipped: the orb casts its shadow outside its
+    // own circle, and the weekly marker stays fully visible at the corner.
+    val rim=when(tone){
+        CherryOrbTone.PEARL->Color(0xFFC3AAB8)
+        CherryOrbTone.ROSE->Color(0xFFB87996)
+        CherryOrbTone.RUBY->Color(0xFF9A3655)
+    }
+    Box(Modifier.size(48.dp).clickable(interactionSource=interactions,
         indication=null,onClick={
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             onClick()
         }),contentAlignment=Alignment.Center) {
-        Image(painterResource(asset),
-            contentDescription=CherryRuleWording.title(rule.id,rule.name),
-            modifier=Modifier.size(44.dp).graphicsLayer{scaleX=scale;scaleY=scale}
-                .shadow(if(pressed)1.dp else 4.dp,CircleShape).clip(CircleShape))
-        if(weekly) Box(Modifier.align(Alignment.BottomEnd).padding(2.dp).size(8.dp)
-            .background(AppColors.PrimaryDeep,CircleShape).border(1.dp,Color.White,CircleShape))
+        Box(Modifier.matchParentSize().background(
+            Brush.radialGradient(listOf(rim.copy(alpha=if(pressed).12f else .30f),
+                Color.Transparent)),CircleShape))
+        Box(Modifier.size(44.dp).graphicsLayer{scaleX=scale;scaleY=scale}
+            .shadow(if(pressed)1.dp else 4.dp,CircleShape,clip=false)
+            .clip(CircleShape).background(Color.White)
+            .border(1.dp,rim,CircleShape)) {
+            Image(painterResource(asset),
+                contentDescription=CherryRuleWording.title(rule.id,rule.name),
+                modifier=Modifier.fillMaxSize().padding(1.dp).clip(CircleShape))
+        }
+        if(weekly) Box(Modifier.align(Alignment.BottomEnd).padding(1.dp).size(9.dp)
+            .background(AppColors.PrimaryDeep,CircleShape).border(1.5.dp,Color.White,CircleShape))
     }
 }
 
@@ -172,8 +185,14 @@ internal fun CherryPremiumRules(
         }
         if(ordered.isEmpty())Text(if(en)"No applicable rules" else "အကျုံးဝင်မူ မရှိသေးပါ။",
             style=MaterialTheme.typography.labelMedium)
-        else BoxWithConstraints(Modifier.fillMaxWidth()) {
-            // Six 48dp touch targets even at unusually narrow widths.
+        else BoxWithConstraints(Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFFF5EDF2),
+                Color(0xFFEDE2EA),Color(0xFFF2E9EF))))
+            .border(1.dp,Color(0xFFE8DAE3),RoundedCornerShape(12.dp))
+            .padding(horizontal=3.dp,vertical=4.dp)) {
+            // Neutral, muted blush-lilac zone, not a saturated pink card.
+            // Keep six 48dp touch targets even on narrow screens.
             val pageWidth=maxOf(maxWidth,288.dp)
             val scroll=rememberScrollState()
             val scrollNeeded=pages.size>1 || maxWidth<288.dp
@@ -216,31 +235,36 @@ internal fun CherryPremiumCuts(cuts:List<CherryCutGroup>,en:Boolean,onCut:(Cherr
                     .fillMaxHeight().heightIn(min=86.dp),
                     color=Color.Transparent,shape=shape,shadowElevation=4.dp,
                     border=BorderStroke(1.dp,Color(0xFFE4B8CA))) {
-                    Column(Modifier.fillMaxWidth()
+                    Column(Modifier.fillMaxSize()
                         .background(Brush.verticalGradient(listOf(Color.White,
                             Color(0xFFFFF5F8),Color(0xFFF2D7E1))))
                         .padding(horizontal=6.dp,vertical=7.dp),
-                        horizontalAlignment=Alignment.CenterHorizontally,
-                        verticalArrangement=Arrangement.Center) {
+                        horizontalAlignment=Alignment.CenterHorizontally) {
+                        // All cut headings share the same top baseline; only
+                        // the value area is centered in the remaining height.
                         Text(group.kind.label(en),style=MaterialTheme.typography.labelMedium,
                             fontWeight=FontWeight.SemiBold,color=AppColors.PrimaryDeep,
                             textAlign=TextAlign.Center)
                         Spacer(Modifier.height(4.dp))
-                        if(group.kind==CherryCutKind.PAIR)group.values.chunked(3).forEach{line->
-                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-                                line.forEach{pair->
-                                    Box(Modifier.weight(1f).padding(vertical=2.dp)
-                                        .clip(RoundedCornerShape(7.dp))
-                                        .background(Color.White.copy(alpha=.92f))
-                                        .border(1.dp,Color(0xFFEBD1DA),RoundedCornerShape(7.dp))
-                                        .padding(vertical=3.dp),contentAlignment=Alignment.Center) {
-                                        Text(pair,fontSize=14.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+                        Box(Modifier.weight(1f).fillMaxWidth(),contentAlignment=Alignment.Center) {
+                            if(group.kind==CherryCutKind.PAIR) Column(Modifier.fillMaxWidth()){
+                                group.values.chunked(3).forEach{line->
+                                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                                        line.forEach{pair->
+                                            Box(Modifier.weight(1f).padding(vertical=2.dp)
+                                                .clip(RoundedCornerShape(7.dp))
+                                                .background(Color.White.copy(alpha=.92f))
+                                                .border(1.dp,Color(0xFFEBD1DA),RoundedCornerShape(7.dp))
+                                                .padding(vertical=3.dp),contentAlignment=Alignment.Center) {
+                                                Text(pair,fontSize=14.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+                                            }
+                                        }
+                                        repeat(3-line.size){Spacer(Modifier.weight(1f))}
                                     }
                                 }
-                                repeat(3-line.size){Spacer(Modifier.weight(1f))}
-                            }
-                        } else Text(group.values.joinToString(" / "),fontSize=30.sp,
-                            fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,textAlign=TextAlign.Center)
+                            } else Text(group.values.joinToString(" / "),fontSize=30.sp,
+                                fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,textAlign=TextAlign.Center)
+                        }
                     }
                 }
             }
@@ -261,14 +285,17 @@ internal fun CherryPremiumPairs(all:List<CherryPick>,en:Boolean,expanded:Boolean
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                 line.forEach{pick->
                     Surface(onClick={onPick(pick)},modifier=Modifier.weight(1f).heightIn(min=48.dp),
-                        color=Color(0xFFFFE7EF),shape=RoundedCornerShape(10.dp),
-                        border=BorderStroke(1.dp,Color(0xFFF4C6D4))) {
-                        Column(Modifier.padding(3.dp),horizontalAlignment=Alignment.CenterHorizontally,
+                        color=Color.Transparent,shape=RoundedCornerShape(12.dp),
+                        shadowElevation=2.dp,border=BorderStroke(1.dp,Color(0xFFE6BDCD))) {
+                        Column(Modifier.fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(Color.White,
+                                Color(0xFFFFF2F6),Color(0xFFF4D9E3))))
+                            .padding(3.dp),horizontalAlignment=Alignment.CenterHorizontally,
                             verticalArrangement=Arrangement.Center) {
                             Text(pick.pair,fontSize=21.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
                             Text(if(en)"${pick.evidence.map{it.id}.distinct().size} rules"
                                 else "${pick.evidence.map{it.id}.distinct().size} မူခွဲ",
-                                style=MaterialTheme.typography.labelSmall)
+                                style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)
                         }
                     }
                 }
@@ -287,9 +314,13 @@ internal fun CherryPremiumPairs(all:List<CherryPick>,en:Boolean,expanded:Boolean
             Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                 line.forEach{pick->
                     Surface(onClick={onPick(pick)},modifier=Modifier.weight(1f),
-                        color=if(pick.cuts.isEmpty())Color(0xFFFFEDF2) else Color(0xFFF1E9EB),
-                        shape=RoundedCornerShape(9.dp)) {
-                        Column(Modifier.padding(vertical=7.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                        color=Color.Transparent,shape=RoundedCornerShape(9.dp),
+                        shadowElevation=1.dp,border=BorderStroke(1.dp,
+                            if(pick.cuts.isEmpty())Color(0xFFE6BDCD) else Color(0xFFD9CDD2))) {
+                        Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(
+                            if(pick.cuts.isEmpty())listOf(Color.White,Color(0xFFF5DDE6))
+                            else listOf(Color(0xFFF9F6F7),Color(0xFFE9DFE3))))
+                            .padding(vertical=7.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                             Text(pick.pair,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
                             if(pick.cuts.isNotEmpty())Text(if(en)"Cut" else "ဖြတ်",style=MaterialTheme.typography.labelSmall)
                         }
