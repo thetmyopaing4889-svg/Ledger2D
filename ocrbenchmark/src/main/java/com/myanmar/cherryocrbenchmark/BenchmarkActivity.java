@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.graphics.*;
 import android.net.Uri;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.*;
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -65,6 +66,14 @@ public final class BenchmarkActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(cherry);
         ScrollView scroll=new ScrollView(this);body=column();body.setPadding(dp(14),dp(12),dp(14),dp(20));body.setBackgroundColor(0xfffff2f6);scroll.addView(body);setContentView(scroll);
+        if(android.os.Build.VERSION.SDK_INT>=30){
+            scroll.setOnApplyWindowInsetsListener((v,insets)->{
+                android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
+                v.setPadding(bars.left,bars.top,bars.right,bars.bottom);
+                return insets;
+            });
+            scroll.requestApplyInsets();
+        }
         TextView title=label("Cherry OCR Test • Stage A",23);title.setTextColor(cherry);title.setTypeface(null,Typeface.BOLD);body.addView(title);
         body.addView(label("သီးခြားစမ်းသပ်မှု • Offline • စာရင်းမသွင်းပါ",14));
         pick=button("Screenshot ရွေးမည်",this::pickImages);body.addView(pick);
@@ -161,7 +170,7 @@ public final class BenchmarkActivity extends Activity {
         TessBaseAPI tess=null;TextRecognizer ml=null;ArrayList<Row> rows=new ArrayList<>();String failure=null;
         try{
             if(mode==2)ml=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-            else{File root=prepare(mode==0?"fast":"best");tess=new TessBaseAPI();if(!tess.init(root.getAbsolutePath(),"mya+eng",1))throw new IOException("Tesseract init failed");tess.setPageSegMode(6);}
+            else{File root=prepare(mode==0?"fast":"best");tess=new TessBaseAPI();if(!tess.init(root.getAbsolutePath(),"mya+eng",TessBaseAPI.OEM_LSTM_ONLY))throw new IOException("Tesseract init failed");tess.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK);}
             init=now()-start;
             for(int k=0;k<input.size();k++){
                 Item item=input.get(k);if(stop.get()){rows.add(new Row(item,"","","","CANCELLED",0,0,0,0,0,0));continue;}

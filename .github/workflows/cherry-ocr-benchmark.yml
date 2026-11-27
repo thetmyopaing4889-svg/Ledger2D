@@ -22,6 +22,10 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon -PocrBenchmark=true :ocrbenchmark:testDebugUnitTest :ocrbenchmark:lintDebug :ocrbenchmark:assembleDebug
+      - name: Print complete lint diagnostics on failure
+        if: failure()
+        run: |
+          find ocrbenchmark/build -name 'lint-results-*.txt' -type f -exec cat {} \;
       - name: Verify isolated package and bundled files
         run: |
           python3 - <<'PY'

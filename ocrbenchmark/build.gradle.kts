@@ -7,7 +7,7 @@ android {
     defaultConfig {
         applicationId = "com.myanmar.cherryocrbenchmark"
         minSdk = 26
-        targetSdk = 32
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1-stage-a"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
