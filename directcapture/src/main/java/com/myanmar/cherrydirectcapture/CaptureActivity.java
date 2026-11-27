@@ -24,7 +24,8 @@ public final class CaptureActivity extends Activity {
         panel=new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(24,48,24,32); scroll.addView(panel); setContentView(scroll);
     }
-    @Override protected void onResume() { super.onResume(); draw(); }
+    @Override protected void onResume() { super.onResume(); CaptureService.activityVisible(true); draw(); }
+    @Override protected void onPause() { CaptureService.activityVisible(false); super.onPause(); }
     private void label(String s,int size) {
         TextView t=new TextView(this); t.setText(s); t.setTextSize(size);
         t.setPadding(0,12,0,12); t.setTextIsSelectable(true); panel.addView(t);
@@ -34,7 +35,7 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 4",24);
+        label("🍒 Direct Capture Test 5",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
@@ -43,8 +44,10 @@ public final class CaptureActivity extends Activity {
         label("Target: "+CaptureService.targetDiagnostic(this),14);
         label("Capture: "+CaptureService.captureDiagnostic(this),14);
         label("Overlay: "+CaptureService.overlayDiagnostic(this),14);
-        button("Overlay ခလုတ် သီးသန့်စမ်းမည်",v->{if(CaptureService.connected()) CaptureService.testOverlay();else label("Service not connected",16);});
-        label("Android Accessibility shortcut ကို ON ထား၍ Chat ထဲတွင် နှိပ်စမ်းပါ။ Cherry ခလုတ် မပေါ်လျှင်လည်း စမ်းနိုင်သည်။",14);
+        label("Self-test: "+CaptureService.selfTestDiagnostic(this),14);
+        label("Windows: "+CaptureService.windowDiagnostic(this),12);
+        button("Overlay ခလုတ် သီးသန့်စမ်းမည်",v->{if(CaptureService.connected()) {CaptureService.testOverlay();draw();}else label("Service not connected",16);});
+        label("Overlay သီးသန့်စမ်းမည်ကို နှိပ်ပြီး ပေါ်လာသော ခလုတ်ကို ၁၅ စက္ကန့်အတွင်း နှိပ်ပါ။ ပြီးလျှင် အခြေအနေ ပြန်စစ်မည်ကို နှိပ်ပါ။ ဒီစမ်းသပ်မှုတွင် Chat ဖတ်ခြင်းမရှိပါ။",14);
         button("အခြေအနေ ပြန်စစ်မည်",v->draw());
         button("Accessibility Setting",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         button("ဖမ်းယူမှု စတင်မည်",v->{
