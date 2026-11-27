@@ -200,6 +200,7 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
     var showHistory by remember { mutableStateOf(false) }
     var showAllCurrent by rememberSaveable { mutableStateOf(false) }
     var showAllBorn by rememberSaveable { mutableStateOf(false) }
+    var edit930 by remember(target,tab) { mutableStateOf(false) }
     var openedRule by remember(target,tab) { mutableStateOf<String?>(null) }
     var openedCut by remember(target,tab) { mutableStateOf<CherryCutKind?>(null) }
     val premiumTab=tab==CherryTab.CURRENT || tab==CherryTab.BORN
@@ -312,27 +313,28 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                         }
                         if(current && target.session==DrawSession.MORNING) item {
                             CherryPremiumPanel {
-                                Row(verticalAlignment=Alignment.CenterVertically) {
-                                    Text("9:30 Modern / Internet",fontWeight=FontWeight.Bold,
-                                        color=AppColors.PrimaryDeep,style=MaterialTheme.typography.labelMedium,
-                                        modifier=Modifier.weight(1f))
-                                    if(captureOpen && (modernOverride.isNotEmpty()||internetOverride.isNotEmpty()))
-                                        TextButton(onClick={modernOverride="";internetOverride=""}) {
-                                            Text(tr("မူလဒေတာ","Reset"),style=MaterialTheme.typography.labelSmall)
+                                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                                    horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("9:30",fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
+                                            style=MaterialTheme.typography.titleSmall)
+                                        if(modern==null||internet==null)Text(tr("ဒေတာ မစုံသေး","Incomplete"),
+                                            style=MaterialTheme.typography.labelSmall)
+                                    }
+                                    listOf("Modern" to modern,"Internet" to internet).forEach{(label,value)->
+                                        Surface(onClick={if(captureOpen)edit930=true},
+                                            enabled=captureOpen,modifier=Modifier.weight(1f),
+                                            color=Color(0xFFFFF1F5),shape=RoundedCornerShape(12.dp),
+                                            border=BorderStroke(1.dp,Color(0xFFF2C8D6))) {
+                                            Column(Modifier.padding(vertical=5.dp,horizontal=3.dp),
+                                                horizontalAlignment=Alignment.CenterHorizontally) {
+                                                Text(label,style=MaterialTheme.typography.labelSmall)
+                                                Text(value ?: "—",fontWeight=FontWeight.Bold,
+                                                    color=AppColors.PrimaryDeep,style=MaterialTheme.typography.titleMedium)
+                                            }
                                         }
+                                    }
                                 }
-                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                    OutlinedTextField(if(captureOpen)modernOverride else modern.orEmpty(),
-                                        {modernOverride=it.filter{ch->ch in '0'..'9'}.take(2)},
-                                        modifier=Modifier.weight(1f),singleLine=true,enabled=captureOpen,
-                                        placeholder={Text(modern?:"—")},label={Text("Modern")})
-                                    OutlinedTextField(if(captureOpen)internetOverride else internet.orEmpty(),
-                                        {internetOverride=it.filter{ch->ch in '0'..'9'}.take(2)},
-                                        modifier=Modifier.weight(1f),singleLine=true,enabled=captureOpen,
-                                        placeholder={Text(internet?:"—")},label={Text("Internet")})
-                                }
-                                if(!report.has930)Text(tr("9:30 ဒေတာ မစုံသေးပါ။","9:30 inputs incomplete."),
-                                    style=MaterialTheme.typography.labelSmall)
                             }
                         }
                         item {
@@ -409,6 +411,23 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                 }
             }
         }
+    }
+    if(edit930 && captureOpen && tab==CherryTab.CURRENT && target.session==DrawSession.MORNING) {
+        AlertDialog(onDismissRequest={edit930=false},
+            title={Text("9:30 Modern / Internet",color=AppColors.PrimaryDeep)},
+            text={
+                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(modernOverride,{modernOverride=it.filter{ch->ch in '0'..'9'}.take(2)},
+                        singleLine=true,label={Text("Modern")},placeholder={Text(fromModern?:"—")})
+                    OutlinedTextField(internetOverride,{internetOverride=it.filter{ch->ch in '0'..'9'}.take(2)},
+                        singleLine=true,label={Text("Internet")},placeholder={Text(fromInternet?:"—")})
+                    Text(tr("မူလဒေတာ:","Saved data:")+" ${fromModern?:"—"} / ${fromInternet?:"—"}",
+                        style=MaterialTheme.typography.bodySmall)
+                }
+            },
+            dismissButton={TextButton(onClick={modernOverride="";internetOverride="";edit930=false}){
+                Text(tr("မူလဒေတာ","Reset"))}},
+            confirmButton={TextButton(onClick={edit930=false}){Text(tr("ပိတ်","Close"))}})
     }
     openedRule?.let{id->
         val pool=if(tab==CherryTab.CURRENT)report?.current.orEmpty() else report?.born.orEmpty()

@@ -3,6 +3,9 @@ package com.myanmar.ledger2d.feature.main
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -24,12 +27,18 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.myanmar.ledger2d.R
 import com.myanmar.ledger2d.core.design.AppColors
 import com.myanmar.ledger2d.core.domain.*
 import com.myanmar.ledger2d.core.model.DrawIdentity
+
+/** Row-major, six columns; pages of at most 24, never filler tokens. */
+internal fun <T> cherryOrbPages(items:List<T>):List<List<List<T>>> =
+    items.chunked(24).map{it.chunked(6)}
 
 internal enum class CherryOrbTone { RUBY, ROSE, PEARL }
 internal fun cherryOrbTone(rate:CherrySuccessRate?):CherryOrbTone {
@@ -104,17 +113,17 @@ internal fun CherryPremiumPanel(content:@Composable ColumnScope.()->Unit) {
     }
 }
 @Composable
-private fun CherryPremiumTitle(title:String,count:Int?=null) {
+private fun CherryPremiumTitle(title:String,count:Int?=null,countLabel:String?=null) {
     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
         Text(title,color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold,
             style=MaterialTheme.typography.titleSmall,modifier=Modifier.weight(1f))
-        if(count!=null)Text(count.toString(),color=AppColors.PrimaryDeep,
+        if(count!=null)Text(countLabel ?: count.toString(),color=AppColors.PrimaryDeep,
             style=MaterialTheme.typography.labelMedium)
     }
 }
 
 @Composable
-private fun CherryRuleOrb(rule:CherryRuleGroup,tone:CherryOrbTone,onClick:()->Unit) {
+private fun CherryRuleOrb(rule:CherryRuleGroup,tone:CherryOrbTone,weekly:Boolean=false,onClick:()->Unit) {
     val interactions=remember{MutableInteractionSource()}
     val pressed by interactions.collectIsPressedAsState()
     val scale by animateFloatAsState(if(pressed).90f else 1f,
@@ -134,6 +143,8 @@ private fun CherryRuleOrb(rule:CherryRuleGroup,tone:CherryOrbTone,onClick:()->Un
             contentDescription=CherryRuleWording.title(rule.id,rule.name),
             modifier=Modifier.size(44.dp).graphicsLayer{scaleX=scale;scaleY=scale}
                 .shadow(if(pressed)1.dp else 4.dp,CircleShape).clip(CircleShape))
+        if(weekly) Box(Modifier.align(Alignment.BottomEnd).padding(2.dp).size(8.dp)
+            .background(AppColors.PrimaryDeep,CircleShape).border(1.dp,Color.White,CircleShape))
     }
 }
 
@@ -142,31 +153,51 @@ internal fun CherryPremiumRules(
     groups:List<CherryRuleGroup>,tab:CherryTab,scores:CherryPremiumScores,en:Boolean,
     onRule:(String)->Unit,
 ) {
-    // Stable ID order independent of historical tone, without changing rank.
+    // Weekly rules remain a distinct, marked group at the end. A shared
+    // 24-token page budget prevents a fifth row when both groups are present.
     val sorted=remember(groups){groups.sortedBy{it.id}}
     val (weekly,regular)=remember(sorted){sorted.partition{isCherryWeeklyWatch(it.id)}}
+    val ordered=remember(regular,weekly){regular+weekly}
+    val pages=remember(ordered){cherryOrbPages(ordered)}
     CherryPremiumPanel {
         CherryPremiumTitle(if(tab==CherryTab.CURRENT) {
             if(en)"Applicable rules" else "အကျုံးဝင်မူများ"
-        } else {if(en)"Active born rules" else "အသက်ဝင်မွေးမူများ"},regular.size)
-        if(regular.isEmpty())Text(if(en)"No applicable rules" else "အကျုံးဝင်မူ မရှိသေးပါ။",
+        } else {if(en)"Active born rules" else "အသက်ဝင်မွေးမူများ"},ordered.size,
+            if(en)"${ordered.size} rules" else "${ordered.size} မူ")
+        if(weekly.isNotEmpty()) Row(verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+            Box(Modifier.size(8.dp).background(AppColors.PrimaryDeep,CircleShape))
+            Text(if(en)"Weekly watches · ${weekly.size}" else "အပတ်စဉ်မူ ${weekly.size} ခု",
+                color=AppColors.PrimaryDeep,style=MaterialTheme.typography.labelSmall)
+        }
+        if(ordered.isEmpty())Text(if(en)"No applicable rules" else "အကျုံးဝင်မူ မရှိသေးပါ။",
             style=MaterialTheme.typography.labelMedium)
-        else Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-            regular.chunked(if(regular.size>6)2 else 1).forEach{column->
-                Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                    column.forEach{rule->CherryRuleOrb(rule,cherryOrbTone(scores.rule(tab,rule.id))){onRule(rule.id)}}
+        else BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // Six 48dp touch targets even at unusually narrow widths.
+            val pageWidth=maxOf(maxWidth,288.dp)
+            val scroll=rememberScrollState()
+            val scrollNeeded=pages.size>1 || maxWidth<288.dp
+            Row(Modifier.fillMaxWidth().then(if(scrollNeeded)Modifier.horizontalScroll(scroll) else Modifier),
+                horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                pages.forEach{page->
+                    Column(Modifier.width(pageWidth),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                        page.forEach{line->
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                                line.forEach{rule->key(rule.id) {
+                                    CherryRuleOrb(rule,cherryOrbTone(scores.rule(tab,rule.id)),isCherryWeeklyWatch(rule.id)){
+                                        onRule(rule.id)
+                                    }
+                                }}
+                                repeat(6-line.size){Spacer(Modifier.size(48.dp))}
+                            }
+                        }
+                    }
                 }
             }
         }
-        if(weekly.isNotEmpty()) {
-            HorizontalDivider(color=AppColors.Blush)
-            CherryPremiumTitle(if(en)"Weekly watches" else "အပတ်စဉ်မူ",weekly.size)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                weekly.forEach{rule->CherryRuleOrb(rule,cherryOrbTone(scores.rule(tab,rule.id))){onRule(rule.id)}}
-            }
-        }
+        if(ordered.size>24)Text(if(en)"Swipe for remaining ${ordered.size-24} rules"
+            else "ကျန် ${ordered.size-24} မူကို ဘေးဆွဲကြည့်ရန်",
+            style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)
     }
 }
 
@@ -176,20 +207,40 @@ internal fun CherryPremiumCuts(cuts:List<CherryCutGroup>,en:Boolean,onCut:(Cherr
         CherryPremiumTitle(if(en)"Exclusions" else "အသေမူ")
         if(cuts.isEmpty())Text(if(en)"No applicable exclusions" else "အသေမူ မရှိသေးပါ။",
             style=MaterialTheme.typography.labelMedium)
-        else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp),
-            verticalAlignment=Alignment.CenterVertically) {
+        else Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement=Arrangement.spacedBy(7.dp)) {
             cuts.forEach{group->
-                Surface(onClick={onCut(group.kind)},modifier=Modifier.weight(if(group.kind==CherryCutKind.PAIR)1.7f else 1f),
-                    color=Color(0xFFFFEDF2),shape=RoundedCornerShape(10.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal=3.dp,vertical=4.dp),
-                        horizontalAlignment=Alignment.CenterHorizontally) {
-                        Text(group.kind.label(en),style=MaterialTheme.typography.labelSmall,color=AppColors.PrimaryDeep)
+                val shape=RoundedCornerShape(15.dp)
+                Surface(onClick={onCut(group.kind)},modifier=Modifier
+                    .weight(if(group.kind==CherryCutKind.PAIR)1.85f else 1f)
+                    .fillMaxHeight().heightIn(min=86.dp),
+                    color=Color.Transparent,shape=shape,shadowElevation=4.dp,
+                    border=BorderStroke(1.dp,Color(0xFFE4B8CA))) {
+                    Column(Modifier.fillMaxWidth()
+                        .background(Brush.verticalGradient(listOf(Color.White,
+                            Color(0xFFFFF5F8),Color(0xFFF2D7E1))))
+                        .padding(horizontal=6.dp,vertical=7.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.Center) {
+                        Text(group.kind.label(en),style=MaterialTheme.typography.labelMedium,
+                            fontWeight=FontWeight.SemiBold,color=AppColors.PrimaryDeep,
+                            textAlign=TextAlign.Center)
+                        Spacer(Modifier.height(4.dp))
                         if(group.kind==CherryCutKind.PAIR)group.values.chunked(3).forEach{line->
-                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly) {
-                                line.forEach{Text(it,fontSize=13.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)}
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                                line.forEach{pair->
+                                    Box(Modifier.weight(1f).padding(vertical=2.dp)
+                                        .clip(RoundedCornerShape(7.dp))
+                                        .background(Color.White.copy(alpha=.92f))
+                                        .border(1.dp,Color(0xFFEBD1DA),RoundedCornerShape(7.dp))
+                                        .padding(vertical=3.dp),contentAlignment=Alignment.Center) {
+                                        Text(pair,fontSize=14.sp,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+                                    }
+                                }
+                                repeat(3-line.size){Spacer(Modifier.weight(1f))}
                             }
-                        } else Text(group.values.joinToString(" / "),fontSize=20.sp,
-                            fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep)
+                        } else Text(group.values.joinToString(" / "),fontSize=30.sp,
+                            fontWeight=FontWeight.Black,color=AppColors.PrimaryDeep,textAlign=TextAlign.Center)
                     }
                 }
             }
@@ -202,7 +253,8 @@ internal fun CherryPremiumPairs(all:List<CherryPick>,en:Boolean,expanded:Boolean
                                 onToggle:()->Unit,onPick:(CherryPick)->Unit) {
     val eligible=remember(all){all.filter{it.cuts.isEmpty()}}
     CherryPremiumPanel {
-        CherryPremiumTitle(if(en)"Pairs" else "ရွေးကွက်များ",eligible.size)
+        CherryPremiumTitle(if(en)"Pairs" else "ရွေးကွက်များ",eligible.size,
+            if(en)"${eligible.size} eligible pairs" else "အကျုံးဝင် ${eligible.size} တွဲ")
         if(eligible.isEmpty())Text(if(en)"No eligible pairs" else "ရွေးကွက် မရှိသေးပါ။",
             style=MaterialTheme.typography.labelMedium)
         eligible.take(6).chunked(3).forEach{line->

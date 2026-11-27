@@ -119,13 +119,13 @@ abstract class GenerateCherryRuleOrbs : DefaultTask() {
                 val b=rgb and 255
                 // Red/pink glass and fruit, but not the green leaf or brown stem.
                 val mask=if(r>g && r>=b*0.9 && g<=b+16)
-                    ((r-g)/24.0).coerceIn(0.0,1.0) else 0.0
+                    ((r-g)/13.0).coerceIn(0.0,1.0) else 0.0
                 val light=(0.299*r+0.587*g+0.114*b)
                 fun mix(v:Int,t:Double)= (v*(1-mask)+t.coerceIn(0.0,255.0)*mask)
                     .roundToInt().coerceIn(0,255)
                 val channels=when(variant) {
-                    "rose"->listOf(mix(r,120+light*0.56),mix(g,58+light*0.75),mix(b,88+light*0.66))
-                    "pearl"->listOf(mix(r,108+light*0.61),mix(g,106+light*0.61),mix(b,112+light*0.60))
+                    "rose"->listOf(mix(r,183+light*0.28),mix(g,101+light*0.55),mix(b,134+light*0.44))
+                    "pearl"->listOf(mix(r,207+light*0.19),mix(g,185+light*0.27),mix(b,195+light*0.23))
                     else->listOf(r,g,b)
                 }
                 out.setRGB(x,y,(channels[0] shl 16) or (channels[1] shl 8) or channels[2])

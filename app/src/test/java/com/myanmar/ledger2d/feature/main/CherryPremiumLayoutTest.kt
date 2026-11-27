@@ -8,6 +8,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CherryPremiumLayoutTest {
+    @Test fun dynamicSixColumnPagesNeverExceedFourRows() {
+        for(n in 0..100) {
+            val pages=cherryOrbPages((1..n).toList())
+            assertEquals((1..n).toList(),pages.flatten().flatten())
+            assertEquals((n+23)/24,pages.size)
+            assertTrue(pages.all{it.size in 1..4 && it.all{row->row.size in 1..6}})
+            if(n in 1..24)assertEquals((n+5)/6,pages.single().size)
+        }
+        assertEquals(listOf(6,4),cherryOrbPages((1..10).toList()).single().map{it.size})
+        assertEquals(listOf(6,6,6,6),cherryOrbPages((1..25).toList()).first().map{it.size})
+    }
     @Test fun exactToneBoundariesAndMissingEvidence() {
         assertEquals(CherryOrbTone.PEARL,cherryOrbTone(null))
         assertEquals(CherryOrbTone.PEARL,cherryOrbTone(CherrySuccessRate(4,4)))
