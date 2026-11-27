@@ -1,47 +1,132 @@
 package com.myanmar.cherrydirectcapture;
 
 import android.accessibilityservice.AccessibilityService;
+import android.app.KeyguardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.view.Gravity;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class CaptureService extends AccessibilityService {
-    // Explicit in-memory opt-in; process death disarms. Window events only use package metadata.
-    static volatile boolean session;
+    // Session is explicit and in-memory; process death or unbind disarms.
+    private static boolean session;
     private static CaptureService instance;
     private String foreground="";
+    private final HashMap<Integer,String> targetWindows=new HashMap<>();
     private WindowManager manager;
     private LinearLayout overlay;
     private Button capture;
     private CaptureStore store;
 
+    static boolean connected() { return instance!=null; }
+    static boolean armed() { return connected() && session; }
+    static boolean beginSession() {
+        if(instance==null) return false;
+        session=true;
+        instance.record("session started; open target chat");
+        return true;
+    }
     static void endSession() {
         session=false;
-        if(instance!=null) instance.hide();
+        if(instance!=null) {
+            instance.hide();
+            instance.record("session stopped by user");
+        }
+    }
+    static String diagnostic(Context c) {
+        return c.getSharedPreferences("capture_health",MODE_PRIVATE)
+                .getString("state","no service connection recorded");
+    }
+    private void record(String reason) {
+        // Never include text, node contents, chat names or non-target package names.
+        getSharedPreferences("capture_health",MODE_PRIVATE).edit()
+            .putString("state",reason).apply();
     }
     @Override protected void onServiceConnected() {
+        super.onServiceConnected();
+        session=false;
         instance=this;
         manager=(WindowManager)getSystemService(WINDOW_SERVICE);
-        store=new CaptureStore(this);
+        if(store==null) store=new CaptureStore(this);
+        targetWindows.clear();
+        record("service connected; start session");
+    }
+    private boolean locked() {
+        KeyguardManager km=(KeyguardManager)getSystemService(KEYGUARD_SERVICE);
+        return km!=null && km.isKeyguardLocked();
     }
     @Override public void onAccessibilityEvent(AccessibilityEvent e) {
-        if(e==null || e.getEventType()!=AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
-        foreground=e.getPackageName()==null?"":e.getPackageName().toString();
-        if(session && CapturePolicy.target(foreground)) show(); else hide();
+        if(e==null || !armed()) return;
+        if(locked()) { hide(); return; }
+        int kind=e.getEventType();
+        if(kind!=AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+           kind!=AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
+           kind!=AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return;
+        String pkg=e.getPackageName()==null?"":e.getPackageName().toString();
+        boolean target=CapturePolicy.target(pkg);
+        // Non-target content events never contribute metadata or trigger work.
+        if(kind==AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && !target) return;
+        if(target && e.getWindowId()>=0) targetWindows.put(e.getWindowId(),pkg);
+        if(kind==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && !target && e.getWindowId()>=0)
+            targetWindows.remove(e.getWindowId());
+        // Use only window IDs/types/active/focused flags, not node text or root.
+        List<AccessibilityWindowInfo> windows=getWindows();
+        String activeTarget="";
+        boolean activeOther=false;
+        boolean activeKnown=false;
+        boolean hasApplication=false;
+        HashSet<Integer> live=new HashSet<>();
+        for(AccessibilityWindowInfo w:windows) {
+            try {
+                live.add(w.getId());
+                if(w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION) {
+                    hasApplication=true;
+                    if(w.isActive() || w.isFocused()) {
+                        activeKnown=true;
+                        String known=targetWindows.get(w.getId());
+                        if(known!=null) activeTarget=known; else activeOther=true;
+                    }
+                } else if(w.getType()==AccessibilityWindowInfo.TYPE_SYSTEM && w.isActive()) {
+                    activeOther=true;
+                }
+            } finally { w.recycle(); }
+        }
+        if(!windows.isEmpty()) targetWindows.keySet().retainAll(live);
+        if(activeOther) {
+            foreground=""; hide();
+            if(kind!=AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) record("waiting: other window active");
+        } else if(CapturePolicy.target(activeTarget)) {
+            foreground=activeTarget; show();
+        } else if(target && !activeKnown && !hasApplication &&
+                  kind==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            // Compatibility fallback; actual root package still checked on explicit click.
+            foreground=pkg; show();
+        } else {
+            foreground=""; hide();
+            if(kind!=AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) record("waiting: target window not identified");
+        }
     }
     private void show() {
         if(overlay!=null || manager==null) return;
         LinearLayout layout=new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        capture=new Button(this); capture.setAllCaps(false); refresh();
+        capture=new Button(this); capture.setAllCaps(false);
+        capture.setTextColor(Color.WHITE); capture.setBackgroundColor(Color.rgb(170,24,61));
+        refresh();
         capture.setOnClickListener(v->captureOnce());
         Button stop=new Button(this); stop.setAllCaps(false); stop.setText("ရပ်မည်");
         stop.setOnClickListener(v->endSession());
@@ -51,8 +136,8 @@ public final class CaptureService extends AccessibilityService {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT);
         params.gravity=Gravity.END|Gravity.CENTER_VERTICAL;
-        try { manager.addView(layout,params); overlay=layout; }
-        catch(RuntimeException ignored) { capture=null; }
+        try { manager.addView(layout,params); overlay=layout; record("capture overlay shown: "+foreground); }
+        catch(RuntimeException e) { capture=null; record("overlay failed: "+e.getClass().getSimpleName()); }
     }
     private void refresh() {
         if(capture!=null) capture.setText("🍒 ဖမ်းမည် ("+(store==null?0:store.count())+")");
@@ -64,20 +149,21 @@ public final class CaptureService extends AccessibilityService {
         overlay=null; capture=null;
     }
     private void captureOnce() {
-        if(!session || !CapturePolicy.target(foreground)) { hide(); return; }
+        if(!armed() || locked() || !CapturePolicy.target(foreground)) { hide(); return; }
         AccessibilityNodeInfo root=getRootInActiveWindow();
-        if(root==null) { toast("ဖမ်းယူ၍မရပါ"); return; }
+        if(root==null) { record("capture failed: no active root"); toast("ဖမ်းယူ၍မရပါ"); return; }
         try {
             String pkg=root.getPackageName()==null?"":root.getPackageName().toString();
-            if(!CapturePolicy.allow(session,foreground,pkg)) { hide(); toast("Chat app ကို ပြန်ဖွင့်ပါ"); return; }
+            if(!CapturePolicy.allow(session,foreground,pkg)) { record("capture refused: active root not target"); hide(); toast("Chat app ကို ပြန်ဖွင့်ပါ"); return; }
             JSONArray nodes=new JSONArray();
             scan(root,pkg,nodes,new int[]{0,0},0);
-            if(nodes.length()==0) { toast("မြင်ရသောစာသား မရရှိပါ"); return; }
-            if(!session || !pkg.equals(foreground)) { toast("ဖမ်းယူမှု ရပ်ထားသည်"); return; }
+            if(nodes.length()==0) { record("capture failed: no visible text nodes"); toast("မြင်ရသောစာသား မရရှိပါ"); return; }
+            if(!armed() || !pkg.equals(foreground) || locked()) { record("capture cancelled"); toast("ဖမ်းယူမှု ရပ်ထားသည်"); return; }
             store.save(pkg,nodes);
             refresh();
+            record("snapshot saved: "+pkg+"; nodes="+nodes.length());
             toast("သိမ်းပြီး — ဖမ်းယူမှု "+store.count()+" ကြိမ်");
-        } catch(Exception e) { toast("မသိမ်းနိုင်ပါ — ထပ်စမ်းပါ"); }
+        } catch(Exception e) { record("capture failed: "+e.getClass().getSimpleName()); toast("မသိမ်းနိုင်ပါ — ထပ်စမ်းပါ"); }
         finally { root.recycle(); }
     }
     // No content is read on an accessibility event. Only this explicit click traverses the tree.
@@ -108,10 +194,21 @@ public final class CaptureService extends AccessibilityService {
         }
     }
     private void toast(String s) { Toast.makeText(this,s,Toast.LENGTH_SHORT).show(); }
-    @Override public void onInterrupt() { endSession(); }
+    @Override public void onInterrupt() {
+        // Feedback interruption is not an unbind. No feedback stream to stop.
+        record("feedback interrupted; session "+(session?"armed":"stopped"));
+    }
+    private void disconnect() {
+        session=false; hide(); targetWindows.clear(); foreground="";
+        if(instance==this) instance=null;
+        record("service disconnected; session stopped");
+    }
+    @Override public boolean onUnbind(Intent intent) {
+        disconnect(); return super.onUnbind(intent);
+    }
     @Override public void onDestroy() {
-        endSession(); instance=null;
-        if(store!=null) store.close();
+        disconnect();
+        if(store!=null) {store.close(); store=null;}
         super.onDestroy();
     }
 }

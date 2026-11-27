@@ -34,14 +34,17 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 1",24);
+        label("🍒 Direct Capture Test 2",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
-        label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.session?"ဖွင့်ထား":"ရပ်ထား"),16);
+        label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
+        label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
+        label("Diagnostic: "+CaptureService.diagnostic(this),14);
+        button("အခြေအနေ ပြန်စစ်မည်",v->draw());
         button("Accessibility Setting",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         button("ဖမ်းယူမှု စတင်မည်",v->{
             new AlertDialog.Builder(this).setTitle("ဖမ်းယူမှု စတင်မည်")
                 .setMessage("Viber / Messenger တွင် ဖမ်းမည် ခလုတ်ကို ကိုယ်တိုင်နှိပ်ပါ။ အခြားသူ၏ ခွင့်မပြုသောစာ မဖမ်းယူပါနှင့်။")
-                .setNegativeButton("မစတင်ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{CaptureService.session=true; draw();}).show();
+                .setNegativeButton("မစတင်ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{if(!CaptureService.beginSession()) new AlertDialog.Builder(this).setMessage("Service မချိတ်ဆက်သေးပါ။ Accessibility Setting စစ်ပြီး ပြန်စမ်းပါ။").setPositiveButton("OK",null).show(); draw();}).show();
         });
         button("ဖမ်းယူမှု ရပ်မည်",v->{CaptureService.endSession();draw();});
         button("သိမ်းထားသောစာအားလုံး ဖျက်မည်",v->new AlertDialog.Builder(this)
