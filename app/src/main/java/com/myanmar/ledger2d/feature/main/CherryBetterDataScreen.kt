@@ -150,15 +150,10 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
         else override.takeIf{it.length==2}?:fallback
     val modern=input("modern930",modernOverride,fromModern)
     val internet=input("internet930",internetOverride,fromInternet)
-    // Display-only: use the same day’s frozen morning inputs when available.
-    // Never feed these display values back into the current report or archive.
-    val morningEvidence=successSnapshots.firstOrNull {
-        it.target.date==target.date && it.target.session==DrawSession.MORNING
-    }?.inputEvidence
-    val displayModern=if(target.session==DrawSession.MORNING)modern else
-        cherry930DisplayValue(morningEvidence,"modern930",modern)
-    val displayInternet=if(target.session==DrawSession.MORNING)internet else
-        cherry930DisplayValue(morningEvidence,"internet930",internet)
+    // Display reference values for the target session only. Afternoon references
+    // are read-only and never replace the existing morning formula inputs.
+    val referenceDisplay=cherrySessionReference(target.session,modern,internet,
+        todayDaily?.modern200,todayDaily?.internet200)
     val calculationKey:List<Any?> = remember(merged,target,modern,internet,closedDates) {
         listOf(merged,target,modern,internet,closedDates)
     }
@@ -327,13 +322,14 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
                                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
                                     horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                                     Column(Modifier.weight(1f)) {
-                                        Text("9:30",fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
+                                        Text(referenceDisplay.time,fontWeight=FontWeight.Bold,color=AppColors.PrimaryDeep,
                                             style=MaterialTheme.typography.titleSmall)
-                                        Text(tr("မနက်ဒေတာ","AM data"),style=MaterialTheme.typography.labelSmall)
-                                        if(displayModern==null||displayInternet==null)Text(tr("ဒေတာ မစုံသေး","Incomplete"),
+                                        Text(if(target.session==DrawSession.MORNING)tr("မနက်ဒေတာ","AM data")
+                                            else tr("ညနေဒေတာ","PM data"),style=MaterialTheme.typography.labelSmall)
+                                        if(referenceDisplay.modern==null||referenceDisplay.internet==null)Text(tr("ဒေတာ မစုံသေး","Incomplete"),
                                             style=MaterialTheme.typography.labelSmall)
                                     }
-                                    listOf("Modern" to displayModern,"Internet" to displayInternet).forEach{(label,value)->
+                                    listOf("Modern" to referenceDisplay.modern,"Internet" to referenceDisplay.internet).forEach{(label,value)->
                                         val tileContent: @Composable () -> Unit = {
                                             Column(Modifier.padding(vertical=5.dp,horizontal=3.dp),
                                                 horizontalAlignment=Alignment.CenterHorizontally) {
@@ -778,9 +774,13 @@ fun CherryBetterDataScreen(container: AppContainer, onBack: () -> Unit) {
 }
 
 
-/** Read-only 9:30 display fallback; never alters the formula input or stored snapshot. */
-internal fun cherry930DisplayValue(morningEvidence:String?,key:String,fallback:String?):String? {
-    val saved=morningEvidence.orEmpty().split(';').firstOrNull{it.substringBefore('=')==key}
-        ?.substringAfter('=',"")?.takeIf{it.matches(Regex("[0-9]{2}"))}
-    return saved ?: fallback?.takeIf{it.matches(Regex("[0-9]{2}"))}
+/** Session-specific display only; never use AM as a PM fallback. */
+internal data class CherrySessionReference(val time:String,val modern:String?,val internet:String?)
+internal fun cherrySessionReference(session:DrawSession,modern930:String?,internet930:String?,
+                                   modern200:String?,internet200:String?):CherrySessionReference {
+    fun valid(value:String?)=value?.takeIf{it.matches(Regex("[0-9]{2}"))}
+    return when(session) {
+        DrawSession.MORNING->CherrySessionReference("9:30",valid(modern930),valid(internet930))
+        DrawSession.EVENING->CherrySessionReference("2:00",valid(modern200),valid(internet200))
+    }
 }

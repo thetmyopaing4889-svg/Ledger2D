@@ -1,0 +1,3 @@
+# Build 1984 corrective follow-up
+Current and Born: AM target uses 9:30 Modern/Internet; PM target uses 2:00 Modern/Internet from the same target date, read-only. Missing PM data remains blank, never falls back to AM. Existing morning editing, formula inputs, snapshot writing and rule calculations unchanged.
+Success: all four latest-draw category rows and all three recent-draw category rows remain visible even on fresh install. Missing evidence uses a dash and one explanatory note per section; recorded zero remains a real count. Recent rows keep track bars without implying zero hit rate for missing evidence. History, drilldowns and top five ranking unchanged. No OCR, Research, Live or archive changes. CI and device verification still required.

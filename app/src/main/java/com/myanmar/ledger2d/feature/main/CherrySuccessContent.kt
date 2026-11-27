@@ -82,42 +82,38 @@ internal fun CherrySuccessContent(
             Text(if(selectedDraw==null) { if(en) "Latest draw" else "နောက်ဆုံးပွဲစဉ်" }
                 else { if(en) "Selected draw" else "ရွေးထားသောပွဲစဉ်" },
                 color=AppColors.PrimaryDeep,fontWeight=FontWeight.Bold)
-            if(showing==null) Text(if(en) "No confirmed result" else "ပေါက်ဂဏန်း မရှိသေးပါ။",
-                style=MaterialTheme.typography.bodySmall)
-            else {
-                Text(successDrawName(showing,en),style=MaterialTheme.typography.labelSmall)
-                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                    Surface(color=cherrySuccessPale,shape=RoundedCornerShape(14.dp)) {
-                        Column(Modifier.padding(horizontal=12.dp,vertical=12.dp),
-                            horizontalAlignment=Alignment.CenterHorizontally) {
-                            Text(winning ?: "—",color=AppColors.PrimaryDeep,
-                                fontSize=30.sp,fontWeight=FontWeight.Black)
-                            Text(if(en) "Result" else "ပေါက်ဂဏန်း",style=MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                        if(draw==null) {
-                            Text(if(en) "No pre-draw record" else "ကြိုတင်မှတ်တမ်းမရှိပါ။",
-                                style=MaterialTheme.typography.bodySmall)
-                        } else {
-                        tabs.forEach { tab ->
-                            val checks=draw.forTab(tab)
-                            SuccessDashboardRow(successTabName(tab,en),
-                                successCountLabel(checks.count{it.correct},checks.size,en),en) {
-                                openedSection=tab.name
-                            }
-                        }
-                        SuccessDashboardRow(if(en) "Exclusions" else "အသေမူ",
-                            successCountLabel(cutChecks.count{it.correct},cutChecks.size,en),en) {
-                            openedSection="cuts"
-                        }
-                        }
+            if(showing!=null) Text(successDrawName(showing,en),style=MaterialTheme.typography.labelSmall)
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                Surface(color=cherrySuccessPale,shape=RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(horizontal=12.dp,vertical=12.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally) {
+                        Text(winning ?: "—",color=AppColors.PrimaryDeep,
+                            fontSize=30.sp,fontWeight=FontWeight.Black)
+                        Text(if(en) "Result" else "ပေါက်ဂဏန်း",style=MaterialTheme.typography.labelSmall)
                     }
                 }
-                if(selectedDraw!=null) TextButton(onClick=onLatest) {
-                    Text(if(en) "Back to latest draw" else "နောက်ဆုံးပွဲသို့ ပြန်မည်")
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                    tabs.forEach { tab ->
+                        val checks=draw?.forTab(tab).orEmpty()
+                        SuccessDashboardRow(successTabName(tab,en),
+                            successDashboardCount(checks.count{it.correct},checks.size,en),en) {
+                            openedSection=tab.name
+                        }
+                    }
+                    SuccessDashboardRow(if(en) "Exclusions" else "အသေမူ",
+                        successDashboardCount(cutChecks.count{it.correct},cutChecks.size,en),en) {
+                        openedSection="cuts"
+                    }
                 }
+            }
+            if(draw==null) Text(if(showing==null) {
+                if(en) "No confirmed result" else "ပေါက်ဂဏန်း မရှိသေးပါ။"
+            } else {
+                if(en) "No pre-draw record" else "ကြိုတင်မှတ်တမ်းမရှိပါ။"
+            },style=MaterialTheme.typography.labelSmall)
+            if(selectedDraw!=null) TextButton(onClick=onLatest) {
+                Text(if(en) "Back to latest draw" else "နောက်ဆုံးပွဲသို့ ပြန်မည်")
             }
         }
         SuccessCard {
@@ -131,16 +127,12 @@ internal fun CherrySuccessContent(
                     Spacer(Modifier.width(3.dp))
                 }
             }
-            if(rates.values.none{it.evaluated>0}) {
-                Text(if(en) "No recorded draws yet." else "ပွဲအောင်ချက်မှတ်တမ်း မရှိသေးပါ။",
-                    style=MaterialTheme.typography.bodySmall)
-            } else {
             tabs.forEach { tab ->
                 val rate = rates.getValue(tab)
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Text(successTabName(tab,en),modifier=Modifier.weight(1f),
                         style=MaterialTheme.typography.bodySmall)
-                    Text(if(rate.evaluated==0) { if(en) "No record" else "မှတ်တမ်းမရှိ" }
+                    Text(if(rate.evaluated==0) "—"
                         else if(en) "${rate.correct}/${rate.evaluated} draws hit"
                         else "${rate.correct}/${rate.evaluated} ပွဲမှန်",
                         fontWeight=FontWeight.SemiBold,style=MaterialTheme.typography.bodySmall)
@@ -149,11 +141,15 @@ internal fun CherrySuccessContent(
                     progress={rate.correct.toFloat()/rate.evaluated},
                     modifier=Modifier.fillMaxWidth().height(6.dp),
                     color=AppColors.Primary,trackColor=cherrySuccessPale)
+                else Surface(color=cherrySuccessPale,shape=RoundedCornerShape(4.dp),
+                    modifier=Modifier.fillMaxWidth().height(6.dp)) {}
             }
-            Text(if(en) "One or more rules hit; recorded draws only."
-                else "မူတစ်ခုနှင့်အထက် မှန်သော မှတ်တမ်းရှိပွဲများ။",
-                style=MaterialTheme.typography.labelSmall)
-            }
+            Text(if(rates.values.none{it.evaluated>0}) {
+                if(en) "No recorded draws yet." else "ပွဲအောင်ချက်မှတ်တမ်း မရှိသေးပါ။"
+            } else {
+                if(en) "One or more rules hit; recorded draws only."
+                else "မူတစ်ခုနှင့်အထက် မှန်သော မှတ်တမ်းရှိပွဲများ။"
+            },style=MaterialTheme.typography.labelSmall)
         }
         SuccessCard {
             Text(if(en) "Top 5 by recorded hit rate" else "အောင်ချက်နှုန်း ထိပ်ဆုံးမူ ၅ ခု",
@@ -363,6 +359,9 @@ internal fun CherrySuccessContent(
             }})
     }
 }
+
+internal fun successDashboardCount(correct:Int,total:Int,en:Boolean):String =
+    if(total==0) "—" else successCountLabel(correct,total,en)
 
 internal fun successCountLabel(correct:Int,total:Int,en:Boolean):String =
     if(total==0) {if(en)"No record" else "မှတ်တမ်းမရှိ"}
