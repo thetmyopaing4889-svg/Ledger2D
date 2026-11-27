@@ -1,0 +1,33 @@
+name: Cherry Direct Capture Test 1
+on:
+  push:
+    branches: [feature/cherry-direct-capture-test-from-ocr-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Compile and test isolated feasibility APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon -PdirectCaptureTest=true :directcapture:testDebugUnitTest :directcapture:lintDebug :directcapture:assembleDebug
+      - name: Verify package and offline permissions
+        run: |
+          APK=directcapture/build/outputs/apk/debug/directcapture-debug.apk
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep "package: name='com.myanmar.cherrydirectcapture'"
+          if "$AAPT" dump permissions "$APK" | grep -Eq 'android.permission.(INTERNET|SYSTEM_ALERT_WINDOW)'; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cherry-direct-capture-test-1
+          path: directcapture/build/outputs/apk/debug/directcapture-debug.apk
+          if-no-files-found: error

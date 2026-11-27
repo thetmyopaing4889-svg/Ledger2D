@@ -21,3 +21,5 @@ rootProject.name = "Ledger2D"
 include(":app")
 
 if (providers.gradleProperty("ocrBenchmark").orNull == "true") include(":ocrbenchmark")
+
+if (providers.gradleProperty("directCaptureTest").orNull == "true") include(":directcapture")
