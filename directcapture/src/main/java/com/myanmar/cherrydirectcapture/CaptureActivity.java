@@ -34,7 +34,7 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 3",24);
+        label("🍒 Direct Capture Test 4",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
@@ -42,6 +42,8 @@ public final class CaptureActivity extends Activity {
         label("Diagnostic: "+CaptureService.diagnostic(this),14);
         label("Target: "+CaptureService.targetDiagnostic(this),14);
         label("Capture: "+CaptureService.captureDiagnostic(this),14);
+        label("Overlay: "+CaptureService.overlayDiagnostic(this),14);
+        button("Overlay ခလုတ် သီးသန့်စမ်းမည်",v->{if(CaptureService.connected()) CaptureService.testOverlay();else label("Service not connected",16);});
         label("Android Accessibility shortcut ကို ON ထား၍ Chat ထဲတွင် နှိပ်စမ်းပါ။ Cherry ခလုတ် မပေါ်လျှင်လည်း စမ်းနိုင်သည်။",14);
         button("အခြေအနေ ပြန်စစ်မည်",v->draw());
         button("Accessibility Setting",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));

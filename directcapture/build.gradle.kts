@@ -6,8 +6,8 @@ android {
         applicationId = "com.myanmar.cherrydirectcapture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "3.0-shortcut-test"
+        versionCode = 4
+        versionName = "4.0-overlay-isolation"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
