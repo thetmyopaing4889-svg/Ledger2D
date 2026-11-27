@@ -1,6 +1,7 @@
 package com.myanmar.cherrydirectcapture;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityButtonController;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +32,32 @@ public final class CaptureService extends AccessibilityService {
     private LinearLayout overlay;
     private Button capture;
     private CaptureStore store;
+    private AccessibilityButtonController buttonController;
+    private final AccessibilityButtonController.AccessibilityButtonCallback shortcut =
+        new AccessibilityButtonController.AccessibilityButtonCallback() {
+            @Override public void onClicked(AccessibilityButtonController controller) {
+                captureOnce(true);
+            }
+            @Override public void onAvailabilityChanged(AccessibilityButtonController controller, boolean available) {
+                record("shortcut availability: "+available);
+            }
+        };
+    static String shortcutStatus() {
+        if(instance==null || instance.buttonController==null) return "not connected";
+        return instance.buttonController.isAccessibilityButtonAvailable()?"available":"unavailable";
+    }
+    static String targetDiagnostic(Context c) {
+        return c.getSharedPreferences("capture_health",MODE_PRIVATE).getString("target","no target event yet");
+    }
+    static String captureDiagnostic(Context c) {
+        return c.getSharedPreferences("capture_health",MODE_PRIVATE).getString("capture","no capture attempt yet");
+    }
+    private void recordTarget(String reason) {
+        getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("target",reason).apply();
+    }
+    private void recordCapture(String reason) {
+        getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("capture",reason).apply();
+    }
 
     static boolean connected() { return instance!=null; }
     static boolean armed() { return connected() && session; }
@@ -38,6 +65,8 @@ public final class CaptureService extends AccessibilityService {
         if(instance==null) return false;
         session=true;
         instance.record("session started; open target chat");
+        instance.recordTarget("no target event yet");
+        instance.recordCapture("no capture attempt yet");
         return true;
     }
     static void endSession() {
@@ -63,6 +92,9 @@ public final class CaptureService extends AccessibilityService {
         manager=(WindowManager)getSystemService(WINDOW_SERVICE);
         if(store==null) store=new CaptureStore(this);
         targetWindows.clear();
+        if(buttonController!=null) buttonController.unregisterAccessibilityButtonCallback(shortcut);
+        buttonController=getAccessibilityButtonController();
+        buttonController.registerAccessibilityButtonCallback(shortcut);
         record("service connected; start session");
     }
     private boolean locked() {
@@ -106,6 +138,7 @@ public final class CaptureService extends AccessibilityService {
             } finally { w.recycle(); }
         }
         if(!windows.isEmpty()) targetWindows.keySet().retainAll(live);
+        if(target) recordTarget(pkg+" event="+kind+"; active target="+(!activeTarget.isEmpty())+"; other active="+activeOther+"; windows="+windows.size());
         if(activeOther) {
             foreground=""; hide();
             if(kind!=AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) record("waiting: other window active");
@@ -127,7 +160,7 @@ public final class CaptureService extends AccessibilityService {
         capture=new Button(this); capture.setAllCaps(false);
         capture.setTextColor(Color.WHITE); capture.setBackgroundColor(Color.rgb(170,24,61));
         refresh();
-        capture.setOnClickListener(v->captureOnce());
+        capture.setOnClickListener(v->captureOnce(false));
         Button stop=new Button(this); stop.setAllCaps(false); stop.setText("ရပ်မည်");
         stop.setOnClickListener(v->endSession());
         layout.addView(capture); layout.addView(stop);
@@ -136,8 +169,8 @@ public final class CaptureService extends AccessibilityService {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT);
         params.gravity=Gravity.END|Gravity.CENTER_VERTICAL;
-        try { manager.addView(layout,params); overlay=layout; record("capture overlay shown: "+foreground); }
-        catch(RuntimeException e) { capture=null; record("overlay failed: "+e.getClass().getSimpleName()); }
+        try { manager.addView(layout,params); overlay=layout; record("capture overlay shown: "+foreground); recordTarget("capture overlay shown: "+foreground); }
+        catch(RuntimeException e) { capture=null; record("overlay failed: "+e.getClass().getSimpleName()); recordTarget("overlay failed: "+e.getClass().getSimpleName()); }
     }
     private void refresh() {
         if(capture!=null) capture.setText("🍒 ဖမ်းမည် ("+(store==null?0:store.count())+")");
@@ -148,22 +181,44 @@ public final class CaptureService extends AccessibilityService {
         }
         overlay=null; capture=null;
     }
-    private void captureOnce() {
-        if(!armed() || locked() || !CapturePolicy.target(foreground)) { hide(); return; }
+    private void captureOnce(boolean viaShortcut) {
+        String source=viaShortcut?"shortcut":"overlay";
+        if(!armed() || locked()) {
+            recordCapture(source+": refused; session stopped or locked"); toast("ဖမ်းယူမှု စတင်ပါ"); return;
+        }
+        if(!viaShortcut && !CapturePolicy.target(foreground)) {
+            recordCapture(source+": refused; target not identified"); hide(); return;
+        }
         AccessibilityNodeInfo root=getRootInActiveWindow();
-        if(root==null) { record("capture failed: no active root"); toast("ဖမ်းယူ၍မရပါ"); return; }
+        if(root==null) { recordCapture(source+": no active root"); toast("ဖမ်းယူ၍မရပါ"); return; }
         try {
             String pkg=root.getPackageName()==null?"":root.getPackageName().toString();
-            if(!CapturePolicy.allow(session,foreground,pkg)) { record("capture refused: active root not target"); hide(); toast("Chat app ကို ပြန်ဖွင့်ပါ"); return; }
+            // Explicit shortcut does not depend on overlay's event routing.
+            // Read no node text unless the actual active root belongs to the target.
+            if(!CapturePolicy.target(pkg) || (!viaShortcut && !CapturePolicy.allow(session,foreground,pkg))) {
+                recordCapture(source+": active root not target");
+                if(!viaShortcut) hide();
+                toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
+            }
             JSONArray nodes=new JSONArray();
             scan(root,pkg,nodes,new int[]{0,0},0);
-            if(nodes.length()==0) { record("capture failed: no visible text nodes"); toast("မြင်ရသောစာသား မရရှိပါ"); return; }
-            if(!armed() || !pkg.equals(foreground) || locked()) { record("capture cancelled"); toast("ဖမ်းယူမှု ရပ်ထားသည်"); return; }
+            if(nodes.length()==0) { recordCapture(source+": no visible text nodes"); toast("မြင်ရသောစာသား မရရှိပါ"); return; }
+            if(!armed() || locked() || (!viaShortcut && !pkg.equals(foreground))) {
+                recordCapture(source+": cancelled"); return;
+            }
+            AccessibilityNodeInfo check=getRootInActiveWindow();
+            if(check==null) {recordCapture(source+": root lost before save");return;}
+            try {
+                if(check.getPackageName()==null || !pkg.contentEquals(check.getPackageName()) ||
+                    check.getWindowId()!=root.getWindowId()) {
+                    recordCapture(source+": active window changed before save"); return;
+                }
+            } finally {check.recycle();}
             store.save(pkg,nodes);
             refresh();
-            record("snapshot saved: "+pkg+"; nodes="+nodes.length());
+            recordCapture(source+": saved "+pkg+"; nodes="+nodes.length());
             toast("သိမ်းပြီး — ဖမ်းယူမှု "+store.count()+" ကြိမ်");
-        } catch(Exception e) { record("capture failed: "+e.getClass().getSimpleName()); toast("မသိမ်းနိုင်ပါ — ထပ်စမ်းပါ"); }
+        } catch(Exception e) { recordCapture(source+": failed "+e.getClass().getSimpleName()); toast("မသိမ်းနိုင်ပါ — ထပ်စမ်းပါ"); }
         finally { root.recycle(); }
     }
     // No content is read on an accessibility event. Only this explicit click traverses the tree.
@@ -200,6 +255,7 @@ public final class CaptureService extends AccessibilityService {
     }
     private void disconnect() {
         session=false; hide(); targetWindows.clear(); foreground="";
+        if(buttonController!=null) {buttonController.unregisterAccessibilityButtonCallback(shortcut);buttonController=null;}
         if(instance==this) instance=null;
         record("service disconnected; session stopped");
     }

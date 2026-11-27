@@ -1,4 +1,4 @@
-name: Cherry Direct Capture Test 1
+name: Cherry Direct Capture Test
 on:
   push:
     branches: [feature/cherry-direct-capture-test-from-ocr-20261127]
@@ -28,6 +28,6 @@ jobs:
           if "$AAPT" dump permissions "$APK" | grep -Eq 'android.permission.(INTERNET|SYSTEM_ALERT_WINDOW)'; then exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
-          name: cherry-direct-capture-test-1
+          name: cherry-direct-capture-test
           path: directcapture/build/outputs/apk/debug/directcapture-debug.apk
           if-no-files-found: error
