@@ -64,6 +64,12 @@ final class CaptureStore extends SQLiteOpenHelper {
         ContentValues v=new ContentValues();v.put("chat",value);
         if(getWritableDatabase().update("capture_batches",v,"id=? AND state=1",new String[]{id})!=1)throw new IllegalStateException("Review unavailable");
     }
+    boolean canAppendCapture(String batch,JSONArray nodes){
+        if(batchState(batch)!=0)return false;
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT COUNT(*),COALESCE(SUM(length(c.payload)),0) FROM captures c JOIN batch_captures b ON b.capture_id=c.id WHERE b.batch_id=?",new String[]{batch})){
+            return c.moveToFirst()&&c.getInt(0)<30&&c.getLong(1)+nodes.toString().length()<=250000;
+        }
+    }
     long saveBatchCapture(String batch,String pkg,JSONArray nodes) {
         SQLiteDatabase db=getWritableDatabase();db.beginTransaction();
         try {

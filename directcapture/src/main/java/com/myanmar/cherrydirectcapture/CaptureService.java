@@ -39,7 +39,7 @@ public final class CaptureService extends AccessibilityService {
     private final Handler handler=new Handler(Looper.getMainLooper());
     private boolean selfTest;
     private int sessionBaseline;
-    private String sessionId="", targetPackage="";
+    private String sessionId="", targetPackage="", observedTitle="";
     private boolean screenReceiverRegistered;
     private final BroadcastReceiver screenReceiver=new BroadcastReceiver() {
         @Override public void onReceive(Context c,Intent intent) {
@@ -77,7 +77,7 @@ public final class CaptureService extends AccessibilityService {
         if(instance==null || instance.locked() || !instance.screenReceiverRegistered) return false;
         endSession();
         if(!pkg.isEmpty() && !CapturePolicy.target(pkg)) return false;
-        instance.targetPackage=pkg;
+        instance.targetPackage=pkg;instance.observedTitle="";
         instance.sessionId=instance.store.beginBatch(pkg);
         session=true;
         instance.sessionBaseline=instance.store.count();
@@ -105,7 +105,7 @@ public final class CaptureService extends AccessibilityService {
     }
     private void closeBatch() {
         if(store!=null && !sessionId.isEmpty()) store.stopBatch(sessionId);
-        sessionId=""; targetPackage="";
+        sessionId=""; targetPackage=""; observedTitle="";
     }
     static String diagnostic(Context c) {
         return c.getSharedPreferences("capture_health",MODE_PRIVATE)
@@ -384,10 +384,25 @@ public final class CaptureService extends AccessibilityService {
                     recordCapture(source+": active window changed before save"); return;
                 }
             } finally {check.recycle();}
-            long savedId=store.saveBatchCapture(sessionId,pkg,nodes);
-            recordCapture(source+": saved "+pkg+"; id="+savedId+"; nodes="+nodes.length());
+            if(ViberStructure.PKG.equals(pkg)){
+                JSONObject snapshot=new JSONObject();snapshot.put("nodes",nodes);
+                ViberStructure.Screen screen=ViberReview.screen(snapshot);
+                if(screen.messages.isEmpty()){toast("Chat စာသား မတွေ့ပါ");return;}
+                if(!observedTitle.isEmpty()&&!screen.title.isEmpty()&&!observedTitle.equals(screen.title)){
+                    toast("Chat မတူပါ။ Stop နှိပ်ပြီး ပြန်စပါ");return;
+                }
+                if(!store.canAppendCapture(sessionId,nodes)){toast("ဖမ်းယူမှု အကန့်အသတ်ပြည့်ပါပြီ။ Stop နှိပ်ပါ");return;}
+                long savedId=store.saveBatchCapture(sessionId,pkg,nodes);
+                if(!screen.title.isEmpty())observedTitle=screen.title;
+                recordCapture(source+": saved "+pkg+"; id="+savedId+"; nodes="+nodes.length());
+            }else{
+                if(!store.canAppendCapture(sessionId,nodes)){toast("ဖမ်းယူမှု အကန့်အသတ်ပြည့်ပါပြီ။ Stop နှိပ်ပါ");return;}
+                long savedId=store.saveBatchCapture(sessionId,pkg,nodes);
+                recordCapture(source+": saved "+pkg+"; id="+savedId+"; nodes="+nodes.length());
+            }
             refresh();
             if(orb!=null){orb.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);orb.setAlpha(.65f);orb.animate().alpha(1f).setDuration(220).start();}
+            if(counter!=null){counter.setText("✓ "+sessionSaved());handler.postDelayed(()->refresh(),850);}
             toast("သိမ်းပြီး — ယခုအကြိမ် "+sessionSaved()+" ကြိမ်");
         } catch(Exception e) { recordCapture(source+": failed "+e.getClass().getSimpleName()); toast("မသိမ်းနိုင်ပါ — ထပ်စမ်းပါ"); }
         finally { root.recycle(); }

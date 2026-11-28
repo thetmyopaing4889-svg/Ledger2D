@@ -30,7 +30,7 @@ final class BatchCandidates {
                 row.put("source",snap.getLong("capture")+":"+(n+1));row.put("original",e.body);row.put("body",e.body);
                 row.put("capture",snap.getLong("capture"));row.put("captured_ms",snap.optLong("captured_ms",0));
                 row.put("path",e.path);row.put("bounds",e.bounds);row.put("parent_id",e.parent);row.put("view_id",e.viewId);
-                row.put("kind",e.kind);row.put("include",e.text());
+                row.put("kind",e.kind);row.put("include",false);row.put("manual_candidate",true);
                 row.put("repeat",e.text()&&!seen.add(e.body));row.put("alias_hint",alias[n]);row.put("overlap_hint",overlapNodes.contains(n));
                 row.put("time_hint",CaptureEvidence.timestampHint(evidence,n));
                 rows.put(row);

@@ -6,8 +6,8 @@ android {
         applicationId = "com.myanmar.cherrydirectcapture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "15.0-viber-structure"
+        versionCode = 16
+        versionName = "16.0-combined-final-test"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
