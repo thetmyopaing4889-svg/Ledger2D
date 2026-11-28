@@ -283,7 +283,7 @@ public final class CaptureService extends AccessibilityService {
                 toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
             }
             JSONArray nodes=new JSONArray();
-            scan(root,pkg,nodes,new int[]{0,0},0,"0");
+            scan(root,pkg,nodes,new int[]{0,0},0,"0","","");
             if(nodes.length()==0) { recordCapture(source+": no visible text nodes"); toast("မြင်ရသောစာသား မရရှိပါ"); return; }
             if(!CapturePolicy.allowExplicit(armed(),locked(),ownActivityVisible,selfTest,pkg)) {
                 recordCapture(source+": cancelled"); return;
@@ -305,7 +305,7 @@ public final class CaptureService extends AccessibilityService {
     }
     // No content is read on an accessibility event. Only this explicit click traverses the tree.
     // Preserve raw parent/child candidates and duplicates for feasibility review, not message counts.
-    private static void scan(AccessibilityNodeInfo node,String pkg,JSONArray out,int[] budget,int depth,String path) throws Exception {
+    private static void scan(AccessibilityNodeInfo node,String pkg,JSONArray out,int[] budget,int depth,String path,String parentId,String parentClass) throws Exception {
         if(depth>100 || ++budget[0]>5000) throw new IllegalStateException("Tree limit");
         if(!node.isVisibleToUser() || node.isPassword() || node.isEditable()) return;
         if(node.getPackageName()==null || !pkg.contentEquals(node.getPackageName())) return;
@@ -322,13 +322,18 @@ public final class CaptureService extends AccessibilityService {
                 n.put("class",String.valueOf(node.getClassName()));
                 n.put("depth",depth);
                 n.put("path",path);
+                n.put("parent_id",parentId);
+                n.put("parent_class",parentClass);
+                n.put("child_count",node.getChildCount());
+                n.put("scrollable",node.isScrollable());
                 n.put("bounds",new JSONArray().put(r.left).put(r.top).put(r.right).put(r.bottom));
                 out.put(n);
             }
         }
         for(int i=0;i<node.getChildCount();i++) {
             AccessibilityNodeInfo child=node.getChild(i);
-            if(child!=null) try { scan(child,pkg,out,budget,depth+1,path+"/"+i); } finally { child.recycle(); }
+            if(child!=null) try { scan(child,pkg,out,budget,depth+1,path+"/"+i,
+                node.getViewIdResourceName()==null?"":node.getViewIdResourceName(),String.valueOf(node.getClassName())); } finally { child.recycle(); }
         }
     }
     private void toast(String s) { Toast.makeText(this,s,Toast.LENGTH_SHORT).show(); }

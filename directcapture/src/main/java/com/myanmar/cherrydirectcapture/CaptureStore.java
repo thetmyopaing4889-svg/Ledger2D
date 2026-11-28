@@ -65,9 +65,9 @@ final class CaptureStore extends SQLiteOpenHelper {
     }
     JSONArray batchRaw(String id) throws JSONException {
         JSONArray out=new JSONArray();
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT c.id,c.payload FROM captures c JOIN batch_captures b ON b.capture_id=c.id WHERE b.batch_id=? ORDER BY c.id",new String[]{id})){
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT c.id,c.payload,c.captured,c.pkg FROM captures c JOIN batch_captures b ON b.capture_id=c.id WHERE b.batch_id=? ORDER BY c.id",new String[]{id})){
             while(c.moveToNext()) {
-                JSONObject row=new JSONObject();row.put("capture",c.getLong(0));row.put("nodes",new JSONArray(c.getString(1)));out.put(row);
+                JSONObject row=new JSONObject();row.put("capture",c.getLong(0));row.put("nodes",new JSONArray(c.getString(1)));row.put("captured_ms",c.getLong(2));row.put("package",c.getString(3));out.put(row);
             }
         }
         return out;

@@ -34,7 +34,7 @@ public final class BatchActivity extends Activity {
     private void button(String s,View.OnClickListener f){panel.addView(make(s,f));}
     private void error(Exception e){new AlertDialog.Builder(this).setMessage("မလုပ်နိုင်ပါ။ စာသားနှင့် အခြေအနေ ပြန်စစ်ပါ။").setPositiveButton("OK",null).show();}
     private void draw(){
-        panel.removeAllViews();label("🍒 Direct Capture Test 12",24);
+        panel.removeAllViews();label("🍒 Direct Capture Test 13",24);
         if(page==2){draft();return;}
         if(page==1&&!CaptureService.armed()&&store.batchState(batch)==1){review();return;}
         label("စမ်းသပ် Chat များသာ • စာရင်းအစစ် မသိမ်းပါ",16);
@@ -80,20 +80,34 @@ public final class BatchActivity extends Activity {
             for(int i=0;i<rows.length();i++)if(rows.getJSONObject(i).optBoolean("include"))count++;else hidden++;
             label("စာဖမ်းယူမှု — "+(store.batchPackage(batch).equals("com.viber.voip")?"Viber":"Messenger"),22);
             label("စာသားအပိုင်း "+count+" ခု • မူရင်း Chat နှင့် စာစောင်၊ အစီအစဉ်၊ ထပ်နေမှု တိုက်စစ်ပါ။",16);
-            label("ယခု build တွင် စာစောင်အစစ် အလိုအလျောက် အတည်မပြုနိုင်သေးပါ။",14);
+            label("မူရင်းစာစောင် အလိုအလျောက် အတည်မပြုနိုင်သေးပါ။ ထပ်နေမှု အမှတ်အသားသည် အကြံပြုချက်သာ ဖြစ်သည်။",14);
+            long lastCapture=-1;
+            
             for(int i=0;i<rows.length();i++){
                 JSONObject row=rows.getJSONObject(i);boolean included=row.optBoolean("include");
                 if(!included&&!excluded)continue;
                 final int idx=i;
+                long captureId=row.optLong("capture",0);
+                if(captureId!=lastCapture && captureId>0){label("ဖမ်းယူမှု #"+captureId,13);lastCapture=captureId;}
+                
                 label(row.getString("body"),18);
-                if(row.optBoolean("repeat"))label("စာသားတူနေသည် — မူရင်းနှင့် တိုက်စစ်ရန်",13);
+                if(row.optBoolean("alias_hint"))label("တစ်မျက်နှာတည်း parent/child စာသားထပ်နေနိုင်သည်",13);
+                if(row.optBoolean("overlap_hint"))label("ယခင်ဖမ်းယူမှုနှင့် အစီအစဉ်တူနေသည် — ထပ်နေနိုင်သည်",13);
+                else if(row.optBoolean("repeat"))label("စာသားတူနေသည် — သီးခြားစာစောင်လည်း ဖြစ်နိုင်သည်",13);
+                if(!row.optString("time_hint","").isEmpty())label("အချိန်ဖြစ်နိုင်ခြေ: "+row.optString("time_hint")+" (မအတည်ပြုရသေး)",13);
                 if(!included)label("ချန်ထားသောစာသား • "+row.optString("kind"),13);
                 LinearLayout actions=new LinearLayout(this);
                 actions.addView(make("ပြင်ရန်",v->editReview(rows,idx)));
+                if(included)actions.addView(make("ခွဲရန်",v->splitReview(rows,idx)));
                 actions.addView(make(included?"ဖယ်ရန်":"ထည့်ရန်",v->mutate(rows,()->row.put("include",!included))));
                 if(included&&i>0)actions.addView(make("↑",v->mutate(rows,()->{JSONObject prev=rows.getJSONObject(idx-1);rows.put(idx-1,row);rows.put(idx,prev);})));
                 if(included&&i+1<rows.length())actions.addView(make("↓",v->mutate(rows,()->{JSONObject next=rows.getJSONObject(idx+1);rows.put(idx+1,row);rows.put(idx,next);})));
                 panel.addView(actions);
+                if(included){
+                    int next=idx+1;
+                    while(next<rows.length()&&!rows.getJSONObject(next).optBoolean("include"))next++;
+                    if(next<rows.length()){final int target=next;button("နောက်စာနှင့် ပေါင်းရန်",v->mergeReview(rows,idx,target));}
+                }
             }
             button((excluded?"ချန်ထားသောစာ ပိတ်ရန်":"ချန်ထားသောစာ ကြည့်ရန်")+" ("+hidden+")",v->{excluded=!excluded;draw();});
             button("ပြင်ဆင်စာစောင် ထပ်ထည့်ရန်",v->editReview(rows,-1));
@@ -120,6 +134,40 @@ public final class BatchActivity extends Activity {
                 if(i>=0)rows.getJSONObject(i).put("body",body);
                 else{JSONObject row=new JSONObject();row.put("source","manual-correction");row.put("original","");row.put("body",body);row.put("kind","MANUAL_CORRECTION");row.put("include",true);rows.put(row);}
             })).show();
+        }catch(Exception e){error(e);}
+    }
+    private void splitReview(JSONArray rows,int index){
+        try{
+            JSONObject row=rows.getJSONObject(index);
+            LinearLayout fields=new LinearLayout(this);fields.setOrientation(LinearLayout.VERTICAL);
+            EditText first=new EditText(this),second=new EditText(this);
+            first.setMinLines(2);second.setMinLines(2);first.setText(row.getString("body"));
+            first.setHint("ပထမစာစောင်");second.setHint("ဒုတိယစာစောင်");fields.addView(first);fields.addView(second);
+            new AlertDialog.Builder(this).setTitle("မူရင်း Chat အတိုင်း စာနှစ်စောင် ခွဲရန်").setView(fields).setNegativeButton("မခွဲပါ",null).setPositiveButton("ခွဲမည်",(di,w)->{
+                try{
+                    String one=first.getText().toString(),two=second.getText().toString();BatchLogic.requireBody(one);BatchLogic.requireBody(two);
+                    JSONObject left=new JSONObject(row.toString()),right=new JSONObject(row.toString());
+                    left.put("body",one);right.put("body",two);left.put("correction","manual-split-first");right.put("correction","manual-split-second");
+                    JSONArray revised=new JSONArray();
+                    for(int i=0;i<rows.length();i++){if(i==index){revised.put(left);revised.put(right);}else revised.put(rows.getJSONObject(i));}
+                    store.saveReview(batch,revised);draw();
+                }catch(Exception e){error(e);}
+            }).show();
+        }catch(Exception e){error(e);}
+    }
+    private void mergeReview(JSONArray rows,int leftIndex,int rightIndex){
+        try{
+            JSONObject left=rows.getJSONObject(leftIndex),right=rows.getJSONObject(rightIndex);
+            EditText body=new EditText(this);body.setMinLines(4);body.setText(left.getString("body")+"\n"+right.getString("body"));
+            new AlertDialog.Builder(this).setTitle("မူရင်းစာတစ်စောင်ဖြစ်မှ ပေါင်းပါ").setView(body).setNegativeButton("မပေါင်းပါ",null).setPositiveButton("ပေါင်းမည်",(di,w)->{
+                try{
+                    String value=body.getText().toString();BatchLogic.requireBody(value);
+                    JSONObject merged=new JSONObject(left.toString());merged.put("body",value);merged.put("correction","manual-merge");merged.put("merged_source",right.toString());
+                    JSONArray revised=new JSONArray();
+                    for(int i=0;i<rows.length();i++){if(i==leftIndex)revised.put(merged);else if(i!=rightIndex)revised.put(rows.getJSONObject(i));}
+                    store.saveReview(batch,revised);draw();
+                }catch(Exception e){error(e);}
+            }).show();
         }catch(Exception e){error(e);}
     }
     private void draft(){
