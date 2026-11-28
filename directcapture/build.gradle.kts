@@ -6,8 +6,8 @@ android {
         applicationId = "com.myanmar.cherrydirectcapture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "13.0-evidence-review"
+        versionCode = 14
+        versionName = "14.0-orb-evidence-export"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

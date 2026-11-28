@@ -10,19 +10,20 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 final class CaptureStore extends SQLiteOpenHelper {
-    CaptureStore(Context c) { super(c.getApplicationContext(), "capture_test.db", null, 3); }
+    CaptureStore(Context c) { super(c.getApplicationContext(), "capture_test.db", null, 4); }
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE captures(id INTEGER PRIMARY KEY AUTOINCREMENT, pkg TEXT NOT NULL, captured INTEGER NOT NULL, payload TEXT NOT NULL)");
         createReviewTables(db);
         createBatchTables(db);
     }
     @Override public void onUpgrade(SQLiteDatabase db,int oldVersion,int newVersion) {
-        if(oldVersion<1 || oldVersion>2 || newVersion!=3) throw new IllegalStateException("Unexpected database version");
+        if(oldVersion<1 || oldVersion>3 || newVersion!=4) throw new IllegalStateException("Unexpected database version");
         if(oldVersion==1) createReviewTables(db);
-        createBatchTables(db);
+        if(oldVersion<3) createBatchTables(db);
+        else db.execSQL("ALTER TABLE capture_batches ADD COLUMN chat TEXT NOT NULL DEFAULT ''");
     }
     private void createBatchTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE capture_batches(id TEXT PRIMARY KEY, pkg TEXT NOT NULL, state INTEGER NOT NULL, review TEXT)");
+        db.execSQL("CREATE TABLE capture_batches(id TEXT PRIMARY KEY, pkg TEXT NOT NULL, state INTEGER NOT NULL, review TEXT, chat TEXT NOT NULL DEFAULT '' )");
         db.execSQL("CREATE TABLE batch_captures(batch_id TEXT NOT NULL, capture_id INTEGER PRIMARY KEY)");
         db.execSQL("CREATE TABLE structured_drafts(id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, batch_id TEXT, provenance TEXT NOT NULL)");
     }
@@ -52,6 +53,16 @@ final class CaptureStore extends SQLiteOpenHelper {
         try(Cursor c=getReadableDatabase().rawQuery("SELECT pkg FROM capture_batches WHERE id=?",new String[]{id})){
             return c.moveToFirst()?c.getString(0):"";
         }
+    }
+    String batchChat(String id){
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT chat FROM capture_batches WHERE id=?",new String[]{id})){
+            return c.moveToFirst()?c.getString(0):"";
+        }
+    }
+    void saveBatchChat(String id,String name){
+        String value=name.trim();if(value.isEmpty()||value.length()>200)throw new IllegalArgumentException("Chat label");
+        ContentValues v=new ContentValues();v.put("chat",value);
+        if(getWritableDatabase().update("capture_batches",v,"id=? AND state=1",new String[]{id})!=1)throw new IllegalStateException("Review unavailable");
     }
     long saveBatchCapture(String batch,String pkg,JSONArray nodes) {
         SQLiteDatabase db=getWritableDatabase();db.beginTransaction();
@@ -109,6 +120,7 @@ final class CaptureStore extends SQLiteOpenHelper {
         try {
             if(batchState(id)==2){db.setTransactionSuccessful();return 0;}
             if(batchState(id)!=1)throw new IllegalStateException("Batch not stopped");
+            if(batchChat(id).isEmpty())throw new IllegalStateException("Chat not confirmed");
             JSONArray rows=review(id);
             java.util.List<String> bodies=new java.util.ArrayList<>();
             for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);if(row.optBoolean("include"))bodies.add(row.getString("body"));}

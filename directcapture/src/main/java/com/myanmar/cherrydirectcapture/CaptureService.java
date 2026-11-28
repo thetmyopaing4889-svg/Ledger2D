@@ -21,6 +21,12 @@ import android.view.accessibility.AccessibilityWindowInfo;
 import java.util.List;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+import android.widget.FrameLayout;
+import android.graphics.drawable.GradientDrawable;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import org.json.JSONArray;
@@ -48,6 +54,8 @@ public final class CaptureService extends AccessibilityService {
     private WindowManager manager;
     private LinearLayout overlay;
     private Button capture;
+    private ImageButton orb;
+    private TextView counter;
     private CaptureStore store;
     static String targetDiagnostic(Context c) {
         return c.getSharedPreferences("capture_health",MODE_PRIVATE).getString("target","no target event yet");
@@ -215,6 +223,7 @@ public final class CaptureService extends AccessibilityService {
         final boolean testing=selfTest;
         LinearLayout layout=new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
+        if(!testing){showOrb(layout);return;}
         capture=new Button(this); capture.setAllCaps(false);
         capture.setTextColor(Color.WHITE); capture.setBackgroundColor(Color.rgb(170,24,61));
         refresh();
@@ -252,14 +261,78 @@ public final class CaptureService extends AccessibilityService {
             else recordOverlay("overlay failed: "+e.getClass().getSimpleName());
         }
     }
+    private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
+    private GradientDrawable round(int color,int radius){
+        GradientDrawable bg=new GradientDrawable();bg.setColor(color);bg.setCornerRadius(dp(radius));return bg;
+    }
+    private void showOrb(LinearLayout layout){
+        layout.setGravity(Gravity.CENTER_HORIZONTAL);
+        layout.setPadding(dp(3),dp(3),dp(3),dp(3));
+        FrameLayout frame=new FrameLayout(this);
+        orb=new ImageButton(this);
+        orb.setImageResource(R.drawable.btn_cherry_orb);
+        orb.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        orb.setPadding(0,0,0,0);
+        orb.setBackground(round(Color.WHITE,32));orb.setClipToOutline(true);
+        orb.setElevation(dp(3));orb.setContentDescription("စာဖမ်းမည်");
+        FrameLayout.LayoutParams imageParams=new FrameLayout.LayoutParams(dp(54),dp(54),Gravity.CENTER);
+        frame.addView(orb,imageParams);
+        counter=new TextView(this);counter.setTextColor(Color.WHITE);counter.setTextSize(11);
+        counter.setGravity(Gravity.CENTER);counter.setBackground(round(Color.rgb(135,15,49),14));
+        counter.setPadding(dp(4),0,dp(4),0);
+        FrameLayout.LayoutParams countParams=new FrameLayout.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,dp(20),Gravity.TOP|Gravity.END);
+        frame.addView(counter,countParams);
+        layout.addView(frame,new LinearLayout.LayoutParams(dp(66),dp(62)));
+        Button stop=new Button(this);stop.setAllCaps(false);stop.setText("Stop");stop.setTextSize(11);
+        stop.setMinWidth(0);stop.setMinimumWidth(0);stop.setMinHeight(0);stop.setMinimumHeight(0);
+        stop.setPadding(dp(4),0,dp(4),0);stop.setBackground(round(Color.rgb(125,17,45),14));stop.setTextColor(Color.WHITE);
+        layout.addView(stop,new LinearLayout.LayoutParams(dp(60),dp(32)));
+        stop.setOnClickListener(v->{
+            endSession();
+            try{startActivity(new Intent(this,BatchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}
+            catch(RuntimeException e){toast("Test App ကို ပြန်ဖွင့်ပါ");}
+        });
+        WindowManager.LayoutParams params=new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT);
+        params.gravity=Gravity.TOP|Gravity.START;
+        android.util.DisplayMetrics metrics=getResources().getDisplayMetrics();
+        params.x=Math.max(0,metrics.widthPixels-dp(80));params.y=Math.max(0,metrics.heightPixels/2-dp(50));
+        orb.setOnClickListener(v->captureOnce());
+        orb.setOnTouchListener(new View.OnTouchListener(){
+            float downX,downY;int startX,startY;boolean dragged;
+            final int slop=ViewConfiguration.get(CaptureService.this).getScaledTouchSlop();
+            @Override public boolean onTouch(View v,MotionEvent event){
+                switch(event.getActionMasked()){
+                    case MotionEvent.ACTION_DOWN:
+                        downX=event.getRawX();downY=event.getRawY();startX=params.x;startY=params.y;dragged=false;return true;
+                    case MotionEvent.ACTION_MOVE:
+                        float dx=event.getRawX()-downX,dy=event.getRawY()-downY;
+                        if(Math.abs(dx)>slop||Math.abs(dy)>slop)dragged=true;
+                        if(dragged && overlay==layout){
+                            android.util.DisplayMetrics m=getResources().getDisplayMetrics();
+                            params.x=OrbPosition.clamp(startX+Math.round(dx),m.widthPixels,layout.getWidth());
+                            params.y=OrbPosition.clamp(startY+Math.round(dy),m.heightPixels,layout.getHeight()+dp(32));
+                            try{manager.updateViewLayout(layout,params);}catch(RuntimeException ignored){}
+                        }return true;
+                    case MotionEvent.ACTION_UP:
+                        if(!dragged)v.performClick();return true;
+                    case MotionEvent.ACTION_CANCEL:return true;
+                    default:return true;
+                }
+            }
+        });
+        try{manager.addView(layout,params);overlay=layout;refresh();recordOverlay("session orb added");}
+        catch(RuntimeException e){orb=null;counter=null;recordOverlay("orb failed: "+e.getClass().getSimpleName());}
+    }
     private void refresh() {
         if(capture!=null) capture.setText("🍒 ဖမ်းမည် ("+sessionSaved()+")");
+        if(counter!=null) counter.setText(""+sessionSaved());
     }
     private void hide() {
         if(overlay!=null && manager!=null) {
             try { manager.removeViewImmediate(overlay); } catch(RuntimeException ignored) {}
         }
-        overlay=null; capture=null;
+        overlay=null; capture=null; orb=null; counter=null;
     }
     private void captureOnce() {
         String source="overlay";
@@ -299,6 +372,7 @@ public final class CaptureService extends AccessibilityService {
             long savedId=store.saveBatchCapture(sessionId,pkg,nodes);
             recordCapture(source+": saved "+pkg+"; id="+savedId+"; nodes="+nodes.length());
             refresh();
+            if(orb!=null){orb.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);orb.setAlpha(.65f);orb.animate().alpha(1f).setDuration(220).start();}
             toast("သိမ်းပြီး — ယခုအကြိမ် "+sessionSaved()+" ကြိမ်");
         } catch(Exception e) { recordCapture(source+": failed "+e.getClass().getSimpleName()); toast("မသိမ်းနိုင်ပါ — ထပ်စမ်းပါ"); }
         finally { root.recycle(); }
