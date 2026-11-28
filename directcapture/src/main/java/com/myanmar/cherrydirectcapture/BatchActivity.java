@@ -20,7 +20,7 @@ public final class BatchActivity extends Activity {
     @Override public void onCreate(Bundle b){
         super.onCreate(b);store=new CaptureStore(this);
         if(b!=null){page=b.getInt("page");active=b.getInt("active");}
-        scroll=new ScrollView(this);panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(24,32,24,32);scroll.addView(panel);setContentView(scroll);
+        scroll=new ScrollView(this);panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(24,32,24,32);scroll.addView(panel);setContentView(scroll);
     }
     @Override protected void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("page",page);b.putInt("active",active);}
     @Override protected void onResume(){super.onResume();CaptureService.activityVisible(true);batch=store.latestBatch();
