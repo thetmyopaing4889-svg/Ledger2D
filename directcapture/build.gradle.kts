@@ -6,8 +6,8 @@ android {
         applicationId = "com.myanmar.cherrydirectcapture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "11.0-workflow-inbox"
+        versionCode = 12
+        versionName = "12.0-structured-session"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

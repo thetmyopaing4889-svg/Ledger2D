@@ -33,6 +33,7 @@ public final class CaptureService extends AccessibilityService {
     private final Handler handler=new Handler(Looper.getMainLooper());
     private boolean selfTest;
     private int sessionBaseline;
+    private String sessionId="", targetPackage="";
     private boolean screenReceiverRegistered;
     private final BroadcastReceiver screenReceiver=new BroadcastReceiver() {
         @Override public void onReceive(Context c,Intent intent) {
@@ -63,9 +64,13 @@ public final class CaptureService extends AccessibilityService {
 
     static boolean connected() { return instance!=null; }
     static boolean armed() { return connected() && session; }
-    static boolean beginSession() {
+    static boolean beginSession() { return beginSession(""); }
+    static boolean beginSession(String pkg) {
         if(instance==null || instance.locked() || !instance.screenReceiverRegistered) return false;
         endSession();
+        if(!pkg.isEmpty() && !CapturePolicy.target(pkg)) return false;
+        instance.targetPackage=pkg;
+        instance.sessionId=instance.store.beginBatch(pkg);
         session=true;
         instance.sessionBaseline=instance.store.count();
         instance.record("session started; open authorized test chat");
@@ -74,7 +79,7 @@ public final class CaptureService extends AccessibilityService {
         instance.recordOverlay("creating session overlay");
         instance.show();
         if(instance.overlay==null) {
-            session=false;
+            endSession();
             instance.record("session could not start: overlay unavailable");
             return false;
         }
@@ -86,8 +91,13 @@ public final class CaptureService extends AccessibilityService {
             instance.handler.removeCallbacksAndMessages(null);
             if(instance.selfTest) instance.finishSelfTest("stopped");
             instance.hide();
+            instance.closeBatch();
             instance.record("session stopped");
         }
+    }
+    private void closeBatch() {
+        if(store!=null && !sessionId.isEmpty()) store.stopBatch(sessionId);
+        sessionId=""; targetPackage="";
     }
     static String diagnostic(Context c) {
         return c.getSharedPreferences("capture_health",MODE_PRIVATE)
@@ -217,7 +227,7 @@ public final class CaptureService extends AccessibilityService {
                 }
             } else if(!selfTest) captureOnce();
         });
-        Button stop=new Button(this); stop.setAllCaps(false); stop.setText("ရပ်မည်");
+        Button stop=new Button(this); stop.setAllCaps(false); stop.setText("Stop");
         stop.setOnClickListener(v->endSession());
         layout.addView(capture); layout.addView(stop);
         WindowManager.LayoutParams params=new WindowManager.LayoutParams(
@@ -267,12 +277,13 @@ public final class CaptureService extends AccessibilityService {
         try {
             String pkg=root.getPackageName()==null?"":root.getPackageName().toString();
             recordTarget("explicit tap: "+category(pkg));
-            if(!CapturePolicy.allowExplicit(armed(),locked(),ownActivityVisible,selfTest,pkg)) {
+            if(!CapturePolicy.allowExplicit(armed(),locked(),ownActivityVisible,selfTest,pkg) ||
+                (!targetPackage.isEmpty() && !targetPackage.equals(pkg))) {
                 recordCapture(source+": active root not target: "+category(pkg));
                 toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
             }
             JSONArray nodes=new JSONArray();
-            scan(root,pkg,nodes,new int[]{0,0},0);
+            scan(root,pkg,nodes,new int[]{0,0},0,"0");
             if(nodes.length()==0) { recordCapture(source+": no visible text nodes"); toast("မြင်ရသောစာသား မရရှိပါ"); return; }
             if(!CapturePolicy.allowExplicit(armed(),locked(),ownActivityVisible,selfTest,pkg)) {
                 recordCapture(source+": cancelled"); return;
@@ -285,7 +296,7 @@ public final class CaptureService extends AccessibilityService {
                     recordCapture(source+": active window changed before save"); return;
                 }
             } finally {check.recycle();}
-            long savedId=store.save(pkg,nodes);
+            long savedId=store.saveBatchCapture(sessionId,pkg,nodes);
             recordCapture(source+": saved "+pkg+"; id="+savedId+"; nodes="+nodes.length());
             refresh();
             toast("သိမ်းပြီး — ယခုအကြိမ် "+sessionSaved()+" ကြိမ်");
@@ -294,7 +305,7 @@ public final class CaptureService extends AccessibilityService {
     }
     // No content is read on an accessibility event. Only this explicit click traverses the tree.
     // Preserve raw parent/child candidates and duplicates for feasibility review, not message counts.
-    private static void scan(AccessibilityNodeInfo node,String pkg,JSONArray out,int[] budget,int depth) throws Exception {
+    private static void scan(AccessibilityNodeInfo node,String pkg,JSONArray out,int[] budget,int depth,String path) throws Exception {
         if(depth>100 || ++budget[0]>5000) throw new IllegalStateException("Tree limit");
         if(!node.isVisibleToUser() || node.isPassword() || node.isEditable()) return;
         if(node.getPackageName()==null || !pkg.contentEquals(node.getPackageName())) return;
@@ -310,13 +321,14 @@ public final class CaptureService extends AccessibilityService {
                 n.put("view_id",node.getViewIdResourceName());
                 n.put("class",String.valueOf(node.getClassName()));
                 n.put("depth",depth);
+                n.put("path",path);
                 n.put("bounds",new JSONArray().put(r.left).put(r.top).put(r.right).put(r.bottom));
                 out.put(n);
             }
         }
         for(int i=0;i<node.getChildCount();i++) {
             AccessibilityNodeInfo child=node.getChild(i);
-            if(child!=null) try { scan(child,pkg,out,budget,depth+1); } finally { child.recycle(); }
+            if(child!=null) try { scan(child,pkg,out,budget,depth+1,path+"/"+i); } finally { child.recycle(); }
         }
     }
     private void toast(String s) { Toast.makeText(this,s,Toast.LENGTH_SHORT).show(); }
@@ -325,7 +337,7 @@ public final class CaptureService extends AccessibilityService {
         record("feedback interrupted; session "+(session?"armed":"stopped"));
     }
     private void disconnect() {
-        session=false; if(selfTest) finishSelfTest("cancelled: service disconnected");
+        session=false; closeBatch(); if(selfTest) finishSelfTest("cancelled: service disconnected");
         handler.removeCallbacksAndMessages(null); hide();
         if(screenReceiverRegistered) {
             unregisterReceiver(screenReceiver);

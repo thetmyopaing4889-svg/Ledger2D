@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries><package android:name="com.viber.voip"/><package android:name="com.facebook.orca"/></queries>
     <application android:label="Cherry Direct Capture Test" android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <activity android:name=".CaptureActivity" android:exported="true">
+        <activity android:name=".BatchActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
