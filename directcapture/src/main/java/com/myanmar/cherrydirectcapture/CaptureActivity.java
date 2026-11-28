@@ -17,6 +17,7 @@ public final class CaptureActivity extends Activity {
     private CaptureStore store;
     private LinearLayout panel;
     private int offset;
+    private boolean rawView;
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
         store=new CaptureStore(this);
@@ -35,7 +36,7 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 9",24);
+        label("🍒 Direct Capture Test 10",24);
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
@@ -65,6 +66,8 @@ public final class CaptureActivity extends Activity {
         button("သိမ်းထားသောစာအားလုံး ဖျက်မည်",v->new AlertDialog.Builder(this)
             .setMessage("စမ်းသပ်မှတ်တမ်းများ အားလုံး ဖျက်မည်လား?")
             .setNegativeButton("မဖျက်ပါ",null).setPositiveButton("ဖျက်မည်",(d,w)->{CaptureService.endSession();store.clear();offset=0;draw();}).show());
+        button(rawView?"သန့်စင်မှု စစ်ဆေးရန်":"မူရင်း Data ကြည့်ရန်",v->{rawView=!rawView;draw();});
+        if(!rawView) label("စာသားအပိုင်းများသာ ဖြစ်သည်။ စာတစ်စောင်ချင်း အတည်မပြုရသေးပါ။ မသေချာသော UI၊ အချိန်နှင့် description များကို သီးခြားပြထားသည်။",14);
         try {
             JSONArray page=store.page(offset);
             label("မှတ်တမ်း "+(page.length()==0?0:offset+1)+" – "+(offset+page.length()),16);
@@ -74,16 +77,48 @@ public final class CaptureActivity extends Activity {
                 JSONObject snap=page.getJSONObject(i);
                 JSONArray nodes=snap.getJSONArray("nodes");
                 label("#"+snap.getLong("id")+" • "+snap.getString("package")+" • "+nodes.length()+" UI nodes",18);
-                StringBuilder out=new StringBuilder();
-                for(int j=0;j<nodes.length();j++) {
-                    JSONObject n=nodes.getJSONObject(j);
-                    out.append(j+1).append(". ").append(n.optString("text"));
-                    if(!n.optString("description").isEmpty()) out.append("\n[description] ").append(n.optString("description"));
-                    out.append("\n").append(n.optString("bounds")).append("\n\n");
+                if(rawView) {
+                    StringBuilder out=new StringBuilder();
+                    for(int j=0;j<nodes.length();j++) {
+                        JSONObject n=nodes.getJSONObject(j);
+                        out.append(j+1).append(". ").append(n.optString("text"));
+                        if(!n.optString("description").isEmpty()) out.append("\n[description] ").append(n.optString("description"));
+                        out.append("\n[view_id] ").append(n.optString("view_id"));
+                        out.append("\n").append(n.optString("bounds")).append("\n\n");
+                    }
+                    label(out.toString(),14);
+                } else {
+                    drawReview(nodes);
                 }
-                label(out.toString(),14);
             }
         } catch(Exception e) { label("မှတ်တမ်း ဖတ်၍မရပါ",16); }
+    }
+    private void drawReview(JSONArray nodes) throws org.json.JSONException {
+        java.util.List<CaptureReview.Entry> entries=CaptureReview.entries(nodes);
+        int candidates=0,review=0;
+        for(CaptureReview.Entry e:entries) {
+            if(e.kind==CaptureTextReview.Kind.TEXT) candidates++; else review++;
+        }
+        label("စာသားအပိုင်း "+candidates+" · စစ်ဆေးရန် "+review,14);
+        for(CaptureReview.Entry e:entries) {
+            if(e.kind!=CaptureTextReview.Kind.TEXT) continue;
+            label("#"+e.index+"  "+e.text,16);
+            if(!e.description.isEmpty() && !e.description.equals(e.text))
+                label("description (စစ်ဆေးရန်): "+e.description,12);
+        }
+        if(review>0) label("သီးခြား စစ်ဆေးရန်",18);
+        for(CaptureReview.Entry e:entries) {
+            if(e.kind==CaptureTextReview.Kind.TEXT) continue;
+            String type;
+            switch(e.kind) {
+                case POSSIBLE_UI: type="UI ဖြစ်နိုင်";break;
+                case POSSIBLE_TIME: type="အချိန် ဖြစ်နိုင်";break;
+                case DESCRIPTION_ONLY: type="description";break;
+                default: type="စာသားမရှိ";
+            }
+            label("#"+e.index+" · "+type+"\n"+e.text+
+                (e.description.isEmpty()?"":"\n[description] "+e.description),14);
+        }
     }
     @Override protected void onDestroy() { store.close(); super.onDestroy(); }
 }
