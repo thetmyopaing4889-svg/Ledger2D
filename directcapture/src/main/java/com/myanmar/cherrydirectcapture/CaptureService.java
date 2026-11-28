@@ -1,7 +1,6 @@
 package com.myanmar.cherrydirectcapture;
 
 import android.accessibilityservice.AccessibilityService;
-import android.accessibilityservice.AccessibilityButtonController;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.BroadcastReceiver;
@@ -49,20 +48,6 @@ public final class CaptureService extends AccessibilityService {
     private LinearLayout overlay;
     private Button capture;
     private CaptureStore store;
-    private AccessibilityButtonController buttonController;
-    private final AccessibilityButtonController.AccessibilityButtonCallback shortcut =
-        new AccessibilityButtonController.AccessibilityButtonCallback() {
-            @Override public void onClicked(AccessibilityButtonController controller) {
-                requestShortcut();
-            }
-            @Override public void onAvailabilityChanged(AccessibilityButtonController controller, boolean available) {
-                record("shortcut availability: "+available);
-            }
-        };
-    static String shortcutStatus() {
-        if(instance==null || instance.buttonController==null) return "not connected";
-        return instance.buttonController.isAccessibilityButtonAvailable()?"available":"unavailable";
-    }
     static String targetDiagnostic(Context c) {
         return c.getSharedPreferences("capture_health",MODE_PRIVATE).getString("target","no target event yet");
     }
@@ -125,9 +110,6 @@ public final class CaptureService extends AccessibilityService {
             else registerReceiver(screenReceiver,filter);
             screenReceiverRegistered=true;
         }
-        if(buttonController!=null) buttonController.unregisterAccessibilityButtonCallback(shortcut);
-        buttonController=getAccessibilityButtonController();
-        buttonController.registerAccessibilityButtonCallback(shortcut);
         record("service connected; start session");
     }
     private boolean locked() {
@@ -213,9 +195,6 @@ public final class CaptureService extends AccessibilityService {
         // No app detection, tree access, or text collection on events.
         if((armed() || selfTest) && locked()) endSession();
     }
-    private void requestShortcut() {
-        captureOnce(true);
-    }
     private void show() {
         if(overlay!=null) return;
         if(manager==null) {
@@ -236,7 +215,7 @@ public final class CaptureService extends AccessibilityService {
                     finishSelfTest("PASS: self-test click received; no chat read");
                     toast("Overlay ခလုတ် အလုပ်လုပ်သည်");
                 }
-            } else if(!selfTest) captureOnce(false);
+            } else if(!selfTest) captureOnce();
         });
         Button stop=new Button(this); stop.setAllCaps(false); stop.setText("ရပ်မည်");
         stop.setOnClickListener(v->endSession());
@@ -272,8 +251,8 @@ public final class CaptureService extends AccessibilityService {
         }
         overlay=null; capture=null;
     }
-    private void captureOnce(boolean viaShortcut) {
-        String source=viaShortcut?"shortcut":"overlay";
+    private void captureOnce() {
+        String source="overlay";
         if(!armed() || locked() || ownActivityVisible || selfTest) {
             recordCapture(source+": refused; session stopped, locked or test app visible");
             toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
@@ -352,7 +331,6 @@ public final class CaptureService extends AccessibilityService {
             unregisterReceiver(screenReceiver);
             screenReceiverRegistered=false;
         }
-        if(buttonController!=null) {buttonController.unregisterAccessibilityButtonCallback(shortcut);buttonController=null;}
         if(instance==this) instance=null;
         record("service disconnected; session stopped");
     }
