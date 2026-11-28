@@ -15,7 +15,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <service android:name=".CaptureService" android:exported="true"
+        <service android:name=".CaptureService" android:exported="true" android:stopWithTask="false"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:label="Cherry Direct Capture Test">
             <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>

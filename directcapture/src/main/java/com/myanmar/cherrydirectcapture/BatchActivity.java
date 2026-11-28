@@ -17,6 +17,13 @@ public final class BatchActivity extends Activity {
     private boolean excluded=false, debug=false;
     private String batch="";
     private String exportBatch="";
+    private final android.os.Handler permissionHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private TextView permissionLabel;
+    private Button permissionButton;
+    private AlertDialog connectionDialog;
+    private long connectionDeadline;
+    private boolean foreground;
+    private final Runnable permissionTick=this::refreshPermissionUi;
     private static final int EXPORT_REQUEST=701;
     static final String REVIEW_ACTION="com.myanmar.cherrydirectcapture.REVIEW_STOPPED";
     private static final int CHERRY=Color.rgb(181,27,70);
@@ -31,7 +38,7 @@ public final class BatchActivity extends Activity {
         footer.setVisibility(View.GONE);setContentView(root);
     }
     @Override protected void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("page",page);b.putInt("active",active);b.putString("exportBatch",exportBatch);}
-    @Override protected void onResume(){super.onResume();CaptureService.activityVisible(true);batch=store.latestBatch();
+    @Override protected void onResume(){super.onResume();foreground=true;CaptureService.activityVisible(true);batch=store.latestBatch();
         if(!CaptureService.armed()&&store.batchState(batch)==0)store.stopBatch(batch);
         if(REVIEW_ACTION.equals(getIntent().getAction())){
             String requested=getIntent().getStringExtra("review_batch");
@@ -43,19 +50,27 @@ public final class BatchActivity extends Activity {
         if(page==0&&store.batchState(batch)==1&&!CaptureService.armed())page=1;
         draw();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);page=0;}
-    @Override protected void onPause(){CaptureService.activityVisible(false);super.onPause();}
-    @Override protected void onDestroy(){store.close();super.onDestroy();}
-    private void label(String s,int size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setPadding(0,12,0,12);t.setTextIsSelectable(true);panel.addView(t);}
-    private Button make(String s,View.OnClickListener f){Button b=new Button(this);b.setAllCaps(false);b.setText(s);b.setOnClickListener(f);return b;}
+    @Override protected void onPause(){foreground=false;permissionHandler.removeCallbacksAndMessages(null);if(connectionDialog!=null){connectionDialog.dismiss();connectionDialog=null;}CaptureService.activityVisible(false);super.onPause();}
+    @Override protected void onDestroy(){permissionHandler.removeCallbacksAndMessages(null);store.close();super.onDestroy();}
+    private boolean darkReview(){return page==1&&!CaptureService.armed()&&store.batchState(batch)==1;}
+    private android.content.Context uiContext(){return darkReview()?new android.view.ContextThemeWrapper(this,android.R.style.Theme_Material):this;}
+    private AlertDialog.Builder dialog(){return new AlertDialog.Builder(uiContext());}
+    private void label(String s,int size){TextView t=new TextView(uiContext());t.setText(s);t.setTextSize(size);if(darkReview())t.setTextColor(0xffeeeeF4);t.setPadding(0,12,0,12);t.setTextIsSelectable(true);panel.addView(t);}
+    private Button make(String s,View.OnClickListener f){Button b=new Button(uiContext());b.setAllCaps(false);b.setText(s);b.setOnClickListener(f);if(darkReview()){b.setTextColor(0xffefeff5);b.setBackground(rounded(0xff30303a,12));}return b;}
     private void button(String s,View.OnClickListener f){panel.addView(make(s,f));}
-    private void error(Exception e){new AlertDialog.Builder(this).setMessage("မလုပ်နိုင်ပါ။ စာသားနှင့် အခြေအနေ ပြန်စစ်ပါ။").setPositiveButton("OK",null).show();}
+    private void error(Exception e){dialog().setMessage("မလုပ်နိုင်ပါ။ စာသားနှင့် အခြေအနေ ပြန်စစ်ပါ။").setPositiveButton("OK",null).show();}
     private void draw(){
-        panel.removeAllViews();footer.removeAllViews();footer.setVisibility(View.GONE);panel.setBackgroundColor(Color.WHITE);
-        if(page!=1)label("🍒 Direct Capture Test 16",24);
+        permissionHandler.removeCallbacks(permissionTick);permissionLabel=null;permissionButton=null;
+        panel.removeAllViews();footer.removeAllViews();footer.setVisibility(View.GONE);panel.setBackgroundColor(Color.WHITE);root.setBackgroundColor(Color.WHITE);footer.setBackgroundColor(Color.WHITE);
+        if(page!=1)label("🍒 Direct Capture Test 17",24);
         if(page==2){draft();return;}
         if(page==1&&!CaptureService.armed()&&store.batchState(batch)==1){review();return;}
         label("စမ်းသပ် Chat များသာ • စာရင်းအစစ် မသိမ်းပါ",16);
-        if(!CaptureService.connected())button("Accessibility Setting",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        permissionLabel=new TextView(this);permissionLabel.setTextSize(14);
+        permissionButton=make("Accessibility Setting",v->permissionAction());
+        panel.addView(permissionLabel);panel.addView(permissionButton);
+        connectionDeadline=android.os.SystemClock.uptimeMillis()+8000;
+        refreshPermissionUi();
         if(CaptureService.armed()){
             label("ဖမ်းယူမှု "+CaptureService.sessionSaved()+" ကြိမ်",16);
             button("Stop",v->{CaptureService.endSession();page=1;draw();});
@@ -66,7 +81,9 @@ public final class BatchActivity extends Activity {
         button("Test Input Box",v->{page=2;draw();});
         button(debug?"စမ်းသပ်မှတ်တမ်း ပိတ်မည်":"စမ်းသပ်မှတ်တမ်း",v->{debug=!debug;draw();});
         if(debug){
+            label("Permission: "+CapturePermission.status(this).name(),14);
             label("Service: "+CaptureService.diagnostic(this),14);
+            label("Lifecycle: "+CaptureService.lifecycleDiagnostic(this),14);
             label("Capture: "+CaptureService.captureDiagnostic(this),14);
             label("Overlay: "+CaptureService.overlayDiagnostic(this),14);
             label("Return: "+getSharedPreferences("capture_health",MODE_PRIVATE).getString("return","not tested"),14);
@@ -74,30 +91,102 @@ public final class BatchActivity extends Activity {
             if(!CaptureService.armed()&&!batch.isEmpty())button("စမ်းသပ် Evidence ဖိုင် ထုတ်မည်",v->requestExport());
             button("Build 11 မှတ်တမ်းများ",v->{try{label(store.page(0).toString(2),12);label("Legacy draft: "+store.draft(),14);}catch(Exception e){error(e);}});
             button("Overlay သီးသန့်စမ်းမည်",v->{CaptureService.testOverlay();draw();});
-            button("စမ်းသပ် Data အားလုံး ဖျက်မည်",v->new AlertDialog.Builder(this).setMessage("မှတ်တမ်းအားလုံး ဖျက်မလား?").setNegativeButton("မဖျက်ပါ",null).setPositiveButton("ဖျက်မည်",(d,w)->{CaptureService.endSession();store.clear();batch="";active=0;draw();}).show());
+            button("စမ်းသပ် Data အားလုံး ဖျက်မည်",v->dialog().setMessage("မှတ်တမ်းအားလုံး ဖျက်မလား?").setNegativeButton("မဖျက်ပါ",null).setPositiveButton("ဖျက်မည်",(d,w)->{CaptureService.endSession();store.clear();batch="";active=0;draw();}).show());
         }
     }
     private void chooseApp(){
         if(store.batchState(batch)==1){page=1;draw();return;}
         java.util.List<CaptureApps.App> installed=new java.util.ArrayList<>();
         for(CaptureApps.App app:CaptureApps.ALL)if(getPackageManager().getLaunchIntentForPackage(app.pkg)!=null)installed.add(app);
-        if(installed.isEmpty()){new AlertDialog.Builder(this).setMessage("စမ်းသပ်နိုင်သော Messaging App မတွေ့ပါ။").setPositiveButton("OK",null).show();return;}
+        if(installed.isEmpty()){dialog().setMessage("စမ်းသပ်နိုင်သော Messaging App မတွေ့ပါ။").setPositiveButton("OK",null).show();return;}
         java.util.List<CaptureApps.App> primary=new java.util.ArrayList<>(),more=new java.util.ArrayList<>();
         for(CaptureApps.App app:installed){if(app.pkg.equals("com.viber.voip")||app.pkg.equals("com.facebook.orca"))primary.add(app);else more.add(app);}
         java.util.List<String> names=new java.util.ArrayList<>();
         for(CaptureApps.App app:primary)names.add(app.name+(app.observed?"":" (စမ်းသပ်)"));
         if(!more.isEmpty())names.add("More");
-        new AlertDialog.Builder(this).setTitle("Import").setItems(names.toArray(new String[0]),(di,i)->{
+        dialog().setTitle("Import").setItems(names.toArray(new String[0]),(di,i)->{
             if(i<primary.size())startCapture(primary.get(i).pkg);
             else{String[] labels=new String[more.size()];for(int k=0;k<more.size();k++)labels[k]=more.get(k).name+" (စမ်းသပ်)";
-                new AlertDialog.Builder(this).setTitle("More").setItems(labels,(dd,k)->startCapture(more.get(k).pkg)).setNegativeButton("မလုပ်တော့ပါ",null).show();}
+                dialog().setTitle("More").setItems(labels,(dd,k)->startCapture(more.get(k).pkg)).setNegativeButton("မလုပ်တော့ပါ",null).show();}
         }).setNegativeButton("မလုပ်တော့ပါ",null).show();
     }
+    private void refreshPermissionUi(){
+        permissionHandler.removeCallbacks(permissionTick);
+        if(!foreground||permissionLabel==null||permissionButton==null)return;
+        PermissionState.Status status=CapturePermission.status(this);
+        permissionLabel.setVisibility(status==PermissionState.Status.READY?View.GONE:View.VISIBLE);
+        permissionButton.setVisibility(status==PermissionState.Status.READY?View.GONE:View.VISIBLE);
+        if(status==PermissionState.Status.DISABLED){
+            permissionLabel.setText("Accessibility Permission မဖွင့်ရသေးပါ");permissionButton.setText("Permission ဖွင့်ရန်");
+        }else if(status==PermissionState.Status.CONNECTING){
+            permissionLabel.setText("Permission ဖွင့်ပြီး • Service ချိတ်ဆက်မှု စစ်ဆေးနေသည်");permissionButton.setText("ပြန်စစ်ရန်");
+        }else if(status==PermissionState.Status.UNKNOWN){
+            permissionLabel.setText("Permission အခြေအနေ မစစ်နိုင်သေးပါ");permissionButton.setText("ပြန်စစ်ရန်");
+        }
+        if(status==PermissionState.Status.CONNECTING&&android.os.SystemClock.uptimeMillis()<connectionDeadline)
+            permissionHandler.postDelayed(permissionTick,400);
+    }
+    private void permissionAction(){
+        PermissionState.Status status=CapturePermission.status(this);
+        if(status==PermissionState.Status.DISABLED)openAccessibilitySettings();
+        else if(status!=PermissionState.Status.READY)showConnection(null);
+        else refreshPermissionUi();
+    }
+    private void openAccessibilitySettings(){
+        try{startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}catch(RuntimeException e){error(e);}
+    }
+    private boolean requireReady(String pkg){
+        PermissionState.Status status=CapturePermission.status(this);
+        if(status==PermissionState.Status.READY)return true;
+        if(status==PermissionState.Status.DISABLED){
+            dialog().setTitle("Accessibility Permission")
+                .setMessage("စာဖမ်းယူရန် Permission ကို ပထမဆုံး ဖွင့်ပေးပါ။ ဖွင့်ပြီး App ထဲ ပြန်လာကာ Import နှိပ်နိုင်ပါသည်။")
+                .setNegativeButton("မလုပ်တော့ပါ",null).setPositiveButton("ဖွင့်ရန်",(di,w)->openAccessibilitySettings()).show();
+        }else showConnection(pkg);
+        return false;
+    }
+    private void showConnection(String pkg){
+        if(connectionDialog!=null&&connectionDialog.isShowing())return;
+        final long deadline=android.os.SystemClock.uptimeMillis()+8000;
+        AlertDialog waiting=dialog().setTitle("Service ချိတ်ဆက်မှု")
+            .setMessage("Permission အခြေအနေ စစ်ဆေးနေသည်။")
+            .setNegativeButton("ပိတ်မည်",null)
+            .setPositiveButton("ပြန်စစ်ရန်",null)
+            .setNeutralButton("Settings ကြည့်ရန်",null).create();
+        connectionDialog=waiting;waiting.show();
+        final Runnable[] check=new Runnable[1];
+        check[0]=()->{
+            if(!foreground||!waiting.isShowing())return;
+            PermissionState.Status current=CapturePermission.status(this);
+            if(current==PermissionState.Status.READY){
+                waiting.setMessage("Service ချိတ်ဆက်ပြီးပါပြီ။ Permission ထပ်ဖွင့်ရန် မလိုပါ။");
+                waiting.getButton(AlertDialog.BUTTON_POSITIVE).setText(pkg==null?"ပြီးပါပြီ":"ဆက်လုပ်မည်");
+            }else if(current==PermissionState.Status.DISABLED){
+                waiting.setMessage("ဖုန်း၏ Accessibility Permission ပိတ်ထားပါသည်။ Settings မှ ပြန်ဖွင့်နိုင်ပါသည်။");
+                waiting.getButton(AlertDialog.BUTTON_POSITIVE).setText("ပြန်စစ်ရန်");
+            }else{
+                waiting.setMessage(current==PermissionState.Status.UNKNOWN?"Permission အခြေအနေ မစစ်နိုင်သေးပါ။":
+                    "Permission ဖွင့်ထားပြီး ဖြစ်ပါသည်။ Android Service ပြန်ချိတ်ဆက်ရန် လိုအပ်နေပါသည်။");
+                waiting.getButton(AlertDialog.BUTTON_POSITIVE).setText("ပြန်စစ်ရန်");
+            }
+            if(current==PermissionState.Status.CONNECTING&&android.os.SystemClock.uptimeMillis()<deadline)
+                permissionHandler.postDelayed(check[0],400);
+        };
+        waiting.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            if(CapturePermission.status(this)==PermissionState.Status.READY){
+                waiting.dismiss();refreshPermissionUi();if(pkg!=null)startCapture(pkg);
+            }else{permissionHandler.removeCallbacks(check[0]);check[0].run();}
+        });
+        waiting.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{waiting.dismiss();openAccessibilitySettings();});
+        waiting.setOnDismissListener(di->{permissionHandler.removeCallbacks(check[0]);connectionDialog=null;});
+        check[0].run();
+    }
     private void startCapture(String pkg){
-        if(!CaptureService.connected()){startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));return;}
-        new AlertDialog.Builder(this).setTitle("စာဖမ်းယူရန်").setMessage("ရည်ရွယ်ထားသော စမ်းသပ် Chat တစ်ခုကိုသာ ဖွင့်ပါ။ 🍒 နှိပ်မှ စာဖမ်းမည်။ Chat မပြောင်းပါနှင့်။")
+        if(!requireReady(pkg))return;
+        dialog().setTitle("စာဖမ်းယူရန်").setMessage("ရည်ရွယ်ထားသော စမ်းသပ် Chat တစ်ခုကိုသာ ဖွင့်ပါ။ 🍒 နှိပ်မှ စာဖမ်းမည်။ Chat မပြောင်းပါနှင့်။")
           .setNegativeButton("မစတင်ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{
             try{
+                if(!requireReady(pkg))return;
                 Intent launch=getPackageManager().getLaunchIntentForPackage(pkg);
                 if(launch==null)throw new IllegalStateException("App unavailable");
                 if(!CaptureService.beginSession(pkg))throw new IllegalStateException("Overlay unavailable");
@@ -125,14 +214,15 @@ public final class BatchActivity extends Activity {
                 if(r.optBoolean("include"))count++;else hidden++;
                 if(r.optBoolean("unlinked_capture")||"UNRECOGNIZED_NODE".equals(r.optString("kind")))uncertain++;
             }
-            panel.setBackgroundColor(style==null?0xfff2f3f7:style.background);
+            int canvas=style==null?0xff14141b:style.darkBackground();
+            root.setBackgroundColor(canvas);panel.setBackgroundColor(canvas);footer.setBackgroundColor(0xff191920);
             LinearLayout header=new LinearLayout(this);header.setOrientation(LinearLayout.VERTICAL);header.setPadding(dp(14),dp(12),dp(14),dp(12));
             header.setBackground(rounded(CHERRY,16));
             header.addView(text("စာသားတိုက်စစ်ရန်",21,Color.WHITE));
             header.addView(text(CaptureApps.name(pkg)+"  •  "+count+" စောင်",14,Color.WHITE));
             panel.addView(header);
             LinearLayout source=new LinearLayout(this);source.setGravity(Gravity.CENTER_VERTICAL);source.setPadding(0,dp(12),0,dp(10));
-            TextView name=text(confirmed.isEmpty()?(suggested.isEmpty()?"Chat အမည် အတည်ပြုရန်":suggested):confirmed,19,0xff17171b);
+            TextView name=text(confirmed.isEmpty()?(suggested.isEmpty()?"Chat အမည် အတည်ပြုရန်":suggested):confirmed,19,0xfff2f2f7);
             source.addView(name,new LinearLayout.LayoutParams(0,-2,1f));
             Button menu=make("⋮",v->reviewMenu());menu.setContentDescription("Review options");source.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(44)));panel.addView(source);
             if(mixed)label("Chat အမည်မတူပါ။ Chat တစ်ခုချင်း ပြန်ဖမ်းပါ။",16);
@@ -147,14 +237,14 @@ public final class BatchActivity extends Activity {
                 final int index=i;
                 LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.TOP);
                 LinearLayout bubble=new LinearLayout(this);bubble.setOrientation(LinearLayout.VERTICAL);
-                bubble.setBackground(rounded(style==null?Color.WHITE:style.bubble,style==null?14:style.radius));
+                bubble.setBackground(rounded(style==null?0xff262630:style.darkBubble(),style==null?14:style.radius));
                 bubble.setPadding(dp(12),dp(10),dp(12),dp(8));
-                TextView body=text(r.getString("body"),17,0xff17171b);body.setTextIsSelectable(true);bubble.addView(body);
+                TextView body=text(r.getString("body"),17,0xfff1f1f6);body.setTextIsSelectable(true);bubble.addView(body);
                 String time=r.optString("sent_time","");
-                if(!time.isEmpty()){TextView stamp=text(time,12,0xff666666);stamp.setGravity(Gravity.END);bubble.addView(stamp);}
+                if(!time.isEmpty()){TextView stamp=text(time,12,0xffb9bac7);stamp.setGravity(Gravity.END);bubble.addView(stamp);}
                 if(!included||r.optBoolean("unlinked_capture")||r.optBoolean("repeat")||r.optBoolean("overlap_hint")||r.optBoolean("alias_hint")){
                     String note=!included?"ချန်ထားသောစာ":r.optBoolean("unlinked_capture")?"အစီအစဉ် တိုက်စစ်ရန်":"ထပ်နေမှု တိုက်စစ်ရန်";
-                    bubble.addView(text(note,12,0xff94601a));
+                    bubble.addView(text(note,12,0xfff3c775));
                 }
                 LinearLayout.LayoutParams bubbleParams=new LinearLayout.LayoutParams(0,-2,1f);
                 bubbleParams.setMargins(0,0,dp(6),dp(8));line.addView(bubble,bubbleParams);
@@ -169,7 +259,7 @@ public final class BatchActivity extends Activity {
             footer.setVisibility(View.VISIBLE);
             footer.addView(make("မူရင်း Chat ပြန်ကြည့်ရန်",v->reopenChat()));
             final int total=count,skipped=hidden;
-            Button confirm=make("အတည်ပြုမည်",v->new AlertDialog.Builder(this)
+            Button confirm=make("အတည်ပြုမည်",v->dialog()
                 .setTitle("မူရင်း Chat နှင့် တိုက်စစ်ပြီးပြီလား?")
                 .setMessage("စာ "+total+" စောင်နှင့် ချန်ထားသောစာ "+skipped+" ခုကို တိုက်စစ်ပါ။ Chat တစ်ခုတည်းမှ စာစောင်များ ဖြစ်ကြောင်း အတည်ပြုပါ။")
                 .setNegativeButton("ပြန်စစ်မည်",null).setPositiveButton("အတည်ပြုမည်",(di,w)->{
@@ -185,11 +275,11 @@ public final class BatchActivity extends Activity {
         }catch(Exception e){error(e);button("ပြန်သွားရန်",v->{page=0;draw();});}
     }
     private void reviewMenu(){
-        new AlertDialog.Builder(this).setTitle("စာသားတိုက်စစ်ရန်").setItems(new String[]{"Chat အမည် ပြင်ဆင်ရန်","စာစောင် ထပ်ထည့်ရန်","Evidence ဖိုင် ထုတ်မည်","Test Input Box ကြည့်ရန်","မပို့ဘဲ ပယ်ဖျက်မည်"},(di,i)->{
+        dialog().setTitle("စာသားတိုက်စစ်ရန်").setItems(new String[]{"Chat အမည် ပြင်ဆင်ရန်","စာစောင် ထပ်ထည့်ရန်","Evidence ဖိုင် ထုတ်မည်","Test Input Box ကြည့်ရန်","မပို့ဘဲ ပယ်ဖျက်မည်"},(di,i)->{
             try{
                 if(i==0)confirmChat();else if(i==1)editReview(store.review(batch),-1);else if(i==2)requestExport();
                 else if(i==3){page=2;draw();}
-                else new AlertDialog.Builder(this).setMessage("ယခု session ကို မပို့ဘဲ ပယ်ဖျက်မလား?").setNegativeButton("မဖျက်ပါ",null)
+                else dialog().setMessage("ယခု session ကို မပို့ဘဲ ပယ်ဖျက်မလား?").setNegativeButton("မဖျက်ပါ",null)
                     .setPositiveButton("ပယ်ဖျက်မည်",(dd,w)->{store.discardBatch(batch);page=0;draw();}).show();
             }catch(Exception e){error(e);}
         }).show();
@@ -197,7 +287,7 @@ public final class BatchActivity extends Activity {
     private void messageMenu(View anchor,JSONArray rows,int index){
         try{
             JSONObject r=rows.getJSONObject(index);boolean included=r.optBoolean("include");
-            PopupMenu menu=new PopupMenu(this,anchor);
+            PopupMenu menu=new PopupMenu(uiContext(),anchor);
             menu.getMenu().add(0,1,0,"ပြင်ဆင်ရန်");menu.getMenu().add(0,2,1,included?"ဖယ်ရှားရန်":"ပြန်ထည့်ရန်");
             if(included){
                 menu.getMenu().add(0,3,2,"စာစောင် ခွဲရန်");
@@ -209,7 +299,7 @@ public final class BatchActivity extends Activity {
                 switch(item.getItemId()){
                     case 1:editReview(rows,index);break;
                     case 2:
-                        if(included)new AlertDialog.Builder(this).setMessage("ဒီစာကို ဖယ်ရှားမလား?").setNegativeButton("မဖယ်ပါ",null)
+                        if(included)dialog().setMessage("ဒီစာကို ဖယ်ရှားမလား?").setNegativeButton("မဖယ်ပါ",null)
                             .setPositiveButton("ဖယ်မည်",(di,w)->mutate(rows,()->r.put("include",false))).show();
                         else mutate(rows,()->r.put("include",true));break;
                     case 3:splitReview(rows,index);break;
@@ -230,9 +320,9 @@ public final class BatchActivity extends Activity {
         mutate(rows,()->{JSONObject r=rows.getJSONObject(index),other=rows.getJSONObject(to);rows.put(index,other);rows.put(to,r);});
     }
     private void confirmChat(){
-        EditText name=new EditText(this);name.setSingleLine(true);name.setText(store.batchChat(batch));
+        EditText name=new EditText(uiContext());name.setSingleLine(true);name.setText(store.batchChat(batch));
         name.setHint("မူရင်း စမ်းသပ် Chat အမည်");
-        new AlertDialog.Builder(this).setTitle("Chat အမည် ကိုယ်တိုင် အတည်ပြုရန်").setMessage("ဖမ်းယူမှုအားလုံး Chat တစ်ခုတည်းမှ ဖြစ်ကြောင်း မူရင်းနှင့် တိုက်စစ်ပါ။ အမည်တူရုံဖြင့် Chat identity အတည်မပြုနိုင်ပါ။")
+        dialog().setTitle("Chat အမည် ကိုယ်တိုင် အတည်ပြုရန်").setMessage("ဖမ်းယူမှုအားလုံး Chat တစ်ခုတည်းမှ ဖြစ်ကြောင်း မူရင်းနှင့် တိုက်စစ်ပါ။ အမည်တူရုံဖြင့် Chat identity အတည်မပြုနိုင်ပါ။")
             .setView(name).setNegativeButton("မပြင်ပါ",null).setPositiveButton("အတည်ပြုမည်",(di,w)->{
                 try{store.saveBatchChat(batch,name.getText().toString());draw();}catch(Exception e){error(e);}
             }).show();
@@ -245,7 +335,7 @@ public final class BatchActivity extends Activity {
     }
     private void requestExport(){
         if(CaptureService.armed()||batch.isEmpty())return;
-        new AlertDialog.Builder(this).setTitle("စမ်းသပ် Evidence ထုတ်ရန်")
+        dialog().setTitle("စမ်းသပ် Evidence ထုတ်ရန်")
             .setMessage("စမ်းသပ်စာအတုများသာ ပါဝင်ကြောင်း စစ်ပါ။ ဖိုင်ထဲတွင် မြင်ရသောစာသား၊ Chat အမည်နှင့် UI အချက်အလက်များ ပါနိုင်သည်။ မည်သည့်နေရာသို့မှ အလိုအလျောက် မပို့ပါ။")
             .setNegativeButton("မထုတ်ပါ",null).setPositiveButton("ဖိုင်ထုတ်မည်",(di,w)->{
                 exportBatch=batch;
@@ -258,7 +348,7 @@ public final class BatchActivity extends Activity {
         super.onActivityResult(request,result,data);
         if(request!=EXPORT_REQUEST||result!=RESULT_OK||data==null||data.getData()==null||exportBatch.isEmpty())return;
         try{
-            JSONObject payload=new JSONObject();payload.put("schema",1);payload.put("build",16);
+            JSONObject payload=new JSONObject();payload.put("schema",1);payload.put("build",17);
             payload.put("package",store.batchPackage(exportBatch));payload.put("manual_chat_label",store.batchChat(exportBatch));
             payload.put("captures",store.batchRaw(exportBatch));
             if(store.batchState(exportBatch)==1)payload.put("review",store.review(exportBatch));
@@ -273,9 +363,9 @@ public final class BatchActivity extends Activity {
     private void mutate(JSONArray rows,Change change){try{change.run();store.saveReview(batch,rows);draw();}catch(Exception e){error(e);}}
     private void editReview(JSONArray rows,int i){
         try{
-            EditText input=new EditText(this);input.setMinLines(3);
+            EditText input=new EditText(uiContext());input.setMinLines(3);
             if(i>=0)input.setText(rows.getJSONObject(i).getString("body"));
-            new AlertDialog.Builder(this).setTitle("စာသား ပြင်ဆင်ရန်").setView(input).setNegativeButton("မပြင်ပါ",null).setPositiveButton("သိမ်းမည်",(d,w)->mutate(rows,()->{
+            dialog().setTitle("စာသား ပြင်ဆင်ရန်").setView(input).setNegativeButton("မပြင်ပါ",null).setPositiveButton("သိမ်းမည်",(d,w)->mutate(rows,()->{
                 String body=input.getText().toString();BatchLogic.requireBody(body);
                 if(i>=0){rows.getJSONObject(i).put("body",body);rows.getJSONObject(i).put("correction","manual-edit");}
                 else{JSONObject row=new JSONObject();row.put("source","manual-correction");row.put("original","");row.put("body",body);row.put("kind","MANUAL_CORRECTION");row.put("include",true);rows.put(row);}
@@ -286,10 +376,10 @@ public final class BatchActivity extends Activity {
         try{
             JSONObject row=rows.getJSONObject(index);
             LinearLayout fields=new LinearLayout(this);fields.setOrientation(LinearLayout.VERTICAL);
-            EditText first=new EditText(this),second=new EditText(this);
+            EditText first=new EditText(uiContext()),second=new EditText(uiContext());
             first.setMinLines(2);second.setMinLines(2);first.setText(row.getString("body"));
             first.setHint("ပထမစာစောင်");second.setHint("ဒုတိယစာစောင်");fields.addView(first);fields.addView(second);
-            new AlertDialog.Builder(this).setTitle("မူရင်း Chat အတိုင်း စာနှစ်စောင် ခွဲရန်").setView(fields).setNegativeButton("မခွဲပါ",null).setPositiveButton("ခွဲမည်",(di,w)->{
+            dialog().setTitle("မူရင်း Chat အတိုင်း စာနှစ်စောင် ခွဲရန်").setView(fields).setNegativeButton("မခွဲပါ",null).setPositiveButton("ခွဲမည်",(di,w)->{
                 try{
                     String one=first.getText().toString(),two=second.getText().toString();BatchLogic.requireBody(one);BatchLogic.requireBody(two);
                     JSONObject left=new JSONObject(row.toString()),right=new JSONObject(row.toString());
@@ -304,8 +394,8 @@ public final class BatchActivity extends Activity {
     private void mergeReview(JSONArray rows,int leftIndex,int rightIndex){
         try{
             JSONObject left=rows.getJSONObject(leftIndex),right=rows.getJSONObject(rightIndex);
-            EditText body=new EditText(this);body.setMinLines(4);body.setText(left.getString("body")+"\n"+right.getString("body"));
-            new AlertDialog.Builder(this).setTitle("မူရင်းစာတစ်စောင်ဖြစ်မှ ပေါင်းပါ").setView(body).setNegativeButton("မပေါင်းပါ",null).setPositiveButton("ပေါင်းမည်",(di,w)->{
+            EditText body=new EditText(uiContext());body.setMinLines(4);body.setText(left.getString("body")+"\n"+right.getString("body"));
+            dialog().setTitle("မူရင်းစာတစ်စောင်ဖြစ်မှ ပေါင်းပါ").setView(body).setNegativeButton("မပေါင်းပါ",null).setPositiveButton("ပေါင်းမည်",(di,w)->{
                 try{
                     String value=body.getText().toString();BatchLogic.requireBody(value);
                     JSONObject merged=new JSONObject(left.toString());merged.put("body",value);merged.put("correction","manual-merge");merged.put("merged_source",right.toString());
@@ -325,15 +415,15 @@ public final class BatchActivity extends Activity {
             tabs.addView(make("+",v->editEntry(-1,"")));hsv.addView(tabs);panel.addView(hsv);
             if(rows.length()>0){JSONObject row=rows.getJSONObject(active);long id=row.getLong("id");String body=row.getString("body");label(body,18);
                 button("ပြင်ရန်",v->editEntry(id,body));
-                button("ဖယ်ရန်",v->new AlertDialog.Builder(this).setMessage("ယခုစာကို ဖယ်ရှားမလား?").setNegativeButton("မဖယ်ပါ",null).setPositiveButton("ဖယ်မည်",(d,w)->{store.deleteDraft(id);draw();}).show());}
+                button("ဖယ်ရန်",v->dialog().setMessage("ယခုစာကို ဖယ်ရှားမလား?").setNegativeButton("မဖယ်ပါ",null).setPositiveButton("ဖယ်မည်",(d,w)->{store.deleteDraft(id);draw();}).show());}
             if(store.batchState(batch)==1)button("စာဖမ်းယူမှု ပြန်စစ်ရန်",v->{page=1;draw();});
             else if(!CaptureService.armed())button("Import",v->chooseApp());
             button("ပြန်သွားရန်",v->{page=0;draw();});
         }catch(Exception e){error(e);}
     }
     private void editEntry(long id,String body){
-        EditText input=new EditText(this);input.setMinLines(4);input.setText(body);
-        new AlertDialog.Builder(this).setTitle("စာရင်းထည့်ရန်").setView(input).setNegativeButton("မသိမ်းပါ",null).setPositiveButton("သိမ်းမည်",(d,w)->{
+        EditText input=new EditText(uiContext());input.setMinLines(4);input.setText(body);
+        dialog().setTitle("စာရင်းထည့်ရန်").setView(input).setNegativeButton("မသိမ်းပါ",null).setPositiveButton("သိမ်းမည်",(d,w)->{
             try{String value=input.getText().toString();if(id<0){store.addManual(value);active=store.entries().length()-1;}else store.editDraft(id,value);draw();}catch(Exception e){error(e);}
         }).show();
     }

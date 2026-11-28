@@ -70,11 +70,11 @@ public final class CaptureService extends AccessibilityService {
         getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("capture",reason).apply();
     }
 
-    static boolean connected() { return instance!=null; }
+    static boolean connected() { return instance!=null && instance.screenReceiverRegistered; }
     static boolean armed() { return connected() && session; }
     static boolean beginSession() { return beginSession(""); }
     static boolean beginSession(String pkg) {
-        if(instance==null || instance.locked() || !instance.screenReceiverRegistered) return false;
+        if(!connected() || instance.locked() || CapturePermission.status(instance)!=PermissionState.Status.READY) return false;
         endSession();
         if(!pkg.isEmpty() && !CapturePolicy.target(pkg)) return false;
         instance.targetPackage=pkg;instance.observedTitle="";
@@ -129,6 +129,7 @@ public final class CaptureService extends AccessibilityService {
             screenReceiverRegistered=true;
         }
         record("service connected; start session");
+        lifecycle("connected");
     }
     private boolean locked() {
         KeyguardManager km=(KeyguardManager)getSystemService(KEYGUARD_SERVICE);
@@ -351,7 +352,7 @@ public final class CaptureService extends AccessibilityService {
     }
     private void captureOnce() {
         String source="overlay";
-        if(!armed() || locked() || ownActivityVisible || selfTest) {
+        if(!armed() || locked() || ownActivityVisible || selfTest || CapturePermission.status(this)!=PermissionState.Status.READY) {
             recordCapture(source+": refused; session stopped, locked or test app visible");
             toast("Viber / Messenger Chat ကို ဖွင့်ပါ"); return;
         }
@@ -455,11 +456,22 @@ public final class CaptureService extends AccessibilityService {
         if(instance==this) instance=null;
         record("service disconnected; session stopped");
     }
+    static String lifecycleDiagnostic(Context c){
+        android.content.SharedPreferences p=c.getSharedPreferences("capture_health",MODE_PRIVATE);
+        return "connections="+p.getInt("connected_count",0)+"; task removed="+p.getInt("task_removed_count",0)+"; unbind="+p.getInt("unbind_count",0)+"; destroyed="+p.getInt("destroy_count",0)+"; last="+p.getString("lifecycle_last","none");
+    }
+    private void lifecycle(String event){
+        android.content.SharedPreferences p=getSharedPreferences("capture_health",MODE_PRIVATE);
+        p.edit().putInt(event+"_count",p.getInt(event+"_count",0)+1).putString("lifecycle_last",event+" @ "+System.currentTimeMillis()).apply();
+    }
+    @Override public void onTaskRemoved(Intent rootIntent){
+        lifecycle("task_removed");endSession();super.onTaskRemoved(rootIntent);
+    }
     @Override public boolean onUnbind(Intent intent) {
-        disconnect(); return super.onUnbind(intent);
+        lifecycle("unbind");disconnect(); return super.onUnbind(intent);
     }
     @Override public void onDestroy() {
-        disconnect();
+        lifecycle("destroy");disconnect();
         if(store!=null) {store.close(); store=null;}
         super.onDestroy();
     }

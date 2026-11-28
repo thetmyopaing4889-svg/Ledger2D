@@ -6,8 +6,8 @@ android {
         applicationId = "com.myanmar.cherrydirectcapture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "16.0-combined-final-test"
+        versionCode = 17
+        versionName = "17.0-permission-dark-review"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

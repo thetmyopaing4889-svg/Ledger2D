@@ -7,6 +7,22 @@ final class CaptureApps {
         App(String pkg,String name,int accent,int background,int bubble,int radius,boolean observed){
             this.pkg=pkg;this.name=name;this.accent=accent;this.background=background;this.bubble=bubble;this.radius=radius;this.observed=observed;
         }
+        int darkBackground(){
+            if(pkg.equals("com.viber.voip"))return 0xff16141f;
+            if(pkg.equals("com.facebook.orca"))return 0xff121212;
+            if(pkg.startsWith("org.telegram."))return 0xff101c29;
+            if(pkg.equals("com.whatsapp")||pkg.equals("com.whatsapp.w4b"))return 0xff0b161b;
+            if(pkg.equals("jp.naver.line.android")||pkg.equals("com.tencent.mm"))return 0xff131b18;
+            return 0xff15171c;
+        }
+        int darkBubble(){
+            if(pkg.equals("com.viber.voip"))return 0xff2c283a;
+            if(pkg.equals("com.facebook.orca"))return 0xff2c2c2e;
+            if(pkg.startsWith("org.telegram."))return 0xff23374b;
+            if(pkg.equals("com.whatsapp")||pkg.equals("com.whatsapp.w4b"))return 0xff233138;
+            if(pkg.equals("jp.naver.line.android")||pkg.equals("com.tencent.mm"))return 0xff27372e;
+            return 0xff2b303a;
+        }
     }
     static final List<App> ALL=Collections.unmodifiableList(Arrays.asList(
         new App("com.viber.voip","Viber",0xff7360f2,0xfff2f3f7,0xffffffff,14,true),
