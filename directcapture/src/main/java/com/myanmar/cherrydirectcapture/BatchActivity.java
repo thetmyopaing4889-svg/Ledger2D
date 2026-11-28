@@ -18,6 +18,7 @@ public final class BatchActivity extends Activity {
     private String batch="";
     private String exportBatch="";
     private static final int EXPORT_REQUEST=701;
+    static final String REVIEW_ACTION="com.myanmar.cherrydirectcapture.REVIEW_STOPPED";
     private static final int CHERRY=Color.rgb(181,27,70);
     @Override public void onCreate(Bundle b){
         super.onCreate(b);store=new CaptureStore(this);
@@ -27,9 +28,16 @@ public final class BatchActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("page",page);b.putInt("active",active);b.putString("exportBatch",exportBatch);}
     @Override protected void onResume(){super.onResume();CaptureService.activityVisible(true);batch=store.latestBatch();
         if(!CaptureService.armed()&&store.batchState(batch)==0)store.stopBatch(batch);
+        if(REVIEW_ACTION.equals(getIntent().getAction())){
+            String requested=getIntent().getStringExtra("review_batch");
+            if(requested!=null&&requested.equals(batch)&&store.batchState(batch)==1&&!CaptureService.armed()){
+                page=1;getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("return","review resumed").apply();
+            }
+            getIntent().setAction(null);
+        }
         if(page==0&&store.batchState(batch)==1&&!CaptureService.armed())page=1;
         draw();}
-    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);page=0;}
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);page=0;}
     @Override protected void onPause(){CaptureService.activityVisible(false);super.onPause();}
     @Override protected void onDestroy(){store.close();super.onDestroy();}
     private void label(String s,int size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setPadding(0,12,0,12);t.setTextIsSelectable(true);panel.addView(t);}
@@ -37,7 +45,7 @@ public final class BatchActivity extends Activity {
     private void button(String s,View.OnClickListener f){panel.addView(make(s,f));}
     private void error(Exception e){new AlertDialog.Builder(this).setMessage("မလုပ်နိုင်ပါ။ စာသားနှင့် အခြေအနေ ပြန်စစ်ပါ။").setPositiveButton("OK",null).show();}
     private void draw(){
-        panel.removeAllViews();label("🍒 Direct Capture Test 14",24);
+        panel.removeAllViews();label("🍒 Direct Capture Test 15",24);
         if(page==2){draft();return;}
         if(page==1&&!CaptureService.armed()&&store.batchState(batch)==1){review();return;}
         label("စမ်းသပ် Chat များသာ • စာရင်းအစစ် မသိမ်းပါ",16);
@@ -55,6 +63,7 @@ public final class BatchActivity extends Activity {
             label("Service: "+CaptureService.diagnostic(this),14);
             label("Capture: "+CaptureService.captureDiagnostic(this),14);
             label("Overlay: "+CaptureService.overlayDiagnostic(this),14);
+            label("Return: "+getSharedPreferences("capture_health",MODE_PRIVATE).getString("return","not tested"),14);
             button("Raw Data",v->{try{label(store.batchRaw(batch).toString(2),12);}catch(Exception e){error(e);}});
             if(!CaptureService.armed()&&!batch.isEmpty())button("စမ်းသပ် Evidence ဖိုင် ထုတ်မည်",v->requestExport());
             button("Build 11 မှတ်တမ်းများ",v->{try{label(store.page(0).toString(2),12);label("Legacy draft: "+store.draft(),14);}catch(Exception e){error(e);}});
@@ -80,15 +89,25 @@ public final class BatchActivity extends Activity {
     }
     private void review(){
         try{
-            JSONArray rows=store.review(batch);int count=0,hidden=0;
-            for(int i=0;i<rows.length();i++)if(rows.getJSONObject(i).optBoolean("include"))count++;else hidden++;
+            JSONArray rows=store.review(batch);int count=0,hidden=0,overlap=0,unknown=0;
+            boolean viber=ViberStructure.PKG.equals(store.batchPackage(batch)),mixed=store.mixedChats(batch);
+            String suggested=store.suggestedChat(batch);
+            for(int i=0;i<rows.length();i++){
+                JSONObject row=rows.getJSONObject(i);
+                if(row.optBoolean("include"))count++;else hidden++;
+                if("SCROLL_OVERLAP".equals(row.optString("kind"))&&!row.optBoolean("include"))overlap++;
+                if("UNRECOGNIZED_NODE".equals(row.optString("kind")))unknown++;
+            }
             label("စာဖမ်းယူမှု — "+(store.batchPackage(batch).equals("com.viber.voip")?"Viber":"Messenger"),22);
             label("စာသားအပိုင်း "+count+" ခု • မူရင်း Chat နှင့် စာစောင်၊ အစီအစဉ်၊ ထပ်နေမှု တိုက်စစ်ပါ။",16);
-            label("Chat: "+(store.batchChat(batch).isEmpty()?"အတည်မပြုရသေး":store.batchChat(batch)),16);
-            button("Chat အမည် အတည်ပြုရန်",v->confirmChat());
+            label("Chat: "+(store.batchChat(batch).isEmpty()?(suggested.isEmpty()?"အတည်မပြုရသေး":suggested):store.batchChat(batch)),18);
+            if(mixed)label("Chat အမည် မတူသော ဖမ်းယူမှုများ ပါဝင်နေသည်။ ပယ်ဖျက်ပြီး Chat တစ်ခုချင်း ပြန်ဖမ်းပါ။",16);
+            if(viber)label("ဖမ်းယူမှု "+store.batchRaw(batch).length()+" ကြိမ် • ထပ်နေမှု "+overlap+" • စာ "+count+" စောင်",16);
+            if(unknown>0)label("မခွဲခြားနိုင်သေးသော Node "+unknown+" ခု — ချန်ထားသောစာထဲ စစ်ပါ။",14);
+            if(suggested.isEmpty()||!store.batchChat(batch).isEmpty())button("Chat အမည် အတည်ပြုရန်",v->confirmChat());
             button("မူရင်း App ပြန်ကြည့်ရန်",v->reopenChat());
             button("စမ်းသပ် Evidence ဖိုင် ထုတ်မည်",v->requestExport());
-            label("မူရင်းစာစောင် အလိုအလျောက် အတည်မပြုနိုင်သေးပါ။ ထပ်နေမှု အမှတ်အသားသည် အကြံပြုချက်သာ ဖြစ်သည်။",14);
+            label(viber?"မူရင်း Chat နှင့် စာစောင်၊ ထပ်နေမှု၊ ချန်ထားသောစာများကို တိုက်စစ်ပါ။":"မူရင်းစာစောင် အလိုအလျောက် အတည်မပြုနိုင်သေးပါ။",14);
             long lastCapture=-1;
             
             for(int i=0;i<rows.length();i++){
@@ -96,9 +115,12 @@ public final class BatchActivity extends Activity {
                 if(!included&&!excluded)continue;
                 final int idx=i;
                 long captureId=row.optLong("capture",0);
-                if(captureId!=lastCapture && captureId>0){label("ဖမ်းယူမှု #"+captureId,13);lastCapture=captureId;}
+                if((!viber||!included)&&captureId!=lastCapture && captureId>0){label("ဖမ်းယူမှု #"+captureId,13);lastCapture=captureId;}
                 
                 label(row.getString("body"),18);
+                if(!row.optString("sent_time","").isEmpty())label(row.optString("sent_time"),13);
+                if(row.optBoolean("unlinked_capture"))label("Scroll ဆက်နွယ်မှု မသေချာ — တိုက်စစ်ရန်",13);
+                if("SCROLL_OVERLAP".equals(row.optString("kind")))label("ထပ်နေမှုဖြစ်နိုင်သောစာ — ပြန်ထည့်နိုင်သည်",13);
                 if(row.optBoolean("alias_hint"))label("တစ်မျက်နှာတည်း parent/child စာသားထပ်နေနိုင်သည်",13);
                 if(row.optBoolean("overlap_hint"))label("ယခင်ဖမ်းယူမှုနှင့် အစီအစဉ်တူနေသည် — ထပ်နေနိုင်သည်",13);
                 else if(row.optBoolean("repeat"))label("စာသားတူနေသည် — သီးခြားစာစောင်လည်း ဖြစ်နိုင်သည်",13);
@@ -125,9 +147,10 @@ public final class BatchActivity extends Activity {
                 .setTitle("မူရင်း Chat နှင့် တိုက်စစ်ပြီးပြီလား?")
                 .setMessage("စာစောင် "+total+" ခု၏ စာသား၊ အစီအစဉ်၊ ထပ်နေမှုနှင့် ချန်ထားသော "+skipped+" ခုကို အားလုံးတိုက်စစ်ပြီး တစ်စောင်ချင်း မှန်ကန်မှ အတည်ပြုပါ။")
                 .setNegativeButton("ပြန်စစ်မည်",null).setPositiveButton("အတည်ပြုမည်",(d,w)->{
-                    try{store.transferBatch(batch);page=2;active=Math.max(0,store.entries().length()-total);draw();}catch(Exception e){error(e);}
+                    try{if(store.batchChat(batch).isEmpty()&&!suggested.isEmpty())store.saveBatchChat(batch,suggested);
+                        store.transferBatch(batch);page=2;active=Math.max(0,store.entries().length()-total);draw();}catch(Exception e){error(e);}
                 }).show());
-            confirm.setEnabled(count>0&&!store.batchChat(batch).isEmpty());panel.addView(confirm);
+            confirm.setEnabled(count>0&&!mixed&&(!store.batchChat(batch).isEmpty()||!suggested.isEmpty()));panel.addView(confirm);
             button("မပို့ဘဲ ပယ်ဖျက်မည်",v->new AlertDialog.Builder(this).setMessage("ယခု session ကို မပို့ဘဲ ပယ်ဖျက်မလား?").setNegativeButton("မဖျက်ပါ",null).setPositiveButton("ပယ်ဖျက်မည်",(d,w)->{store.discardBatch(batch);page=0;draw();}).show());
             button("Test Input Box ကြည့်ရန်",v->{page=2;draw();});
         }catch(Exception e){error(e);button("ပြန်သွားရန်",v->{page=0;draw();});}
@@ -161,7 +184,7 @@ public final class BatchActivity extends Activity {
         super.onActivityResult(request,result,data);
         if(request!=EXPORT_REQUEST||result!=RESULT_OK||data==null||data.getData()==null||exportBatch.isEmpty())return;
         try{
-            JSONObject payload=new JSONObject();payload.put("schema",1);payload.put("build",14);
+            JSONObject payload=new JSONObject();payload.put("schema",1);payload.put("build",15);
             payload.put("package",store.batchPackage(exportBatch));payload.put("manual_chat_label",store.batchChat(exportBatch));
             payload.put("captures",store.batchRaw(exportBatch));
             if(store.batchState(exportBatch)==1)payload.put("review",store.review(exportBatch));

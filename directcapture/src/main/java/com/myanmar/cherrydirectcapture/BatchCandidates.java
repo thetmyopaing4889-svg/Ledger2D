@@ -4,6 +4,7 @@ import java.util.*;
 /** Candidate evidence only; no automatic deletion or message identity assertion. */
 final class BatchCandidates {
     static JSONArray build(JSONArray captures) throws JSONException {
+        if(ViberReview.supported(captures))return ViberReview.build(captures);
         JSONArray rows=new JSONArray();Set<String> seen=new HashSet<>();
         List<String> previous=new ArrayList<>();String previousPackage="";
         for(int c=0;c<captures.length();c++){

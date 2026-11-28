@@ -83,6 +83,8 @@ final class CaptureStore extends SQLiteOpenHelper {
         }
         return out;
     }
+    String suggestedChat(String id) throws JSONException {return ViberReview.suggestedChat(batchRaw(id));}
+    boolean mixedChats(String id) throws JSONException {return ViberReview.mixedChats(batchRaw(id));}
     JSONArray review(String id) throws JSONException {
         try(Cursor c=getReadableDatabase().rawQuery("SELECT review FROM capture_batches WHERE id=?",new String[]{id})){
             if(!c.moveToFirst()) throw new IllegalStateException("Unknown batch");
@@ -121,6 +123,7 @@ final class CaptureStore extends SQLiteOpenHelper {
             if(batchState(id)==2){db.setTransactionSuccessful();return 0;}
             if(batchState(id)!=1)throw new IllegalStateException("Batch not stopped");
             if(batchChat(id).isEmpty())throw new IllegalStateException("Chat not confirmed");
+            if(mixedChats(id))throw new IllegalStateException("Mixed chat titles");
             JSONArray rows=review(id);
             java.util.List<String> bodies=new java.util.ArrayList<>();
             for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);if(row.optBoolean("include"))bodies.add(row.getString("body"));}

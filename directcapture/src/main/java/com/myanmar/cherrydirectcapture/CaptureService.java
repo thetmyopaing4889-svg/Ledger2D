@@ -288,9 +288,7 @@ public final class CaptureService extends AccessibilityService {
         stop.setPadding(dp(4),0,dp(4),0);stop.setBackground(round(Color.rgb(125,17,45),14));stop.setTextColor(Color.WHITE);
         layout.addView(stop,new LinearLayout.LayoutParams(dp(60),dp(32)));
         stop.setOnClickListener(v->{
-            endSession();
-            try{startActivity(new Intent(this,BatchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}
-            catch(RuntimeException e){toast("Test App ကို ပြန်ဖွင့်ပါ");}
+            stopAndReturn();
         });
         WindowManager.LayoutParams params=new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT);
@@ -323,6 +321,23 @@ public final class CaptureService extends AccessibilityService {
         });
         try{manager.addView(layout,params);overlay=layout;refresh();recordOverlay("session orb added");}
         catch(RuntimeException e){orb=null;counter=null;recordOverlay("orb failed: "+e.getClass().getSimpleName());}
+    }
+    private void stopAndReturn(){
+        String stopped=sessionId;
+        // Close capture first. Request foreground activity from the explicit overlay click
+        // while its window is still attached, then remove it even if the OS refuses.
+        session=false;handler.removeCallbacksAndMessages(null);
+        try{
+            closeBatch();
+            Intent intent=new Intent(this,BatchActivity.class).setAction(BatchActivity.REVIEW_ACTION)
+                .putExtra("review_batch",stopped)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("return","requested").apply();
+            startActivity(intent);
+        }catch(RuntimeException e){
+            getSharedPreferences("capture_health",MODE_PRIVATE).edit().putString("return","failed: "+e.getClass().getSimpleName()).apply();
+            toast("Test App ကို ပြန်ဖွင့်ပါ");
+        }finally{hide();record("session stopped");}
     }
     private void refresh() {
         if(capture!=null) capture.setText("🍒 ဖမ်းမည် ("+sessionSaved()+")");
