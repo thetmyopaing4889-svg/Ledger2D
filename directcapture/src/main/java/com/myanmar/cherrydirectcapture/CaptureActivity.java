@@ -10,6 +10,9 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.EditText;
+import android.widget.CheckBox;
+import android.text.InputType;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -18,10 +21,13 @@ public final class CaptureActivity extends Activity {
     private LinearLayout panel;
     private int offset;
     private boolean rawView;
+    private boolean draftView;
+    private ScrollView scroll;
+    private TextView selectedLabel;
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
         store=new CaptureStore(this);
-        ScrollView scroll=new ScrollView(this);
+        scroll=new ScrollView(this);
         panel=new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(24,48,24,32); scroll.addView(panel); setContentView(scroll);
     }
@@ -36,7 +42,8 @@ public final class CaptureActivity extends Activity {
     }
     private void draw() {
         panel.removeAllViews();
-        label("🍒 Direct Capture Test 10",24);
+        label("🍒 Direct Capture Test 11",24);
+        if(draftView) {drawDraft();return;}
         label("စမ်းသပ် Chat စာသားကိုသာ အသုံးပြုပါ။ ဖမ်းမည်နှိပ်မှ မြင်ရသော UI စာသားကို ဖုန်းထဲ သိမ်းမည်။ စာရင်းသွင်းခြင်း မရှိပါ။",16);
         label("ဖမ်းယူမှု "+store.count()+" ကြိမ် (စာစောင်အရေအတွက် မဟုတ်) · "+(CaptureService.armed()?"ဖွင့်ထား":"ရပ်ထား"),16);
         label("Service: "+(CaptureService.connected()?"Connected":"Not connected"),16);
@@ -64,10 +71,14 @@ public final class CaptureActivity extends Activity {
         button("အခြေအနေ ပြန်စစ်မည်",v->draw());
         button("Accessibility Setting",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         button("သိမ်းထားသောစာအားလုံး ဖျက်မည်",v->new AlertDialog.Builder(this)
-            .setMessage("စမ်းသပ်မှတ်တမ်းများ အားလုံး ဖျက်မည်လား?")
+            .setMessage("စမ်းသပ်မှတ်တမ်း၊ ရွေးချယ်မှုနှင့် Test Input Box အားလုံး ဖျက်မည်လား?")
             .setNegativeButton("မဖျက်ပါ",null).setPositiveButton("ဖျက်မည်",(d,w)->{CaptureService.endSession();store.clear();offset=0;draw();}).show());
-        button(rawView?"သန့်စင်မှု စစ်ဆေးရန်":"မူရင်း Data ကြည့်ရန်",v->{rawView=!rawView;draw();});
-        if(!rawView) label("စာသားအပိုင်းများသာ ဖြစ်သည်။ စာတစ်စောင်ချင်း အတည်မပြုရသေးပါ။ မသေချာသော UI၊ အချိန်နှင့် description များကို သီးခြားပြထားသည်။",14);
+        label("Capture Inbox",22);
+        selectedLabel=new TextView(this);panel.addView(selectedLabel);refreshSelection();
+        button("ရွေးထားသောစာများ Test Input Box ထဲ ထည့်မည်",v->confirmTransfer());
+        button("Test Input Box ကြည့်ရန်",v->{draftView=true;draw();scroll.scrollTo(0,0);});
+        button(rawView?"Inbox ကြည့်ရန်":"မူရင်း Data ကြည့်ရန်",v->{rawView=!rawView;draw();});
+        if(!rawView) label("စာသားအပိုင်းများကို စစ်ပြီး ရွေးပါ။ Chat အမည်နှင့် အချိန်ကို ကိုယ်တိုင် အတည်ပြုပါ။ ထပ်နေနိုင်သည် ဆိုသည်မှာ အတည်မပြုရသေးသော အချက်သာဖြစ်သည်။",14);
         try {
             JSONArray page=store.page(offset);
             label("မှတ်တမ်း "+(page.length()==0?0:offset+1)+" – "+(offset+page.length()),16);
@@ -88,37 +99,94 @@ public final class CaptureActivity extends Activity {
                     }
                     label(out.toString(),14);
                 } else {
-                    drawReview(nodes);
+                    drawInbox(snap.getLong("id"),snap.getString("package"),nodes);
                 }
             }
         } catch(Exception e) { label("မှတ်တမ်း ဖတ်၍မရပါ",16); }
     }
-    private void drawReview(JSONArray nodes) throws org.json.JSONException {
+    private void refreshSelection() {
+        if(selectedLabel!=null) selectedLabel.setText("ရွေးထားသော စာသားအပိုင်း "+store.selectedCount()+" ခု");
+    }
+    private EditText editor(String value,String hint,boolean multi) {
+        EditText e=new EditText(this);
+        e.setInputType(InputType.TYPE_CLASS_TEXT|(multi?InputType.TYPE_TEXT_FLAG_MULTI_LINE:0));
+        e.setSingleLine(!multi); e.setText(value);e.setHint(hint);return e;
+    }
+    private void drawInbox(long id,String pkg,JSONArray nodes) throws org.json.JSONException {
+        String chat=store.chat(id);
+        label("Chat: "+(chat.isEmpty()?"အတည်မပြုရသေး":chat),16);
+        button("Chat အမည် သတ်မှတ်မည်",v->{
+            EditText e=editor(store.chat(id),"Chat အမည်",false);
+            new AlertDialog.Builder(this).setTitle("Chat အမည် အတည်ပြုရန်").setView(e)
+                .setNegativeButton("မပြင်ပါ",null).setPositiveButton("သိမ်းမည်",(d,w)->{store.saveChat(id,e.getText().toString());draw();}).show();
+        });
         java.util.List<CaptureReview.Entry> entries=CaptureReview.entries(nodes);
-        int candidates=0,review=0;
-        for(CaptureReview.Entry e:entries) {
-            if(e.kind==CaptureTextReview.Kind.TEXT) candidates++; else review++;
+        java.util.List<String> current=new java.util.ArrayList<>();
+        for(CaptureReview.Entry e:entries) if(e.kind==CaptureTextReview.Kind.TEXT) current.add(e.text);
+        boolean[] possible=new boolean[current.size()];
+        JSONObject prev=store.previous(id,pkg,chat);
+        if(prev!=null) {
+            java.util.List<String> previous=new java.util.ArrayList<>();
+            for(CaptureReview.Entry e:CaptureReview.entries(prev.getJSONArray("nodes")))
+                if(e.kind==CaptureTextReview.Kind.TEXT) previous.add(e.text);
+            possible=InboxLogic.overlap(previous,current);
         }
-        label("စာသားအပိုင်း "+candidates+" · စစ်ဆေးရန် "+review,14);
+        int pos=0;
         for(CaptureReview.Entry e:entries) {
             if(e.kind!=CaptureTextReview.Kind.TEXT) continue;
-            label("#"+e.index+"  "+e.text,16);
-            if(!e.description.isEmpty() && !e.description.equals(e.text))
-                label("description (စစ်ဆေးရန်): "+e.description,12);
+            drawItem(id,e,possible[pos++]);
         }
-        if(review>0) label("သီးခြား စစ်ဆေးရန်",18);
-        for(CaptureReview.Entry e:entries) {
-            if(e.kind==CaptureTextReview.Kind.TEXT) continue;
-            String type;
-            switch(e.kind) {
-                case POSSIBLE_UI: type="UI ဖြစ်နိုင်";break;
-                case POSSIBLE_TIME: type="အချိန် ဖြစ်နိုင်";break;
-                case DESCRIPTION_ONLY: type="description";break;
-                default: type="စာသားမရှိ";
-            }
-            label("#"+e.index+" · "+type+"\n"+e.text+
-                (e.description.isEmpty()?"":"\n[description] "+e.description),14);
-        }
+        label("UI / အချိန် / description — သီးခြားစစ်ဆေးရန်",18);
+        for(CaptureReview.Entry e:entries) if(e.kind!=CaptureTextReview.Kind.TEXT) drawItem(id,e,false);
+    }
+    private void drawItem(long id,CaptureReview.Entry e,boolean possible) {
+        final String original=e.text.trim().isEmpty()?e.description:e.text;
+        CaptureStore.Decision state=store.decision(id,e.index,original);
+        label("#"+e.index+" · ✓ မှတ်တမ်းရှိ"+(state.transferred?" · Test Input သို့ပို့ပြီး":"")+
+            (possible?" · ထပ်နေနိုင်သည်":"")+(e.kind==CaptureTextReview.Kind.TEXT?"":" · "+e.kind.name()),13);
+        label(state.edited,16);
+        if(!state.stamp.isEmpty()) label("အချိန် (အတည်ပြုထား): "+state.stamp,13);
+        if(!e.description.isEmpty() && !e.description.equals(original)) label("description: "+e.description,12);
+        if(state.transferred || original.trim().isEmpty()) return;
+        CheckBox check=new CheckBox(this); check.setText("ထည့်ရန် ရွေးမည်");check.setChecked(state.selected);
+        check.setEnabled(!state.edited.trim().isEmpty());
+        check.setOnCheckedChangeListener((b,checked)->{state.selected=checked;store.saveDecision(id,e.index,original,state);refreshSelection();});
+        panel.addView(check);
+        button("စာသား / အချိန် ပြင်မည်",v->{
+            LinearLayout fields=new LinearLayout(this);fields.setOrientation(LinearLayout.VERTICAL);
+            EditText body=editor(state.edited,"စာသား",true), time=editor(state.stamp,"စာပို့ချိန် (မသေချာလျှင် ချန်ထားပါ)",false);
+            fields.addView(body);fields.addView(time);
+            new AlertDialog.Builder(this).setTitle("မူရင်း Data မပြောင်းပါ").setView(fields).setNegativeButton("မပြင်ပါ",null)
+                .setPositiveButton("သိမ်းမည်",(d,w)->{
+                    state.edited=body.getText().toString();state.stamp=time.getText().toString();
+                    if(state.edited.trim().isEmpty()) state.selected=false;
+                    store.saveDecision(id,e.index,original,state);draw();
+                }).show();
+        });
+    }
+    private void confirmTransfer() {
+        int count=store.selectedCount();
+        if(count==0) {label("ထည့်ရန် စာသား မရွေးရသေးပါ",16);return;}
+        new AlertDialog.Builder(this).setTitle("Test Input Box")
+            .setMessage("ရွေးထားသော စာသားအပိုင်း "+count+" ခုကို ဖမ်းယူမှုအစီအစဉ်အတိုင်း ထည့်မည်။ စာရင်းသွင်းခြင်း မရှိပါ။")
+            .setNegativeButton("မထည့်ပါ",null).setPositiveButton("ထည့်မည်",(d,w)->{
+                try {store.transfer();draftView=true;draw();scroll.scrollTo(0,0);}
+                catch(Exception ex) {new AlertDialog.Builder(this).setMessage("မထည့်နိုင်ပါ။ စာသားအလွတ် သို့မဟုတ် အရွယ်အစား စစ်ပါ။").setPositiveButton("OK",null).show();}
+            }).show();
+    }
+    private void drawDraft() {
+        label("Test Input Box — စာရင်းသွင်းခြင်း မရှိပါ",18);
+        EditText input=editor(store.draft(),"ရွေးထားသော စာသား",true);
+        input.setMinLines(8);panel.addView(input);
+        button("Draft သိမ်းမည်",v->{store.saveDraft(input.getText().toString());label("သိမ်းပြီး",14);});
+        button("Inbox ပြန်သွားမည်",v->{
+            if(!input.getText().toString().equals(store.draft())) {
+                new AlertDialog.Builder(this).setMessage("ပြင်ထားသော Draft ကို သိမ်းမလား?")
+                    .setNeutralButton("ဆက်ပြင်မည်",null)
+                    .setNegativeButton("မသိမ်းပါ",(d,w)->{draftView=false;draw();})
+                    .setPositiveButton("သိမ်းမည်",(d,w)->{store.saveDraft(input.getText().toString());draftView=false;draw();}).show();
+            } else {draftView=false;draw();}
+        });
     }
     @Override protected void onDestroy() { store.close(); super.onDestroy(); }
 }
