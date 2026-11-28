@@ -12,6 +12,15 @@ dependencyResolutionManagement {
             content { includeGroup("org.robolectric") }
         }
         mavenCentral()
+        if (providers.gradleProperty("directCaptureTest").orNull == "true") {
+            maven {
+                url = uri("https://jitpack.io")
+                content {
+                    includeGroup("com.github.MuntashirAkon")
+                    includeGroup("com.github.MuntashirAkon.spake2-java")
+                }
+            }
+        }
         if (providers.gradleProperty("ocrBenchmark").orNull == "true") {
             maven { url = uri("https://jitpack.io"); content { includeGroup("cz.adaptech.tesseract4android") } }
         }

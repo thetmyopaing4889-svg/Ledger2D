@@ -62,7 +62,7 @@ public final class BatchActivity extends Activity {
     private void draw(){
         permissionHandler.removeCallbacks(permissionTick);permissionLabel=null;permissionButton=null;
         panel.removeAllViews();footer.removeAllViews();footer.setVisibility(View.GONE);panel.setBackgroundColor(Color.WHITE);root.setBackgroundColor(Color.WHITE);footer.setBackgroundColor(Color.WHITE);
-        if(page!=1)label("🍒 Direct Capture Test 17",24);
+        if(page!=1)label("🍒 Direct Capture Test 18",24);
         if(page==2){draft();return;}
         if(page==1&&!CaptureService.armed()&&store.batchState(batch)==1){review();return;}
         label("စမ်းသပ် Chat များသာ • စာရင်းအစစ် မသိမ်းပါ",16);
@@ -71,6 +71,8 @@ public final class BatchActivity extends Activity {
         panel.addView(permissionLabel);panel.addView(permissionButton);
         connectionDeadline=android.os.SystemClock.uptimeMillis()+8000;
         refreshPermissionUi();
+        if(!CaptureService.armed()&&!CapturePermission.special(this)&&android.os.Build.VERSION.SDK_INT>=30)
+            button("Smart Permission Setup",v->smartSetup());
         if(CaptureService.armed()){
             label("ဖမ်းယူမှု "+CaptureService.sessionSaved()+" ကြိမ်",16);
             button("Stop",v->{CaptureService.endSession();page=1;draw();});
@@ -82,6 +84,7 @@ public final class BatchActivity extends Activity {
         button(debug?"စမ်းသပ်မှတ်တမ်း ပိတ်မည်":"စမ်းသပ်မှတ်တမ်း",v->{debug=!debug;draw();});
         if(debug){
             label("Permission: "+CapturePermission.status(this).name(),14);
+            label("Smart Setup grant: "+(CapturePermission.special(this)?"GRANTED":"NOT GRANTED"),14);
             label("Service: "+CaptureService.diagnostic(this),14);
             label("Lifecycle: "+CaptureService.lifecycleDiagnostic(this),14);
             label("Capture: "+CaptureService.captureDiagnostic(this),14);
@@ -117,7 +120,7 @@ public final class BatchActivity extends Activity {
         permissionLabel.setVisibility(status==PermissionState.Status.READY?View.GONE:View.VISIBLE);
         permissionButton.setVisibility(status==PermissionState.Status.READY?View.GONE:View.VISIBLE);
         if(status==PermissionState.Status.DISABLED){
-            permissionLabel.setText("Accessibility Permission မဖွင့်ရသေးပါ");permissionButton.setText("Permission ဖွင့်ရန်");
+            permissionLabel.setText("Accessibility Permission မဖွင့်ရသေးပါ");permissionButton.setText(CapturePermission.special(this)?"Permission ပြန်ဖွင့်မည်":"Permission ဖွင့်ရန်");
         }else if(status==PermissionState.Status.CONNECTING){
             permissionLabel.setText("Permission ဖွင့်ပြီး • Service ချိတ်ဆက်မှု စစ်ဆေးနေသည်");permissionButton.setText("ပြန်စစ်ရန်");
         }else if(status==PermissionState.Status.UNKNOWN){
@@ -128,9 +131,45 @@ public final class BatchActivity extends Activity {
     }
     private void permissionAction(){
         PermissionState.Status status=CapturePermission.status(this);
-        if(status==PermissionState.Status.DISABLED)openAccessibilitySettings();
+        if(status==PermissionState.Status.DISABLED){if(CapturePermission.special(this))restorePermission(null);else openAccessibilitySettings();}
         else if(status!=PermissionState.Status.READY)showConnection(null);
         else refreshPermissionUi();
+    }
+    private static final int NOTIFICATION_REQUEST=718;
+    private void smartSetup(){
+        if(CapturePermission.special(this)){draw();return;}
+        dialog().setTitle("Smart Permission Setup")
+            .setMessage("ကိုယ်ပိုင်ဖုန်းအတွက် Android Wireless Debugging ဖြင့် Cherry ကို System Settings ပြင်နိုင်သော အထူးအခွင့်အရေး တစ်ကြိမ်ပေးမည်။ အခွင့်အရေးကျယ်သောကြောင့် ယုံကြည်ရသော Test APK တွင်သာ သုံးပါ။ Wi-Fi ချိတ်ပါ။ Developer options > Wireless debugging > Pair device with pairing code ဖွင့်ပြီး Cherry notification တွင် code ၆ လုံးထည့်ပါ။ Setup ပြီးပါက Wireless debugging ပိတ်ပြီး Cherry pairing ကို Forget လုပ်ပါ။ စာသားများ မပို့ပါ။")
+            .setNegativeButton("မလုပ်တော့ပါ",null).setPositiveButton("စတင်မည်",(d,w)->{
+                if(android.os.Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST);
+                else launchSmartSetup();
+            }).show();
+    }
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){
+        super.onRequestPermissionsResult(request,permissions,results);
+        if(request==NOTIFICATION_REQUEST){
+            if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED)launchSmartSetup();
+            else dialog().setMessage("Pairing code ထည့်ရန် Notification လိုပါသည်။ ပုံမှန် Permission နည်းလမ်းကို ဆက်သုံးနိုင်ပါသည်။").setPositiveButton("OK",null).show();
+        }
+    }
+    private void launchSmartSetup(){
+        if(android.os.Build.VERSION.SDK_INT<30||CapturePermission.special(this))return;
+        if(!getSystemService(NotificationManager.class).areNotificationsEnabled()){
+            dialog().setMessage("Cherry notification ကို ဖွင့်ပေးပါ။").setPositiveButton("OK",null).show();return;
+        }
+        try{
+            startForegroundService(new Intent(this,SmartSetupService.class));
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+        }catch(RuntimeException e){stopService(new Intent(this,SmartSetupService.class));error(e);}
+    }
+    private void restorePermission(String pkg){
+        if(!foreground||CaptureService.armed())return;
+        if(CapturePermission.status(this)==PermissionState.Status.READY){refreshPermissionUi();if(pkg!=null)startCapture(pkg);return;}
+        if(CapturePermission.restoreOwn(this)){
+            connectionDeadline=android.os.SystemClock.uptimeMillis()+8000;refreshPermissionUi();showConnection(pkg);
+        }else dialog().setMessage("Permission ပြန်ဖွင့်မရသေးပါ။ Android Settings မှ ဖွင့်နိုင်ပါသည်။")
+            .setNegativeButton("ပိတ်မည်",null).setPositiveButton("Settings",(d,w)->openAccessibilitySettings()).show();
     }
     private void openAccessibilitySettings(){
         try{startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}catch(RuntimeException e){error(e);}
@@ -138,7 +177,11 @@ public final class BatchActivity extends Activity {
     private boolean requireReady(String pkg){
         PermissionState.Status status=CapturePermission.status(this);
         if(status==PermissionState.Status.READY)return true;
-        if(status==PermissionState.Status.DISABLED){
+        if(status==PermissionState.Status.DISABLED&&CapturePermission.special(this)){
+            dialog().setTitle("Accessibility Permission")
+                .setMessage("Cherry စာဖမ်းရန် Permission ပြန်ဖွင့်မည်။ 🍒 နှိပ်မှသာ စာဖမ်းမည်။")
+                .setNegativeButton("မလုပ်တော့ပါ",null).setPositiveButton("Permission ပြန်ဖွင့်မည်",(di,w)->restorePermission(pkg)).show();
+        }else if(status==PermissionState.Status.DISABLED){
             dialog().setTitle("Accessibility Permission")
                 .setMessage("စာဖမ်းယူရန် Permission ကို ပထမဆုံး ဖွင့်ပေးပါ။ ဖွင့်ပြီး App ထဲ ပြန်လာကာ Import နှိပ်နိုင်ပါသည်။")
                 .setNegativeButton("မလုပ်တော့ပါ",null).setPositiveButton("ဖွင့်ရန်",(di,w)->openAccessibilitySettings()).show();
